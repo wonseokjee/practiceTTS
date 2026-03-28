@@ -50,6 +50,8 @@ export interface SentCompViewState {
   submittedResults: SentenceComprehensionResult[];
   score: ScoreDTO | null;
   errorMessage: string | null;
+  /** 현재 선택된 이미지 인덱스 (미선택 시 null) */
+  selectedIndex: 0 | 1 | null;
 }
 
 /** ViewModel에서 컴포넌트로 전달하는 액션 */
@@ -106,6 +108,9 @@ export function useSentCompViewModel(
   >([]);
   const [score, setScore] = useState<ScoreDTO | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // 현재 선택된 이미지 인덱스 (AWAITING→SUBMITTING→FEEDBACK 구간에서 유지)
+  const [selectedIndex, setSelectedIndex] = useState<0 | 1 | null>(null);
 
   // 재청취 횟수 추적 (AWAITING 상태에서 REPLAY 시 증가)
   const replayCountRef = useRef(0);
@@ -294,6 +299,7 @@ export function useSentCompViewModel(
         return next;
       });
       replayCountRef.current = 0;
+      setSelectedIndex(null);
       dispatch({ type: 'TRANSITION_DONE' });
     }, TRANSITION_DURATION_MS);
 
@@ -302,7 +308,7 @@ export function useSentCompViewModel(
     };
   }, [phase.type]);
 
-  // === COMPLETED 상태 처리: 채점 및 onComplete 콜백 ===
+  // === COMPLETED 상태 처리: 채점만 수행. onComplete는 ScoreResultPanel의 onProceed에서 호출 ===
   useEffect(() => {
     if (phase.type !== 'COMPLETED') return;
 
@@ -311,7 +317,7 @@ export function useSentCompViewModel(
         const calculatedScore =
           await calculateScoreUseCase.execute(sessionId);
         setScore(calculatedScore);
-        onCompleteRef.current(calculatedScore);
+        // onComplete는 여기서 호출하지 않음 - ScoreResultPanel의 "다음" 버튼에서 호출됨
       } catch (err) {
         console.error('[useSentCompViewModel] 채점 실패:', err);
         setErrorMessage(mapErrorToMessage(err));
@@ -336,6 +342,7 @@ export function useSentCompViewModel(
       // 이미지 선택 즉시 타임스탬프 캡처
       const selectionTimestamp = performance.now();
 
+      setSelectedIndex(selectedIndex);
       dispatch({ type: 'IMAGE_SELECTED' });
 
       void (async () => {
@@ -425,6 +432,7 @@ export function useSentCompViewModel(
     submittedResults,
     score,
     errorMessage,
+    selectedIndex,
   };
 
   const actions: SentCompActions = useMemo(

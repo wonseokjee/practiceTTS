@@ -42,6 +42,7 @@ export function SentCompScreen({ onComplete }: SentCompScreenProps) {
     totalItems,
     score,
     errorMessage,
+    selectedIndex,
   } = viewState;
 
   const isPlaying = phase.type === 'PLAYING';
@@ -161,7 +162,7 @@ export function SentCompScreen({ onComplete }: SentCompScreenProps) {
               <ImageChoiceGrid
                 choices={currentItem.choices}
                 isSelectable={isSelectable}
-                selectedIndex={null}
+                selectedIndex={selectedIndex}
                 onSelect={actions.handleImageSelect}
               />
 
