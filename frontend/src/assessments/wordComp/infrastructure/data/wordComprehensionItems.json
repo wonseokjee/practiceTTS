@@ -1,0 +1,246 @@
+{
+  "version": "1.0.0",
+  "totalItems": 20,
+  "items": [
+    {
+      "itemId": "wc_001",
+      "targetWord": "사과",
+      "targetAudioUrl": "/assets/audio/wordComp/wc_001_target.mp3",
+      "category": "과일",
+      "choices": [
+        { "choiceId": "wc_001_c1", "word": "사과", "imageUrl": "/assets/images/wordComp/apple.webp", "isCorrect": true, "distractorType": null },
+        { "choiceId": "wc_001_c2", "word": "배", "imageUrl": "/assets/images/wordComp/pear.webp", "isCorrect": false, "distractorType": "semantic" },
+        { "choiceId": "wc_001_c3", "word": "사탕", "imageUrl": "/assets/images/wordComp/candy.webp", "isCorrect": false, "distractorType": "phonemic" },
+        { "choiceId": "wc_001_c4", "word": "버스", "imageUrl": "/assets/images/wordComp/bus.webp", "isCorrect": false, "distractorType": "unrelated" }
+      ]
+    },
+    {
+      "itemId": "wc_002",
+      "targetWord": "신발",
+      "targetAudioUrl": "/assets/audio/wordComp/wc_002_target.mp3",
+      "category": "의류",
+      "choices": [
+        { "choiceId": "wc_002_c1", "word": "신발", "imageUrl": "/assets/images/wordComp/shoes.webp", "isCorrect": true, "distractorType": null },
+        { "choiceId": "wc_002_c2", "word": "양말", "imageUrl": "/assets/images/wordComp/socks.webp", "isCorrect": false, "distractorType": "semantic" },
+        { "choiceId": "wc_002_c3", "word": "식빵", "imageUrl": "/assets/images/wordComp/bread.webp", "isCorrect": false, "distractorType": "phonemic" },
+        { "choiceId": "wc_002_c4", "word": "연필", "imageUrl": "/assets/images/wordComp/pencil.webp", "isCorrect": false, "distractorType": "unrelated" }
+      ]
+    },
+    {
+      "itemId": "wc_003",
+      "targetWord": "의자",
+      "targetAudioUrl": "/assets/audio/wordComp/wc_003_target.mp3",
+      "category": "가구",
+      "choices": [
+        { "choiceId": "wc_003_c1", "word": "의자", "imageUrl": "/assets/images/wordComp/chair.webp", "isCorrect": true, "distractorType": null },
+        { "choiceId": "wc_003_c2", "word": "책상", "imageUrl": "/assets/images/wordComp/desk.webp", "isCorrect": false, "distractorType": "semantic" },
+        { "choiceId": "wc_003_c3", "word": "이불", "imageUrl": "/assets/images/wordComp/blanket.webp", "isCorrect": false, "distractorType": "phonemic" },
+        { "choiceId": "wc_003_c4", "word": "우산", "imageUrl": "/assets/images/wordComp/umbrella.webp", "isCorrect": false, "distractorType": "unrelated" }
+      ]
+    },
+    {
+      "itemId": "wc_004",
+      "targetWord": "고양이",
+      "targetAudioUrl": "/assets/audio/wordComp/wc_004_target.mp3",
+      "category": "동물",
+      "choices": [
+        { "choiceId": "wc_004_c1", "word": "고양이", "imageUrl": "/assets/images/wordComp/cat.webp", "isCorrect": true, "distractorType": null },
+        { "choiceId": "wc_004_c2", "word": "강아지", "imageUrl": "/assets/images/wordComp/dog.webp", "isCorrect": false, "distractorType": "semantic" },
+        { "choiceId": "wc_004_c3", "word": "고구마", "imageUrl": "/assets/images/wordComp/sweet_potato.webp", "isCorrect": false, "distractorType": "phonemic" },
+        { "choiceId": "wc_004_c4", "word": "비행기", "imageUrl": "/assets/images/wordComp/airplane.webp", "isCorrect": false, "distractorType": "unrelated" }
+      ]
+    },
+    {
+      "itemId": "wc_005",
+      "targetWord": "자동차",
+      "targetAudioUrl": "/assets/audio/wordComp/wc_005_target.mp3",
+      "category": "탈것",
+      "choices": [
+        { "choiceId": "wc_005_c1", "word": "자동차", "imageUrl": "/assets/images/wordComp/car.webp", "isCorrect": true, "distractorType": null },
+        { "choiceId": "wc_005_c2", "word": "버스", "imageUrl": "/assets/images/wordComp/bus.webp", "isCorrect": false, "distractorType": "semantic" },
+        { "choiceId": "wc_005_c3", "word": "자전거", "imageUrl": "/assets/images/wordComp/bicycle.webp", "isCorrect": false, "distractorType": "phonemic" },
+        { "choiceId": "wc_005_c4", "word": "모자", "imageUrl": "/assets/images/wordComp/hat.webp", "isCorrect": false, "distractorType": "unrelated" }
+      ]
+    },
+    {
+      "itemId": "wc_006",
+      "targetWord": "책",
+      "targetAudioUrl": "/assets/audio/wordComp/wc_006_target.mp3",
+      "category": "학용품",
+      "choices": [
+        { "choiceId": "wc_006_c1", "word": "책", "imageUrl": "/assets/images/wordComp/book.webp", "isCorrect": true, "distractorType": null },
+        { "choiceId": "wc_006_c2", "word": "공책", "imageUrl": "/assets/images/wordComp/notebook.webp", "isCorrect": false, "distractorType": "semantic" },
+        { "choiceId": "wc_006_c3", "word": "척추", "imageUrl": "/assets/images/wordComp/spine.webp", "isCorrect": false, "distractorType": "phonemic" },
+        { "choiceId": "wc_006_c4", "word": "수박", "imageUrl": "/assets/images/wordComp/watermelon.webp", "isCorrect": false, "distractorType": "unrelated" }
+      ]
+    },
+    {
+      "itemId": "wc_007",
+      "targetWord": "냉장고",
+      "targetAudioUrl": "/assets/audio/wordComp/wc_007_target.mp3",
+      "category": "가전",
+      "choices": [
+        { "choiceId": "wc_007_c1", "word": "냉장고", "imageUrl": "/assets/images/wordComp/refrigerator.webp", "isCorrect": true, "distractorType": null },
+        { "choiceId": "wc_007_c2", "word": "세탁기", "imageUrl": "/assets/images/wordComp/washing_machine.webp", "isCorrect": false, "distractorType": "semantic" },
+        { "choiceId": "wc_007_c3", "word": "냄비", "imageUrl": "/assets/images/wordComp/pot.webp", "isCorrect": false, "distractorType": "phonemic" },
+        { "choiceId": "wc_007_c4", "word": "나비", "imageUrl": "/assets/images/wordComp/butterfly.webp", "isCorrect": false, "distractorType": "unrelated" }
+      ]
+    },
+    {
+      "itemId": "wc_008",
+      "targetWord": "사자",
+      "targetAudioUrl": "/assets/audio/wordComp/wc_008_target.mp3",
+      "category": "동물",
+      "choices": [
+        { "choiceId": "wc_008_c1", "word": "사자", "imageUrl": "/assets/images/wordComp/lion.webp", "isCorrect": true, "distractorType": null },
+        { "choiceId": "wc_008_c2", "word": "호랑이", "imageUrl": "/assets/images/wordComp/tiger.webp", "isCorrect": false, "distractorType": "semantic" },
+        { "choiceId": "wc_008_c3", "word": "사다리", "imageUrl": "/assets/images/wordComp/ladder.webp", "isCorrect": false, "distractorType": "phonemic" },
+        { "choiceId": "wc_008_c4", "word": "피아노", "imageUrl": "/assets/images/wordComp/piano.webp", "isCorrect": false, "distractorType": "unrelated" }
+      ]
+    },
+    {
+      "itemId": "wc_009",
+      "targetWord": "바나나",
+      "targetAudioUrl": "/assets/audio/wordComp/wc_009_target.mp3",
+      "category": "과일",
+      "choices": [
+        { "choiceId": "wc_009_c1", "word": "바나나", "imageUrl": "/assets/images/wordComp/banana.webp", "isCorrect": true, "distractorType": null },
+        { "choiceId": "wc_009_c2", "word": "포도", "imageUrl": "/assets/images/wordComp/grape.webp", "isCorrect": false, "distractorType": "semantic" },
+        { "choiceId": "wc_009_c3", "word": "바구니", "imageUrl": "/assets/images/wordComp/basket.webp", "isCorrect": false, "distractorType": "phonemic" },
+        { "choiceId": "wc_009_c4", "word": "기차", "imageUrl": "/assets/images/wordComp/train.webp", "isCorrect": false, "distractorType": "unrelated" }
+      ]
+    },
+    {
+      "itemId": "wc_010",
+      "targetWord": "병원",
+      "targetAudioUrl": "/assets/audio/wordComp/wc_010_target.mp3",
+      "category": "장소",
+      "choices": [
+        { "choiceId": "wc_010_c1", "word": "병원", "imageUrl": "/assets/images/wordComp/hospital.webp", "isCorrect": true, "distractorType": null },
+        { "choiceId": "wc_010_c2", "word": "약국", "imageUrl": "/assets/images/wordComp/pharmacy.webp", "isCorrect": false, "distractorType": "semantic" },
+        { "choiceId": "wc_010_c3", "word": "병아리", "imageUrl": "/assets/images/wordComp/chick.webp", "isCorrect": false, "distractorType": "phonemic" },
+        { "choiceId": "wc_010_c4", "word": "망치", "imageUrl": "/assets/images/wordComp/hammer.webp", "isCorrect": false, "distractorType": "unrelated" }
+      ]
+    },
+    {
+      "itemId": "wc_011",
+      "targetWord": "우유",
+      "targetAudioUrl": "/assets/audio/wordComp/wc_011_target.mp3",
+      "category": "음식",
+      "choices": [
+        { "choiceId": "wc_011_c1", "word": "우유", "imageUrl": "/assets/images/wordComp/milk.webp", "isCorrect": true, "distractorType": null },
+        { "choiceId": "wc_011_c2", "word": "주스", "imageUrl": "/assets/images/wordComp/juice.webp", "isCorrect": false, "distractorType": "semantic" },
+        { "choiceId": "wc_011_c3", "word": "우체통", "imageUrl": "/assets/images/wordComp/mailbox.webp", "isCorrect": false, "distractorType": "phonemic" },
+        { "choiceId": "wc_011_c4", "word": "기타", "imageUrl": "/assets/images/wordComp/guitar.webp", "isCorrect": false, "distractorType": "unrelated" }
+      ]
+    },
+    {
+      "itemId": "wc_012",
+      "targetWord": "나무",
+      "targetAudioUrl": "/assets/audio/wordComp/wc_012_target.mp3",
+      "category": "자연",
+      "choices": [
+        { "choiceId": "wc_012_c1", "word": "나무", "imageUrl": "/assets/images/wordComp/tree.webp", "isCorrect": true, "distractorType": null },
+        { "choiceId": "wc_012_c2", "word": "꽃", "imageUrl": "/assets/images/wordComp/flower.webp", "isCorrect": false, "distractorType": "semantic" },
+        { "choiceId": "wc_012_c3", "word": "나팔", "imageUrl": "/assets/images/wordComp/trumpet.webp", "isCorrect": false, "distractorType": "phonemic" },
+        { "choiceId": "wc_012_c4", "word": "비누", "imageUrl": "/assets/images/wordComp/soap.webp", "isCorrect": false, "distractorType": "unrelated" }
+      ]
+    },
+    {
+      "itemId": "wc_013",
+      "targetWord": "가위",
+      "targetAudioUrl": "/assets/audio/wordComp/wc_013_target.mp3",
+      "category": "도구",
+      "choices": [
+        { "choiceId": "wc_013_c1", "word": "가위", "imageUrl": "/assets/images/wordComp/scissors.webp", "isCorrect": true, "distractorType": null },
+        { "choiceId": "wc_013_c2", "word": "칼", "imageUrl": "/assets/images/wordComp/knife.webp", "isCorrect": false, "distractorType": "semantic" },
+        { "choiceId": "wc_013_c3", "word": "가방", "imageUrl": "/assets/images/wordComp/bag.webp", "isCorrect": false, "distractorType": "phonemic" },
+        { "choiceId": "wc_013_c4", "word": "수영장", "imageUrl": "/assets/images/wordComp/pool.webp", "isCorrect": false, "distractorType": "unrelated" }
+      ]
+    },
+    {
+      "itemId": "wc_014",
+      "targetWord": "모자",
+      "targetAudioUrl": "/assets/audio/wordComp/wc_014_target.mp3",
+      "category": "의류",
+      "choices": [
+        { "choiceId": "wc_014_c1", "word": "모자", "imageUrl": "/assets/images/wordComp/hat.webp", "isCorrect": true, "distractorType": null },
+        { "choiceId": "wc_014_c2", "word": "장갑", "imageUrl": "/assets/images/wordComp/gloves.webp", "isCorrect": false, "distractorType": "semantic" },
+        { "choiceId": "wc_014_c3", "word": "모래", "imageUrl": "/assets/images/wordComp/sand.webp", "isCorrect": false, "distractorType": "phonemic" },
+        { "choiceId": "wc_014_c4", "word": "토마토", "imageUrl": "/assets/images/wordComp/tomato.webp", "isCorrect": false, "distractorType": "unrelated" }
+      ]
+    },
+    {
+      "itemId": "wc_015",
+      "targetWord": "전화기",
+      "targetAudioUrl": "/assets/audio/wordComp/wc_015_target.mp3",
+      "category": "전자기기",
+      "choices": [
+        { "choiceId": "wc_015_c1", "word": "전화기", "imageUrl": "/assets/images/wordComp/phone.webp", "isCorrect": true, "distractorType": null },
+        { "choiceId": "wc_015_c2", "word": "컴퓨터", "imageUrl": "/assets/images/wordComp/computer.webp", "isCorrect": false, "distractorType": "semantic" },
+        { "choiceId": "wc_015_c3", "word": "전기밥솥", "imageUrl": "/assets/images/wordComp/rice_cooker.webp", "isCorrect": false, "distractorType": "phonemic" },
+        { "choiceId": "wc_015_c4", "word": "코끼리", "imageUrl": "/assets/images/wordComp/elephant.webp", "isCorrect": false, "distractorType": "unrelated" }
+      ]
+    },
+    {
+      "itemId": "wc_016",
+      "targetWord": "수박",
+      "targetAudioUrl": "/assets/audio/wordComp/wc_016_target.mp3",
+      "category": "과일",
+      "choices": [
+        { "choiceId": "wc_016_c1", "word": "수박", "imageUrl": "/assets/images/wordComp/watermelon.webp", "isCorrect": true, "distractorType": null },
+        { "choiceId": "wc_016_c2", "word": "멜론", "imageUrl": "/assets/images/wordComp/melon.webp", "isCorrect": false, "distractorType": "semantic" },
+        { "choiceId": "wc_016_c3", "word": "수건", "imageUrl": "/assets/images/wordComp/towel.webp", "isCorrect": false, "distractorType": "phonemic" },
+        { "choiceId": "wc_016_c4", "word": "자전거", "imageUrl": "/assets/images/wordComp/bicycle.webp", "isCorrect": false, "distractorType": "unrelated" }
+      ]
+    },
+    {
+      "itemId": "wc_017",
+      "targetWord": "비행기",
+      "targetAudioUrl": "/assets/audio/wordComp/wc_017_target.mp3",
+      "category": "탈것",
+      "choices": [
+        { "choiceId": "wc_017_c1", "word": "비행기", "imageUrl": "/assets/images/wordComp/airplane.webp", "isCorrect": true, "distractorType": null },
+        { "choiceId": "wc_017_c2", "word": "배", "imageUrl": "/assets/images/wordComp/ship.webp", "isCorrect": false, "distractorType": "semantic" },
+        { "choiceId": "wc_017_c3", "word": "비누", "imageUrl": "/assets/images/wordComp/soap.webp", "isCorrect": false, "distractorType": "phonemic" },
+        { "choiceId": "wc_017_c4", "word": "국자", "imageUrl": "/assets/images/wordComp/ladle.webp", "isCorrect": false, "distractorType": "unrelated" }
+      ]
+    },
+    {
+      "itemId": "wc_018",
+      "targetWord": "거울",
+      "targetAudioUrl": "/assets/audio/wordComp/wc_018_target.mp3",
+      "category": "생활용품",
+      "choices": [
+        { "choiceId": "wc_018_c1", "word": "거울", "imageUrl": "/assets/images/wordComp/mirror.webp", "isCorrect": true, "distractorType": null },
+        { "choiceId": "wc_018_c2", "word": "빗", "imageUrl": "/assets/images/wordComp/comb.webp", "isCorrect": false, "distractorType": "semantic" },
+        { "choiceId": "wc_018_c3", "word": "거북이", "imageUrl": "/assets/images/wordComp/turtle.webp", "isCorrect": false, "distractorType": "phonemic" },
+        { "choiceId": "wc_018_c4", "word": "딸기", "imageUrl": "/assets/images/wordComp/strawberry.webp", "isCorrect": false, "distractorType": "unrelated" }
+      ]
+    },
+    {
+      "itemId": "wc_019",
+      "targetWord": "학교",
+      "targetAudioUrl": "/assets/audio/wordComp/wc_019_target.mp3",
+      "category": "장소",
+      "choices": [
+        { "choiceId": "wc_019_c1", "word": "학교", "imageUrl": "/assets/images/wordComp/school.webp", "isCorrect": true, "distractorType": null },
+        { "choiceId": "wc_019_c2", "word": "도서관", "imageUrl": "/assets/images/wordComp/library.webp", "isCorrect": false, "distractorType": "semantic" },
+        { "choiceId": "wc_019_c3", "word": "학생", "imageUrl": "/assets/images/wordComp/student.webp", "isCorrect": false, "distractorType": "phonemic" },
+        { "choiceId": "wc_019_c4", "word": "풍선", "imageUrl": "/assets/images/wordComp/balloon.webp", "isCorrect": false, "distractorType": "unrelated" }
+      ]
+    },
+    {
+      "itemId": "wc_020",
+      "targetWord": "칫솔",
+      "targetAudioUrl": "/assets/audio/wordComp/wc_020_target.mp3",
+      "category": "생활용품",
+      "choices": [
+        { "choiceId": "wc_020_c1", "word": "칫솔", "imageUrl": "/assets/images/wordComp/toothbrush.webp", "isCorrect": true, "distractorType": null },
+        { "choiceId": "wc_020_c2", "word": "치약", "imageUrl": "/assets/images/wordComp/toothpaste.webp", "isCorrect": false, "distractorType": "semantic" },
+        { "choiceId": "wc_020_c3", "word": "침대", "imageUrl": "/assets/images/wordComp/bed.webp", "isCorrect": false, "distractorType": "phonemic" },
+        { "choiceId": "wc_020_c4", "word": "고래", "imageUrl": "/assets/images/wordComp/whale.webp", "isCorrect": false, "distractorType": "unrelated" }
+      ]
+    }
+  ]
+}

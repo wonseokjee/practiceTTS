@@ -1,0 +1,192 @@
+[
+  {
+    "itemId": "sentComp_01",
+    "sentence": "개가 고양이를 쫓고 있어요",
+    "sentenceAudioUrl": "/assets/audio/sentComp/sentComp_01.mp3",
+    "sentenceType": "active-passive",
+    "choices": [
+      {
+        "imageUrl": "/assets/images/sentComp/sentComp_01_correct.png",
+        "altText": "개가 고양이를 쫓는 장면",
+        "isCorrect": true
+      },
+      {
+        "imageUrl": "/assets/images/sentComp/sentComp_01_distractor.png",
+        "altText": "고양이가 개를 쫓는 장면",
+        "isCorrect": false
+      }
+    ],
+    "orderIndex": 0
+  },
+  {
+    "itemId": "sentComp_02",
+    "sentence": "엄마가 아이에게 밥을 먹이고 있어요",
+    "sentenceAudioUrl": "/assets/audio/sentComp/sentComp_02.mp3",
+    "sentenceType": "active-passive",
+    "choices": [
+      {
+        "imageUrl": "/assets/images/sentComp/sentComp_02_distractor.png",
+        "altText": "아이가 엄마에게 밥을 먹이는 장면",
+        "isCorrect": false
+      },
+      {
+        "imageUrl": "/assets/images/sentComp/sentComp_02_correct.png",
+        "altText": "엄마가 아이에게 밥을 먹이는 장면",
+        "isCorrect": true
+      }
+    ],
+    "orderIndex": 1
+  },
+  {
+    "itemId": "sentComp_03",
+    "sentence": "소년이 소녀에게 꽃을 주고 있어요",
+    "sentenceAudioUrl": "/assets/audio/sentComp/sentComp_03.mp3",
+    "sentenceType": "active-passive",
+    "choices": [
+      {
+        "imageUrl": "/assets/images/sentComp/sentComp_03_correct.png",
+        "altText": "소년이 소녀에게 꽃을 주는 장면",
+        "isCorrect": true
+      },
+      {
+        "imageUrl": "/assets/images/sentComp/sentComp_03_distractor.png",
+        "altText": "소녀가 소년에게 꽃을 주는 장면",
+        "isCorrect": false
+      }
+    ],
+    "orderIndex": 2
+  },
+  {
+    "itemId": "sentComp_04",
+    "sentence": "선생님이 학생에게 책을 건네주고 있어요",
+    "sentenceAudioUrl": "/assets/audio/sentComp/sentComp_04.mp3",
+    "sentenceType": "active-passive",
+    "choices": [
+      {
+        "imageUrl": "/assets/images/sentComp/sentComp_04_distractor.png",
+        "altText": "학생이 선생님에게 책을 건네주는 장면",
+        "isCorrect": false
+      },
+      {
+        "imageUrl": "/assets/images/sentComp/sentComp_04_correct.png",
+        "altText": "선생님이 학생에게 책을 건네주는 장면",
+        "isCorrect": true
+      }
+    ],
+    "orderIndex": 3
+  },
+  {
+    "itemId": "sentComp_05",
+    "sentence": "공을 차는 아이가 웃고 있어요",
+    "sentenceAudioUrl": "/assets/audio/sentComp/sentComp_05.mp3",
+    "sentenceType": "relative-clause",
+    "choices": [
+      {
+        "imageUrl": "/assets/images/sentComp/sentComp_05_correct.png",
+        "altText": "공을 차며 웃는 아이",
+        "isCorrect": true
+      },
+      {
+        "imageUrl": "/assets/images/sentComp/sentComp_05_distractor.png",
+        "altText": "공을 차며 우는 아이",
+        "isCorrect": false
+      }
+    ],
+    "orderIndex": 4
+  },
+  {
+    "itemId": "sentComp_06",
+    "sentence": "책을 읽는 여자가 안경을 쓰고 있어요",
+    "sentenceAudioUrl": "/assets/audio/sentComp/sentComp_06.mp3",
+    "sentenceType": "relative-clause",
+    "choices": [
+      {
+        "imageUrl": "/assets/images/sentComp/sentComp_06_distractor.png",
+        "altText": "책을 읽는 여자가 안경 없이 있는 장면",
+        "isCorrect": false
+      },
+      {
+        "imageUrl": "/assets/images/sentComp/sentComp_06_correct.png",
+        "altText": "책을 읽는 여자가 안경을 쓴 장면",
+        "isCorrect": true
+      }
+    ],
+    "orderIndex": 5
+  },
+  {
+    "itemId": "sentComp_07",
+    "sentence": "노래하는 남자가 기타를 들고 있어요",
+    "sentenceAudioUrl": "/assets/audio/sentComp/sentComp_07.mp3",
+    "sentenceType": "relative-clause",
+    "choices": [
+      {
+        "imageUrl": "/assets/images/sentComp/sentComp_07_correct.png",
+        "altText": "노래하며 기타를 든 남자",
+        "isCorrect": true
+      },
+      {
+        "imageUrl": "/assets/images/sentComp/sentComp_07_distractor.png",
+        "altText": "노래하며 드럼을 든 남자",
+        "isCorrect": false
+      }
+    ],
+    "orderIndex": 6
+  },
+  {
+    "itemId": "sentComp_08",
+    "sentence": "뛰어가는 강아지가 공을 물고 있어요",
+    "sentenceAudioUrl": "/assets/audio/sentComp/sentComp_08.mp3",
+    "sentenceType": "relative-clause",
+    "choices": [
+      {
+        "imageUrl": "/assets/images/sentComp/sentComp_08_distractor.png",
+        "altText": "뛰어가는 강아지가 뼈를 문 장면",
+        "isCorrect": false
+      },
+      {
+        "imageUrl": "/assets/images/sentComp/sentComp_08_correct.png",
+        "altText": "뛰어가는 강아지가 공을 문 장면",
+        "isCorrect": true
+      }
+    ],
+    "orderIndex": 7
+  },
+  {
+    "itemId": "sentComp_09",
+    "sentence": "아빠는 엄마가 요리를 한다고 생각해요",
+    "sentenceAudioUrl": "/assets/audio/sentComp/sentComp_09.mp3",
+    "sentenceType": "embedded-clause",
+    "choices": [
+      {
+        "imageUrl": "/assets/images/sentComp/sentComp_09_correct.png",
+        "altText": "아빠가 엄마가 요리하는 것을 생각하는 장면",
+        "isCorrect": true
+      },
+      {
+        "imageUrl": "/assets/images/sentComp/sentComp_09_distractor.png",
+        "altText": "아빠가 혼자 요리하는 장면",
+        "isCorrect": false
+      }
+    ],
+    "orderIndex": 8
+  },
+  {
+    "itemId": "sentComp_10",
+    "sentence": "선생님은 학생이 공부를 잘한다고 믿어요",
+    "sentenceAudioUrl": "/assets/audio/sentComp/sentComp_10.mp3",
+    "sentenceType": "embedded-clause",
+    "choices": [
+      {
+        "imageUrl": "/assets/images/sentComp/sentComp_10_distractor.png",
+        "altText": "학생이 선생님을 믿는 장면",
+        "isCorrect": false
+      },
+      {
+        "imageUrl": "/assets/images/sentComp/sentComp_10_correct.png",
+        "altText": "선생님이 학생의 공부를 믿는 장면",
+        "isCorrect": true
+      }
+    ],
+    "orderIndex": 9
+  }
+]

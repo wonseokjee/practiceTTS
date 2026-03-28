@@ -1,0 +1,15 @@
+{
+  "name": "practictts-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate-tts": "node scripts/generate-static-tts.mjs",
+    "generate-tts:dry": "node scripts/generate-static-tts.mjs --dry-run",
+    "generate-tts:force": "node scripts/generate-static-tts.mjs --force"
+  },
+  "dependencies": {
+    "dotenv": "^17.3.1",
+    "microsoft-cognitiveservices-speech-sdk": "^1.43.0"
+  }
+}
