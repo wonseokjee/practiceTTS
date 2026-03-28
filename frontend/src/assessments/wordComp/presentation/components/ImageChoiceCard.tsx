@@ -41,29 +41,28 @@ export const ImageChoiceCard: React.FC<ImageChoiceCardProps> = ({
       style={{ touchAction: 'none' }}
       aria-label={`${choice.word} 선택`}
     >
-      <img
-        src={choice.imageUrl}
-        alt={choice.word}
-        className="w-full h-full object-cover"
-        loading="eager"
-        onError={(e) => {
-          const target = e.currentTarget;
-          target.style.display = 'none';
-          const parent = target.parentElement;
-          if (parent !== null) {
-            parent.style.backgroundColor = '#f3f4f6';
-          }
-        }}
-      />
-
-      {/* 이미지 로드 실패 폴백 */}
+      {/* 이미지 로드 실패 폴백 (z-index 0, img 아래) */}
       <div
         className="absolute inset-0 flex flex-col items-center justify-center bg-gray-100 text-gray-500 text-sm font-medium"
         aria-hidden="true"
+        style={{ zIndex: 0 }}
       >
         <span className="text-2xl mb-1">🖼️</span>
         <span>{choice.word}</span>
       </div>
+
+      {/* 이미지 (z-index 1, 폴백 위에) */}
+      <img
+        src={choice.imageUrl}
+        alt={choice.word}
+        className="absolute inset-0 w-full h-full object-cover"
+        loading="eager"
+        style={{ zIndex: 1 }}
+        onError={(e) => {
+          // 로드 실패 시 img 숨기면 폴백이 보임
+          e.currentTarget.style.display = 'none';
+        }}
+      />
 
       {/* 단어 라벨 (이미지 하단) */}
       <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/50 to-transparent px-2 py-2">
