@@ -28,7 +28,10 @@ function extractErrorMessage(error: unknown): string {
     ) {
       return (data as Record<string, string>).message;
     }
-    return error.message;
+    if (error.response === undefined) {
+      return '서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.';
+    }
+    return '요청 처리 중 오류가 발생했습니다.';
   }
   if (error instanceof Error) {
     return error.message;
@@ -47,6 +50,18 @@ function LoginForm() {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
+    if (email.trim() === '') {
+      setError('이메일을 입력해주세요.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError('올바른 이메일 형식이 아닙니다.');
+      return;
+    }
+    if (password === '') {
+      setError('비밀번호를 입력해주세요.');
+      return;
+    }
     setError(null);
     setIsSubmitting(true);
     try {
@@ -59,7 +74,7 @@ function LoginForm() {
   };
 
   return (
-    <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
+    <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4" noValidate>
       <div>
         <label htmlFor="login-email" className="block text-sm font-medium text-gray-700 mb-1">
           이메일
@@ -67,7 +82,6 @@ function LoginForm() {
         <input
           id="login-email"
           type="email"
-          required
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -83,7 +97,6 @@ function LoginForm() {
         <input
           id="login-password"
           type="password"
-          required
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -122,6 +135,22 @@ function RegisterForm() {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
+    if (email.trim() === '') {
+      setError('이메일을 입력해주세요.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError('올바른 이메일 형식이 아닙니다.');
+      return;
+    }
+    if (password === '') {
+      setError('비밀번호를 입력해주세요.');
+      return;
+    }
+    if (displayName.trim() === '') {
+      setError('이름을 입력해주세요.');
+      return;
+    }
     setError(null);
     setIsSubmitting(true);
     const data: RegisterData = { email, password, displayName, role };
@@ -135,7 +164,7 @@ function RegisterForm() {
   };
 
   return (
-    <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
+    <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4" noValidate>
       <div>
         <label htmlFor="reg-email" className="block text-sm font-medium text-gray-700 mb-1">
           이메일
@@ -143,7 +172,6 @@ function RegisterForm() {
         <input
           id="reg-email"
           type="email"
-          required
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -159,7 +187,6 @@ function RegisterForm() {
         <input
           id="reg-password"
           type="password"
-          required
           autoComplete="new-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -175,7 +202,6 @@ function RegisterForm() {
         <input
           id="reg-display-name"
           type="text"
-          required
           autoComplete="name"
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
