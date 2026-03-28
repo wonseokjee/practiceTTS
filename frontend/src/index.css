@@ -1,7 +1,29 @@
 @import "tailwindcss";
 
+/* ── Design System: Warm Clinical ─────────────────────────────
+   Remap Tailwind's blue scale → sage green (#2D6A56).
+   All existing bg-blue-*, text-blue-*, border-blue-*, ring-blue-*
+   classes automatically become the primary brand color.
+   ──────────────────────────────────────────────────────────── */
+@theme {
+  --font-sans: 'Pretendard', system-ui, -apple-system, sans-serif;
+
+  --color-blue-50:  #EBF4F0;
+  --color-blue-100: #EBF4F0;
+  --color-blue-200: #c8e6d9;
+  --color-blue-300: #9fd0bc;
+  --color-blue-400: #5fab8a;
+  --color-blue-500: #2D6A56;
+  --color-blue-600: #2D6A56;
+  --color-blue-700: #235745;
+  --color-blue-800: #1a4035;
+  --color-blue-900: #112a22;
+
+  --color-gray-50: #F7F6F3;
+}
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Pretendard', system-ui, -apple-system, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
@@ -9,6 +31,13 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 html,
