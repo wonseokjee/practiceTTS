@@ -1,0 +1,25 @@
+{
+  "date": "2026-03-28",
+  "url": "http://localhost:5173",
+  "designScore": "B",
+  "aiSlopScore": "A",
+  "categoryGrades": {
+    "hierarchy": "B",
+    "typography": "B",
+    "color": "B",
+    "spacing": "B",
+    "interaction": "B",
+    "responsive": "B",
+    "content": "C",
+    "aiSlop": "A",
+    "motion": "B",
+    "performance": "A"
+  },
+  "findings": [
+    { "id": "FINDING-001", "title": "Pretendard 미적용, index.html lang/title 기본값", "impact": "high", "category": "typography", "status": "verified", "commit": "6a9fd28" },
+    { "id": "FINDING-002", "title": "모든 primary 색상이 Tailwind 파란색 (23개 파일)", "impact": "high", "category": "color", "status": "verified", "commit": "4ac33a1" },
+    { "id": "FINDING-003", "title": "배경 gray-50, 크림 베이지 미적용", "impact": "high", "category": "color", "status": "verified", "commit": "4ac33a1" },
+    { "id": "FINDING-004", "title": "PatientSetupScreen 제목 'practiveTTS' (브랜드 미반영)", "impact": "medium", "category": "content", "status": "deferred" },
+    { "id": "FINDING-005", "title": "LocTouchButton 활성 상태 solid blue → primary-light 아웃라인", "impact": "medium", "category": "interaction", "status": "verified", "commit": "756fc7c" }
+  ]
+}
