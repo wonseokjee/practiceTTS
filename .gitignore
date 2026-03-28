@@ -39,3 +39,12 @@ Thumbs.db
 *.log
 npm-debug.log*
 .gstack/
+
+# Local tool settings
+.claude/settings.local.json
+
+# Temp files
+tmp/
+extracted_pdf.txt
+*.pdf
+extract_pdf.py
