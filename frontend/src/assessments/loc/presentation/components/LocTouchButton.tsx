@@ -25,8 +25,9 @@ export function LocTouchButton({ isSelectable, onTouch }: LocTouchButtonProps) {
         'transition-all duration-300',
         isSelectable
           ? [
-              'bg-blue-500 hover:bg-blue-600 active:bg-blue-700',
-              'text-white shadow-xl',
+              'bg-[#EBF4F0] hover:bg-[#d5e9e1] active:bg-[#c4ddd3]',
+              'border-4 border-[#2D6A56]',
+              'text-[#2D6A56]',
               'cursor-pointer',
             ].join(' ')
           : [
