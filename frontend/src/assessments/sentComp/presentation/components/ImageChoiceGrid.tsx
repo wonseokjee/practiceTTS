@@ -28,7 +28,7 @@ export const ImageChoiceGrid: React.FC<ImageChoiceGridProps> = ({
 }) => {
   return (
     <div
-      className="flex flex-col gap-4 w-full"
+      className="flex flex-row gap-4 w-full"
       aria-label="이미지 선택지"
       role="group"
     >
