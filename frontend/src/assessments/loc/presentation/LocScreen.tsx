@@ -141,20 +141,21 @@ export function LocScreen({ onComplete, onProceed }: LocScreenProps) {
       {/* 메인 컨텐츠 */}
       <main className="flex-1 flex flex-col px-6 py-4 gap-4 max-w-2xl mx-auto w-full overflow-y-auto min-h-0">
 
-        {/* 진행 상태 표시 */}
-        <div className="flex items-center justify-between">
-          <span className="text-gray-600 font-medium">
-            시도 {currentTrialNumber} / 3
-          </span>
-          <span className="text-sm text-gray-400 bg-gray-100 px-3 py-1 rounded-full">
-            {assessmentState === 'IDLE' && '대기 중'}
-            {assessmentState === 'TTS_PLAYING' && '음성 재생 중'}
-            {assessmentState === 'AWAITING_TOUCH' && '터치 대기 중'}
-            {assessmentState === 'TOUCH_DETECTED' && '처리 중'}
-            {assessmentState === 'TRIAL_COMPLETE' && '시도 완료'}
-            {assessmentState === 'ASSESSMENT_COMPLETE' && '검사 완료'}
-          </span>
-        </div>
+        {/* 진행 상태 표시 (검사 완료 화면에서는 숨김 - 완료 화면에 시도별 결과 표시됨) */}
+        {assessmentState !== 'ASSESSMENT_COMPLETE' && (
+          <div className="flex items-center justify-between">
+            <span className="text-gray-600 font-medium">
+              시도 {currentTrialNumber} / 3
+            </span>
+            <span className="text-sm text-gray-400 bg-gray-100 px-3 py-1 rounded-full">
+              {assessmentState === 'IDLE' && '대기 중'}
+              {assessmentState === 'TTS_PLAYING' && '음성 재생 중'}
+              {assessmentState === 'AWAITING_TOUCH' && '터치 대기 중'}
+              {assessmentState === 'TOUCH_DETECTED' && '처리 중'}
+              {assessmentState === 'TRIAL_COMPLETE' && '시도 완료'}
+            </span>
+          </div>
+        )}
 
         {/* 에러 메시지 */}
         {errorMessage !== null && (
