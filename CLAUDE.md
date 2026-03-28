@@ -41,6 +41,15 @@ Use the `/gstack-browse` skill from gstack for all web browsing. Never use `mcp_
 Available gstack skills:
 `/gstack-office-hours`, `/gstack-plan-ceo-review`, `/gstack-plan-eng-review`, `/gstack-plan-design-review`, `/gstack-design-consultation`, `/gstack-review`, `/gstack-ship`, `/gstack-land-and-deploy`, `/gstack-canary`, `/gstack-benchmark`, `/gstack-browse`, `/gstack-qa`, `/gstack-qa-only`, `/gstack-design-review`, `/gstack-setup-browser-cookies`, `/gstack-setup-deploy`, `/gstack-retro`, `/gstack-investigate`, `/gstack-document-release`, `/gstack-codex`, `/gstack-cso`, `/gstack-autoplan`, `/gstack-careful`, `/gstack-freeze`, `/gstack-guard`, `/gstack-unfreeze`, `/gstack-upgrade`
 
+## 디자인 시스템
+
+`DESIGN.md` 참조. 핵심 요약:
+- **컨셉**: Warm Clinical — 세이지 그린(`#2D6A56`) + 크림 배이지(`#F7F6F3`) + 테라코타 강조(`#E07B54`)
+- **폰트**: Pretendard (한국어), Geist (점수/숫자 tabular-nums)
+- **간격**: 8px 배수 체계
+- **모서리**: sm(8) md(12) lg(16) xl(24) full(9999)
+- **모션**: 180ms ease (상태전환), 250ms ease-in-out (레이아웃), bounce/spring 금지
+
 ## 디렉토리 구조 (예시)
 ```
 practiveTTS/
