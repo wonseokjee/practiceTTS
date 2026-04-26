@@ -13,6 +13,7 @@ from infra.in_memory_vector_store import InMemoryVectorStore
 from services.chat_service import ChatService
 from services.masking_service import MaskingService
 from services.scenario_service import ScenarioService
+from services.stt_service import SttService
 from services.tagging_service import TaggingService
 
 # 싱글턴 인스턴스 초기화
@@ -24,6 +25,7 @@ _tagging_service: TaggingService | None = None
 _masking_service: MaskingService | None = None
 _scenario_service: ScenarioService | None = None
 _chat_service: ChatService | None = None
+_stt_service: SttService | None = None
 
 
 def _get_gemini_client() -> GeminiClient:
@@ -93,3 +95,15 @@ def get_chat_service() -> ChatService:
             vector_store=_get_vector_store(),
         )
     return _chat_service
+
+
+def get_stt_service() -> SttService:
+    """SttService 싱글턴 반환 (FastAPI Depends 용).
+
+    Whisper 모델은 지연 로딩이므로 싱글턴 생성 시 모델은 아직 메모리에 적재되지 않는다.
+    최초 transcribe 호출 시 내부적으로 load_model이 실행된다.
+    """
+    global _stt_service
+    if _stt_service is None:
+        _stt_service = SttService()
+    return _stt_service

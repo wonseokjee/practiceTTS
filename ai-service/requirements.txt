@@ -51,3 +51,5 @@ uuid_utils==0.14.1
 uvicorn==0.41.0
 xxhash==3.6.0
 zstandard==0.25.0
+openai-whisper
+python-multipart
