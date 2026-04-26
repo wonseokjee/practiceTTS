@@ -1,0 +1,5 @@
+[
+  { "itemId": "REP-01", "orderIndex": 1, "stimulusText": "사과", "sentenceAudioUrl": "/assets/audio/repetition/apple.mp3" },
+  { "itemId": "REP-02", "orderIndex": 2, "stimulusText": "포도", "sentenceAudioUrl": "/assets/audio/repetition/grape.mp3" },
+  { "itemId": "REP-03", "orderIndex": 3, "stimulusText": "할머니가 시장에 가십니다", "sentenceAudioUrl": "/assets/audio/repetition/grandma.mp3" }
+]
