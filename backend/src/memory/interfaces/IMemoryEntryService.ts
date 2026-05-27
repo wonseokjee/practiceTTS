@@ -16,7 +16,7 @@ export interface IMemoryEntryService {
   create(
     caregiverId: string,
     dto: CreateMemoryEntryDto,
-    photo: Express.Multer.File,
+    photo: Express.Multer.File | undefined,
     caregiver: CaregiverInfo,
   ): Promise<MemoryEntryResponseDto>;
 

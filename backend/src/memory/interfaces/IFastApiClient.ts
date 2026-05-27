@@ -1,4 +1,8 @@
-import type { AiMaskResult, AiTagResult, ScenarioCacheData } from '../types/memory-entry.types';
+import type {
+  AiMaskResult,
+  AiTagResult,
+  ScenarioCacheData,
+} from '../types/memory-entry.types';
 
 /**
  * FastAPI AI 서비스 클라이언트 인터페이스

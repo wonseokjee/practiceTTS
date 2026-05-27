@@ -58,7 +58,9 @@ export class CryptoService implements ICryptoService, OnModuleInit {
   decrypt(cipherText: string): string {
     const [ivHex, encryptedBase64] = cipherText.split(':');
     if (!ivHex || !encryptedBase64) {
-      throw new Error('잘못된 암호화 형식입니다. iv:ciphertext 형식이어야 합니다.');
+      throw new Error(
+        '잘못된 암호화 형식입니다. iv:ciphertext 형식이어야 합니다.',
+      );
     }
 
     const iv = Buffer.from(ivHex, 'hex');

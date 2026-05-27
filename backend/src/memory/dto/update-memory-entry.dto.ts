@@ -1,4 +1,10 @@
-import { ArrayMaxSize, IsArray, IsIn, IsOptional, IsString } from 'class-validator';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsIn,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 // 감정 태그 허용 값
 const VALID_EMOTION_TAGS = ['happy', 'calm', 'nostalgic', 'excited'] as const;

@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { DatabaseModule } from './database/database.module';
 import { MemoryModule } from './memory/memory.module';
+import { QuizModule } from './quiz/quiz.module';
 import { TrainingModule } from './training/training.module';
 
 @Module({
@@ -15,6 +16,8 @@ import { TrainingModule } from './training/training.module';
     AuthModule,
     MemoryModule,
     TrainingModule,
+    // Phase 1 골격 등록 (Service/Controller는 Phase 3에서 추가)
+    QuizModule,
   ],
   controllers: [AppController],
   providers: [AppService],
