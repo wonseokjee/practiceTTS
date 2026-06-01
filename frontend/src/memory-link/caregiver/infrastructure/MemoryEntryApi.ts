@@ -1,6 +1,6 @@
 import { memoryLinkApi } from '../../shared/MemoryLinkApi.js';
+import type { CreateMemoryEntryRequest3Step } from '../domain/CaptureFlow.js';
 import type {
-  CreateMemoryEntryRequest,
   MemoryEntry,
   UpdateMemoryEntryRequest,
 } from '../domain/MemoryEntry.js';
@@ -8,9 +8,13 @@ import type {
 /**
  * 메모리 엔트리 API 클라이언트 인터페이스
  * - 테스트 시 MockMemoryEntryApi로 교체 가능
+ *
+ * Phase 4부터 `create()`는 3-step 페이로드를 받는다.
+ * (Implementation Plan §7-1, Phase 1 Feature Plan §6)
  */
 export interface IMemoryEntryApi {
-  create(data: CreateMemoryEntryRequest): Promise<MemoryEntry>;
+  /** POST /memory-entries — 3-step 캡처 결과 multipart 업로드 */
+  create(data: CreateMemoryEntryRequest3Step): Promise<MemoryEntry>;
   getAll(): Promise<MemoryEntry[]>;
   getById(id: string): Promise<MemoryEntry>;
   update(id: string, data: UpdateMemoryEntryRequest): Promise<MemoryEntry>;
@@ -44,17 +48,37 @@ function toMemoryEntry(raw: unknown): MemoryEntry {
  * - JWT 자동 주입은 memoryLinkApi 인터셉터가 처리
  */
 export const memoryEntryApi: IMemoryEntryApi = {
-  /** POST /memory-entries (multipart/form-data) */
-  async create(data: CreateMemoryEntryRequest): Promise<MemoryEntry> {
+  /**
+   * POST /memory-entries (multipart/form-data) — 3-step 페이로드
+   *
+   * 백엔드 §7-1 body fields:
+   *  - patientId: string (필수)
+   *  - mood: JSON string `{ "level": 1..5 }` (필수)
+   *  - patientAnswers: JSON string array (필수, 1개 이상 — DTO 레벨은 0 허용 + 서비스 OR 검증)
+   *  - caregiverAnswer?: JSON string `{ questionId, answerText }` (선택)
+   *  - caregiverWishMessage?: string (선택, Phase 4에선 UI 노출 X)
+   *  - photo?: File (선택)
+   */
+  async create(data: CreateMemoryEntryRequest3Step): Promise<MemoryEntry> {
     const formData = new FormData();
-    formData.append('photo', data.photo);
     formData.append('patientId', data.patientId);
+    formData.append('mood', JSON.stringify(data.mood));
+    formData.append('patientAnswers', JSON.stringify(data.patientAnswers));
 
-    if (data.emotionTag) {
-      formData.append('emotionTag', data.emotionTag);
+    if (data.caregiverAnswer) {
+      formData.append(
+        'caregiverAnswer',
+        JSON.stringify(data.caregiverAnswer),
+      );
     }
-    if (data.targetWords) {
-      data.targetWords.forEach((word) => formData.append('targetWords', word));
+    if (
+      typeof data.caregiverWishMessage === 'string' &&
+      data.caregiverWishMessage.length > 0
+    ) {
+      formData.append('caregiverWishMessage', data.caregiverWishMessage);
+    }
+    if (data.photo) {
+      formData.append('photo', data.photo);
     }
 
     const res = await memoryLinkApi.post<unknown>('/memory-entries', formData, {

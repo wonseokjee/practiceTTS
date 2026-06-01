@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/AuthContext.js';
+import { ReturnToCaregiverPinModal } from '../../shared/ReturnToCaregiverPinModal.js';
 import { trainingSessionApi } from '../infrastructure/TrainingSessionApi.js';
 import type { AvailableEntry } from '../domain/TrainingSession.js';
 import { TrainingScreen } from './TrainingScreen.js';
@@ -21,7 +23,13 @@ interface SelectedTraining {
  * - 훈련 시작 클릭 시 TrainingScreen으로 전환
  */
 export function PatientDashboard() {
-  const { user, logout } = useAuth();
+  const { user, logout, isPatientMode, exitPatientMode } = useAuth();
+  const navigate = useNavigate();
+
+  // 보호자가 환자 모드로 진입한 경우 "보호자로 돌아가기"(PIN) 노출.
+  // 환자 직접 로그인(하위호환)은 기존처럼 로그아웃 노출.
+  const isCaregiverInPatientMode = user?.role === 'caregiver' && isPatientMode;
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
 
   const [phase, setPhase] = useState<DashboardPhase>('LIST');
   const [selectedTraining, setSelectedTraining] = useState<SelectedTraining | null>(null);
@@ -84,18 +92,50 @@ export function PatientDashboard() {
             {user?.displayName}님, 오늘도 함께 훈련해요!
           </p>
         </div>
-        <button
-          type="button"
-          onClick={logout}
-          className="min-h-[48px] px-5 py-2 bg-gray-100 text-gray-700 text-lg font-medium rounded-xl"
-          aria-label="로그아웃"
-        >
-          로그아웃
-        </button>
+        {isCaregiverInPatientMode ? (
+          <button
+            type="button"
+            onClick={() => setIsPinModalOpen(true)}
+            className="min-h-[48px] px-5 py-2 bg-gray-100 text-gray-700 text-lg font-medium rounded-xl"
+            aria-label="보호자로 돌아가기"
+          >
+            보호자로 돌아가기
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={logout}
+            className="min-h-[48px] px-5 py-2 bg-gray-100 text-gray-700 text-lg font-medium rounded-xl"
+            aria-label="로그아웃"
+          >
+            로그아웃
+          </button>
+        )}
       </header>
+
+      <ReturnToCaregiverPinModal
+        isOpen={isPinModalOpen}
+        onCancel={() => setIsPinModalOpen(false)}
+        onVerify={exitPatientMode}
+      />
 
       {/* 메인 컨텐츠 */}
       <main className="px-6 py-6 max-w-2xl mx-auto">
+        
+        {/* 개발 환경 전용: QAB 검사 바로가기 버튼 */}
+        {import.meta.env.DEV && (
+          <div className="mb-8 p-4 bg-indigo-50 border border-indigo-100 rounded-2xl flex flex-col items-center">
+            <h3 className="text-xl font-bold text-indigo-900 mb-2">테스트용 편의 기능</h3>
+            <button
+              type="button"
+              onClick={() => navigate('/assessment')}
+              className="w-full min-h-[48px] bg-indigo-600 hover:bg-indigo-700 text-white text-xl font-bold rounded-xl transition-colors"
+            >
+              LOC / SentComp 검사하러 가기
+            </button>
+          </div>
+        )}
+
         <h2 className="text-2xl font-semibold text-gray-800 mb-4">
           훈련 목록
         </h2>

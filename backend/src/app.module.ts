@@ -1,10 +1,12 @@
-import { Module } from '@nestjs/common';
+import { Logger, Module, OnModuleInit } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { DataSource } from 'typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { DatabaseModule } from './database/database.module';
 import { MemoryModule } from './memory/memory.module';
+import { seedDiaryQuestionsIfMissing } from './memory/seeds/diary-questions.seed';
 import { QuizModule } from './quiz/quiz.module';
 import { TrainingModule } from './training/training.module';
 
@@ -22,4 +24,22 @@ import { TrainingModule } from './training/training.module';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule implements OnModuleInit {
+  private readonly logger = new Logger(AppModule.name);
+
+  constructor(private readonly dataSource: DataSource) {}
+
+  /**
+   * 부트스트랩 시더 (계획서 §5-7).
+   * 개발 환경(synchronize:true)에서도 diary_questions 풀이 비지 않도록 보장한다.
+   * 멱등하므로 매 부팅 호출해도 안전하며, 운영 전환 시 마이그레이션 M4와 동일 의미.
+   */
+  async onModuleInit(): Promise<void> {
+    const { inserted, skipped } = await seedDiaryQuestionsIfMissing(
+      this.dataSource,
+    );
+    this.logger.log(
+      `diary_questions 시드 적용 완료 (inserted=${inserted}, skipped=${skipped})`,
+    );
+  }
+}

@@ -16,7 +16,7 @@ type DashboardView = 'list' | 'capture' | 'detail';
  * - useCaptureFlow: 3단계 생성 플로우
  */
 export function CaregiverDashboard() {
-  const { user, logout } = useAuth();
+  const { user, logout, enterPatientMode } = useAuth();
   const [view, setView] = useState<DashboardView>('list');
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
 
@@ -83,7 +83,17 @@ export function CaregiverDashboard() {
       <header className="bg-white border-b border-gray-200 px-4 py-3 flex justify-between items-center">
         <h1 className="text-lg font-bold text-gray-900">Memory Link</h1>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-600">{user?.displayName}</span>
+          <button
+            type="button"
+            onClick={enterPatientMode}
+            className="min-h-[44px] rounded-full bg-[#2D6A56] px-4 py-2 text-sm font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240]"
+            aria-label="환자에게 기기 건네기 (환자 모드로 전환)"
+          >
+            환자에게 건네기
+          </button>
+          <span className="hidden text-sm text-gray-600 sm:inline">
+            {user?.displayName}
+          </span>
           <button
             type="button"
             onClick={logout}

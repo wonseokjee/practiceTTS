@@ -94,7 +94,7 @@ function AssessmentContent() {
  * 보호자 전용 라우트: role이 caregiver가 아니면 접근 거부
  */
 function CaregiverRoute({ children }: { children: ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isPatientMode } = useAuth();
 
   if (isLoading) {
     return (
@@ -116,14 +116,19 @@ function CaregiverRoute({ children }: { children: ReactNode }) {
     );
   }
 
+  // 환자 모드 중에는 보호자 화면 직접 접근 차단(PIN으로만 복귀) → /patient로 유지
+  if (isPatientMode) {
+    return <Navigate to="/patient" replace />;
+  }
+
   return <>{children}</>;
 }
 
 /**
- * 환자 전용 라우트: role이 patient가 아니면 접근 거부
+ * 환자 전용 라우트: 환자 본인(하위호환) 또는 환자 모드의 보호자만 허용
  */
 function PatientRoute({ children }: { children: ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isPatientMode } = useAuth();
 
   if (isLoading) {
     return (
@@ -137,15 +142,20 @@ function PatientRoute({ children }: { children: ReactNode }) {
     return <Navigate to="/login" replace />;
   }
 
-  if (user.role !== 'patient') {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-red-600">환자 계정으로만 접근할 수 있습니다.</p>
-      </div>
-    );
+  // 하위호환: 환자 직접 로그인
+  if (user.role === 'patient') {
+    return <>{children}</>;
   }
 
-  return <>{children}</>;
+  // 보호자 단일 계정 모델: 환자 모드 + 연결된 환자가 있을 때만 허용
+  if (user.role === 'caregiver') {
+    if (isPatientMode && user.patientId !== null) {
+      return <>{children}</>;
+    }
+    return <Navigate to="/caregiver" replace />;
+  }
+
+  return <Navigate to="/login" replace />;
 }
 
 // ─── 루트 리다이렉트 ──────────────────────────────────────────
@@ -154,7 +164,7 @@ function PatientRoute({ children }: { children: ReactNode }) {
  * "/" 경로: 로그인 상태와 역할에 따라 적절한 경로로 리다이렉트
  */
 function RootRedirect() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isPatientMode } = useAuth();
 
   if (isLoading) {
     return (
@@ -169,7 +179,8 @@ function RootRedirect() {
   }
 
   if (user.role === 'caregiver') {
-    return <Navigate to="/caregiver" replace />;
+    // 환자 모드 잠금 중에는 "/" 접근도 환자 화면 유지
+    return <Navigate to={isPatientMode ? '/patient' : '/caregiver'} replace />;
   }
 
   if (user.role === 'patient') {
@@ -186,7 +197,7 @@ function RootRedirect() {
  * 이미 로그인된 상태로 /login 접근 시 역할에 따라 리다이렉트
  */
 function LoginRoute() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isPatientMode } = useAuth();
 
   if (isLoading) {
     return (
@@ -197,7 +208,9 @@ function LoginRoute() {
   }
 
   if (user !== null) {
-    if (user.role === 'caregiver') return <Navigate to="/caregiver" replace />;
+    if (user.role === 'caregiver') {
+      return <Navigate to={isPatientMode ? '/patient' : '/caregiver'} replace />;
+    }
     if (user.role === 'patient') return <Navigate to="/patient" replace />;
   }
 

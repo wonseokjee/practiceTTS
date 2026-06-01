@@ -37,6 +37,16 @@ export class User {
   @JoinColumn({ name: 'patient_id' })
   patient: User | null;
 
+  // 환자 모드 복귀 PIN 해시 (보호자에만 설정). bcrypt 해시, 기본 조회 제외(보안).
+  // 보호자 단일 계정 모델: 환자 모드에서 보호자로 돌아올 때 4자리 PIN 검증.
+  @Column({
+    name: 'patient_mode_pin_hash',
+    type: 'varchar',
+    nullable: true,
+    select: false,
+  })
+  patientModePinHash: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }
