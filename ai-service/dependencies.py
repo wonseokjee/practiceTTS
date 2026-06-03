@@ -12,6 +12,7 @@ from infra.in_memory_masking_store import InMemoryMaskingStore
 from infra.in_memory_vector_store import InMemoryVectorStore
 from services.chat_service import ChatService
 from services.masking_service import MaskingService
+from services.quiz_service import QuizGeneratorService
 from services.scenario_service import ScenarioService
 from services.tagging_service import TaggingService
 
@@ -24,6 +25,7 @@ _tagging_service: TaggingService | None = None
 _masking_service: MaskingService | None = None
 _scenario_service: ScenarioService | None = None
 _chat_service: ChatService | None = None
+_quiz_generator_service: QuizGeneratorService | None = None
 
 
 def _get_gemini_client() -> GeminiClient:
@@ -93,3 +95,13 @@ def get_chat_service() -> ChatService:
             vector_store=_get_vector_store(),
         )
     return _chat_service
+
+
+def get_quiz_generator_service() -> QuizGeneratorService:
+    """QuizGeneratorService 싱글턴 반환 (FastAPI Depends 용)."""
+    global _quiz_generator_service
+    if _quiz_generator_service is None:
+        _quiz_generator_service = QuizGeneratorService(
+            llm_client=_get_gemini_client(),
+        )
+    return _quiz_generator_service

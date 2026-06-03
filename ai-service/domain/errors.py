@@ -39,6 +39,23 @@ class ScenarioGuardrailError(AiServiceError):
     """Guardrail 위반이 최대 재시도(2회) 초과."""
 
 
+# 데일리 퀴즈 생성 관련 에러
+class InvalidPatientNotesError(AiServiceError):
+    """patient_notes가 0개이거나 합본 글자 수가 10자 미만."""
+
+
+class QuizGenerationTimeoutError(AiServiceError):
+    """Gemini 응답이 제한 시간(25초)을 초과."""
+
+
+class QuizParseError(AiServiceError):
+    """Gemini 응답을 2회 시도 후에도 JSON으로 파싱 실패.
+
+    서비스 내부에서 가드 2(규칙 기반 폴백)로 흡수되므로 라우터까지 전파되지 않는다.
+    방어적으로 정의만 해 둔다.
+    """
+
+
 # 대화 에이전트 관련 에러
 class GuardrailViolationError(AiServiceError):
     """Gemini 응답에 금지 단어(guardrail_words) 포함 감지."""
