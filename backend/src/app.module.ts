@@ -1,5 +1,6 @@
 import { Logger, Module, OnModuleInit } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { DataSource } from 'typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -14,11 +15,13 @@ import { TrainingModule } from './training/training.module';
   imports: [
     // 환경변수를 전역으로 사용 가능하게 설정
     ConfigModule.forRoot({ isGlobal: true }),
+    // 모듈 간 이벤트 디커플링 (memory-entry.created → 퀴즈 자동 생성)
+    EventEmitterModule.forRoot(),
     DatabaseModule,
     AuthModule,
     MemoryModule,
     TrainingModule,
-    // Phase 1 골격 등록 (Service/Controller는 Phase 3에서 추가)
+    // Phase 3 구현 완료 (Controller/Service/이벤트 리스너 포함)
     QuizModule,
   ],
   controllers: [AppController],

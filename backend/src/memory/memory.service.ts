@@ -6,6 +6,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { CreateMemoryEntryDto } from './dto/create-memory-entry.dto';
@@ -43,6 +44,7 @@ export class MemoryEntryService implements IMemoryEntryService {
     private readonly fastApiClient: FastApiClientService,
     private readonly cryptoService: CryptoService,
     private readonly fileStorageService: FileStorageService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   /**
@@ -145,6 +147,17 @@ export class MemoryEntryService implements IMemoryEntryService {
           savedEntry = updated;
         }
       }
+    }
+
+    // 퀴즈 자동 생성 트리거 (R1=(c)) — 이벤트 기반 디커플링.
+    // MemoryModule은 QuizModule을 직접 import하지 않으며, QuizGenerationListener가 구독한다.
+    // 환자 답변(PatientMemoryNote)이 1개 이상일 때만 발행한다.
+    // (사진만 있고 노트가 없으면 퀴즈 생성이 불가하므로 emit 생략.)
+    // fire-and-forget — create의 반환/응답을 막지 않는다.
+    if (savedNotes.length > 0) {
+      this.eventEmitter.emit('memory-entry.created', {
+        memoryEntryId: savedEntry.id,
+      });
     }
 
     return toMemoryEntryResponseDto(savedEntry, savedNotes);

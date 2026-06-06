@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
@@ -148,6 +149,7 @@ describe('MemoryEntryService.create() — 3-step 트랜잭션 회귀', () => {
         { provide: FastApiClientService, useValue: fastApiClientMock },
         { provide: CryptoService, useValue: cryptoServiceMock },
         { provide: FileStorageService, useValue: fileStorageServiceMock },
+        { provide: EventEmitter2, useValue: { emit: jest.fn() } },
       ],
     }).compile();
 
