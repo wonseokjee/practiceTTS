@@ -21,9 +21,16 @@ import type { User } from '../auth/entities/user.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { resolveEffectivePatientId } from '../auth/effective-patient-id.util';
 import { GenerateQuizDto } from './dto/generate-quiz.dto';
+import { QuizSetSummaryDto } from './dto/quiz-set-summary.dto';
 import { SubmitAttemptDto } from './dto/submit-attempt.dto';
 import { QuizError, QuizErrorCode } from './errors/quiz.errors';
-import { QuizService } from './quiz.service';
+import {
+  BestScoreResult,
+  QuizSetDetail,
+  RequestGenerationResult,
+  SubmitAttemptsResult,
+  QuizService,
+} from './quiz.service';
 
 /** JWT 인증 후 req.user에 주입되는 사용자 타입 */
 interface AuthenticatedRequest extends Request {
@@ -50,7 +57,7 @@ export class QuizController {
     @Req() req: AuthenticatedRequest,
     @Param('memoryEntryId', ParseUUIDPipe) memoryEntryId: string,
     @Body() dto: GenerateQuizDto,
-  ): Promise<{ quizSetId: string; generationStatus: 'pending' }> {
+  ): Promise<RequestGenerationResult> {
     try {
       return await this.quizService.requestGeneration(
         memoryEntryId,
@@ -72,7 +79,7 @@ export class QuizController {
     @Query('memoryEntryId') memoryEntryId?: string,
     @Query('status') status?: string,
     @Query('limit') limit?: string,
-  ): Promise<{ items: unknown[]; nextCursor: null }> {
+  ): Promise<{ items: QuizSetSummaryDto[]; nextCursor: null }> {
     const effectivePatientId = resolveEffectivePatientId(req.user);
     try {
       const items = await this.quizService.listSets(effectivePatientId, {
@@ -94,7 +101,7 @@ export class QuizController {
   async getSetDetail(
     @Req() req: AuthenticatedRequest,
     @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<unknown> {
+  ): Promise<QuizSetDetail> {
     const effectivePatientId = resolveEffectivePatientId(req.user);
     try {
       return await this.quizService.getSetDetail(id, effectivePatientId);
@@ -112,7 +119,7 @@ export class QuizController {
     @Req() req: AuthenticatedRequest,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: SubmitAttemptDto,
-  ): Promise<unknown> {
+  ): Promise<SubmitAttemptsResult> {
     const effectivePatientId = resolveEffectivePatientId(req.user);
     try {
       return await this.quizService.submitAttempts(id, effectivePatientId, dto);
@@ -129,7 +136,7 @@ export class QuizController {
   async getBestScore(
     @Req() req: AuthenticatedRequest,
     @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<unknown> {
+  ): Promise<BestScoreResult> {
     const effectivePatientId = resolveEffectivePatientId(req.user);
     try {
       return await this.quizService.getBestScore(id, effectivePatientId);

@@ -25,6 +25,10 @@ import { IQuizScorer, QUIZ_SCORER } from './interfaces/IQuizScorer';
 /** 세션 만료 기준: 첫 답안 이후 30분 (§7-1 SESSION_EXPIRED) */
 const SESSION_TTL_MS = 30 * 60 * 1000;
 
+/** 목록 조회 기본/최대 limit */
+const DEFAULT_LIST_LIMIT = 20;
+const MAX_LIST_LIMIT = 50;
+
 /** notePreview 카테고리 한글 라벨 */
 const CATEGORY_LABELS: Record<string, string> = {
   activity: '활동',
@@ -33,14 +37,14 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 /** 단일 답안 채점 결과 */
-interface AttemptResult {
+export interface AttemptResult {
   questionId: string;
   isCorrect: boolean;
   correctAnswer: string;
 }
 
 /** submitAttempts 반환 타입 */
-interface SubmitAttemptsResult {
+export interface SubmitAttemptsResult {
   results: AttemptResult[];
   sessionScore: number;
   completed: boolean;
@@ -49,7 +53,7 @@ interface SubmitAttemptsResult {
 }
 
 /** getSetDetail 반환 타입 */
-interface QuizSetDetail {
+export interface QuizSetDetail {
   quizSetId: string;
   memoryEntry: {
     photoUrl: string | null;
@@ -57,6 +61,19 @@ interface QuizSetDetail {
   };
   patientNotes: Array<{ category: string; answerText: string }>;
   questions: QuizQuestionPublicDto[];
+}
+
+/** getBestScore 반환 타입 */
+export interface BestScoreResult {
+  quizSetId: string;
+  bestScore: number | null;
+  achievedAt?: string;
+}
+
+/** requestGeneration 반환 타입 */
+export interface RequestGenerationResult {
+  quizSetId: string;
+  generationStatus: 'pending';
 }
 
 /**
@@ -129,7 +146,7 @@ export class QuizService {
     memoryEntryId: string,
     caregiverId: string,
     force: boolean,
-  ): Promise<{ quizSetId: string; generationStatus: 'pending' }> {
+  ): Promise<RequestGenerationResult> {
     const { quizSet, entry, notes, existing } = await this.prepareGeneration(
       memoryEntryId,
       force,
@@ -197,14 +214,20 @@ export class QuizService {
       );
     }
 
-    // 기존 QuizSet 존재 여부 (ready/pending 중 최신)
+    // 기존 QuizSet 존재 여부 (최신)
     const existingSet = await this.quizSetRepository.findOne({
       where: { memoryEntryId },
       order: { createdAt: 'DESC' },
     });
 
-    if (existingSet && !force) {
-      // 수동 트리거(requireCaregiverId 존재) + force=false → 충돌 에러
+    // 재생성(기존 set 교체) 조건:
+    //  - force=true (보호자 명시 재생성), 또는
+    //  - 기존 set이 'failed' 상태 (실패한 퀴즈는 force 없이도 재시도 허용)
+    const replaceExisting =
+      !!existingSet && (force || existingSet.generationStatus === 'failed');
+
+    if (existingSet && !replaceExisting) {
+      // 수동 트리거(requireCaregiverId 존재) + 정상 set → 충돌 에러
       if (requireCaregiverId) {
         throw new QuizError(
           QuizErrorCode.QUIZ_SET_ALREADY_EXISTS,
@@ -216,12 +239,12 @@ export class QuizService {
     }
 
     // 신규 pending QuizSet 저장.
-    // force 재생성 시 동일 memoryEntry의 기존 set(들)을 같은 트랜잭션에서 먼저 삭제한다.
+    // 교체 시 동일 memoryEntry의 기존 set(들)을 같은 트랜잭션에서 먼저 삭제한다.
     // (FK ON DELETE CASCADE로 questions/attempts/best_scores가 함께 정리되어
     //  동일 라이프로그에 중복 QuizSet이 누적되는 것을 방지한다.)
     const quizSet = await this.dataSource.transaction(async (manager) => {
       const setRepo = manager.getRepository(QuizSet);
-      if (force) {
+      if (replaceExisting) {
         await setRepo.delete({ memoryEntryId });
       }
       return setRepo.save(
@@ -265,24 +288,29 @@ export class QuizService {
     try {
       const result = await this.generationClient.generate(payload);
 
-      const questions = result.questions.map((q, index) =>
-        this.quizQuestionRepository.create({
-          quizSetId: quizSet.id,
-          orderIndex: index,
-          type: q.type,
-          prompt: q.prompt,
-          choices: q.choices,
-          correctAnswer: q.correctAnswer,
-          hintFirstChar: q.hintFirstChar,
-          explanation: null,
-        }),
-      );
-      await this.quizQuestionRepository.save(questions);
-
-      await this.quizSetRepository.update(quizSet.id, {
-        generationStatus: 'ready',
-        readyAt: new Date(),
-        generationError: null,
+      // 문항 영속화 + ready 전이를 한 트랜잭션으로 묶어 원자성을 보장한다.
+      // (questions만 저장되고 set이 pending에 박제되는 부분 상태를 방지)
+      await this.dataSource.transaction(async (manager) => {
+        const questionRepo = manager.getRepository(QuizQuestion);
+        const setRepo = manager.getRepository(QuizSet);
+        const questions = result.questions.map((q, index) =>
+          questionRepo.create({
+            quizSetId: quizSet.id,
+            orderIndex: index,
+            type: q.type,
+            prompt: q.prompt,
+            choices: q.choices,
+            correctAnswer: q.correctAnswer,
+            hintFirstChar: q.hintFirstChar,
+            explanation: null,
+          }),
+        );
+        await questionRepo.save(questions);
+        await setRepo.update(quizSet.id, {
+          generationStatus: 'ready',
+          readyAt: new Date(),
+          generationError: null,
+        });
       });
     } catch (error) {
       const message =
@@ -317,7 +345,13 @@ export class QuizService {
         status: filter.status,
       });
     }
-    qb.take(filter.limit ?? 20);
+    // limit 검증·캡: 유효한 양수만 허용(NaN/음수/0 → 기본 20), 상한 50.
+    const rawLimit = filter.limit;
+    const limit =
+      typeof rawLimit === 'number' && Number.isFinite(rawLimit) && rawLimit > 0
+        ? Math.min(Math.floor(rawLimit), MAX_LIST_LIMIT)
+        : DEFAULT_LIST_LIMIT;
+    qb.take(limit);
 
     const sets = await qb.getMany();
     if (sets.length === 0) {
@@ -458,7 +492,11 @@ export class QuizService {
       existingAttempts.map((a) => [a.questionId, a]),
     );
 
+    // 답안 분류 + 채점. 신규 답안은 모아서 한 번에 저장한다(원자성 + N라운드트립 제거).
+    // 동일 요청 내 중복 questionId는 1건만 저장하고 첫 채점 결과를 재사용한다.
     const results: AttemptResult[] = [];
+    const newAttemptByQuestion = new Map<string, QuizAttempt>();
+
     for (const answer of dto.answers) {
       const question = questionById.get(answer.questionId);
       if (!question) {
@@ -468,19 +506,31 @@ export class QuizService {
         );
       }
 
-      const existing = answeredByQuestion.get(answer.questionId);
-      if (existing) {
-        // 멱등 — 재채점하지 않고 기존 결과 사용
+      // 멱등 — 이미 저장된 답안(이전 요청)
+      const persisted = answeredByQuestion.get(question.id);
+      if (persisted) {
         results.push({
           questionId: question.id,
-          isCorrect: existing.isCorrect,
+          isCorrect: persisted.isCorrect,
+          correctAnswer: question.correctAnswer,
+        });
+        continue;
+      }
+
+      // 동일 요청 내 중복 questionId — 첫 채점 결과 재사용
+      const pendingNew = newAttemptByQuestion.get(question.id);
+      if (pendingNew) {
+        results.push({
+          questionId: question.id,
+          isCorrect: pendingNew.isCorrect,
           correctAnswer: question.correctAnswer,
         });
         continue;
       }
 
       const isCorrect = this.scorer.isCorrect(question, answer.userAnswer);
-      const saved = await this.quizAttemptRepository.save(
+      newAttemptByQuestion.set(
+        question.id,
         this.quizAttemptRepository.create({
           quizSetId: set.id,
           questionId: question.id,
@@ -490,12 +540,20 @@ export class QuizService {
           isCorrect,
         }),
       );
-      answeredByQuestion.set(question.id, saved);
       results.push({
         questionId: question.id,
         isCorrect,
         correctAnswer: question.correctAnswer,
       });
+    }
+
+    // 신규 답안 일괄 저장 (단일 save 호출 = 배치 트랜잭션)
+    const newAttempts = Array.from(newAttemptByQuestion.values());
+    if (newAttempts.length > 0) {
+      await this.quizAttemptRepository.save(newAttempts);
+      for (const attempt of newAttempts) {
+        answeredByQuestion.set(attempt.questionId, attempt);
+      }
     }
 
     // 세션 전체 기준 정답 수 / 점수 (진행 중에도 환산)
@@ -527,11 +585,7 @@ export class QuizService {
   async getBestScore(
     setId: string,
     effectivePatientId: string,
-  ): Promise<{
-    quizSetId: string;
-    bestScore: number | null;
-    achievedAt?: string;
-  }> {
+  ): Promise<BestScoreResult> {
     const set = await this.findSetOrThrow(setId);
     this.verifyPatient(set, effectivePatientId);
 

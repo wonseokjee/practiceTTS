@@ -163,6 +163,9 @@ describe('QuizService', () => {
                     if (entity === QuizSet) {
                       return quizSetRepo;
                     }
+                    if (entity === QuizQuestion) {
+                      return quizQuestionRepo;
+                    }
                     throw new Error('예상치 못한 엔티티: 트랜잭션 mock');
                   },
                 }),
@@ -391,6 +394,38 @@ describe('QuizService', () => {
       expect(result.quizSetId).toBe('new-set');
       expect(result.generationStatus).toBe('pending');
     });
+
+    it('기존 set이 failed 상태이면 force 없이도 재생성(삭제 후 신규)해야 한다 (P2)', async () => {
+      memoryEntryRepo.findOne.mockResolvedValue(buildEntry());
+      patientMemoryNoteRepo.find.mockResolvedValue([buildNote()]);
+      // 기존 set이 실패 상태
+      quizSetRepo.findOne.mockResolvedValue(
+        buildSet({ generationStatus: 'failed' }),
+      );
+      quizSetRepo.delete.mockResolvedValue({ affected: 1 });
+      quizSetRepo.save.mockResolvedValue(
+        buildSet({ id: 'retry-set', generationStatus: 'pending' }),
+      );
+      generationClientMock.generate.mockResolvedValue({
+        questions: [],
+        model: 'm',
+        fallbackUsed: false,
+      });
+      quizQuestionRepo.save.mockResolvedValue([]);
+      quizSetRepo.update.mockResolvedValue({ affected: 1 });
+
+      const result = await service.requestGeneration(
+        MEMORY_ENTRY_ID,
+        CAREGIVER_ID,
+        false, // force 미지정이어도 failed면 재생성
+      );
+
+      expect(quizSetRepo.delete).toHaveBeenCalledWith({
+        memoryEntryId: MEMORY_ENTRY_ID,
+      });
+      expect(result.quizSetId).toBe('retry-set');
+      expect(result.generationStatus).toBe('pending');
+    });
   });
 
   // ─── getSetDetail ──────────────────────────────────────────────────
@@ -498,7 +533,11 @@ describe('QuizService', () => {
         { questionId: 'q-0', isCorrect: true, correctAnswer: '공원' },
         { questionId: 'q-1', isCorrect: false, correctAnswer: '공원' },
       ]);
-      expect(quizAttemptRepo.save).toHaveBeenCalledTimes(2);
+      // 신규 답안은 단일 save 호출로 일괄 저장 (배치 = 원자성)
+      expect(quizAttemptRepo.save).toHaveBeenCalledTimes(1);
+      const saveCalls = quizAttemptRepo.save.mock.calls as unknown[][];
+      const savedArg = saveCalls[0][0] as unknown[];
+      expect(savedArg).toHaveLength(2);
       // 2문제 세트 모두 답함 → 완료
       expect(result.completed).toBe(true);
     });
@@ -781,6 +820,18 @@ describe('QuizService', () => {
       expect(result[0].bestScore).toBe(60);
       expect(result[0].notePreview).toContain('공원 산책');
       expect(result[0].generationStatus).toBe('ready');
+    });
+
+    it('limit을 최대 50으로 캡하고, 유효하지 않은 값(NaN)은 기본 20으로 보정해야 한다 (Nit)', async () => {
+      const qbOverCap = buildQueryBuilder([]);
+      quizSetRepo.createQueryBuilder.mockReturnValue(qbOverCap);
+      await service.listSets(PATIENT_ID, { limit: 999 });
+      expect(qbOverCap.take).toHaveBeenCalledWith(50);
+
+      const qbNaN = buildQueryBuilder([]);
+      quizSetRepo.createQueryBuilder.mockReturnValue(qbNaN);
+      await service.listSets(PATIENT_ID, { limit: Number('abc') });
+      expect(qbNaN.take).toHaveBeenCalledWith(20);
     });
   });
 });
