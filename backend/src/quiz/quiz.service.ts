@@ -215,17 +215,26 @@ export class QuizService {
       return { quizSet: existingSet, entry, notes, existing: true };
     }
 
-    // 신규 pending QuizSet 저장
-    const quizSet = await this.quizSetRepository.save(
-      this.quizSetRepository.create({
-        memoryEntryId,
-        patientId: entry.patientId,
-        caregiverId: entry.caregiverId,
-        generationStatus: 'pending',
-        generationError: null,
-        readyAt: null,
-      }),
-    );
+    // 신규 pending QuizSet 저장.
+    // force 재생성 시 동일 memoryEntry의 기존 set(들)을 같은 트랜잭션에서 먼저 삭제한다.
+    // (FK ON DELETE CASCADE로 questions/attempts/best_scores가 함께 정리되어
+    //  동일 라이프로그에 중복 QuizSet이 누적되는 것을 방지한다.)
+    const quizSet = await this.dataSource.transaction(async (manager) => {
+      const setRepo = manager.getRepository(QuizSet);
+      if (force) {
+        await setRepo.delete({ memoryEntryId });
+      }
+      return setRepo.save(
+        setRepo.create({
+          memoryEntryId,
+          patientId: entry.patientId,
+          caregiverId: entry.caregiverId,
+          generationStatus: 'pending',
+          generationError: null,
+          readyAt: null,
+        }),
+      );
+    });
 
     return { quizSet, entry, notes, existing: false };
   }
@@ -543,7 +552,14 @@ export class QuizService {
   // ─── 내부 헬퍼 ─────────────────────────────────────────────────────
 
   /**
-   * QuizBestScore upsert — 신규이거나 더 높은 점수일 때만 갱신.
+   * QuizBestScore upsert — 신규이거나 **더 높은 점수일 때만** 갱신.
+   *
+   * 동시 완료(더블클릭/네트워크 재시도)로 두 요청이 동시에 도달해도 안전하도록
+   * 원자적으로 처리한다:
+   *   1) 행이 없으면 INSERT 시도. 동시 INSERT 충돌(UNIQUE 위반, PG 23505)은
+   *      삼키고 (2) 조건부 UPDATE 경로로 폴백한다.
+   *   2) `best_score < :score` 조건의 단일 UPDATE 문(행 레벨 원자성)으로 갱신.
+   *      affected>0 이면 새 최고점이다.
    */
   private async upsertBestScore(
     quizSetId: string,
@@ -556,27 +572,58 @@ export class QuizService {
     });
 
     if (!existing) {
-      await this.quizBestScoreRepository.save(
-        this.quizBestScoreRepository.create({
-          quizSetId,
-          patientId,
-          bestScore: sessionScore,
-          bestSessionToken: sessionToken,
-        }),
-      );
-      return { bestScore: sessionScore, isNewBest: true };
+      try {
+        await this.quizBestScoreRepository.save(
+          this.quizBestScoreRepository.create({
+            quizSetId,
+            patientId,
+            bestScore: sessionScore,
+            bestSessionToken: sessionToken,
+          }),
+        );
+        return { bestScore: sessionScore, isNewBest: true };
+      } catch (error) {
+        if (!this.isUniqueViolation(error)) {
+          throw error;
+        }
+        // 동시 INSERT 충돌 → 아래 조건부 UPDATE 경로로 폴백
+      }
     }
 
-    if (sessionScore > existing.bestScore) {
-      await this.quizBestScoreRepository.update(existing.id, {
+    // 조건부 원자적 UPDATE: 기존보다 높을 때만 갱신
+    const updateResult = await this.quizBestScoreRepository
+      .createQueryBuilder()
+      .update(QuizBestScore)
+      .set({
         bestScore: sessionScore,
         bestSessionToken: sessionToken,
-        achievedAt: new Date(),
-      });
-      return { bestScore: sessionScore, isNewBest: true };
-    }
+        achievedAt: () => 'now()',
+      })
+      .where('quiz_set_id = :quizSetId', { quizSetId })
+      .andWhere('best_score < :sessionScore', { sessionScore })
+      .execute();
 
-    return { bestScore: existing.bestScore, isNewBest: false };
+    const isNewBest = (updateResult.affected ?? 0) > 0;
+
+    // 최종 현재값 조회 (동시 갱신 결과 반영)
+    const current = await this.quizBestScoreRepository.findOne({
+      where: { quizSetId },
+    });
+    return {
+      bestScore: current?.bestScore ?? sessionScore,
+      isNewBest,
+    };
+  }
+
+  /** PostgreSQL UNIQUE 제약 위반(23505) 판별 */
+  private isUniqueViolation(error: unknown): boolean {
+    if (typeof error !== 'object' || error === null) {
+      return false;
+    }
+    const code = (error as { code?: string }).code;
+    const driverCode = (error as { driverError?: { code?: string } })
+      .driverError?.code;
+    return code === '23505' || driverCode === '23505';
   }
 
   private async findSetOrThrow(setId: string): Promise<QuizSet> {

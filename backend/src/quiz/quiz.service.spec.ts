@@ -50,6 +50,7 @@ describe('QuizService', () => {
       save: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      delete: jest.fn(),
       createQueryBuilder: jest.fn(),
     };
   }
@@ -68,7 +69,9 @@ describe('QuizService', () => {
   }
 
   /** PatientMemoryNote mock */
-  function buildNote(overrides: Partial<PatientMemoryNote> = {}): PatientMemoryNote {
+  function buildNote(
+    overrides: Partial<PatientMemoryNote> = {},
+  ): PatientMemoryNote {
     return {
       id: 'note-1',
       memoryEntryId: MEMORY_ENTRY_ID,
@@ -146,7 +149,26 @@ describe('QuizService', () => {
           provide: getRepositoryToken(PatientMemoryNote),
           useValue: patientMemoryNoteRepo,
         },
-        { provide: getDataSourceToken(), useValue: { transaction: jest.fn() } },
+        {
+          provide: getDataSourceToken(),
+          useValue: {
+            // 트랜잭션 콜백을 실제로 실행하고, manager.getRepository(QuizSet)는
+            // 동일한 quizSetRepo mock을 반환하여 기존 assertion(save/create/delete)을 유지한다.
+            transaction: jest.fn(
+              <T>(
+                cb: (m: { getRepository: (e: unknown) => unknown }) => T,
+              ): T =>
+                cb({
+                  getRepository: (entity: unknown) => {
+                    if (entity === QuizSet) {
+                      return quizSetRepo;
+                    }
+                    throw new Error('예상치 못한 엔티티: 트랜잭션 mock');
+                  },
+                }),
+            ),
+          },
+        },
         { provide: QUIZ_GENERATION_CLIENT, useValue: generationClientMock },
         { provide: QUIZ_SCORER, useValue: scorerMock },
       ],
@@ -215,10 +237,8 @@ describe('QuizService', () => {
 
       await service.generateForMemoryEntry(MEMORY_ENTRY_ID);
 
-      const payload = generationClientMock.generate.mock.calls[0][0] as Record<
-        string,
-        unknown
-      >;
+      const calls = generationClientMock.generate.mock.calls as unknown[][];
+      const payload = calls[0][0] as Record<string, unknown>;
       expect(payload).not.toHaveProperty('mood');
       expect(payload).not.toHaveProperty('caregiverReflection');
       expect(payload).not.toHaveProperty('caregiverWishMessage');
@@ -335,6 +355,42 @@ describe('QuizService', () => {
       });
       expect(quizSetRepo.save).toHaveBeenCalledTimes(1);
     });
+
+    it('force=true 재생성 시 동일 memoryEntry의 기존 set을 삭제한 뒤 신규 pending set을 만들어야 한다 (P1)', async () => {
+      memoryEntryRepo.findOne.mockResolvedValue(buildEntry());
+      patientMemoryNoteRepo.find.mockResolvedValue([buildNote()]);
+      // 기존 set 존재
+      quizSetRepo.findOne.mockResolvedValue(buildSet());
+      quizSetRepo.delete.mockResolvedValue({ affected: 1 });
+      quizSetRepo.save.mockResolvedValue(
+        buildSet({ id: 'new-set', generationStatus: 'pending' }),
+      );
+      // 백그라운드 runGeneration 의존성
+      generationClientMock.generate.mockResolvedValue({
+        questions: [],
+        model: 'm',
+        fallbackUsed: false,
+      });
+      quizQuestionRepo.save.mockResolvedValue([]);
+      quizSetRepo.update.mockResolvedValue({ affected: 1 });
+
+      const result = await service.requestGeneration(
+        MEMORY_ENTRY_ID,
+        CAREGIVER_ID,
+        true,
+      );
+
+      // 기존 set을 memoryEntryId 기준으로 삭제 (cascade로 questions/attempts/best 정리)
+      expect(quizSetRepo.delete).toHaveBeenCalledWith({
+        memoryEntryId: MEMORY_ENTRY_ID,
+      });
+      // 신규 pending set 생성
+      expect(quizSetRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ generationStatus: 'pending' }),
+      );
+      expect(result.quizSetId).toBe('new-set');
+      expect(result.generationStatus).toBe('pending');
+    });
   });
 
   // ─── getSetDetail ──────────────────────────────────────────────────
@@ -396,6 +452,22 @@ describe('QuizService', () => {
 
     function buildDto(answers: SubmitAttemptDto['answers']): SubmitAttemptDto {
       return { sessionToken: SESSION_TOKEN, answers };
+    }
+
+    /** 조건부 UPDATE 쿼리빌더 체이닝 mock — execute 결과(affected) 지정 */
+    function buildUpdateQb(executeResult: { affected: number }) {
+      const qb: Record<string, jest.Mock> = {
+        update: jest.fn(),
+        set: jest.fn(),
+        where: jest.fn(),
+        andWhere: jest.fn(),
+        execute: jest.fn().mockResolvedValue(executeResult),
+      };
+      qb.update.mockReturnValue(qb);
+      qb.set.mockReturnValue(qb);
+      qb.where.mockReturnValue(qb);
+      qb.andWhere.mockReturnValue(qb);
+      return qb;
     }
 
     it('정답/오답을 scorer 결과대로 채점하고 저장해야 한다', async () => {
@@ -552,11 +624,15 @@ describe('QuizService', () => {
       quizAttemptRepo.save.mockImplementation((x: Record<string, unknown>) =>
         Promise.resolve({ ...x }),
       );
-      // 기존 최고점 100
+      // 기존 최고점 100 (findOne은 갱신 전/후 모두 100 반환)
       quizBestScoreRepo.findOne.mockResolvedValue({
         id: 'best-1',
         bestScore: 100,
       });
+      // 조건부 UPDATE(best_score < 0)는 갱신 대상 없음 → affected 0
+      quizBestScoreRepo.createQueryBuilder.mockReturnValue(
+        buildUpdateQb({ affected: 0 }),
+      );
 
       const result = await service.submitAttempts(
         QUIZ_SET_ID,
@@ -567,7 +643,61 @@ describe('QuizService', () => {
       expect(result.completed).toBe(true);
       expect(result.isNewBest).toBe(false);
       expect(result.bestScore).toBe(100);
-      expect(quizBestScoreRepo.update).not.toHaveBeenCalled();
+      // 신규 INSERT(save)는 호출되지 않아야 한다 (기존 행 존재)
+      expect(quizBestScoreRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('동시 완료(INSERT UNIQUE 충돌 23505) 시 500 없이 조건부 UPDATE로 폴백해야 한다 (P2)', async () => {
+      quizSetRepo.findOne.mockResolvedValue(buildSet());
+      quizQuestionRepo.find.mockResolvedValue([buildQuestion({ id: 'q-0' })]);
+      quizAttemptRepo.find.mockResolvedValue([]);
+      scorerMock.isCorrect.mockReturnValue(true);
+      scorerMock.toScore.mockReturnValue(100);
+      quizAttemptRepo.save.mockImplementation((x: Record<string, unknown>) =>
+        Promise.resolve({ ...x }),
+      );
+      // 1st findOne(없음) → INSERT 시도 → 동시 INSERT가 먼저 들어와 UNIQUE 위반
+      // 2nd findOne(폴백 UPDATE 후) → 현재값 100
+      quizBestScoreRepo.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ bestScore: 100 });
+      quizBestScoreRepo.save.mockRejectedValue({ code: '23505' });
+      // 폴백 조건부 UPDATE가 우리 점수로 갱신 성공 → affected 1
+      quizBestScoreRepo.createQueryBuilder.mockReturnValue(
+        buildUpdateQb({ affected: 1 }),
+      );
+
+      const result = await service.submitAttempts(
+        QUIZ_SET_ID,
+        PATIENT_ID,
+        buildDto([{ questionId: 'q-0', userAnswer: '공원' }]),
+      );
+
+      // 500(throw) 없이 정상 완료
+      expect(result.completed).toBe(true);
+      expect(result.isNewBest).toBe(true);
+      expect(result.bestScore).toBe(100);
+    });
+
+    it('best-score INSERT가 UNIQUE 외 에러이면 그대로 전파해야 한다', async () => {
+      quizSetRepo.findOne.mockResolvedValue(buildSet());
+      quizQuestionRepo.find.mockResolvedValue([buildQuestion({ id: 'q-0' })]);
+      quizAttemptRepo.find.mockResolvedValue([]);
+      scorerMock.isCorrect.mockReturnValue(true);
+      scorerMock.toScore.mockReturnValue(100);
+      quizAttemptRepo.save.mockImplementation((x: Record<string, unknown>) =>
+        Promise.resolve({ ...x }),
+      );
+      quizBestScoreRepo.findOne.mockResolvedValue(null);
+      quizBestScoreRepo.save.mockRejectedValue({ code: '08006' }); // 연결 오류 등
+
+      await expect(
+        service.submitAttempts(
+          QUIZ_SET_ID,
+          PATIENT_ID,
+          buildDto([{ questionId: 'q-0', userAnswer: '공원' }]),
+        ),
+      ).rejects.toMatchObject({ code: '08006' });
     });
   });
 
@@ -609,13 +739,17 @@ describe('QuizService', () => {
   describe('listSets (풀 수 있는 목록 조회)', () => {
     /** createQueryBuilder 체이닝 mock 헬퍼 — getMany 결과를 지정 */
     function buildQueryBuilder(getManyResult: unknown[]) {
-      const qb = {
-        where: jest.fn(() => qb),
-        andWhere: jest.fn(() => qb),
-        orderBy: jest.fn(() => qb),
-        take: jest.fn(() => qb),
+      const qb: Record<string, jest.Mock> = {
+        where: jest.fn(),
+        andWhere: jest.fn(),
+        orderBy: jest.fn(),
+        take: jest.fn(),
         getMany: jest.fn().mockResolvedValue(getManyResult),
       };
+      qb.where.mockReturnValue(qb);
+      qb.andWhere.mockReturnValue(qb);
+      qb.orderBy.mockReturnValue(qb);
+      qb.take.mockReturnValue(qb);
       return qb;
     }
 
