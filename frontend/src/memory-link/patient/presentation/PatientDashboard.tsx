@@ -5,14 +5,29 @@ import { ReturnToCaregiverPinModal } from '../../shared/ReturnToCaregiverPinModa
 import { trainingSessionApi } from '../infrastructure/TrainingSessionApi.js';
 import type { AvailableEntry } from '../domain/TrainingSession.js';
 import { TrainingScreen } from './TrainingScreen.js';
+import { QuizListScreen } from '../quiz/presentation/QuizListScreen.js';
+import { QuizScreen } from '../quiz/presentation/QuizScreen.js';
+
+/** 환자 학습 모드 (R9-a: localStorage에 마지막 모드 저장/복원) */
+type PatientMode = 'QUIZ' | 'CONVERSATION';
+
+/** 마지막 선택 모드 localStorage 키 */
+const LAST_MODE_KEY = 'ml_patient_last_mode';
 
 /** 환자 대시보드 화면 단계 */
-type DashboardPhase = 'LIST' | 'TRAINING';
+type DashboardPhase = 'LIST' | 'TRAINING' | 'QUIZ_LIST' | 'QUIZ_PLAY';
 
 /** 선택된 훈련 정보 */
 interface SelectedTraining {
   memoryEntryId: string;
   targetWord: string;
+}
+
+/** localStorage에서 마지막 모드를 복원 (기본: 퀴즈 모드) */
+function loadLastMode(): PatientMode {
+  return localStorage.getItem(LAST_MODE_KEY) === 'CONVERSATION'
+    ? 'CONVERSATION'
+    : 'QUIZ';
 }
 
 /**
@@ -31,11 +46,37 @@ export function PatientDashboard() {
   const isCaregiverInPatientMode = user?.role === 'caregiver' && isPatientMode;
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
 
-  const [phase, setPhase] = useState<DashboardPhase>('LIST');
+  // 마지막 선택 모드 복원 — 퀴즈 모드면 퀴즈 목록, 대화 모드면 훈련 목록으로 진입.
+  const [mode, setMode] = useState<PatientMode>(loadLastMode);
+  const [phase, setPhase] = useState<DashboardPhase>(() =>
+    loadLastMode() === 'QUIZ' ? 'QUIZ_LIST' : 'LIST',
+  );
   const [selectedTraining, setSelectedTraining] = useState<SelectedTraining | null>(null);
+  const [selectedQuizSetId, setSelectedQuizSetId] = useState<string | null>(null);
   const [entries, setEntries] = useState<AvailableEntry[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  /** 모드 전환 — 마지막 모드를 localStorage에 저장하고 해당 모드 목록으로 이동 */
+  const handleSelectMode = useCallback((next: PatientMode) => {
+    localStorage.setItem(LAST_MODE_KEY, next);
+    setMode(next);
+    setSelectedQuizSetId(null);
+    setSelectedTraining(null);
+    setPhase(next === 'QUIZ' ? 'QUIZ_LIST' : 'LIST');
+  }, []);
+
+  /** 퀴즈 선택 → 풀이 화면 진입 */
+  const handleSelectQuiz = useCallback((quizSetId: string) => {
+    setSelectedQuizSetId(quizSetId);
+    setPhase('QUIZ_PLAY');
+  }, []);
+
+  /** 퀴즈 종료/완료 → 퀴즈 목록으로 복귀 */
+  const handleQuizExit = useCallback(() => {
+    setSelectedQuizSetId(null);
+    setPhase('QUIZ_LIST');
+  }, []);
 
   /** 훈련 가능 엔트리 목록 조회 */
   const loadEntries = useCallback(async (): Promise<void> => {
@@ -51,9 +92,12 @@ export function PatientDashboard() {
     }
   }, []);
 
+  // 대화 모드일 때만 훈련 엔트리를 불러온다(퀴즈 모드는 자체 목록 훅 사용).
   useEffect(() => {
-    void loadEntries();
-  }, [loadEntries]);
+    if (mode === 'CONVERSATION') {
+      void loadEntries();
+    }
+  }, [mode, loadEntries]);
 
   /** "훈련 시작" 버튼 핸들러 */
   const handleStartTraining = useCallback(
@@ -71,7 +115,7 @@ export function PatientDashboard() {
     void loadEntries();
   }, [loadEntries]);
 
-  // 훈련 화면
+  // 훈련 화면(대화 모드)
   if (phase === 'TRAINING' && selectedTraining !== null) {
     return (
       <TrainingScreen
@@ -79,6 +123,15 @@ export function PatientDashboard() {
         targetWord={selectedTraining.targetWord}
         onComplete={handleTrainingComplete}
       />
+    );
+  }
+
+  // 퀴즈 풀이 화면(퀴즈 모드)
+  if (phase === 'QUIZ_PLAY' && selectedQuizSetId !== null) {
+    return (
+      <div className="min-h-screen bg-[#F7F6F3]">
+        <QuizScreen quizSetId={selectedQuizSetId} onExit={handleQuizExit} />
+      </div>
     );
   }
 
@@ -136,12 +189,98 @@ export function PatientDashboard() {
           </div>
         )}
 
-        <h2 className="text-2xl font-semibold text-gray-800 mb-4">
-          훈련 목록
-        </h2>
+        {/* 모드 토글 (퀴즈 / 대화) — 마지막 선택은 localStorage에 저장 */}
+        <ModeToggle mode={mode} onSelectMode={handleSelectMode} />
 
-        {/* 로딩 상태 */}
-        {isLoading && (
+        {/* 퀴즈 모드: 퀴즈 목록 화면 위임 */}
+        {mode === 'QUIZ' && (
+          <QuizListScreen onSelectQuiz={handleSelectQuiz} />
+        )}
+
+        {/* 대화 모드: 기존 훈련 목록 */}
+        {mode === 'CONVERSATION' && (
+          <ConversationList
+            isLoading={isLoading}
+            error={error}
+            entries={entries}
+            onReload={() => void loadEntries()}
+            onStartTraining={handleStartTraining}
+          />
+        )}
+      </main>
+    </div>
+  );
+}
+
+// ─── 모드 토글 ──────────────────────────────────────────────────────────────
+
+interface ModeToggleProps {
+  mode: PatientMode;
+  onSelectMode: (mode: PatientMode) => void;
+}
+
+/** 퀴즈 / 대화 두 학습 모드 전환 토글 */
+function ModeToggle({ mode, onSelectMode }: ModeToggleProps) {
+  const options: Array<{ value: PatientMode; label: string }> = [
+    { value: 'QUIZ', label: '퀴즈 모드' },
+    { value: 'CONVERSATION', label: '대화 모드' },
+  ];
+
+  return (
+    <div
+      className="mb-6 flex gap-2 rounded-2xl bg-gray-100 p-1"
+      role="tablist"
+      aria-label="학습 모드 선택"
+    >
+      {options.map((opt) => {
+        const isActive = mode === opt.value;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            role="tab"
+            aria-selected={isActive}
+            onClick={() => onSelectMode(opt.value)}
+            className={`min-h-[48px] flex-1 rounded-xl text-lg font-semibold transition-colors duration-[180ms] ease-out ${
+              isActive
+                ? 'bg-white text-[#2D6A56] shadow-sm'
+                : 'bg-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── 대화 모드 목록 ─────────────────────────────────────────────────────────
+
+interface ConversationListProps {
+  isLoading: boolean;
+  error: string | null;
+  entries: AvailableEntry[];
+  onReload: () => void;
+  onStartTraining: (entry: AvailableEntry, targetWord: string) => void;
+}
+
+/** 대화(훈련) 모드의 엔트리 목록 — 기존 동작 유지 */
+function ConversationList({
+  isLoading,
+  error,
+  entries,
+  onReload,
+  onStartTraining,
+}: ConversationListProps) {
+  return (
+    <>
+      <h2 className="text-2xl font-semibold text-gray-800 mb-4">
+        훈련 목록
+      </h2>
+
+      {/* 로딩 상태 */}
+      {isLoading && (
           <div className="flex items-center justify-center py-16" role="status">
             <p className="text-2xl text-gray-500">불러오는 중...</p>
           </div>
@@ -153,7 +292,7 @@ export function PatientDashboard() {
             <p className="text-xl text-red-600 mb-4">{error}</p>
             <button
               type="button"
-              onClick={() => void loadEntries()}
+              onClick={onReload}
               className="min-h-[48px] px-8 py-3 bg-blue-600 text-white text-xl font-semibold rounded-2xl"
             >
               다시 시도
@@ -180,13 +319,12 @@ export function PatientDashboard() {
               <EntryCard
                 key={entry.id}
                 entry={entry}
-                onStartTraining={handleStartTraining}
+                onStartTraining={onStartTraining}
               />
             ))}
           </ul>
         )}
-      </main>
-    </div>
+    </>
   );
 }
 

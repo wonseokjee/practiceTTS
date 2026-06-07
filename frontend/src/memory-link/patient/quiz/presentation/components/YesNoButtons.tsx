@@ -1,0 +1,84 @@
+// 예/아니오 버튼 (yes_no 유형)
+//
+// 각 버튼은 'yes' / 'no'를 제출한다 (서버가 다양한 표현을 정규화하므로 클라는 yes/no만 전송).
+// 피드백 색상은 MultipleChoiceCard와 동일 규칙 + 아이콘 동반.
+
+import { YES_NO_ANSWERS } from '../../domain/Quiz.js';
+import type { YesNoAnswer } from '../../domain/Quiz.js';
+
+interface YesNoButtonsProps {
+  isSelectable: boolean;
+  /** 사용자가 고른 값 ('yes'|'no') — 피드백 단계 */
+  selectedAnswer: string | null;
+  showFeedback: boolean;
+  /** 정답 값 ('yes'|'no') — 피드백 단계에서만 의미 */
+  correctAnswer: string | null;
+  onSelect: (answer: YesNoAnswer) => void;
+}
+
+interface OptionSpec {
+  value: YesNoAnswer;
+  label: string;
+}
+
+const OPTIONS: OptionSpec[] = [
+  { value: YES_NO_ANSWERS.YES, label: '예' },
+  { value: YES_NO_ANSWERS.NO, label: '아니오' },
+];
+
+/** 예/아니오 2지선다 */
+export function YesNoButtons({
+  isSelectable,
+  selectedAnswer,
+  showFeedback,
+  correctAnswer,
+  onSelect,
+}: YesNoButtonsProps) {
+  return (
+    <div
+      className="grid grid-cols-2 gap-4"
+      role="group"
+      aria-label="예 또는 아니오 선택"
+    >
+      {OPTIONS.map((opt) => {
+        const isSelected = selectedAnswer === opt.value;
+        const isCorrectAnswer = correctAnswer === opt.value;
+
+        let stateClass =
+          'border-[#E5E5E0] bg-white text-[#1F2A26] hover:border-[#A8AFA9]';
+        let icon: string | null = null;
+
+        if (showFeedback) {
+          if (isCorrectAnswer) {
+            stateClass = 'border-[#2D6A56] bg-[#EBF4F0] text-[#1F5240]';
+            icon = '✓';
+          } else if (isSelected) {
+            stateClass = 'border-[#E07B54] bg-[#FBE9E2] text-[#7A2E15]';
+            icon = '✗';
+          } else {
+            stateClass = 'border-[#E5E5E0] bg-white text-[#9AA09B]';
+          }
+        } else if (isSelected) {
+          stateClass = 'border-[#2D6A56] bg-[#EBF4F0] text-[#1F5240]';
+        }
+
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            disabled={!isSelectable}
+            onClick={() => onSelect(opt.value)}
+            aria-label={opt.label}
+            aria-pressed={isSelected}
+            className={`flex min-h-[80px] items-center justify-center gap-2 rounded-md border-2 px-5 py-4 text-2xl font-bold transition-colors duration-[180ms] ease-out disabled:cursor-default ${stateClass}`}
+          >
+            <span>{opt.label}</span>
+            {icon !== null && (
+              <span aria-hidden="true">{icon}</span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
