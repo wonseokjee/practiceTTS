@@ -19,7 +19,10 @@ import {
 import { ConversationLog } from './entities/conversation-log.entity';
 import { TrainingSession } from './entities/training-session.entity';
 import { TrainingError, TrainingErrorCode } from './errors/training.errors';
-import type { AvailableEntryDto, ITrainingService } from './interfaces/ITrainingService';
+import type {
+  AvailableEntryDto,
+  ITrainingService,
+} from './interfaces/ITrainingService';
 import { FastApiChatClientService } from './services/fast-api-chat-client.service';
 
 /** scenarioCache에 저장된 시나리오 데이터 구조 */
@@ -298,7 +301,9 @@ export class TrainingService implements ITrainingService {
     }
 
     if (session.patientId !== patientId) {
-      throw new ForbiddenException('해당 훈련 세션에 대한 접근 권한이 없습니다.');
+      throw new ForbiddenException(
+        '해당 훈련 세션에 대한 접근 권한이 없습니다.',
+      );
     }
 
     return session;

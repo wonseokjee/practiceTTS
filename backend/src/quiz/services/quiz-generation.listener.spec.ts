@@ -15,7 +15,9 @@ describe('QuizGenerationListener', () => {
 
   beforeEach(() => {
     quizServiceMock = {
-      generateForMemoryEntry: jest.fn().mockResolvedValue({ quizSetId: 'qs-1' }),
+      generateForMemoryEntry: jest
+        .fn()
+        .mockResolvedValue({ quizSetId: 'qs-1' }),
     };
     listener = new QuizGenerationListener(
       quizServiceMock as unknown as QuizService,

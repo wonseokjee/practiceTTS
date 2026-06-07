@@ -25,7 +25,8 @@ import { JwtStrategy } from './jwt.strategy';
         ),
         signOptions: {
           // StringValue 타입 호환을 위해 '7d' 리터럴 타입으로 단언
-          expiresIn: (configService.get<string>('JWT_EXPIRES_IN') ?? '7d') as '7d',
+          expiresIn: (configService.get<string>('JWT_EXPIRES_IN') ??
+            '7d') as '7d',
         },
       }),
     }),

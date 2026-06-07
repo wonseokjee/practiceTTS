@@ -21,7 +21,9 @@ function fakeQueryBuilder(result: User | null) {
 
 describe('AuthService', () => {
   let service: AuthService;
-  let userRepository: jest.Mocked<Pick<Repository<User>, 'createQueryBuilder' | 'findOne'>>;
+  let userRepository: jest.Mocked<
+    Pick<Repository<User>, 'createQueryBuilder' | 'findOne'>
+  >;
   let dataSource: { transaction: jest.Mock };
   let jwtService: { sign: jest.Mock };
 
@@ -197,9 +199,15 @@ describe('AuthService', () => {
         } as User) as never,
       );
       // 3회 실패 → 디레이 발생 (PATIENT_MODE_PIN_RETRY_DELAYS_MS[3]=5초)
-      await expect(service.verifyPatientModePin('cg3', '0000')).rejects.toThrow();
-      await expect(service.verifyPatientModePin('cg3', '0000')).rejects.toThrow();
-      await expect(service.verifyPatientModePin('cg3', '0000')).rejects.toThrow();
+      await expect(
+        service.verifyPatientModePin('cg3', '0000'),
+      ).rejects.toThrow();
+      await expect(
+        service.verifyPatientModePin('cg3', '0000'),
+      ).rejects.toThrow();
+      await expect(
+        service.verifyPatientModePin('cg3', '0000'),
+      ).rejects.toThrow();
       // 디레이 윈도우 내 재시도 → 429
       await expect(
         service.verifyPatientModePin('cg3', '1234'),

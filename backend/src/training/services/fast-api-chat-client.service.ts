@@ -2,10 +2,7 @@ import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
-import {
-  TrainingError,
-  TrainingErrorCode,
-} from '../errors/training.errors';
+import { TrainingError, TrainingErrorCode } from '../errors/training.errors';
 import type {
   ChatRequest,
   ChatResponse,

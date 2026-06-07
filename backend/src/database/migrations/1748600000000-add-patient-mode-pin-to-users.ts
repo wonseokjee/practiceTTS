@@ -7,9 +7,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * - ADD COLUMN NULL → PostgreSQL 11+에서 메타데이터 변경만으로 즉시 완료 (무중단)
  * - DROP COLUMN은 데이터 영구 손실 → 운영 적용 시 별도 백업 절차 필요
  */
-export class AddPatientModePinToUsers1748600000000
-  implements MigrationInterface
-{
+export class AddPatientModePinToUsers1748600000000 implements MigrationInterface {
   name = 'AddPatientModePinToUsers1748600000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

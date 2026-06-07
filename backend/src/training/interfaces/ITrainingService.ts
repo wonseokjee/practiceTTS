@@ -15,10 +15,7 @@ export interface ITrainingService {
   ): Promise<SessionResponseDto>;
 
   /** UC-GET: 세션 단건 조회 (소유권 검증 포함) */
-  getSession(
-    sessionId: string,
-    patientId: string,
-  ): Promise<SessionResponseDto>;
+  getSession(sessionId: string, patientId: string): Promise<SessionResponseDto>;
 
   /** UC-2: 환자 발화 전송 → FastAPI /chat 프록시 → AI 응답 반환 */
   sendMessage(
@@ -41,9 +38,7 @@ export interface ITrainingService {
   ): Promise<SessionResponseDto>;
 
   /** 환자 ID로 훈련 가능한 메모리 엔트리 목록 조회 */
-  findAvailableEntries(
-    patientId: string,
-  ): Promise<AvailableEntryDto[]>;
+  findAvailableEntries(patientId: string): Promise<AvailableEntryDto[]>;
 }
 
 /** 환자 대시보드에서 보여줄 훈련 가능 엔트리 정보 */
