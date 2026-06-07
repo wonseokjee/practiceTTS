@@ -106,13 +106,73 @@ export class QuizGenerationClient implements IQuizGenerationClient {
         fallbackUsed: data.fallback_used,
       };
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : '알 수 없는 오류';
-      this.logger.error(`퀴즈 생성 실패: ${message}`);
-      throw new QuizError(
-        QuizErrorCode.LLM_GENERATION_FAILED,
-        `퀴즈 생성 서비스 호출에 실패했습니다: ${message}`,
-      );
+      const { quizError, logMessage } = this.mapGenerationError(error);
+      this.logger.error(`퀴즈 생성 실패: ${logMessage}`);
+      throw quizError;
     }
+  }
+
+  /**
+   * FastAPI 응답 HTTP status를 도메인 에러 코드 + 사용자친화 메시지로 매핑한다.
+   * - 422 → LLM_INVALID_NOTES (영구): 메모가 부적합. 재시도 무의미.
+   * - 504 → LLM_TIMEOUT (일시): 응답 지연. 재시도 가치 있음.
+   * - 502 → LLM_UPSTREAM (일시): 업스트림 오류.
+   * - 그 외/네트워크(응답 없음) → LLM_GENERATION_FAILED (일시, 제네릭).
+   *
+   * 사용자 메시지는 그대로 generationError에 저장되어 보호자 화면에 노출된다(S1).
+   */
+  private mapGenerationError(error: unknown): {
+    quizError: QuizError;
+    logMessage: string;
+  } {
+    const rawMessage =
+      error instanceof Error ? error.message : '알 수 없는 오류';
+    const status = this.extractHttpStatus(error);
+
+    switch (status) {
+      case 422:
+        return {
+          quizError: new QuizError(
+            QuizErrorCode.LLM_INVALID_NOTES,
+            '메모 내용이 너무 짧아 문제를 만들 수 없어요. 환자분의 하루를 조금 더 적어주세요.',
+          ),
+          logMessage: `422 INVALID_NOTES: ${rawMessage}`,
+        };
+      case 504:
+        return {
+          quizError: new QuizError(
+            QuizErrorCode.LLM_TIMEOUT,
+            'AI 응답이 지연되어 문제 생성에 실패했어요. 잠시 후 다시 시도해주세요.',
+          ),
+          logMessage: `504 TIMEOUT: ${rawMessage}`,
+        };
+      case 502:
+        return {
+          quizError: new QuizError(
+            QuizErrorCode.LLM_UPSTREAM,
+            'AI 서비스에 일시적인 문제가 있어요. 잠시 후 다시 시도해주세요.',
+          ),
+          logMessage: `502 UPSTREAM: ${rawMessage}`,
+        };
+      default:
+        return {
+          quizError: new QuizError(
+            QuizErrorCode.LLM_GENERATION_FAILED,
+            '문제 생성 중 오류가 발생했어요. 잠시 후 다시 시도해주세요.',
+          ),
+          logMessage: rawMessage,
+        };
+    }
+  }
+
+  /** axios 에러에서 HTTP status를 추출한다 (응답이 없으면 undefined). */
+  private extractHttpStatus(error: unknown): number | undefined {
+    if (typeof error === 'object' && error !== null) {
+      const response = (error as { response?: { status?: unknown } }).response;
+      if (response && typeof response.status === 'number') {
+        return response.status;
+      }
+    }
+    return undefined;
   }
 }

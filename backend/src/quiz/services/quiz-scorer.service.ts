@@ -26,7 +26,10 @@ const HANGUL_JONGSEONG_COUNT = 28;
  *
  * - multiple_choice: 공백 trim + 대소문자 무시 후 정확 일치.
  * - yes_no: 다양한 긍/부정 표현을 'yes'/'no'로 정규화 후 비교.
- * - fill_blank: 모든 공백 제거 + 각 한글 음절의 받침 제거 후 정확 일치 (R4=(b)).
+ * - fill_blank: 모든 공백 제거 + **끝 음절의 받침만** 제거 후 정확 일치 (R4=(b)).
+ *   가장 흔한 종성 오류(끝글자)는 용서하되 중간 음절은 정확히 일치해야 하므로,
+ *   '받침'↔'바침'처럼 앞 음절이 다른 단어는 오답으로 구분된다.
+ *   (단 '사랑'↔'사람'처럼 끝 음절 받침만 다른 단어는 여전히 정답 처리된다.)
  */
 @Injectable()
 export class QuizScorerService implements IQuizScorer {
@@ -77,17 +80,20 @@ export class QuizScorerService implements IQuizScorer {
   }
 
   /**
-   * 빈칸 채점 정규화 (R4=(b)):
+   * 빈칸 채점 정규화 (R4=(b), 끝 음절 받침만 무시):
    *  (1) 모든 공백 제거
-   *  (2) 각 한글 음절의 종성(받침) 제거 (비한글 문자는 그대로)
+   *  (2) **마지막 음절**의 종성(받침)만 제거 (비한글이거나 받침 없으면 그대로)
+   *
+   * 중간 음절의 받침은 보존하므로 서로 다른 단어가 과도하게 충돌하지 않는다.
    */
   private normalizeFillBlank(value: string): string {
-    const withoutSpaces = value.replace(/\s+/g, '');
-    let result = '';
-    for (const char of withoutSpaces) {
-      result += this.stripJongseong(char);
+    const chars = Array.from(value.replace(/\s+/g, ''));
+    if (chars.length === 0) {
+      return '';
     }
-    return result.toLowerCase();
+    const lastIndex = chars.length - 1;
+    chars[lastIndex] = this.stripJongseong(chars[lastIndex]);
+    return chars.join('').toLowerCase();
   }
 
   /** 단일 문자에서 한글 받침을 제거한다. 비한글이면 원본 반환. */

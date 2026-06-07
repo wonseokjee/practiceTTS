@@ -368,6 +368,77 @@ describe('useCaptureFlow', () => {
     expect(result.current.patientAnswers.activity.length).toBe(300);
   });
 
+  it('prefetch 실패 후 답변을 입력하면 제출이 차단되고(유실 방지) 에러가 표시된다', async () => {
+    const entryApi = makeMockEntryApi();
+    const failingQuestionApi: IDiaryQuestionApi = {
+      fetchToday: vi.fn(async () => {
+        throw new Error('질문 서버 오류');
+      }),
+    };
+
+    const { result } = renderHook(() =>
+      useCaptureFlow(PATIENT_ID, {
+        memoryEntryApi: entryApi,
+        diaryQuestionApi: failingQuestionApi,
+      }),
+    );
+
+    // prefetch 실패로 에러가 표시되고 질문은 null 상태
+    await waitFor(() => {
+      expect(result.current.error).not.toBeNull();
+    });
+    expect(result.current.patientQuestions.activity).toBeNull();
+
+    act(() => result.current.setMood(3));
+    act(() => result.current.next()); // myDay
+    act(() => result.current.next()); // patientDay
+    // 질문이 없어도 사용자가 답을 입력할 수 있는 상황을 가정
+    act(() => result.current.setPatientAnswerText('activity', '공원에 다녀왔다'));
+
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    // 답변이 조용히 유실되지 않도록 제출 차단 + 명확한 에러
+    expect(entryApi.create).not.toHaveBeenCalled();
+    expect(result.current.error).toMatch(/다시 시도/);
+  });
+
+  it('retryQuestions()로 prefetch를 다시 시도하면 질문이 채워진다', async () => {
+    let shouldFail = true;
+    const flakyQuestionApi: IDiaryQuestionApi = {
+      fetchToday: vi.fn(async ({ scope, category }) => {
+        if (shouldFail) throw new Error('일시적 오류');
+        if (scope === 'caregiver') return CAREGIVER_QUESTION;
+        if (category === 'activity') return PATIENT_QUESTION_ACTIVITY;
+        if (category === 'moment') return PATIENT_QUESTION_MOMENT;
+        return PATIENT_QUESTION_CONTEXT;
+      }),
+    };
+
+    const { result } = renderHook(() =>
+      useCaptureFlow(PATIENT_ID, {
+        memoryEntryApi: makeMockEntryApi(),
+        diaryQuestionApi: flakyQuestionApi,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.error).not.toBeNull();
+    });
+
+    // 다음 호출은 성공하도록 전환 후 재시도
+    shouldFail = false;
+    await act(async () => {
+      result.current.retryQuestions();
+    });
+
+    await waitFor(() => {
+      expect(result.current.patientQuestions.activity).not.toBeNull();
+      expect(result.current.error).toBeNull();
+    });
+  });
+
   it('reset() 호출 시 모든 상태가 초기화된다', async () => {
     const { result } = renderHook(() =>
       useCaptureFlow(PATIENT_ID, {

@@ -834,4 +834,81 @@ describe('QuizService', () => {
       expect(qbNaN.take).toHaveBeenCalledWith(20);
     });
   });
+
+  // ─── 고아 pending 복구 (TODO#3: 이벤트 durability) ────────────────────
+  describe('recoverStalePendingSets', () => {
+    it('stale pending set이 없으면 아무 것도 하지 않고 0을 반환한다', async () => {
+      quizSetRepo.find.mockResolvedValue([]);
+
+      const result = await service.recoverStalePendingSets();
+
+      expect(result).toEqual({ recovered: 0, failed: 0, skipped: 0 });
+      expect(generationClientMock.generate).not.toHaveBeenCalled();
+    });
+
+    it('stale pending set을 재생성하여 ready로 복구한다', async () => {
+      quizSetRepo.find.mockResolvedValue([
+        buildSet({ generationStatus: 'pending' }),
+      ]);
+      memoryEntryRepo.findOne.mockResolvedValue(buildEntry());
+      patientMemoryNoteRepo.find.mockResolvedValue([buildNote()]);
+      generationClientMock.generate.mockResolvedValue({
+        questions: [
+          {
+            type: 'multiple_choice',
+            prompt: 'p',
+            choices: ['a', 'b'],
+            correctAnswer: 'a',
+            hintFirstChar: null,
+          },
+        ],
+        model: 'm',
+        fallbackUsed: false,
+      });
+      quizQuestionRepo.save.mockResolvedValue([]);
+      quizSetRepo.update.mockResolvedValue({ affected: 1 });
+
+      const result = await service.recoverStalePendingSets();
+
+      expect(result.recovered).toBe(1);
+      expect(generationClientMock.generate).toHaveBeenCalledTimes(1);
+      expect(quizSetRepo.update).toHaveBeenCalledWith(
+        QUIZ_SET_ID,
+        expect.objectContaining({ generationStatus: 'ready' }),
+      );
+    });
+
+    it('원본 라이프로그가 삭제됐으면 생성하지 않고 failed로 마감한다', async () => {
+      quizSetRepo.find.mockResolvedValue([
+        buildSet({ generationStatus: 'pending' }),
+      ]);
+      memoryEntryRepo.findOne.mockResolvedValue(null); // 삭제됨
+
+      const result = await service.recoverStalePendingSets();
+
+      expect(result.failed).toBe(1);
+      expect(generationClientMock.generate).not.toHaveBeenCalled();
+      expect(quizSetRepo.update).toHaveBeenCalledWith(
+        QUIZ_SET_ID,
+        expect.objectContaining({ generationStatus: 'failed' }),
+      );
+    });
+
+    it('노트가 없으면 생성하지 않고 failed로 마감한다', async () => {
+      quizSetRepo.find.mockResolvedValue([
+        buildSet({ generationStatus: 'pending' }),
+      ]);
+      memoryEntryRepo.findOne.mockResolvedValue(buildEntry());
+      patientMemoryNoteRepo.find.mockResolvedValue([]); // 노트 없음
+
+      const result = await service.recoverStalePendingSets();
+
+      expect(result.failed).toBe(1);
+      expect(generationClientMock.generate).not.toHaveBeenCalled();
+      expect(quizSetRepo.update).toHaveBeenCalledWith(
+        QUIZ_SET_ID,
+        expect.objectContaining({ generationStatus: 'failed' }),
+      );
+    });
+  });
 });

@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, LessThan, Repository } from 'typeorm';
 import { MemoryEntry } from '../memory/entities/memory-entry.entity';
 import { PatientMemoryNote } from '../memory/entities/patient-memory-note.entity';
 import { DEFAULT_QUIZ_DISTRIBUTION } from './constants/quiz-distribution';
@@ -24,6 +24,15 @@ import { IQuizScorer, QUIZ_SCORER } from './interfaces/IQuizScorer';
 
 /** 세션 만료 기준: 첫 답안 이후 30분 (§7-1 SESSION_EXPIRED) */
 const SESSION_TTL_MS = 30 * 60 * 1000;
+
+/**
+ * pending QuizSet이 이 시간보다 오래 멈춰 있으면 "고아"로 간주하고 복구한다.
+ * LLM 타임아웃(25s)보다 충분히 길게 잡아 정상 진행 중인 생성을 건드리지 않는다.
+ */
+const STALE_PENDING_MS = 10 * 60 * 1000;
+
+/** 1회 복구에서 처리할 최대 QuizSet 수 (부팅 스톰 방지) */
+const MAX_RECOVERY_BATCH = 50;
 
 /** 목록 조회 기본/최대 limit */
 const DEFAULT_LIST_LIMIT = 20;
@@ -393,6 +402,10 @@ export class QuizService {
       ),
       photoUrl: photoByEntry.get(set.memoryEntryId) ?? null,
       generationStatus: set.generationStatus,
+      generationError:
+        set.generationStatus === 'failed'
+          ? (set.generationError ?? null)
+          : null,
       bestScore: bestBySet.get(set.id) ?? null,
       createdAt: set.createdAt.toISOString(),
     }));
@@ -601,6 +614,82 @@ export class QuizService {
       bestScore: best.bestScore,
       achievedAt: best.achievedAt.toISOString(),
     };
+  }
+
+  /**
+   * 고아 pending QuizSet 복구 (이벤트 durability 보강).
+   *
+   * 배경: 자동 트리거는 in-process EventEmitter2 fire-and-forget이라,
+   * pending QuizSet 저장 후 LLM 생성 완료 전 프로세스가 죽거나 재시작되면
+   * 해당 set이 'pending'에 영구히 박제된다(환자에게 영영 도착하지 않음).
+   *
+   * 본 메서드는 부팅 시(@OnApplicationBootstrap) 호출되어, STALE_PENDING_MS보다
+   * 오래된 pending set을 찾아 생성을 재시도한다. 정상 진행 중인 생성(25s 이내)은
+   * 임계값 밖이라 건드리지 않는다.
+   *
+   * - 원본 라이프로그가 삭제됐거나 노트가 없으면 더 이상 생성 불가 → failed로 마감.
+   * - 각 set 처리 실패는 다음 set 처리를 막지 않는다(독립적).
+   */
+  async recoverStalePendingSets(
+    now: Date = new Date(),
+  ): Promise<{ recovered: number; failed: number; skipped: number }> {
+    const threshold = new Date(now.getTime() - STALE_PENDING_MS);
+    const stale = await this.quizSetRepository.find({
+      where: { generationStatus: 'pending', createdAt: LessThan(threshold) },
+      order: { createdAt: 'ASC' },
+      take: MAX_RECOVERY_BATCH,
+    });
+
+    if (stale.length === 0) {
+      return { recovered: 0, failed: 0, skipped: 0 };
+    }
+
+    let recovered = 0;
+    let failed = 0;
+    for (const set of stale) {
+      const entry = await this.memoryEntryRepository.findOne({
+        where: { id: set.memoryEntryId, isActive: true },
+      });
+      if (!entry) {
+        await this.quizSetRepository.update(set.id, {
+          generationStatus: 'failed',
+          generationError: '원본 라이프로그가 삭제되어 문제를 만들 수 없어요.',
+        });
+        failed += 1;
+        continue;
+      }
+
+      const notes = await this.patientMemoryNoteRepository.find({
+        where: { memoryEntryId: set.memoryEntryId },
+        order: { orderIndex: 'ASC' },
+      });
+      if (notes.length === 0) {
+        await this.quizSetRepository.update(set.id, {
+          generationStatus: 'failed',
+          generationError: '환자 답변이 없어 문제를 만들 수 없어요.',
+        });
+        failed += 1;
+        continue;
+      }
+
+      try {
+        await this.runGeneration(set, entry, notes);
+        recovered += 1;
+      } catch (error) {
+        // runGeneration이 이미 status=failed로 기록함. 여기서는 집계만.
+        const message =
+          error instanceof Error ? error.message : '알 수 없는 오류';
+        this.logger.warn(
+          `pending 복구 실패 (quizSetId=${set.id}): ${message}`,
+        );
+        failed += 1;
+      }
+    }
+
+    this.logger.log(
+      `pending QuizSet 복구 완료 (recovered=${recovered}, failed=${failed}, scanned=${stale.length})`,
+    );
+    return { recovered, failed, skipped: 0 };
   }
 
   // ─── 내부 헬퍼 ─────────────────────────────────────────────────────

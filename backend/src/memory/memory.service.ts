@@ -124,6 +124,22 @@ export class MemoryEntryService implements IMemoryEntryService {
       throw error;
     }
 
+    // 퀴즈 자동 생성 트리거 (R1=(c)) — 이벤트 기반 디커플링.
+    // MemoryModule은 QuizModule을 직접 import하지 않으며, QuizGenerationListener가 구독한다.
+    // 환자 답변(PatientMemoryNote)이 1개 이상일 때만 발행한다.
+    // (사진만 있고 노트가 없으면 퀴즈 생성이 불가하므로 emit 생략.)
+    // fire-and-forget — create의 반환/응답을 막지 않는다.
+    //
+    // 트랜잭션 커밋 직후, tag/mask best-effort보다 **먼저** 발행한다.
+    // 퀴즈 생성은 photoTags에 의존하지 않으므로(R7=(c)), tag/mask 지연이
+    // 환자에게 퀴즈가 도착하는 시점을 늦추지 않도록 한다.
+    // (리스너는 memoryEntryId로 DB를 재조회하므로 이후 update와 경쟁하지 않는다.)
+    if (savedNotes.length > 0) {
+      this.eventEmitter.emit('memory-entry.created', {
+        memoryEntryId: savedEntry.id,
+      });
+    }
+
     // (5) FastAPI tag/mask — best-effort, 트랜잭션 외부
     if (photoUrl) {
       const { locationTag, objectTags, maskedContext } =
@@ -147,17 +163,6 @@ export class MemoryEntryService implements IMemoryEntryService {
           savedEntry = updated;
         }
       }
-    }
-
-    // 퀴즈 자동 생성 트리거 (R1=(c)) — 이벤트 기반 디커플링.
-    // MemoryModule은 QuizModule을 직접 import하지 않으며, QuizGenerationListener가 구독한다.
-    // 환자 답변(PatientMemoryNote)이 1개 이상일 때만 발행한다.
-    // (사진만 있고 노트가 없으면 퀴즈 생성이 불가하므로 emit 생략.)
-    // fire-and-forget — create의 반환/응답을 막지 않는다.
-    if (savedNotes.length > 0) {
-      this.eventEmitter.emit('memory-entry.created', {
-        memoryEntryId: savedEntry.id,
-      });
     }
 
     return toMemoryEntryResponseDto(savedEntry, savedNotes);
@@ -392,16 +397,9 @@ export class MemoryEntryService implements IMemoryEntryService {
    */
   private async tryDeleteOrphanPhoto(filename: string): Promise<void> {
     try {
-      // FileStorageService에 delete 메서드가 없을 수 있어 동적 호출
-      const storage = this.fileStorageService as unknown as {
-        delete?: (name: string) => Promise<void> | void;
-      };
-      if (typeof storage.delete === 'function') {
-        await storage.delete(filename);
-      }
-      // delete 메서드가 없으면 cleanup 무시 (로그 출력은 운영 환경 도입 시점에 결정)
+      await this.fileStorageService.delete(filename);
     } catch {
-      // cleanup 실패는 원본 예외를 가리지 않기 위해 무시
+      // cleanup 실패는 원본 예외를 가리지 않기 위해 무시 (best-effort)
     }
   }
 

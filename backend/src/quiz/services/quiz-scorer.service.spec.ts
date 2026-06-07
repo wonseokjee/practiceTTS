@@ -8,7 +8,7 @@ import { QuizScorerService } from './quiz-scorer.service';
  * 검증 범위:
  *  - multiple_choice: 공백/대소문자 차이 정답 처리, 오답
  *  - yes_no: 다양한 긍/부정 표현 정규화, 반대 답 오답
- *  - fill_blank(R4=(b)): 띄어쓰기 무시, 받침(종성) 제거 후 비교, 완전 오답
+ *  - fill_blank(R4=(b)): 띄어쓰기 무시, 끝 음절 받침만 제거 후 비교, 중간 음절 받침은 보존
  *  - toScore: 정답 비율 → 0..100 환산 + 반올림 + total<=0 방어
  */
 describe('QuizScorerService', () => {
@@ -86,7 +86,7 @@ describe('QuizScorerService', () => {
     });
   });
 
-  describe('isCorrect — fill_blank (R4=(b): 공백 제거 + 받침 제거)', () => {
+  describe('isCorrect — fill_blank (R4=(b): 공백 제거 + 끝 음절 받침만 무시)', () => {
     it('완전히 동일한 입력은 정답이어야 한다', () => {
       const question = buildQuestion('fill_blank', '강아지');
       expect(scorer.isCorrect(question, '강아지')).toBe(true);
@@ -97,23 +97,34 @@ describe('QuizScorerService', () => {
       expect(scorer.isCorrect(question, '공 원')).toBe(true);
     });
 
-    it('받침 차이를 무시한다 — 정답 "산", 입력 "사"는 받침 제거 후 동일하여 정답이어야 한다', () => {
-      // stripJongseong: '산'(받침 ㄴ) → '사', '사'(받침 없음) → '사' ⇒ 동일
+    it('끝 음절 받침 차이를 무시한다 — 정답 "산", 입력 "사"는 정답이어야 한다', () => {
+      // '산'(받침 ㄴ) → '사', '사'(받침 없음) → '사' ⇒ 동일
       const question = buildQuestion('fill_blank', '산');
       expect(scorer.isCorrect(question, '사')).toBe(true);
     });
 
-    it('받침 차이를 무시한다 — 정답 "강아지", 입력 "강아징"도 정답이어야 한다', () => {
-      // '징'(받침 ㅇ) → '지' ⇒ 정답 '강아지'와 동일
+    it('끝 음절 받침 차이를 무시한다 — 정답 "강아지", 입력 "강아징"도 정답이어야 한다', () => {
+      // 끝 음절 '징'(받침 ㅇ) → '지' ⇒ 정답 '강아지'와 동일
       const question = buildQuestion('fill_blank', '강아지');
       expect(scorer.isCorrect(question, '강아징')).toBe(true);
     });
 
-    it('받침 제거 + 띄어쓰기 무시를 동시에 적용한다', () => {
-      // 입력 '바 다ㄴ' 형태 대신 받침 케이스: '받침' 정답 → '바침'(첫 음절 받침 제거 결과)
+    it('끝 음절 받침만 다른 단어("사랑" vs "사람")는 정답으로 처리한다', () => {
+      // 끝 음절 '랑'→'라', '람'→'라' ⇒ 동일 (R4=(b) 종성 관대함)
+      const question = buildQuestion('fill_blank', '사랑');
+      expect(scorer.isCorrect(question, '사람')).toBe(true);
+    });
+
+    it('중간 음절의 받침은 보존한다 — 정답 "받침", 입력 "바침"은 오답이어야 한다', () => {
+      // 끝 음절만 정규화: '받침'→'받치', '바침'→'바치' ⇒ 첫 음절(받/바)이 달라 불일치
       const question = buildQuestion('fill_blank', '받침');
-      // '받'→'바', '침'→'치' ⇒ 정규화 '바치'. 입력 '바 치'도 동일해야 함
-      expect(scorer.isCorrect(question, '바 치')).toBe(true);
+      expect(scorer.isCorrect(question, '바침')).toBe(false);
+    });
+
+    it('띄어쓰기 + 끝 음절 받침 무시를 동시에 적용한다', () => {
+      // '받침'→'받치', 입력 '받 치'→'받치' ⇒ 동일
+      const question = buildQuestion('fill_blank', '받침');
+      expect(scorer.isCorrect(question, '받 치')).toBe(true);
     });
 
     it('완전히 다른 단어는 오답이어야 한다', () => {

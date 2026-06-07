@@ -32,6 +32,8 @@ interface PatientDayStepProps {
   onClearPhoto: () => void;
   onPrev: () => void;
   onSubmit: () => void;
+  /** 질문 prefetch 실패 시 재시도 */
+  onRetryQuestions?: () => void;
 }
 
 /**
@@ -49,11 +51,17 @@ export function PatientDayStep({
   onClearPhoto,
   onPrev,
   onSubmit,
+  onRetryQuestions,
 }: PatientDayStepProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const nonEmptyAnswerCount = countNonEmptyAnswers(patientAnswers);
   const canSubmit = !isSubmitting && (nonEmptyAnswerCount > 0 || photo !== null);
+  // 한 개라도 질문 prefetch가 안 됐으면 해당 답변이 저장 시 유실되므로 재시도를 안내한다.
+  const hasMissingQuestion =
+    patientQuestions.activity === null ||
+    patientQuestions.moment === null ||
+    patientQuestions.context === null;
 
   return (
     <section
@@ -154,9 +162,20 @@ export function PatientDayStep({
       {error && (
         <div
           role="alert"
-          className="mt-4 rounded-xl border border-[#E07B54] bg-[#FBE9E2] p-3 text-sm text-[#7A2E15]"
+          className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#E07B54] bg-[#FBE9E2] p-3 text-sm text-[#7A2E15]"
         >
-          {error}
+          <span>{error}</span>
+          {hasMissingQuestion && onRetryQuestions && (
+            <button
+              type="button"
+              onClick={onRetryQuestions}
+              disabled={isSubmitting}
+              className="rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-[#7A2E15] underline transition-colors hover:bg-[#FCF3EC] disabled:opacity-50"
+              aria-label="질문 다시 불러오기"
+            >
+              질문 다시 불러오기
+            </button>
+          )}
         </div>
       )}
 

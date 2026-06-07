@@ -11,7 +11,23 @@ export enum QuizErrorCode {
   SESSION_EXPIRED = 'SESSION_EXPIRED',
   INVALID_ANSWER_FORMAT = 'INVALID_ANSWER_FORMAT',
   NO_PATIENT_NOTES = 'NO_PATIENT_NOTES',
+  /** LLM 호출 실패 (원인 미상/네트워크) — 일시적, 재시도 가능 */
   LLM_GENERATION_FAILED = 'LLM_GENERATION_FAILED',
+  /** FastAPI 422 — 메모가 퀴즈 생성에 부적합 (영구, 재시도해도 동일) */
+  LLM_INVALID_NOTES = 'LLM_INVALID_NOTES',
+  /** FastAPI 504 — LLM 응답 지연 (일시적, 재시도 가능) */
+  LLM_TIMEOUT = 'LLM_TIMEOUT',
+  /** FastAPI 502 — LLM 업스트림 오류 (일시적, 재시도 가능) */
+  LLM_UPSTREAM = 'LLM_UPSTREAM',
+}
+
+/**
+ * 생성 실패가 영구적(재시도 무의미)인지 판별한다.
+ * - 영구: LLM_INVALID_NOTES (메모 자체가 부적합 → 재생성해도 동일)
+ * - 일시: 그 외 LLM 실패 (네트워크/타임아웃/업스트림 → 재시도 가치 있음)
+ */
+export function isPermanentGenerationFailure(code: QuizErrorCode): boolean {
+  return code === QuizErrorCode.LLM_INVALID_NOTES;
 }
 
 /** 퀴즈 도메인 에러 기반 클래스 */

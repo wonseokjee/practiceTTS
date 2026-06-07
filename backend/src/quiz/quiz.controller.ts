@@ -167,8 +167,11 @@ export class QuizController {
         return new GoneException(error.message);
       case QuizErrorCode.INVALID_ANSWER_FORMAT:
       case QuizErrorCode.NO_PATIENT_NOTES:
+      case QuizErrorCode.LLM_INVALID_NOTES:
         return new UnprocessableEntityException(error.message);
       case QuizErrorCode.LLM_GENERATION_FAILED:
+      case QuizErrorCode.LLM_TIMEOUT:
+      case QuizErrorCode.LLM_UPSTREAM:
         return new BadGatewayException(error.message);
       default:
         return error;

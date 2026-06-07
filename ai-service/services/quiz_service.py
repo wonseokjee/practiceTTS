@@ -118,7 +118,8 @@ class QuizGeneratorService:
             raise InvalidPatientNotesError(
                 "patient_notes가 비어 있습니다. 최소 1개 이상의 메모가 필요합니다"
             )
-        blob = "".join(n.answer_text for n in notes)
+        # 줄바꿈으로 구분해 노트 경계를 가로지르는 허위 부분일치(가드 3)를 방지한다.
+        blob = "\n".join(n.answer_text for n in notes)
         if len(blob.strip()) < _MIN_NOTES_BLOB_LEN:
             raise InvalidPatientNotesError(
                 f"메모 합본 글자 수가 부족합니다 (최소 {_MIN_NOTES_BLOB_LEN}자)"
@@ -387,7 +388,8 @@ class QuizGeneratorService:
                 )
             )
 
-        # 폴백 문제도 길이/금칙어 일관성 유지를 위해 sanitize 통과 보장
+        # 폴백 정답은 _extract_candidate_words 단계에서 금칙어를 배제했고,
+        # prompt는 _MAX_SENTENCE_LEN으로 절단되므로 길이/금칙어 불변식을 만족한다.
         return backfilled[:needed]
 
     def _extract_candidate_words(
@@ -401,6 +403,9 @@ class QuizGeneratorService:
             if len(word) < 2:
                 continue
             if word in used_answers or word in seen:
+                continue
+            # 가드 4: 금칙어가 폴백 정답으로 새어 나가지 않도록 후보 단계에서 배제한다.
+            if self._contains_banned_word([word]):
                 continue
             seen.add(word)
             candidates.append(word)
@@ -420,7 +425,7 @@ class QuizGeneratorService:
 
         word가 포함된 원문 문장을 찾아 word를 ___로 치환하고, 없으면 기본 문형을 쓴다.
         """
-        prompt = f"오늘 ___을 기억하나요?"
+        prompt = "오늘 ___을 기억하나요?"
         for line in re.split(r"[.\n]", notes_blob):
             if word in line and line.strip():
                 replaced = line.strip().replace(word, "___", 1)

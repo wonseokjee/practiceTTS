@@ -1,5 +1,5 @@
 import { HttpModule } from '@nestjs/axios';
-import { Module } from '@nestjs/common';
+import { Logger, Module, OnApplicationBootstrap } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
 import { MemoryEntry } from '../memory/entities/memory-entry.entity';
@@ -50,4 +50,21 @@ import { QuizScorerService } from './services/quiz-scorer.service';
   ],
   exports: [],
 })
-export class QuizModule {}
+export class QuizModule implements OnApplicationBootstrap {
+  private readonly logger = new Logger(QuizModule.name);
+
+  constructor(private readonly quizService: QuizService) {}
+
+  /**
+   * 부팅 직후 고아 pending QuizSet을 복구한다 (이벤트 durability 보강).
+   * - 이전 프로세스가 LLM 생성 중 죽어 'pending'에 박제된 set을 재시도.
+   * - fire-and-forget: 복구 작업(LLM 호출 다수)이 앱 부팅을 막지 않도록 await하지 않는다.
+   */
+  onApplicationBootstrap(): void {
+    void this.quizService.recoverStalePendingSets().catch((error) => {
+      const message =
+        error instanceof Error ? error.message : '알 수 없는 오류';
+      this.logger.warn(`pending QuizSet 복구 작업 실패: ${message}`);
+    });
+  }
+}

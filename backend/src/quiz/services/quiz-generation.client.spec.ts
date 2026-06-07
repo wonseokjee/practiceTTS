@@ -215,5 +215,39 @@ describe('QuizGenerationClient', () => {
       });
       await expect(client.generate(payload)).rejects.toBeInstanceOf(QuizError);
     });
+
+    /** FastAPI HTTP status별 도메인 에러 코드 매핑 (S2: 영구/일시 구분) */
+    it.each([
+      [422, QuizErrorCode.LLM_INVALID_NOTES],
+      [504, QuizErrorCode.LLM_TIMEOUT],
+      [502, QuizErrorCode.LLM_UPSTREAM],
+    ])(
+      'FastAPI %i 응답은 %s 코드로 매핑해야 한다',
+      async (status, expectedCode) => {
+        httpServiceMock.post.mockImplementation(() =>
+          throwError(() =>
+            Object.assign(new Error('upstream'), { response: { status } }),
+          ),
+        );
+
+        await expect(
+          client.generate({
+            patientNotes: [{ category: 'activity', answerText: '산책' }],
+          }),
+        ).rejects.toMatchObject({ code: expectedCode });
+      },
+    );
+
+    it('응답 없는 네트워크 오류는 LLM_GENERATION_FAILED(제네릭)로 매핑해야 한다', async () => {
+      httpServiceMock.post.mockImplementation(() =>
+        throwError(() => new Error('ECONNREFUSED')),
+      );
+
+      await expect(
+        client.generate({
+          patientNotes: [{ category: 'activity', answerText: '산책' }],
+        }),
+      ).rejects.toMatchObject({ code: QuizErrorCode.LLM_GENERATION_FAILED });
+    });
   });
 });

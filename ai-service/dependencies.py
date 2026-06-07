@@ -7,6 +7,8 @@
 """
 import os
 
+from fastapi import HTTPException, status
+
 from infra.gemini_client import GeminiClient
 from infra.in_memory_masking_store import InMemoryMaskingStore
 from infra.in_memory_vector_store import InMemoryVectorStore
@@ -98,10 +100,22 @@ def get_chat_service() -> ChatService:
 
 
 def get_quiz_generator_service() -> QuizGeneratorService:
-    """QuizGeneratorService 싱글턴 반환 (FastAPI Depends 용)."""
+    """QuizGeneratorService 싱글턴 반환 (FastAPI Depends 용).
+
+    GEMINI_API_KEY 미설정 시 GeminiClient 생성자가 ValueError를 던지는데,
+    그대로 두면 의존성 주입 단계에서 처리되지 않은 500이 발생한다.
+    이를 구조화된 503(LLM_NOT_CONFIGURED)으로 변환해, 상위(NestJS)와 운영자가
+    '일시적 LLM 오류'가 아니라 '서비스 미구성'임을 구분할 수 있게 한다.
+    """
     global _quiz_generator_service
     if _quiz_generator_service is None:
-        _quiz_generator_service = QuizGeneratorService(
-            llm_client=_get_gemini_client(),
-        )
+        try:
+            _quiz_generator_service = QuizGeneratorService(
+                llm_client=_get_gemini_client(),
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"LLM_NOT_CONFIGURED: {exc}",
+            ) from exc
     return _quiz_generator_service

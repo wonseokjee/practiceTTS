@@ -54,6 +54,8 @@ export interface UseCaptureFlowReturn {
   error: string | null;
   /** 생성된 메모리 엔트리 (done 단계에서 사용 가능) */
   createdEntry: MemoryEntry | null;
+  /** 이번 제출로 퀴즈 자동생성이 기대되는지 (노트 ≥ 1). done 화면 폴링 게이트. */
+  quizExpected: boolean;
   setMood: (level: MoodLevel) => void;
   setCaregiverAnswerText: (text: string) => void;
   setPatientAnswerText: (category: PatientCategory, text: string) => void;
@@ -63,6 +65,8 @@ export interface UseCaptureFlowReturn {
   prev: () => void;
   submit: () => Promise<void>;
   reset: () => void;
+  /** 질문 prefetch 실패 시 재시도 (PatientDayStep의 재시도 버튼용) */
+  retryQuestions: () => void;
 }
 
 /** 선택적 의존성 주입 (테스트 용이성) */
@@ -121,13 +125,12 @@ export function useCaptureFlow(
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [createdEntry, setCreatedEntry] = useState<MemoryEntry | null>(null);
+  const [quizExpected, setQuizExpected] = useState<boolean>(false);
 
-  // ── 질문 prefetch (마운트 시 한 번) ──────────────────────────────
-  useEffect(() => {
-    let cancelled = false;
-
-    const api = questionApiRef.current;
-    const prefetchAll = async (): Promise<void> => {
+  // ── 질문 prefetch (마운트 시 한 번, 실패 시 재시도 가능) ──────────
+  const prefetchQuestions = useCallback(
+    async (isCancelled?: () => boolean): Promise<void> => {
+      const api = questionApiRef.current;
       try {
         const [caregiver, activity, moment, context] = await Promise.all([
           api.fetchToday({ scope: 'caregiver' }),
@@ -136,22 +139,35 @@ export function useCaptureFlow(
           api.fetchToday({ scope: 'patient', category: 'context' }),
         ]);
 
-        if (cancelled) return;
+        if (isCancelled?.()) return;
         setCaregiverQuestion(caregiver);
         setPatientQuestions({ activity, moment, context });
+        // 성공 시 error를 건드리지 않는다 — 마운트 prefetch가 늦게 끝나며
+        // 사용자가 보고 있는 다른 검증 에러를 덮어쓰지 않도록 한다.
+        // (prefetch 에러는 retryQuestions가 시작 시점에 직접 클리어한다.)
       } catch (err) {
-        if (cancelled) return;
-        // prefetch 실패는 화면 진입 자체를 막진 않으나, 에러는 표시한다.
+        if (isCancelled?.()) return;
+        // prefetch 실패는 화면 진입 자체를 막진 않으나, 에러를 표시하고
+        // 제출 시점(submit)에서 답변 유실을 방지하도록 한다.
         setError(extractErrorMessage(err));
       }
-    };
+    },
+    [],
+  );
 
-    void prefetchAll();
-
+  useEffect(() => {
+    let cancelled = false;
+    void prefetchQuestions(() => cancelled);
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [prefetchQuestions]);
+
+  const retryQuestions = useCallback((): void => {
+    // 재시도 시작 시점에 직전 prefetch 에러를 클리어한다.
+    setError(null);
+    void prefetchQuestions();
+  }, [prefetchQuestions]);
 
   // ── 액션 ────────────────────────────────────────────────────────
 
@@ -246,6 +262,21 @@ export function useCaptureFlow(
       return;
     }
 
+    // prefetch 실패로 질문 id가 없으면 입력한 답변이 조용히 유실되므로 먼저 차단한다.
+    // (collectNonEmptyPatientAnswers는 question이 없는 답변을 버리기 때문)
+    const categories: PatientCategory[] = ['activity', 'moment', 'context'];
+    const hasTypedButUnmappedAnswer = categories.some(
+      (category) =>
+        patientAnswers[category].trim().length > 0 &&
+        !patientQuestions[category],
+    );
+    if (hasTypedButUnmappedAnswer) {
+      setError(
+        '질문을 불러오지 못해 답변을 저장할 수 없어요. 다시 시도해주세요.',
+      );
+      return;
+    }
+
     // patientAnswers ≥ 1 OR photo (백엔드 OR 검증과 일관)
     const nonEmptyPatientAnswers = collectNonEmptyPatientAnswers(
       patientAnswers,
@@ -282,6 +313,9 @@ export function useCaptureFlow(
       });
 
       setCreatedEntry(entry);
+      // 노트가 1개 이상일 때만 백엔드가 퀴즈 생성을 트리거하므로,
+      // done 화면에서 그 경우에만 생성 결과를 폴링한다.
+      setQuizExpected(nonEmptyPatientAnswers.length > 0);
       setStep('done');
     } catch (err) {
       setError(extractErrorMessage(err));
@@ -314,6 +348,7 @@ export function useCaptureFlow(
     setIsSubmitting(false);
     setError(null);
     setCreatedEntry(null);
+    setQuizExpected(false);
     // 질문 prefetch 결과는 유지 (다음 캡처에 재사용)
   }, []);
 
@@ -330,6 +365,7 @@ export function useCaptureFlow(
     isSubmitting,
     error,
     createdEntry,
+    quizExpected,
     setMood,
     setCaregiverAnswerText,
     setPatientAnswerText,
@@ -339,6 +375,7 @@ export function useCaptureFlow(
     prev,
     submit,
     reset,
+    retryQuestions,
   };
 }
 
