@@ -16,7 +16,7 @@ interface AudioPlayerBarProps {
 }
 
 export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
-  targetWord,
+  // targetWord는 정답 노출 방지를 위해 화면에 표시하지 않는다 (props 호환 유지)
   isPlaying,
   isReplayEnabled,
   replayCount,

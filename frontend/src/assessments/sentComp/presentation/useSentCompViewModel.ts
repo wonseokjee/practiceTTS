@@ -35,7 +35,6 @@ import { HtmlAudioPlayer } from '../../../shared/infrastructure/HtmlAudioPlayer.
 import { JsonSentCompItemRepository } from '../infrastructure/JsonSentCompItemRepository.js';
 import { SessionLocalStorageSentCompRepository } from '../infrastructure/LocalStorageSentCompRepository.js';
 import { SubmitAnswerUseCase } from '../application/useCases/SubmitAnswerUseCase.js';
-import { ReplayAudioUseCase } from '../application/useCases/ReplayAudioUseCase.js';
 import { CalculateScoreUseCase } from '../application/useCases/CalculateScoreUseCase.js';
 import { SentCompError, SentCompErrorCode } from '../application/errors.js';
 import type { ScoreDTO } from '../application/dtos.js';
@@ -144,7 +143,9 @@ export function useSentCompViewModel(
   const itemRepository = useMemo(
     () =>
       new JsonSentCompItemRepository(
-        sentCompItemsData as SentenceComprehensionItem[],
+        // JSON 정적 데이터 → 도메인 타입. 런타임 형태는 일치하나 TS 구조 검사상
+        // sentenceType(union)·choices(튜플) strictness 때문에 unknown 경유 단언.
+        sentCompItemsData as unknown as SentenceComprehensionItem[],
       ),
     [],
   );
@@ -160,10 +161,7 @@ export function useSentCompViewModel(
     [itemRepository, resultRepository, sessionId],
   );
 
-  const replayUseCase = useMemo(
-    () => new ReplayAudioUseCase(audioPlayer),
-    [audioPlayer],
-  );
+  // 재청취는 handleReplay에서 audioPlayer를 직접 사용한다 (ReplayAudioUseCase 미사용)
 
   const calculateScoreUseCase = useMemo(
     () => new CalculateScoreUseCase(itemRepository, resultRepository),

@@ -10,7 +10,6 @@
  * 이 컴포넌트는 순수한 렌더링만 담당한다.
  */
 
-import type React from 'react';
 import { useSessionContext } from '../../../shared/session/SessionContext.js';
 import { useSentCompViewModel } from './useSentCompViewModel.js';
 import { SentenceAudioPlayer } from './components/SentenceAudioPlayer.js';

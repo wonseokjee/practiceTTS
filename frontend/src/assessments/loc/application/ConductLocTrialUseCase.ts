@@ -109,7 +109,7 @@ export class ConductLocTrialUseCase {
    * 지정된 시도 번호에 해당하는 TTS 지시문을 재생한다.
    * 재생 완료 후 audioEndTime을 반환한다.
    */
-  async playInstruction(trialNumber: 1 | 2 | 3): Promise<number> {
+  async playInstruction(_trialNumber: 1 | 2 | 3): Promise<number> {
     const text = LOC_INSTRUCTION;
 
     try {

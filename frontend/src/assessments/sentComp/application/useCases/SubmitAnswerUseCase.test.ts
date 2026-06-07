@@ -25,7 +25,7 @@ function makeMockItem(itemId: string): SentenceComprehensionItem {
     choices: [
       { imageUrl: `/img/${itemId}_0.webp`, altText: '선택지 0', isCorrect: true },
       { imageUrl: `/img/${itemId}_1.webp`, altText: '선택지 1', isCorrect: false },
-    ],
+    ] as const,
     orderIndex: 0,
   });
 }

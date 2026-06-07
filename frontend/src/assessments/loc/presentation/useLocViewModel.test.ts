@@ -74,9 +74,9 @@ type PlayReturn = ReturnType<InstanceType<typeof import('../application/ConductL
 type FinishParams = Parameters<InstanceType<typeof import('../application/FinishLocAssessmentUseCase.js').FinishLocAssessmentUseCase>['execute']>;
 type FinishReturn = ReturnType<InstanceType<typeof import('../application/FinishLocAssessmentUseCase.js').FinishLocAssessmentUseCase>['execute']>;
 
-const mockExecute = vi.fn<ExecuteParams, ExecuteReturn>();
-const mockPlayInstruction = vi.fn<PlayParams, PlayReturn>();
-const mockFinishExecute = vi.fn<FinishParams, FinishReturn>();
+const mockExecute = vi.fn<(...args: ExecuteParams) => ExecuteReturn>();
+const mockPlayInstruction = vi.fn<(...args: PlayParams) => PlayReturn>();
+const mockFinishExecute = vi.fn<(...args: FinishParams) => FinishReturn>();
 
 // ---- 모의 UseCase 인스턴스 ----
 const mockConductUseCase = {
@@ -89,7 +89,7 @@ const mockFinishUseCase = {
 } as unknown as InstanceType<typeof import('../application/FinishLocAssessmentUseCase.js').FinishLocAssessmentUseCase>;
 
 // ---- 공통 콜백 ----
-const mockOnComplete = vi.fn<[string], void>();
+const mockOnComplete = vi.fn<(resultId: string) => void>();
 
 // ---- 훅 생성 헬퍼 ----
 function renderLocViewModel() {
