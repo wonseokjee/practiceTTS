@@ -148,7 +148,7 @@ class TestTCQ1정상생성:
 
         # Assert
         assert len(response.questions) == 5
-        assert response.model == "gemini-1.5-flash"
+        assert response.model == "gemini-2.5-flash-lite"
         assert fake.call_count == 1  # 재시도 없음
         assert response.fallback_used is False
 

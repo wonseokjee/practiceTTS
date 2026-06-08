@@ -13,6 +13,7 @@ plan §8-2 안전 가드 1~5 + 규칙 기반 폴백을 구현한다:
 import asyncio
 import json
 import logging
+import os
 import re
 import time
 
@@ -34,8 +35,9 @@ from prompts.quiz_prompt import QUIZ_RETRY_INSTRUCTION, QUIZ_SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 
-# 퀴즈 생성 모델 (Q-A: flash 고정, pro 폴백 없음)
-_QUIZ_MODEL = "gemini-1.5-flash"
+# 퀴즈 생성 모델 (저비용 flash 계열). 모델명이 폐기될 때 코드 수정 없이 교체할 수
+# 있도록 GEMINI_QUIZ_MODEL 환경변수로 오버라이드 가능. (gemini-1.5-flash는 폐기됨)
+_QUIZ_MODEL = os.getenv("GEMINI_QUIZ_MODEL", "gemini-2.5-flash-lite")
 # LLM 호출 제한 시간 (초)
 _LLM_TIMEOUT_SECONDS = 25
 # 문장(prompt) 최대 길이 (가드 5)
