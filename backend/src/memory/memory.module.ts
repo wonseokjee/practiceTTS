@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
 import { CaregiverReflection } from './entities/caregiver-reflection.entity';
 import { DiaryQuestion } from './entities/diary-question.entity';
+import { HealingMessage } from './entities/healing-message.entity';
 import { MemoryEntry } from './entities/memory-entry.entity';
 import { MoodEntry } from './entities/mood-entry.entity';
 import { PatientMemoryNote } from './entities/patient-memory-note.entity';
@@ -13,6 +14,7 @@ import { CryptoService } from './services/crypto.service';
 import { DiaryQuestionService } from './services/diary-question.service';
 import { FastApiClientService } from './services/fast-api-client.service';
 import { FileStorageService } from './services/file-storage.service';
+import { HealingMessageService } from './services/healing-message.service';
 
 /**
  * 메모리 엔트리 모듈 (Phase 1 확장)
@@ -30,6 +32,7 @@ import { FileStorageService } from './services/file-storage.service';
       CaregiverReflection,
       PatientMemoryNote,
       DiaryQuestion,
+      HealingMessage,
     ]),
     HttpModule,
     AuthModule,
@@ -41,7 +44,8 @@ import { FileStorageService } from './services/file-storage.service';
     CryptoService,
     FileStorageService,
     DiaryQuestionService,
+    HealingMessageService,
   ],
-  exports: [MemoryEntryService, DiaryQuestionService],
+  exports: [MemoryEntryService, DiaryQuestionService, HealingMessageService],
 })
 export class MemoryModule {}

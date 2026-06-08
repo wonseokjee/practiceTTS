@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../../shared/AuthContext.js';
+import { DailyHealingBanner } from '../../shared/components/DailyHealingBanner.js';
 import { useCaptureFlow } from '../application/useCaptureFlow.js';
 import { useMemoryEntries } from '../application/useMemoryEntries.js';
 import { CaptureScreen } from './CaptureScreen.js';
@@ -107,6 +108,9 @@ export function CaregiverDashboard() {
 
       {/* 메인 콘텐츠 */}
       <main className="max-w-2xl mx-auto px-4 py-6">
+        {/* 오늘의 치유 메시지 (Pattern 2) — 목록 화면에서만 노출 */}
+        {view === 'list' && <DailyHealingBanner />}
+
         {/* 목록 화면 */}
         {view === 'list' && (
           <EntryListScreen

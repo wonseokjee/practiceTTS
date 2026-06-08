@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/AuthContext.js';
+import { DailyHealingBanner } from '../../shared/components/DailyHealingBanner.js';
 import { ReturnToCaregiverPinModal } from '../../shared/ReturnToCaregiverPinModal.js';
 import { trainingSessionApi } from '../infrastructure/TrainingSessionApi.js';
 import type { AvailableEntry } from '../domain/TrainingSession.js';
@@ -174,7 +175,10 @@ export function PatientDashboard() {
 
       {/* 메인 컨텐츠 */}
       <main className="px-6 py-6 max-w-2xl mx-auto">
-        
+
+        {/* 오늘의 치유 메시지 (Pattern 2) */}
+        <DailyHealingBanner />
+
         {/* 개발 환경 전용: QAB 검사 바로가기 버튼 */}
         {import.meta.env.DEV && (
           <div className="mb-8 p-4 bg-indigo-50 border border-indigo-100 rounded-2xl flex flex-col items-center">

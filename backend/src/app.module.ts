@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { DatabaseModule } from './database/database.module';
 import { MemoryModule } from './memory/memory.module';
 import { seedDiaryQuestionsIfMissing } from './memory/seeds/diary-questions.seed';
+import { seedHealingMessagesIfMissing } from './memory/seeds/healing-messages.seed';
 import { QuizModule } from './quiz/quiz.module';
 import { TrainingModule } from './training/training.module';
 
@@ -43,6 +44,11 @@ export class AppModule implements OnModuleInit {
     );
     this.logger.log(
       `diary_questions 시드 적용 완료 (inserted=${inserted}, skipped=${skipped})`,
+    );
+
+    const healing = await seedHealingMessagesIfMissing(this.dataSource);
+    this.logger.log(
+      `healing_messages 시드 적용 완료 (inserted=${healing.inserted}, skipped=${healing.skipped})`,
     );
   }
 }

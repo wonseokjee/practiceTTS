@@ -35,6 +35,7 @@ import { UpdateMemoryEntryDto } from './dto/update-memory-entry.dto';
 import { MemoryEntryService } from './memory.service';
 import { DiaryQuestionService } from './services/diary-question.service';
 import { FileStorageService } from './services/file-storage.service';
+import { HealingMessageService } from './services/healing-message.service';
 
 /** JWT 인증 후 req.user에 주입되는 사용자 타입 */
 interface AuthenticatedRequest extends Request {
@@ -54,6 +55,7 @@ export class MemoryController {
     private readonly diaryQuestionService: DiaryQuestionService,
     // 미사용이지만 기존 모듈 와이어링 호환을 위해 주입 유지
     private readonly fileStorageService: FileStorageService,
+    private readonly healingMessageService: HealingMessageService,
   ) {}
 
   /**
@@ -171,5 +173,14 @@ export class MemoryController {
       query.category,
     );
     return toDiaryQuestionResponseDto(question);
+  }
+
+  /**
+   * GET /healing-messages/today
+   * 오늘의 치유 메시지 1개 (Pattern 2). 환자·보호자 공통, 날짜 기반 결정적 회전.
+   */
+  @Get('healing-messages/today')
+  async getTodayHealingMessage(): Promise<{ id: string; text: string }> {
+    return this.healingMessageService.getTodayMessage();
   }
 }
