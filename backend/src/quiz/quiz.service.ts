@@ -21,6 +21,11 @@ import {
 } from './interfaces/IQuizGenerationClient';
 import type { IQuizGenerationPayload } from './interfaces/IQuizGenerationPayload';
 import { IQuizScorer, QUIZ_SCORER } from './interfaces/IQuizScorer';
+import {
+  IWishConversionClient,
+  WISH_CONVERSION_CLIENT,
+  WishConversionResult,
+} from './interfaces/IWishConversionClient';
 
 /** 세션 만료 기준: 첫 답안 이후 30분 (§7-1 SESSION_EXPIRED) */
 const SESSION_TTL_MS = 30 * 60 * 1000;
@@ -66,7 +71,8 @@ export interface QuizSetDetail {
   quizSetId: string;
   memoryEntry: {
     photoUrl: string | null;
-    caregiverWishMessage: null;
+    // Phase 6: 보호자 한마디 노출 (없으면 null). CaregiverWishCard 렌더 게이트.
+    caregiverWishMessage: string | null;
   };
   patientNotes: Array<{ category: string; answerText: string }>;
   questions: QuizQuestionPublicDto[];
@@ -117,6 +123,8 @@ export class QuizService {
     private readonly generationClient: IQuizGenerationClient,
     @Inject(QUIZ_SCORER)
     private readonly scorer: IQuizScorer,
+    @Inject(WISH_CONVERSION_CLIENT)
+    private readonly wishClient: IWishConversionClient,
   ) {}
 
   /**
@@ -446,8 +454,8 @@ export class QuizService {
       quizSetId: set.id,
       memoryEntry: {
         photoUrl: entry?.photoUrl ?? null,
-        // caregiverWishMessage는 Phase 1~5에서 항상 null (양방향 치유 Phase 6 도입)
-        caregiverWishMessage: null,
+        // Phase 6: 환자 본인 화면에만 노출 (verifyPatient로 소유권 검증 완료).
+        caregiverWishMessage: entry?.caregiverWishMessage ?? null,
       },
       patientNotes: notes.map((note) => ({
         category: note.category,
@@ -690,6 +698,33 @@ export class QuizService {
       `pending QuizSet 복구 완료 (recovered=${recovered}, failed=${failed}, scanned=${stale.length})`,
     );
     return { recovered, failed, skipped: 0 };
+  }
+
+  /**
+   * 한마디→발화연습 변환 (Pattern 1, on-demand).
+   * - 환자 본인 소유 검증 후, 해당 라이프로그의 caregiverWishMessage를 ai-service로 변환.
+   * - 한마디가 없으면 NO_WISH_MESSAGE.
+   * - FE가 보낸 텍스트를 신뢰하지 않고 DB의 한마디를 직접 읽어 변환한다(트러스트 경계).
+   */
+  async getWishPractice(
+    setId: string,
+    effectivePatientId: string,
+  ): Promise<WishConversionResult> {
+    const set = await this.findSetOrThrow(setId);
+    this.verifyPatient(set, effectivePatientId);
+
+    const entry = await this.memoryEntryRepository.findOne({
+      where: { id: set.memoryEntryId },
+    });
+    const wishMessage = entry?.caregiverWishMessage?.trim();
+    if (!wishMessage) {
+      throw new QuizError(
+        QuizErrorCode.NO_WISH_MESSAGE,
+        '이 기록에는 보호자 한마디가 없어요.',
+      );
+    }
+
+    return this.wishClient.convert(wishMessage);
   }
 
   // ─── 내부 헬퍼 ─────────────────────────────────────────────────────

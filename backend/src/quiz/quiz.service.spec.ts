@@ -10,6 +10,7 @@ import { QuizSet } from './entities/quiz-set.entity';
 import { QuizError, QuizErrorCode } from './errors/quiz.errors';
 import { QUIZ_GENERATION_CLIENT } from './interfaces/IQuizGenerationClient';
 import { QUIZ_SCORER } from './interfaces/IQuizScorer';
+import { WISH_CONVERSION_CLIENT } from './interfaces/IWishConversionClient';
 import { QuizService } from './quiz.service';
 
 /**
@@ -42,6 +43,7 @@ describe('QuizService', () => {
   let patientMemoryNoteRepo: ReturnType<typeof buildRepoMock>;
   let generationClientMock: { generate: jest.Mock };
   let scorerMock: { isCorrect: jest.Mock; toScore: jest.Mock };
+  let wishClientMock: { convert: jest.Mock };
 
   function buildRepoMock() {
     return {
@@ -124,6 +126,7 @@ describe('QuizService', () => {
     patientMemoryNoteRepo = buildRepoMock();
     generationClientMock = { generate: jest.fn() };
     scorerMock = { isCorrect: jest.fn(), toScore: jest.fn() };
+    wishClientMock = { convert: jest.fn() };
 
     // create는 입력을 그대로 반환하는 기본 동작
     quizSetRepo.create.mockImplementation((x: unknown) => x);
@@ -174,6 +177,7 @@ describe('QuizService', () => {
         },
         { provide: QUIZ_GENERATION_CLIENT, useValue: generationClientMock },
         { provide: QUIZ_SCORER, useValue: scorerMock },
+        { provide: WISH_CONVERSION_CLIENT, useValue: wishClientMock },
       ],
     }).compile();
 
@@ -909,6 +913,50 @@ describe('QuizService', () => {
         QUIZ_SET_ID,
         expect.objectContaining({ generationStatus: 'failed' }),
       );
+    });
+  });
+
+  // ─── 한마디→발화연습 (Phase 6 Pattern 1) ─────────────────────────────
+  describe('getWishPractice', () => {
+    const WISH_RESULT = {
+      echoSentence: '사랑해 우리 손녀',
+      fillBlank: { prompt: '사랑해 우리 ___', answer: '손녀', hintFirstChar: '손' },
+      model: 'gemini-2.5-flash-lite',
+      fallbackUsed: false,
+    };
+
+    it('한마디가 있으면 wishClient.convert 결과를 반환한다', async () => {
+      quizSetRepo.findOne.mockResolvedValue(buildSet());
+      memoryEntryRepo.findOne.mockResolvedValue(
+        buildEntry({ caregiverWishMessage: '사랑해 우리 손녀' }),
+      );
+      wishClientMock.convert.mockResolvedValue(WISH_RESULT);
+
+      const result = await service.getWishPractice(QUIZ_SET_ID, PATIENT_ID);
+
+      expect(wishClientMock.convert).toHaveBeenCalledWith('사랑해 우리 손녀');
+      expect(result).toEqual(WISH_RESULT);
+    });
+
+    it('한마디가 없으면 NO_WISH_MESSAGE를 던진다', async () => {
+      quizSetRepo.findOne.mockResolvedValue(buildSet());
+      memoryEntryRepo.findOne.mockResolvedValue(
+        buildEntry({ caregiverWishMessage: null }),
+      );
+
+      await expect(
+        service.getWishPractice(QUIZ_SET_ID, PATIENT_ID),
+      ).rejects.toMatchObject({ code: QuizErrorCode.NO_WISH_MESSAGE });
+      expect(wishClientMock.convert).not.toHaveBeenCalled();
+    });
+
+    it('다른 환자면 FORBIDDEN (소유권 검증)', async () => {
+      quizSetRepo.findOne.mockResolvedValue(buildSet());
+
+      await expect(
+        service.getWishPractice(QUIZ_SET_ID, 'other-patient'),
+      ).rejects.toMatchObject({ code: QuizErrorCode.FORBIDDEN });
+      expect(wishClientMock.convert).not.toHaveBeenCalled();
     });
   });
 });

@@ -12,6 +12,7 @@ import { useState } from 'react';
 import { useQuizSession } from '../application/useQuizSession.js';
 import type { UseQuizSessionDeps } from '../application/useQuizSession.js';
 import type { AttemptResult, QuizQuestionPublic, YesNoAnswer } from '../domain/Quiz.js';
+import { CaregiverWishCard } from './CaregiverWishCard.js';
 import { QuizPhotoHint } from './QuizPhotoHint.js';
 import { QuizProgressBar } from './QuizProgressBar.js';
 import { QuizResultScreen } from './QuizResultScreen.js';
@@ -30,6 +31,8 @@ interface QuizScreenProps {
 /** 퀴즈 풀이 화면 컨테이너 */
 export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
   const [state, actions] = useQuizSession(quizSetId, deps);
+  // Phase 6: 보호자 한마디 카드를 퀴즈 앞에 한 번 노출 (있을 때만).
+  const [wishDismissed, setWishDismissed] = useState(false);
   const {
     phase,
     currentIndex,
@@ -99,6 +102,20 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
         onRetry={() => void actions.retry()}
         onBackToList={onExit}
       />
+    );
+  }
+
+  // ── 보호자 한마디 카드 (Phase 6) — 풀이 전 1회 노출 ──────────────
+  const wishMessage = detail?.memoryEntry.caregiverWishMessage ?? null;
+  if (wishMessage !== null && !wishDismissed) {
+    return (
+      <div className="font-pretendard mx-auto w-full max-w-2xl px-4 py-6">
+        <CaregiverWishCard
+          quizSetId={quizSetId}
+          wishMessage={wishMessage}
+          onProceed={() => setWishDismissed(true)}
+        />
+      </div>
     );
   }
 

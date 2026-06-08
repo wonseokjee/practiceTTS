@@ -87,6 +87,25 @@ export interface BestScore {
   achievedAt?: string;
 }
 
+/**
+ * 한마디→발화연습 변환 결과 (Phase 6 Pattern 1).
+ * POST /quiz/sets/:id/wish-practice 응답 미러.
+ */
+export interface WishFillBlank {
+  prompt: string;
+  answer: string;
+  hintFirstChar: string;
+}
+
+export interface WishPractice {
+  /** 따라말하기용 문장 (한마디 원문) */
+  echoSentence: string;
+  /** 빈칸 채우기 문항 */
+  fillBlank: WishFillBlank;
+  model: string;
+  fallbackUsed: boolean;
+}
+
 /** 제출 답안 1건 (questionId + 사용자 답) */
 export interface SubmitAnswer {
   questionId: string;

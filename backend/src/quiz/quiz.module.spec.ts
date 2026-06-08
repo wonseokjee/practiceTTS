@@ -8,6 +8,7 @@ import { QuizQuestion } from './entities/quiz-question.entity';
 import { QuizSet } from './entities/quiz-set.entity';
 import { QUIZ_GENERATION_CLIENT } from './interfaces/IQuizGenerationClient';
 import { QUIZ_SCORER } from './interfaces/IQuizScorer';
+import { WISH_CONVERSION_CLIENT } from './interfaces/IWishConversionClient';
 import { QuizController } from './quiz.controller';
 import { QuizModule } from './quiz.module';
 import { QuizService } from './quiz.service';
@@ -62,6 +63,10 @@ describe('Quiz Phase 3 와이어링', () => {
         {
           provide: QUIZ_SCORER,
           useValue: { isCorrect: jest.fn(), toScore: jest.fn() },
+        },
+        {
+          provide: WISH_CONVERSION_CLIENT,
+          useValue: { convert: jest.fn() },
         },
       ],
     }).compile();

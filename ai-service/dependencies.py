@@ -17,6 +17,7 @@ from services.masking_service import MaskingService
 from services.quiz_service import QuizGeneratorService
 from services.scenario_service import ScenarioService
 from services.tagging_service import TaggingService
+from services.wish_service import WishToPracticeService
 
 # 싱글턴 인스턴스 초기화
 _gemini_client: GeminiClient | None = None
@@ -28,6 +29,7 @@ _masking_service: MaskingService | None = None
 _scenario_service: ScenarioService | None = None
 _chat_service: ChatService | None = None
 _quiz_generator_service: QuizGeneratorService | None = None
+_wish_service: WishToPracticeService | None = None
 
 
 def _get_gemini_client() -> GeminiClient:
@@ -119,3 +121,20 @@ def get_quiz_generator_service() -> QuizGeneratorService:
                 detail=f"LLM_NOT_CONFIGURED: {exc}",
             ) from exc
     return _quiz_generator_service
+
+
+def get_wish_service() -> WishToPracticeService:
+    """WishToPracticeService 싱글턴 반환 (FastAPI Depends 용).
+
+    quiz와 동일하게 GEMINI_API_KEY 부재 시 503(LLM_NOT_CONFIGURED)으로 변환한다.
+    """
+    global _wish_service
+    if _wish_service is None:
+        try:
+            _wish_service = WishToPracticeService(llm_client=_get_gemini_client())
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"LLM_NOT_CONFIGURED: {exc}",
+            ) from exc
+    return _wish_service

@@ -12,6 +12,7 @@ import type {
   PatientCategoryMeta,
 } from '../domain/CaptureFlow.js';
 import {
+  MAX_CAREGIVER_WISH_LENGTH,
   MAX_PATIENT_ANSWER_LENGTH,
   PATIENT_CATEGORY_META,
 } from '../domain/CaptureFlow.js';
@@ -27,6 +28,9 @@ interface PatientDayStepProps {
   photoPreview: string | null;
   isSubmitting: boolean;
   error: string | null;
+  /** Phase 6: 보호자가 환자에게 전하는 한마디 (선택) */
+  caregiverWishMessage: string;
+  onChangeWishMessage: (text: string) => void;
   onChangePatientAnswer: (category: PatientCategory, text: string) => void;
   onSelectPhoto: (file: File) => void;
   onClearPhoto: () => void;
@@ -46,6 +50,8 @@ export function PatientDayStep({
   photoPreview,
   isSubmitting,
   error,
+  caregiverWishMessage,
+  onChangeWishMessage,
   onChangePatientAnswer,
   onSelectPhoto,
   onClearPhoto,
@@ -147,6 +153,39 @@ export function PatientDayStep({
             e.target.value = '';
           }}
         />
+      </div>
+
+      {/* 지금 듣고 싶은 한마디 (Phase 6, 선택) — 점선 박스로 구분 */}
+      <div className="mt-6 rounded-xl border-2 border-dashed border-[#E0A984] bg-[#FCF3EC] p-5">
+        <label
+          htmlFor="caregiver-wish"
+          className="flex items-center gap-2 text-base font-medium text-[#7A4A20]"
+        >
+          <span aria-hidden="true">💌</span>
+          지금 듣고 싶은 한마디{' '}
+          <span className="text-xs font-normal text-[#9A7A50]">(선택)</span>
+        </label>
+        <p className="mt-1 text-xs text-[#9A7A50]">
+          환자분이 따라 말하거나 빈칸으로 연습할 수 있어요.
+        </p>
+        <textarea
+          id="caregiver-wish"
+          value={caregiverWishMessage}
+          onChange={(e) => onChangeWishMessage(e.target.value)}
+          disabled={isSubmitting}
+          placeholder="예: 오늘도 사랑해 우리 손녀"
+          maxLength={MAX_CAREGIVER_WISH_LENGTH}
+          rows={2}
+          className="mt-3 w-full resize-none rounded-xl border border-[#E0A984] bg-white p-3 text-sm leading-relaxed text-[#1F2A26] focus:border-[#E07B54] focus:outline-none focus:ring-1 focus:ring-[#E07B54] disabled:bg-[#F0F1F0]"
+          aria-label="지금 듣고 싶은 한마디"
+        />
+        <div className="mt-1 text-right text-xs text-[#9A7A50]" aria-live="polite">
+          <span className="font-medium tabular-nums">
+            {caregiverWishMessage.length}
+          </span>
+          {' / '}
+          <span className="tabular-nums">{MAX_CAREGIVER_WISH_LENGTH}</span>
+        </div>
       </div>
 
       {!canSubmit && !isSubmitting && (

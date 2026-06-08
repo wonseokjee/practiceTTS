@@ -10,11 +10,13 @@ import { QuizQuestion } from './entities/quiz-question.entity';
 import { QuizSet } from './entities/quiz-set.entity';
 import { QUIZ_GENERATION_CLIENT } from './interfaces/IQuizGenerationClient';
 import { QUIZ_SCORER } from './interfaces/IQuizScorer';
+import { WISH_CONVERSION_CLIENT } from './interfaces/IWishConversionClient';
 import { QuizController } from './quiz.controller';
 import { QuizService } from './quiz.service';
 import { QuizGenerationClient } from './services/quiz-generation.client';
 import { QuizGenerationListener } from './services/quiz-generation.listener';
 import { QuizScorerService } from './services/quiz-scorer.service';
+import { WishConversionClient } from './services/wish-conversion.client';
 
 /**
  * Quiz 모듈 (Phase 3 구현 완료)
@@ -47,6 +49,7 @@ import { QuizScorerService } from './services/quiz-scorer.service';
     QuizGenerationListener,
     { provide: QUIZ_GENERATION_CLIENT, useClass: QuizGenerationClient },
     { provide: QUIZ_SCORER, useClass: QuizScorerService },
+    { provide: WISH_CONVERSION_CLIENT, useClass: WishConversionClient },
   ],
   exports: [],
 })

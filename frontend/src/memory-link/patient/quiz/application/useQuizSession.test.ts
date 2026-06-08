@@ -62,6 +62,7 @@ function makeMockApi(overrides?: MockApiOverrides): IQuizApi {
   return {
     listSets: vi.fn(),
     getBestScore: vi.fn(),
+    getWishPractice: vi.fn(),
     getSet: overrides?.getSet ?? vi.fn(async () => makeDetail()),
     submitAttempts:
       overrides?.submitAttempts ??

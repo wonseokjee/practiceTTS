@@ -38,10 +38,12 @@ export function CaptureScreen({
     photoPreview,
     caregiverQuestion,
     patientQuestions,
+    caregiverWishMessage,
     isSubmitting,
     error,
     setMood,
     setCaregiverAnswerText,
+    setCaregiverWishMessage,
     setPatientAnswerText,
     setPhoto,
     clearPhoto,
@@ -126,6 +128,8 @@ export function CaptureScreen({
           photoPreview={photoPreview}
           isSubmitting={isSubmitting}
           error={error}
+          caregiverWishMessage={caregiverWishMessage}
+          onChangeWishMessage={setCaregiverWishMessage}
           onChangePatientAnswer={setPatientAnswerText}
           onSelectPhoto={setPhoto}
           onClearPhoto={clearPhoto}

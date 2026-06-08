@@ -31,6 +31,7 @@ import {
   SubmitAttemptsResult,
   QuizService,
 } from './quiz.service';
+import type { WishConversionResult } from './interfaces/IWishConversionClient';
 
 /** JWT 인증 후 req.user에 주입되는 사용자 타입 */
 interface AuthenticatedRequest extends Request {
@@ -146,6 +147,24 @@ export class QuizController {
   }
 
   /**
+   * POST /quiz/sets/:id/wish-practice
+   * 보호자 한마디 → 환자 발화 연습(따라말하기 + 빈칸) 변환 (Pattern 1, on-demand).
+   */
+  @Post('quiz/sets/:id/wish-practice')
+  @HttpCode(HttpStatus.OK)
+  async getWishPractice(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<WishConversionResult> {
+    const effectivePatientId = resolveEffectivePatientId(req.user);
+    try {
+      return await this.quizService.getWishPractice(id, effectivePatientId);
+    } catch (error) {
+      throw this.mapError(error);
+    }
+  }
+
+  /**
    * QuizError → NestJS HttpException 매핑.
    * - QuizError가 아니면 원본 예외를 그대로 전파한다.
    */
@@ -165,6 +184,8 @@ export class QuizController {
         return new ConflictException(error.message);
       case QuizErrorCode.SESSION_EXPIRED:
         return new GoneException(error.message);
+      case QuizErrorCode.NO_WISH_MESSAGE:
+        return new NotFoundException(error.message);
       case QuizErrorCode.INVALID_ANSWER_FORMAT:
       case QuizErrorCode.NO_PATIENT_NOTES:
       case QuizErrorCode.LLM_INVALID_NOTES:

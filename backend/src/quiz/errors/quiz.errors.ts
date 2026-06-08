@@ -19,6 +19,8 @@ export enum QuizErrorCode {
   LLM_TIMEOUT = 'LLM_TIMEOUT',
   /** FastAPI 502 — LLM 업스트림 오류 (일시적, 재시도 가능) */
   LLM_UPSTREAM = 'LLM_UPSTREAM',
+  /** 양방향 치유 v1 — 해당 라이프로그에 보호자 한마디가 없음 */
+  NO_WISH_MESSAGE = 'NO_WISH_MESSAGE',
 }
 
 /**

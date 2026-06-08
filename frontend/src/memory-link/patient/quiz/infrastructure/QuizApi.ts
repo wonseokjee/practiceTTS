@@ -17,6 +17,7 @@ import type {
   QuizSetSummary,
   SubmitAnswer,
   SubmitAttemptsResult,
+  WishPractice,
 } from '../domain/Quiz.js';
 
 /** 목록 조회 옵션 */
@@ -50,6 +51,8 @@ export interface IQuizApi {
   ): Promise<SubmitAttemptsResult>;
   /** GET /quiz/sets/:id/best-score */
   getBestScore(quizSetId: string): Promise<BestScore>;
+  /** POST /quiz/sets/:id/wish-practice — 보호자 한마디 → 발화 연습 (Phase 6) */
+  getWishPractice(quizSetId: string): Promise<WishPractice>;
 }
 
 // ─── 런타임 타입가드 ──────────────────────────────────────────────
@@ -158,6 +161,19 @@ function isSubmitAttemptsResult(value: unknown): value is SubmitAttemptsResult {
   );
 }
 
+function isWishPractice(value: unknown): value is WishPractice {
+  const obj = asRecord(value);
+  if (obj === null) return false;
+  const fb = asRecord(obj.fillBlank);
+  if (fb === null) return false;
+  return (
+    typeof obj.echoSentence === 'string' &&
+    typeof fb.prompt === 'string' &&
+    typeof fb.answer === 'string' &&
+    typeof fb.hintFirstChar === 'string'
+  );
+}
+
 function isBestScore(value: unknown): value is BestScore {
   const obj = asRecord(value);
   if (obj === null) return false;
@@ -222,6 +238,16 @@ export const quizApi: IQuizApi = {
       `/quiz/sets/${quizSetId}/best-score`,
     );
     if (!isBestScore(res.data)) {
+      throw new Error(INVALID_RESPONSE_MESSAGE);
+    }
+    return res.data;
+  },
+
+  async getWishPractice(quizSetId: string): Promise<WishPractice> {
+    const res = await memoryLinkApi.post<unknown>(
+      `/quiz/sets/${quizSetId}/wish-practice`,
+    );
+    if (!isWishPractice(res.data)) {
       throw new Error(INVALID_RESPONSE_MESSAGE);
     }
     return res.data;

@@ -56,6 +56,7 @@ describe('PatientDayStep', () => {
     error?: string | null;
   }) {
     const onChangePatientAnswer = vi.fn();
+    const onChangeWishMessage = vi.fn();
     const onSelectPhoto = vi.fn();
     const onClearPhoto = vi.fn();
     const onPrev = vi.fn();
@@ -69,6 +70,8 @@ describe('PatientDayStep', () => {
         photoPreview={overrides?.photoPreview ?? null}
         isSubmitting={overrides?.isSubmitting ?? false}
         error={overrides?.error ?? null}
+        caregiverWishMessage=""
+        onChangeWishMessage={onChangeWishMessage}
         onChangePatientAnswer={onChangePatientAnswer}
         onSelectPhoto={onSelectPhoto}
         onClearPhoto={onClearPhoto}
@@ -79,6 +82,7 @@ describe('PatientDayStep', () => {
 
     return {
       onChangePatientAnswer,
+      onChangeWishMessage,
       onSelectPhoto,
       onClearPhoto,
       onPrev,

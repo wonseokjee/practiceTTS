@@ -56,6 +56,11 @@ class QuizParseError(AiServiceError):
     """
 
 
+# 양방향 치유 v1 (Pattern 1) — 한마디→발화연습 변환 관련 에러
+class WishConversionError(AiServiceError):
+    """한마디(wish) 입력이 비었거나 금칙어를 포함해 변환 불가."""
+
+
 # 대화 에이전트 관련 에러
 class GuardrailViolationError(AiServiceError):
     """Gemini 응답에 금지 단어(guardrail_words) 포함 감지."""

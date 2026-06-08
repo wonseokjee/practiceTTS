@@ -17,6 +17,7 @@ import type {
 } from '../domain/CaptureFlow.js';
 import {
   MAX_CAREGIVER_ANSWER_LENGTH,
+  MAX_CAREGIVER_WISH_LENGTH,
   MAX_PATIENT_ANSWER_LENGTH,
 } from '../domain/CaptureFlow.js';
 import type { MemoryEntry } from '../domain/MemoryEntry.js';
@@ -46,7 +47,7 @@ export interface UseCaptureFlowReturn {
   patientAnswers: PatientAnswerTextMap;
   photo: File | null;
   photoPreview: string | null;
-  /** Phase 4에서는 UI 미노출 (Phase 6 입력 UI 도입 예정) */
+  /** Phase 6: 보호자가 환자에게 전하는 한마디 (선택) */
   caregiverWishMessage: string;
   caregiverQuestion: DiaryQuestion | null;
   patientQuestions: PatientQuestionMap;
@@ -58,6 +59,7 @@ export interface UseCaptureFlowReturn {
   quizExpected: boolean;
   setMood: (level: MoodLevel) => void;
   setCaregiverAnswerText: (text: string) => void;
+  setCaregiverWishMessage: (text: string) => void;
   setPatientAnswerText: (category: PatientCategory, text: string) => void;
   setPhoto: (file: File) => void;
   clearPhoto: () => void;
@@ -113,8 +115,8 @@ export function useCaptureFlow(
     useState<PatientAnswerTextMap>({ ...EMPTY_PATIENT_ANSWERS });
   const [photo, setPhotoState] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  // Phase 4에서는 UI 미노출 — 빈 상태 유지
-  const [caregiverWishMessage] = useState<string>('');
+  const [caregiverWishMessage, setCaregiverWishMessageState] =
+    useState<string>('');
 
   const [caregiverQuestion, setCaregiverQuestion] =
     useState<DiaryQuestion | null>(null);
@@ -183,6 +185,14 @@ export function useCaptureFlow(
         ? text.slice(0, MAX_CAREGIVER_ANSWER_LENGTH)
         : text;
     setCaregiverAnswerTextState(truncated);
+  }, []);
+
+  const setCaregiverWishMessage = useCallback((text: string) => {
+    const truncated =
+      text.length > MAX_CAREGIVER_WISH_LENGTH
+        ? text.slice(0, MAX_CAREGIVER_WISH_LENGTH)
+        : text;
+    setCaregiverWishMessageState(truncated);
   }, []);
 
   const setPatientAnswerText = useCallback(
@@ -339,6 +349,7 @@ export function useCaptureFlow(
     setStep('mood');
     setMoodState(null);
     setCaregiverAnswerTextState('');
+    setCaregiverWishMessageState('');
     setPatientAnswersState({ ...EMPTY_PATIENT_ANSWERS });
     setPhotoState(null);
     setPhotoPreview((prev) => {
@@ -368,6 +379,7 @@ export function useCaptureFlow(
     quizExpected,
     setMood,
     setCaregiverAnswerText,
+    setCaregiverWishMessage,
     setPatientAnswerText,
     setPhoto,
     clearPhoto,
