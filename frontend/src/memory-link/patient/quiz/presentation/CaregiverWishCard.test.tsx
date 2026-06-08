@@ -83,6 +83,41 @@ describe('CaregiverWishCard', () => {
     expect(screen.getByText('다시 시도')).toBeInTheDocument();
   });
 
+  it('탭에 ARIA 속성(aria-controls/selected) + tabpanel 연결이 있다', () => {
+    render(
+      <CaregiverWishCard
+        quizSetId="set-1"
+        wishMessage="사랑해"
+        onProceed={vi.fn()}
+        fetchPractice={vi.fn()}
+      />,
+    );
+    const echoTab = screen.getByRole('tab', { name: '따라말하기' });
+    const panel = screen.getByRole('tabpanel');
+    expect(echoTab).toHaveAttribute('aria-selected', 'true');
+    expect(echoTab).toHaveAttribute('aria-controls', panel.id);
+    expect(panel).toHaveAttribute('aria-labelledby', echoTab.id);
+  });
+
+  it('tablist에서 화살표 키로 탭 전환 + 변환 fetch 트리거', async () => {
+    const fetchPractice = vi.fn(async () => PRACTICE);
+    render(
+      <CaregiverWishCard
+        quizSetId="set-1"
+        wishMessage="오늘도 사랑해 우리 손녀"
+        onProceed={vi.fn()}
+        fetchPractice={fetchPractice}
+      />,
+    );
+    fireEvent.keyDown(screen.getByRole('tablist'), { key: 'ArrowRight' });
+    await waitFor(() => {
+      expect(
+        screen.getByRole('tab', { name: '빈칸 채우기' }),
+      ).toHaveAttribute('aria-selected', 'true');
+    });
+    expect(fetchPractice).toHaveBeenCalledWith('set-1');
+  });
+
   it('"퀴즈 풀러 가기" 클릭 시 onProceed 호출', () => {
     const onProceed = vi.fn();
     render(

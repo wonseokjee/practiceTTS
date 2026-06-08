@@ -8,9 +8,13 @@
 // 따라말하기는 한마디 원문을 그대로 읽는 연습이라 prop만으로 즉시 표시한다.
 // 빈칸은 ai-service 변환이 필요하므로 탭 전환 시점에 한 번만 가져온다(비용/지연 최소).
 
-import { useCallback, useState } from 'react';
+import { forwardRef, useCallback, useRef, useState } from 'react';
+import type { KeyboardEvent } from 'react';
 import { quizApi } from '../infrastructure/QuizApi.js';
 import type { WishPractice } from '../domain/Quiz.js';
+
+const TAB_ID = { echo: 'wish-tab-echo', blank: 'wish-tab-blank' } as const;
+const PANEL_ID = 'wish-tabpanel';
 
 type WishTab = 'echo' | 'blank';
 
@@ -54,6 +58,30 @@ export function CaregiverWishCard({
     void loadPractice();
   }, [loadPractice]);
 
+  // 탭 버튼 ref — 화살표 키 이동 시 focus 전달용.
+  const echoRef = useRef<HTMLButtonElement>(null);
+  const blankRef = useRef<HTMLButtonElement>(null);
+
+  const selectTab = useCallback(
+    (next: WishTab): void => {
+      if (next === 'blank') switchToBlank();
+      else setTab('echo');
+    },
+    [switchToBlank],
+  );
+
+  // WAI-ARIA tabs: 좌우 화살표로 탭 전환 + focus 이동.
+  const onTabListKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLDivElement>): void => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      e.preventDefault();
+      const next: WishTab = tab === 'echo' ? 'blank' : 'echo';
+      selectTab(next);
+      (next === 'echo' ? echoRef : blankRef).current?.focus();
+    },
+    [tab, selectTab],
+  );
+
   return (
     <section
       className="font-pretendard mb-6 rounded-xl border border-[#E0A984] bg-[#FCF3EC] p-6"
@@ -80,13 +108,20 @@ export function CaregiverWishCard({
         className="mb-4 flex gap-2"
         role="tablist"
         aria-label="연습 방식 선택"
+        onKeyDown={onTabListKeyDown}
       >
         <TabButton
+          ref={echoRef}
+          id={TAB_ID.echo}
+          controls={PANEL_ID}
           label="따라말하기"
           active={tab === 'echo'}
           onClick={() => setTab('echo')}
         />
         <TabButton
+          ref={blankRef}
+          id={TAB_ID.blank}
+          controls={PANEL_ID}
           label="빈칸 채우기"
           active={tab === 'blank'}
           onClick={switchToBlank}
@@ -94,7 +129,13 @@ export function CaregiverWishCard({
       </div>
 
       {/* 탭 본문 */}
-      <div className="rounded-lg bg-white p-5" role="tabpanel">
+      <div
+        className="rounded-lg bg-white p-5"
+        role="tabpanel"
+        id={PANEL_ID}
+        aria-labelledby={tab === 'echo' ? TAB_ID.echo : TAB_ID.blank}
+        tabIndex={0}
+      >
         {tab === 'echo' ? (
           <div>
             <p className="mb-1 text-xs text-[#5C6661]">소리 내어 따라 말해보세요</p>
@@ -126,20 +167,26 @@ export function CaregiverWishCard({
 
 // ─── 하위 컴포넌트 ──────────────────────────────────────────────────
 
-function TabButton({
-  label,
-  active,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
+const TabButton = forwardRef<
+  HTMLButtonElement,
+  {
+    id: string;
+    controls: string;
+    label: string;
+    active: boolean;
+    onClick: () => void;
+  }
+>(function TabButton({ id, controls, label, active, onClick }, ref) {
   return (
     <button
+      ref={ref}
       type="button"
       role="tab"
+      id={id}
+      aria-controls={controls}
       aria-selected={active}
+      // roving tabindex: 활성 탭만 Tab 순서에 포함, 비활성은 화살표로 접근.
+      tabIndex={active ? 0 : -1}
       onClick={onClick}
       className={`rounded-md px-4 py-2 text-sm font-medium transition-colors duration-[180ms] ease-out ${
         active
@@ -150,7 +197,7 @@ function TabButton({
       {label}
     </button>
   );
-}
+});
 
 interface BlankPanelProps {
   isLoading: boolean;

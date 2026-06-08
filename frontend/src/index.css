@@ -7,6 +7,8 @@
    ──────────────────────────────────────────────────────────── */
 @theme {
   --font-sans: 'Pretendard', system-ui, -apple-system, sans-serif;
+  /* `font-pretendard` 유틸 활성화 — 컴포넌트가 명시적으로 사용. */
+  --font-pretendard: 'Pretendard', system-ui, -apple-system, sans-serif;
 
   --color-blue-50:  #EBF4F0;
   --color-blue-100: #EBF4F0;

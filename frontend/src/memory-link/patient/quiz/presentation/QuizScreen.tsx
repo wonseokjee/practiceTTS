@@ -137,7 +137,11 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
 
       {photoUrl !== null && <QuizPhotoHint photoUrl={photoUrl} />}
 
-      <h2 className="mb-6 text-2xl font-bold leading-snug text-[#1F2A26]">
+      {/* aria-live: 문제 전환 시 새 prompt를 스크린리더에 공지(h2는 유지되고 텍스트만 변경). */}
+      <h2
+        className="mb-6 text-2xl font-bold leading-snug text-[#1F2A26]"
+        aria-live="polite"
+      >
         {currentQuestion.prompt}
       </h2>
 
