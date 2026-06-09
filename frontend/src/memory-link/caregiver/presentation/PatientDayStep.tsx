@@ -123,7 +123,7 @@ export function PatientDayStep({
           <img
             src={photoPreview}
             alt="첨부된 사진 미리보기"
-            className="mt-3 h-40 w-full rounded-xl object-cover"
+            className="mt-3 h-24 w-24 rounded-xl object-cover"
           />
         ) : (
           <button
