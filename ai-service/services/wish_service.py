@@ -162,6 +162,8 @@ class WishToPracticeService:
         if "_" not in prompt:  # 치환 실패(answer가 wish에 없음) → 끝에 빈칸 부가
             prompt = f"{wish} ___"
         prompt = prompt[:_MAX_SENTENCE_LEN]
+        if "_" not in prompt:  # 절단으로 빈칸이 유실됨(긴 문장 뒤쪽 치환) → 빈칸 보존 재구성
+            prompt = f"{prompt[: _MAX_SENTENCE_LEN - 4].rstrip()} ___"
         return FillBlankOut(
             prompt=prompt,
             answer=answer,
