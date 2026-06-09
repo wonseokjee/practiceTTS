@@ -51,4 +51,8 @@ body {
 
 #root {
   height: 100%;
+  /* 콘텐츠가 뷰포트보다 길면(예: 캡처 3단계) #root 내부에서 스크롤되도록 한다.
+     body는 overflow:hidden이라 페이지 자체는 스크롤되지 않으므로, 스크롤 컨테이너를
+     #root로 일원화한다. 풀스크린(h-screen) 레이아웃은 100% 이내라 영향이 없다. */
+  overflow-y: auto;
 }
