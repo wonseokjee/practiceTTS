@@ -56,3 +56,14 @@ body {
      #root로 일원화한다. 풀스크린(h-screen) 레이아웃은 100% 이내라 영향이 없다. */
   overflow-y: auto;
 }
+
+/* Tailwind v4 Preflight는 <button> 기본 커서를 v3의 pointer에서 default로 바꿨다.
+   그 결과 데스크톱에서 버튼/카드가 클릭 가능해 보이지 않는다(화살표 커서).
+   활성 버튼·role=button에 pointer를 복원한다. disabled:cursor-* 유틸리티는
+   유틸리티 레이어라 우선순위가 높아 비활성 상태와 충돌하지 않는다. */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']) {
+    cursor: pointer;
+  }
+}
