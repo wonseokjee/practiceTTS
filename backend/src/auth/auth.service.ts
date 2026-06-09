@@ -28,10 +28,12 @@ export interface JwtPayload {
 }
 
 // 비밀번호/PIN 해시 및 자기참조 관계 제외 응답 타입
+// patientDisplayName: 보호자가 돌보는 환자(어르신) 성함 — 환자 관계가 로드됐을 때만 채워지고,
+// 아니면 null. 환자 모드 화면 인사말 등에 사용한다.
 export type UserResponse = Omit<
   User,
   'passwordHash' | 'patient' | 'patientModePinHash'
->;
+> & { patientDisplayName: string | null };
 
 /** PIN 검증 시도 추적 (in-memory, 점증 디레이용) */
 interface PinAttemptState {
@@ -171,6 +173,8 @@ export class AuthService {
   async getMe(userId: string): Promise<UserResponse> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
+      // 환자 모드 인사말 등에 쓰도록 연결된 환자(어르신) 정보를 함께 로드한다.
+      relations: { patient: true },
     });
 
     if (!user) {
@@ -262,6 +266,7 @@ export class AuthService {
       patientModePinHash: _pin,
       ...response
     } = user;
-    return response;
+    // 환자 관계가 로드된 경우(getMe)에만 환자 성함을 노출, 아니면 null.
+    return { ...response, patientDisplayName: _patient?.displayName ?? null };
   }
 }

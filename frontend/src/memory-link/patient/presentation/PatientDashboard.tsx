@@ -143,7 +143,8 @@ export function PatientDashboard() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">안녕하세요</h1>
           <p className="text-xl text-gray-600 mt-1">
-            {user?.displayName}님, 오늘도 함께 훈련해요!
+            {user?.patientDisplayName ?? user?.displayName}님, 오늘도 함께
+            훈련해요!
           </p>
         </div>
         {isCaregiverInPatientMode ? (

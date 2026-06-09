@@ -31,6 +31,8 @@ export interface AuthUser {
   displayName: string;
   /** 보호자(caregiver)인 경우 연결된 환자 ID, 없으면 null */
   patientId: string | null;
+  /** 보호자가 돌보는 환자(어르신) 성함 — 환자 모드 인사말 등에 사용. 없으면 null */
+  patientDisplayName: string | null;
 }
 
 export interface RegisterData {
@@ -56,6 +58,7 @@ interface MeResponseRaw {
   role: string;
   displayName: string;
   patientId: string | null;
+  patientDisplayName?: string | null;
 }
 
 // ─── 런타임 타입 검증 ─────────────────────────────────────────
@@ -91,6 +94,7 @@ function toAuthUser(raw: MeResponseRaw): AuthUser {
     role,
     displayName: raw.displayName,
     patientId: raw.patientId ?? null,
+    patientDisplayName: raw.patientDisplayName ?? null,
   };
 }
 
@@ -145,6 +149,7 @@ function buildDevUser(mode: DevAuthMode): AuthUser | null {
       role: 'patient',
       displayName: '로컬 테스트 환자',
       patientId: null,
+      patientDisplayName: null,
     };
   }
   if (mode === 'caregiver') {
@@ -155,6 +160,7 @@ function buildDevUser(mode: DevAuthMode): AuthUser | null {
       displayName: '로컬 테스트 보호자',
       patientId:
         (import.meta.env.VITE_DEV_PATIENT_ID as string | undefined) ?? null,
+      patientDisplayName: '로컬 테스트 어르신',
     };
   }
   return null;
