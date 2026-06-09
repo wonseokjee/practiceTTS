@@ -18,6 +18,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
+import { mkdirSync } from 'fs';
 import { extname } from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -69,7 +70,15 @@ export class MemoryController {
         destination: (req, file, cb) => {
           const uploadDir =
             process.env['UPLOAD_DIR'] ?? 'tts-cache/memory-images';
-          cb(null, uploadDir);
+          // multer diskStorage는 destination 디렉토리를 자동 생성하지 않는다.
+          // 디렉토리가 없으면 파일 쓰기가 ENOENT로 실패해 500이 되므로, 업로드
+          // 시점에 재귀적으로 보장한다(이미 있으면 no-op).
+          try {
+            mkdirSync(uploadDir, { recursive: true });
+            cb(null, uploadDir);
+          } catch (err) {
+            cb(err as Error, uploadDir);
+          }
         },
         filename: (req, file, cb) => {
           const uniqueName = `${uuidv4()}${extname(file.originalname).toLowerCase()}`;
@@ -85,7 +94,13 @@ export class MemoryController {
       new ParseFilePipe({
         validators: [
           new MaxFileSizeValidator({ maxSize: MAX_PHOTO_SIZE_BYTES }),
-          new FileTypeValidator({ fileType: /^image\/(jpeg|png|webp)$/ }),
+          // NestJS v11 FileTypeValidator는 file.buffer의 매직넘버를 검사하는데,
+          // diskStorage 사용 시 buffer가 undefined라 매번 검증이 실패한다.
+          // diskStorage에서는 매직넘버 검사를 건너뛰고 mimetype 문자열로 검증한다.
+          new FileTypeValidator({
+            fileType: /^image\/(jpeg|png|webp)$/,
+            skipMagicNumbersValidation: true,
+          }),
         ],
         errorHttpStatusCode: 400,
         // photo는 선택 — 없는 경우 ParseFilePipe가 통과시키도록 fileIsRequired=false
