@@ -46,6 +46,10 @@ export class QuizScorerService implements IQuizScorer {
           this.normalizeYesNo(question.correctAnswer)
         );
       case 'fill_blank':
+      // tile_arrange(타일 조합)·speech(말하기)는 정답이 모두 텍스트이므로
+      // 빈칸 채점 규칙(공백 제거 + 끝 음절 받침 무시)을 그대로 재사용한다.
+      case 'tile_arrange':
+      case 'speech':
         return (
           this.normalizeFillBlank(userAnswer) ===
           this.normalizeFillBlank(question.correctAnswer)

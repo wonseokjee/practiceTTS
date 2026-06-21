@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "note": "문장이해(sentComp) 신규 장면 생성 스펙. generate_sentcomp_images.py 입력. 정답/오답은 '같은 두 인물의 역할(방향)만 반대'가 되도록 prompt를 작성한다 (한눈에 누가 누구에게 하는지 명확해야 검사가 유효). sentence/altText는 한국어, image prompt는 영어 권장.",
+  "items": [
+    {
+      "itemId": "sg_01",
+      "sentenceType": "active-passive",
+      "sentence": "남자가 여자에게 꽃다발을 주고 있어요",
+      "characters": "a man with short black hair wearing a red t-shirt, and a woman with long brown hair wearing a blue dress",
+      "correct": {
+        "altText": "남자가 여자에게 꽃다발을 주는 장면",
+        "prompt": "The MAN (red t-shirt, short black hair) on the LEFT is holding out and giving a flower bouquet to the WOMAN (blue dress, long brown hair) on the RIGHT, who reaches out to receive it. The bouquet is in the man's hands, moving toward the woman."
+      },
+      "distractor": {
+        "altText": "여자가 남자에게 꽃다발을 주는 장면",
+        "prompt": "The WOMAN (blue dress, long brown hair) on the LEFT is holding out and giving a flower bouquet to the MAN (red t-shirt, short black hair) on the RIGHT, who reaches out to receive it. The bouquet is in the woman's hands, moving toward the man."
+      }
+    },
+    {
+      "itemId": "sg_02",
+      "sentenceType": "active-passive",
+      "sentence": "경찰이 도둑을 잡고 있어요",
+      "characters": "a police officer in a navy uniform and cap, and a thief in a black-and-white striped shirt with a small eye mask",
+      "correct": {
+        "altText": "경찰이 도둑을 붙잡는 장면",
+        "prompt": "The POLICE OFFICER (navy uniform and cap) is grabbing and holding the arm of the THIEF (striped shirt, eye mask). The police officer is the one catching; the thief is caught and looks surprised."
+      },
+      "distractor": {
+        "altText": "도둑이 경찰을 붙잡는 장면",
+        "prompt": "The THIEF (striped shirt, eye mask) is grabbing and holding the arm of the POLICE OFFICER (navy uniform and cap). The thief is the one catching; the police officer is caught and looks surprised."
+      }
+    },
+    {
+      "itemId": "sg_03",
+      "sentenceType": "active-passive",
+      "sentence": "아이가 할아버지를 밀고 있어요",
+      "characters": "a small child in a yellow shirt, and an old man with white hair and a cane",
+      "correct": {
+        "altText": "아이가 할아버지를 미는 장면",
+        "prompt": "The small CHILD (yellow shirt) is pushing the OLD MAN (white hair, cane) from behind with both hands. The child is the pusher; the old man is being pushed forward and stumbles."
+      },
+      "distractor": {
+        "altText": "할아버지가 아이를 미는 장면",
+        "prompt": "The OLD MAN (white hair, cane) is pushing the small CHILD (yellow shirt) from behind with both hands. The old man is the pusher; the child is being pushed forward and stumbles."
+      }
+    },
+    {
+      "itemId": "sg_04",
+      "sentenceType": "active-passive",
+      "sentence": "토끼가 거북이를 따라가고 있어요",
+      "characters": "a white rabbit with long ears, and a green turtle with a shell",
+      "correct": {
+        "altText": "토끼가 거북이를 따라가는 장면",
+        "prompt": "Side view, both moving left to right. The TURTLE (green shell) is in FRONT, the RABBIT (white, long ears) is BEHIND following and chasing the turtle. The rabbit follows the turtle."
+      },
+      "distractor": {
+        "altText": "거북이가 토끼를 따라가는 장면",
+        "prompt": "Side view, both moving left to right. The RABBIT (white, long ears) is in FRONT, the TURTLE (green shell) is BEHIND following and chasing the rabbit. The turtle follows the rabbit."
+      }
+    },
+    {
+      "itemId": "sg_05",
+      "sentenceType": "active-passive",
+      "sentence": "여자가 남자의 머리를 자르고 있어요",
+      "characters": "a woman hairdresser in a pink apron holding scissors, and a man sitting in a chair with a cape",
+      "correct": {
+        "altText": "여자가 남자의 머리를 자르는 장면",
+        "prompt": "The WOMAN (pink apron) is standing and cutting the hair of the MAN (sitting in a chair, cape) with scissors. The woman holds the scissors and cuts; the man sits still."
+      },
+      "distractor": {
+        "altText": "남자가 여자의 머리를 자르는 장면",
+        "prompt": "The MAN (pink apron) is standing and cutting the hair of the WOMAN (sitting in a chair, cape) with scissors. The man holds the scissors and cuts; the woman sits still."
+      }
+    },
+    {
+      "itemId": "sg_06",
+      "sentenceType": "active-passive",
+      "sentence": "엄마가 아이를 업고 있어요",
+      "characters": "a mother with a bun hairstyle in a green shirt, and a small child in orange",
+      "correct": {
+        "altText": "엄마가 아이를 업은 장면",
+        "prompt": "The MOTHER (green shirt, bun hairstyle) is carrying the small CHILD (orange) on her back, piggyback style. The mother stands and carries; the child rides on the mother's back."
+      },
+      "distractor": {
+        "altText": "아이가 엄마를 업은 장면",
+        "prompt": "The small CHILD (orange) is carrying the MOTHER (green shirt, bun hairstyle) on its back, piggyback style. The child stands and carries; the mother rides on the child's back."
+      }
+    }
+  ]
+}

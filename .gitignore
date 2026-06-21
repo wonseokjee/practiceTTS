@@ -53,3 +53,6 @@ tmp/
 extracted_pdf.txt
 *.pdf
 extract_pdf.py
+
+# Generated TTS / runtime cache
+backend/tts-cache/

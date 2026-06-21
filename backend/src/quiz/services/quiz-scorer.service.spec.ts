@@ -133,6 +133,38 @@ describe('QuizScorerService', () => {
     });
   });
 
+  describe('isCorrect — tile_arrange/speech (fill_blank 채점 규칙 재사용)', () => {
+    it('tile_arrange: 조합 결과가 정답과 같으면 정답이어야 한다', () => {
+      const question = buildQuestion('tile_arrange', '바다');
+      expect(scorer.isCorrect(question, '바다')).toBe(true);
+    });
+
+    it('tile_arrange: 끝 음절 받침 차이를 무시한다 (정답 "사랑" vs "사람")', () => {
+      const question = buildQuestion('tile_arrange', '사랑');
+      expect(scorer.isCorrect(question, '사람')).toBe(true);
+    });
+
+    it('tile_arrange: 완전히 다른 조합은 오답이어야 한다', () => {
+      const question = buildQuestion('tile_arrange', '바다');
+      expect(scorer.isCorrect(question, '다바')).toBe(false);
+    });
+
+    it('speech: 인식 텍스트가 정답과 같으면 정답이어야 한다', () => {
+      const question = buildQuestion('speech', '강아지');
+      expect(scorer.isCorrect(question, '강아지')).toBe(true);
+    });
+
+    it('speech: 띄어쓰기/끝 음절 받침 차이를 무시한다', () => {
+      const question = buildQuestion('speech', '공원');
+      expect(scorer.isCorrect(question, '공 원')).toBe(true);
+    });
+
+    it('speech: 완전히 다른 발화는 오답이어야 한다', () => {
+      const question = buildQuestion('speech', '강아지');
+      expect(scorer.isCorrect(question, '고양이')).toBe(false);
+    });
+  });
+
   describe('isCorrect — 알 수 없는 유형', () => {
     it('정의되지 않은 type이면 false를 반환해야 한다 (default 분기)', () => {
       const question = buildQuestion('unknown_type' as QuizQuestionType, '값');

@@ -1,16 +1,16 @@
-// 퀴즈 풀이 컨테이너
+// 퀴즈 풀이 컨테이너 (혼합 세트: 데일리 + QAB 질문형)
 //
-// useQuizSession FSM을 사용한다. 비즈니스 로직은 훅에 위임하고
-// 진행바 + 사진 힌트 + 문제 렌더 + 유형별 컴포넌트 분기 + 피드백/다음만 담당.
+// useMixedQuizSession FSM을 사용한다. 비즈니스 로직은 훅에 위임하고
+// 진행바 + 사진 힌트 + 항목 렌더(데일리/QAB 분기) + 피드백/다음만 담당한다.
 //
-// 즉시 채점 방식이라 서버 응답에는 정답(correctAnswer)만 포함되고
-// "사용자가 무엇을 골랐는지"는 없으므로, QuestionBody가 자신이 고른 값을
-// 로컬 state로 기억해 오답 보기 강조에 사용한다.
-// 문제가 바뀌면 QuestionBody를 key(questionId)로 리마운트해 선택 상태를 초기화한다.
+// - daily 항목: QuestionBody(객관식/타일/말하기)를 렌더하고 백엔드로 채점한다.
+//   QuestionBody가 자신이 고른 값을 기억해 오답 강조에 쓰므로, 항목이 바뀌면
+//   key(item.id)로 리마운트해 선택 상태를 초기화한다.
+// - qab_word 항목: WordCompQuizItem(듣고 그림 고르기)을 렌더하고 로컬 채점한다.
 
 import { useState } from 'react';
-import { useQuizSession } from '../application/useQuizSession.js';
-import type { UseQuizSessionDeps } from '../application/useQuizSession.js';
+import { useMixedQuizSession } from '../application/useMixedQuizSession.js';
+import type { UseMixedQuizDeps } from '../application/useMixedQuizSession.js';
 import type { AttemptResult, QuizQuestionPublic, YesNoAnswer } from '../domain/Quiz.js';
 import { CaregiverWishCard } from './CaregiverWishCard.js';
 import { QuizPhotoHint } from './QuizPhotoHint.js';
@@ -18,6 +18,12 @@ import { QuizProgressBar } from './QuizProgressBar.js';
 import { QuizResultScreen } from './QuizResultScreen.js';
 import { FillBlankInput } from './components/FillBlankInput.js';
 import { MultipleChoiceCard } from './components/MultipleChoiceCard.js';
+import { SpeechInput } from './components/SpeechInput.js';
+import { TileArrangeInput } from './components/TileArrangeInput.js';
+import { ImageChoiceQuizItem } from './components/ImageChoiceQuizItem.js';
+import { PictureNamingItem } from './components/PictureNamingItem.js';
+import { SpeechCaptureItem } from './components/SpeechCaptureItem.js';
+import { DdkItem } from './components/DdkItem.js';
 import { YesNoButtons } from './components/YesNoButtons.js';
 
 interface QuizScreenProps {
@@ -25,31 +31,30 @@ interface QuizScreenProps {
   /** 결과 화면 또는 취소 시 목록으로 복귀 */
   onExit: () => void;
   /** 테스트용 의존성 주입 (선택) */
-  deps?: UseQuizSessionDeps;
+  deps?: UseMixedQuizDeps;
 }
 
 /** 퀴즈 풀이 화면 컨테이너 */
 export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
-  const [state, actions] = useQuizSession(quizSetId, deps);
+  const [state, actions] = useMixedQuizSession(quizSetId, deps);
   // Phase 6: 보호자 한마디 카드를 퀴즈 앞에 한 번 노출 (있을 때만).
   const [wishDismissed, setWishDismissed] = useState(false);
   const {
     phase,
     currentIndex,
     total,
-    currentQuestion,
+    currentItem,
     detail,
     isSelectable,
     lastResult,
+    selectedChoiceId,
     sessionScore,
-    bestScore,
-    isNewBest,
     error,
     isSessionExpired,
   } = state;
 
   // ── 로딩 ──────────────────────────────────────────────────────
-  if (phase === 'loading_questions' || phase === 'idle') {
+  if (phase === 'loading') {
     return (
       <div
         className="font-pretendard flex min-h-[60vh] items-center justify-center"
@@ -97,8 +102,9 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
     return (
       <QuizResultScreen
         sessionScore={sessionScore ?? 0}
-        bestScore={bestScore}
-        isNewBest={isNewBest}
+        bestScore={null}
+        isNewBest={false}
+        showScore={false}
         onRetry={() => void actions.retry()}
         onBackToList={onExit}
       />
@@ -120,40 +126,106 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
   }
 
   // ── 풀이/피드백 ───────────────────────────────────────────────
-  if (currentQuestion === null) {
+  if (currentItem === null) {
     // 방어적 처리 — 정상 흐름에선 도달하지 않음.
     return null;
   }
 
   const showFeedback = phase === 'feedback';
-  const isSubmitting = phase === 'submitting' || phase === 'submitting_final';
+  const isSubmitting = phase === 'submitting';
   const canAnswer = isSelectable && !isSubmitting;
   const photoUrl = detail?.memoryEntry.photoUrl ?? null;
   const isLastQuestion = currentIndex + 1 >= total;
+
+  // 데일리 항목의 피드백을 QuestionBody가 기대하는 AttemptResult 형태로 합성.
+  const dailyResult: AttemptResult | null =
+    showFeedback && lastResult !== null && currentItem.kind === 'daily'
+      ? {
+          questionId: currentItem.id,
+          isCorrect: lastResult.isCorrect,
+          correctAnswer: lastResult.correctLabel ?? '',
+        }
+      : null;
 
   return (
     <div className="font-pretendard mx-auto w-full max-w-2xl px-4 py-6">
       <QuizProgressBar current={currentIndex + 1} total={total} />
 
-      {photoUrl !== null && <QuizPhotoHint photoUrl={photoUrl} />}
+      {/* 사진 힌트는 데일리(기억 회상) 항목에서만 노출 */}
+      {currentItem.kind === 'daily' && photoUrl !== null && (
+        <QuizPhotoHint photoUrl={photoUrl} />
+      )}
 
-      {/* aria-live: 문제 전환 시 새 prompt를 스크린리더에 공지(h2는 유지되고 텍스트만 변경). */}
-      <h2
-        className="mb-6 text-2xl font-bold leading-snug text-[#1F2A26]"
-        aria-live="polite"
-      >
-        {currentQuestion.prompt}
-      </h2>
+      {/* 데일리 항목은 prompt를 제목으로 노출 (QAB는 컴포넌트 내부 안내 사용) */}
+      {currentItem.kind === 'daily' && (
+        <h2
+          className="mb-6 text-2xl font-bold leading-snug text-[#1F2A26]"
+          aria-live="polite"
+        >
+          {currentItem.question.prompt}
+        </h2>
+      )}
 
-      {/* key=questionId로 문제 변경 시 선택 상태 자동 초기화 */}
-      <QuestionBody
-        key={currentQuestion.id}
-        question={currentQuestion}
-        canAnswer={canAnswer}
-        showFeedback={showFeedback}
-        result={showFeedback ? lastResult : null}
-        onSubmit={(answer) => void actions.selectAndSubmit(answer)}
-      />
+      {/* key=item.id로 항목 변경 시 내부 선택 상태 자동 초기화 */}
+      {currentItem.kind === 'daily' ? (
+        <QuestionBody
+          key={currentItem.id}
+          question={currentItem.question}
+          canAnswer={canAnswer}
+          showFeedback={showFeedback}
+          result={dailyResult}
+          onSubmit={(answer) => void actions.submitDaily(answer)}
+        />
+      ) : currentItem.kind === 'naming' ? (
+        <PictureNamingItem
+          key={currentItem.id}
+          item={currentItem.item}
+          isSelectable={canAnswer}
+          showFeedback={showFeedback}
+          isCorrect={showFeedback ? (lastResult?.isCorrect ?? null) : null}
+          onSubmit={(transcript) => actions.submitNaming(transcript)}
+        />
+      ) : currentItem.kind === 'repeat' ? (
+        <SpeechCaptureItem
+          key={currentItem.id}
+          text={currentItem.item.text}
+          instruction={currentItem.item.instruction}
+          showModel
+          isSelectable={canAnswer}
+          showFeedback={showFeedback}
+          isCorrect={showFeedback ? (lastResult?.isCorrect ?? null) : null}
+          onSubmit={(transcript) => actions.submitSpeech(transcript)}
+        />
+      ) : currentItem.kind === 'reading' ? (
+        <SpeechCaptureItem
+          key={currentItem.id}
+          text={currentItem.item.text}
+          instruction={currentItem.item.instruction}
+          showModel={false}
+          isSelectable={canAnswer}
+          showFeedback={showFeedback}
+          isCorrect={showFeedback ? (lastResult?.isCorrect ?? null) : null}
+          onSubmit={(transcript) => actions.submitSpeech(transcript)}
+        />
+      ) : currentItem.kind === 'ddk' ? (
+        <DdkItem
+          key={currentItem.id}
+          item={currentItem.item}
+          isSelectable={canAnswer}
+          showFeedback={showFeedback}
+          isCorrect={showFeedback ? (lastResult?.isCorrect ?? null) : null}
+          onSubmit={(count) => actions.submitDdk(count)}
+        />
+      ) : (
+        <ImageChoiceQuizItem
+          key={currentItem.id}
+          item={currentItem.item}
+          isSelectable={canAnswer}
+          showFeedback={showFeedback}
+          selectedChoiceId={selectedChoiceId}
+          onSelect={(choiceId) => actions.submitQabChoice(choiceId)}
+        />
+      )}
 
       {/* 채점 중 표시 */}
       {isSubmitting && (
@@ -202,7 +274,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
   );
 }
 
-// ─── 문제 본문 (유형별 분기 + 선택값 추적) ─────────────────────────
+// ─── 문제 본문 (데일리 유형별 분기 + 선택값 추적) ─────────────────────────
 
 interface QuestionBodyProps {
   question: QuizQuestionPublic;
@@ -214,7 +286,7 @@ interface QuestionBodyProps {
 }
 
 /**
- * 유형별 답안 컴포넌트를 분기 렌더한다.
+ * 데일리 유형별 답안 컴포넌트를 분기 렌더한다.
  * 자신이 고른 값(selectedAnswer)을 기억해 오답 보기 강조에 사용.
  * 문제가 바뀌면 부모가 key로 리마운트하므로 selectedAnswer는 자연히 초기화된다.
  */
@@ -259,6 +331,33 @@ function QuestionBody({
         showFeedback={showFeedback}
         correctAnswer={correctAnswer}
         onSelect={(answer: YesNoAnswer) => handleSubmit(answer)}
+      />
+    );
+  }
+
+  if (question.type === 'tile_arrange') {
+    return (
+      <TileArrangeInput
+        tiles={question.choices ?? []}
+        isSelectable={canAnswer}
+        showFeedback={showFeedback}
+        isCorrect={showFeedback ? (result?.isCorrect ?? null) : null}
+        correctAnswer={correctAnswer}
+        hintFirstChar={question.hintFirstChar}
+        onSubmit={handleSubmit}
+      />
+    );
+  }
+
+  if (question.type === 'speech') {
+    return (
+      <SpeechInput
+        targetWord={question.targetWord}
+        isSelectable={canAnswer}
+        showFeedback={showFeedback}
+        isCorrect={showFeedback ? (result?.isCorrect ?? null) : null}
+        correctAnswer={correctAnswer}
+        onSubmit={handleSubmit}
       />
     );
   }

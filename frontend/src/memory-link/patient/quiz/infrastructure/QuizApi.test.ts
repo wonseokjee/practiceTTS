@@ -143,4 +143,56 @@ describe('quizApi', () => {
       expect(result).toEqual(best);
     });
   });
+
+  describe('submitQabResults', () => {
+    it('POST /quiz/qab-results를 sessionToken/results 바디로 호출한다', async () => {
+      postMock.mockResolvedValue({ data: { saved: 2 } });
+      const results = [
+        { subtest: 'word' as const, itemRef: 'qw_001', isCorrect: true },
+        { subtest: 'ddk' as const, itemRef: 'ddk_0', isCorrect: true, metric: 11 },
+      ];
+
+      const res = await quizApi.submitQabResults('tok-1', results);
+
+      expect(postMock).toHaveBeenCalledWith('/quiz/qab-results', {
+        sessionToken: 'tok-1',
+        results,
+      });
+      expect(res).toEqual({ saved: 2 });
+    });
+
+    it('saved가 숫자가 아니면 형식 오류를 던진다', async () => {
+      postMock.mockResolvedValue({ data: { ok: true } });
+      await expect(quizApi.submitQabResults('tok-1', [])).rejects.toThrow(
+        '서버 응답 형식이 올바르지 않습니다.',
+      );
+    });
+  });
+
+  describe('getQabSummary', () => {
+    it('GET /quiz/qab-summary를 호출하고 items 배열을 반환한다', async () => {
+      const item = {
+        subtest: 'word',
+        total: 4,
+        correct: 3,
+        accuracy: 75,
+        avgMetric: null,
+        maxMetric: null,
+        lastAt: '2026-06-20T00:00:00.000Z',
+      };
+      getMock.mockResolvedValue({ data: { items: [item] } });
+
+      const res = await quizApi.getQabSummary();
+
+      expect(getMock).toHaveBeenCalledWith('/quiz/qab-summary');
+      expect(res).toEqual([item]);
+    });
+
+    it('항목 타입가드를 통과하지 못하면 형식 오류를 던진다', async () => {
+      getMock.mockResolvedValue({ data: { items: [{ subtest: 'word' }] } });
+      await expect(quizApi.getQabSummary()).rejects.toThrow(
+        '서버 응답 형식이 올바르지 않습니다.',
+      );
+    });
+  });
 });

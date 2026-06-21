@@ -7,8 +7,20 @@
 /** 퀴즈 세트 생성 상태 */
 export type QuizGenerationStatus = 'pending' | 'ready' | 'failed';
 
-/** 문제 유형 */
-export type QuizQuestionType = 'multiple_choice' | 'yes_no' | 'fill_blank';
+/**
+ * 문제 유형
+ * - multiple_choice: 4지선다
+ * - yes_no: 예/아니오
+ * - fill_blank: 빈칸 채우기(타이핑) — 현재 세트 구성에선 미사용(타일/말하기로 대체)
+ * - tile_arrange: 글자(음절) 타일을 탭해 단어 조합 (choices에 섞인 타일)
+ * - speech: 음성으로 말하기 (STT 인식 텍스트 제출)
+ */
+export type QuizQuestionType =
+  | 'multiple_choice'
+  | 'yes_no'
+  | 'fill_blank'
+  | 'tile_arrange'
+  | 'speech';
 
 /** 환자 답변 카테고리 (상세 조회 시 노출용 메모) */
 export type PatientNoteCategory = 'activity' | 'moment' | 'context';
@@ -38,6 +50,8 @@ export interface PatientNote {
  * - multiple_choice: choices에 보기 4개, hintFirstChar = null
  * - yes_no:          choices = null, hintFirstChar = null
  * - fill_blank:      choices = null, hintFirstChar = 첫 글자 힌트(있을 수 있음)
+ * - tile_arrange:    choices = 섞인 음절 타일, hintFirstChar = 첫 글자 힌트(있을 수 있음)
+ * - speech:          따라읽기. choices = null, targetWord = 읽을 단어(노출), prompt = 안내 문구
  */
 export interface QuizQuestionPublic {
   id: string;
@@ -45,6 +59,8 @@ export interface QuizQuestionPublic {
   type: QuizQuestionType;
   prompt: string;
   choices: string[] | null;
+  /** speech 따라읽기에서 보여주고 발음할 단어 (speech일 때만 non-null) */
+  targetWord: string | null;
   hintFirstChar: string | null;
 }
 
@@ -114,6 +130,8 @@ export interface SubmitAnswer {
    * - multiple_choice: 선택한 보기 문자열
    * - yes_no:          'yes' | 'no'
    * - fill_blank:      입력 텍스트
+   * - tile_arrange:    타일을 조합한 문자열
+   * - speech:          STT 인식 텍스트
    */
   userAnswer: string;
 }

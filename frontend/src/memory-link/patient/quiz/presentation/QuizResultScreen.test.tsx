@@ -13,6 +13,7 @@ interface Overrides {
   sessionScore?: number;
   bestScore?: number | null;
   isNewBest?: boolean;
+  showScore?: boolean;
 }
 
 function renderResult(overrides?: Overrides) {
@@ -23,6 +24,7 @@ function renderResult(overrides?: Overrides) {
       sessionScore={overrides?.sessionScore ?? 80}
       bestScore={overrides?.bestScore ?? null}
       isNewBest={overrides?.isNewBest ?? false}
+      showScore={overrides?.showScore ?? true}
       onRetry={onRetry}
       onBackToList={onBackToList}
     />,
@@ -50,6 +52,15 @@ describe('QuizResultScreen', () => {
   it('bestScore가 있으면 최고점을 표시한다', () => {
     renderResult({ sessionScore: 80, bestScore: 90 });
     expect(screen.getByText('최고점 90점')).toBeInTheDocument();
+  });
+
+  it('무점수 모드(showScore=false)는 숫자·최고점을 숨기고 완료 격려만 표시한다', () => {
+    renderResult({ sessionScore: 80, bestScore: 90, showScore: false });
+    expect(screen.queryByText('80점')).not.toBeInTheDocument();
+    expect(screen.queryByText('최고점 90점')).not.toBeInTheDocument();
+    expect(screen.getByText('오늘도 끝까지 잘 하셨어요!')).toBeInTheDocument();
+    // 버튼은 그대로 동작
+    expect(screen.getByRole('button', { name: '다시 풀기' })).toBeInTheDocument();
   });
 
   it('"다시 풀기" 클릭 시 onRetry가 호출된다', () => {

@@ -93,8 +93,8 @@ class QuizGeneratorService:
         # 4. [가드 1] 1차 호출 → 파싱, 실패 시 temperature=0 재시도
         parsed = await self._generate_and_parse(prompt)
 
-        # 5. [가드 3·4·5] 안전 가드 통과 문제만 추출
-        questions = self._sanitize(parsed, notes_blob)
+        # 5. [가드 3·4·5] 안전 가드 통과 문제만 추출 (요청 분포도 함께 적용)
+        questions = self._sanitize(parsed, notes_blob, dist)
 
         # 6. [가드 2] 부족분을 규칙 기반 빈칸 폴백으로 보충
         fallback_used = len(questions) < need
@@ -239,18 +239,18 @@ class QuizGeneratorService:
         return cleaned
 
     def _sanitize(
-        self, questions: list[dict], notes_blob: str
+        self, questions: list[dict], notes_blob: str, dist: QuizDistribution
     ) -> list[QuizQuestionOut]:
         """가드 3(부분일치)·4(금칙어)·5(30자 절단) + 유형 정합성 통과 문제만 반환."""
         result: list[QuizQuestionOut] = []
         for raw_q in questions:
-            sanitized = self._sanitize_one(raw_q, notes_blob)
+            sanitized = self._sanitize_one(raw_q, notes_blob, dist)
             if sanitized is not None:
                 result.append(sanitized)
         return result
 
     def _sanitize_one(
-        self, raw_q: dict, notes_blob: str
+        self, raw_q: dict, notes_blob: str, dist: QuizDistribution
     ) -> QuizQuestionOut | None:
         """단일 문제 dict에 가드를 적용. 부적합하면 None을 반환(제거)."""
         q_type = raw_q.get("type")
@@ -261,6 +261,11 @@ class QuizGeneratorService:
 
         # 기본 형식 검사 (불변식 I4)
         if q_type not in ("multiple_choice", "yes_no", "fill_blank"):
+            return None
+
+        # 요청 분포에서 제외된 유형은 LLM이 만들어도 버린다(부족분은 폴백이 보충).
+        # 예: yes_no=0이면 LLM이 yes_no를 반환해도 제거 → 빈칸 폴백으로 대체.
+        if q_type == "yes_no" and dist.yes_no == 0:
             return None
         if not isinstance(prompt, str) or not prompt.strip():
             return None

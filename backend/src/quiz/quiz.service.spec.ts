@@ -3,6 +3,8 @@ import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { MemoryEntry } from '../memory/entities/memory-entry.entity';
 import { PatientMemoryNote } from '../memory/entities/patient-memory-note.entity';
 import { SubmitAttemptDto } from './dto/submit-attempt.dto';
+import { SubmitQabResultsDto } from './dto/submit-qab-results.dto';
+import { QabResult } from './entities/qab-result.entity';
 import { QuizAttempt } from './entities/quiz-attempt.entity';
 import { QuizBestScore } from './entities/quiz-best-score.entity';
 import { QuizQuestion } from './entities/quiz-question.entity';
@@ -39,6 +41,7 @@ describe('QuizService', () => {
   let quizQuestionRepo: ReturnType<typeof buildRepoMock>;
   let quizAttemptRepo: ReturnType<typeof buildRepoMock>;
   let quizBestScoreRepo: ReturnType<typeof buildRepoMock>;
+  let qabResultRepo: ReturnType<typeof buildRepoMock>;
   let memoryEntryRepo: ReturnType<typeof buildRepoMock>;
   let patientMemoryNoteRepo: ReturnType<typeof buildRepoMock>;
   let generationClientMock: { generate: jest.Mock };
@@ -122,6 +125,7 @@ describe('QuizService', () => {
     quizQuestionRepo = buildRepoMock();
     quizAttemptRepo = buildRepoMock();
     quizBestScoreRepo = buildRepoMock();
+    qabResultRepo = buildRepoMock();
     memoryEntryRepo = buildRepoMock();
     patientMemoryNoteRepo = buildRepoMock();
     generationClientMock = { generate: jest.fn() };
@@ -133,6 +137,7 @@ describe('QuizService', () => {
     quizQuestionRepo.create.mockImplementation((x: unknown) => x);
     quizAttemptRepo.create.mockImplementation((x: unknown) => x);
     quizBestScoreRepo.create.mockImplementation((x: unknown) => x);
+    qabResultRepo.create.mockImplementation((x: unknown) => x);
 
     const moduleRef: TestingModule = await Test.createTestingModule({
       providers: [
@@ -147,6 +152,7 @@ describe('QuizService', () => {
           provide: getRepositoryToken(QuizBestScore),
           useValue: quizBestScoreRepo,
         },
+        { provide: getRepositoryToken(QabResult), useValue: qabResultRepo },
         { provide: getRepositoryToken(MemoryEntry), useValue: memoryEntryRepo },
         {
           provide: getRepositoryToken(PatientMemoryNote),
@@ -223,6 +229,65 @@ describe('QuizService', () => {
         QUIZ_SET_ID,
         expect.objectContaining({ generationStatus: 'ready' }),
       );
+    });
+
+    it('빈칸(fill_blank)을 타일 조합·말하기로 변환해 영속화해야 한다 (타이핑 제거)', async () => {
+      memoryEntryRepo.findOne.mockResolvedValue(buildEntry());
+      patientMemoryNoteRepo.find.mockResolvedValue([buildNote()]);
+      quizSetRepo.findOne.mockResolvedValue(null);
+      quizSetRepo.save.mockResolvedValue(
+        buildSet({ generationStatus: 'pending' }),
+      );
+      // LLM은 빈칸 2개를 반환 → 백엔드가 타일1 + 말하기1로 변환해야 함
+      generationClientMock.generate.mockResolvedValue({
+        questions: [
+          {
+            type: 'fill_blank',
+            prompt: '우리가 간 곳은 ___',
+            choices: null,
+            correctAnswer: '바다',
+            hintFirstChar: '바',
+          },
+          {
+            type: 'fill_blank',
+            prompt: '무엇을 보았나요? ___',
+            choices: null,
+            correctAnswer: '강아지',
+            hintFirstChar: '강',
+          },
+        ],
+        model: 'm',
+        fallbackUsed: false,
+      });
+      quizQuestionRepo.save.mockResolvedValue([]);
+      quizSetRepo.update.mockResolvedValue({ affected: 1 });
+
+      await service.generateForMemoryEntry(MEMORY_ENTRY_ID);
+
+      const createCalls = quizQuestionRepo.create.mock.calls as unknown[][];
+      const createdTypes = createCalls.map(
+        (c) => (c[0] as { type: string }).type,
+      );
+      // 첫 빈칸 → tile_arrange, 둘째 빈칸 → speech (번갈아 변환)
+      expect(createdTypes).toEqual(['tile_arrange', 'speech']);
+
+      // 타일 문항은 정답 음절을 choices에 담아야 한다 (정답은 별도 컬럼에 은닉)
+      const tileArg = createCalls[0][0] as {
+        choices: string[];
+        correctAnswer: string;
+      };
+      expect(tileArg.correctAnswer).toBe('바다');
+      expect(tileArg.choices).toEqual(expect.arrayContaining(['바', '다']));
+
+      // 말하기 문항은 따라읽기: choices 없음, 프롬프트는 안내 문구, 읽을 단어는 correctAnswer로 보존
+      const speechArg = createCalls[1][0] as {
+        choices: unknown;
+        prompt: string;
+        correctAnswer: string;
+      };
+      expect(speechArg.choices).toBeNull();
+      expect(speechArg.correctAnswer).toBe('강아지');
+      expect(speechArg.prompt).toContain('따라');
     });
 
     it('LLM 페이로드에 보호자 사적 데이터(mood/reflection/wish)가 부재해야 한다 (Phase 3 필수)', async () => {
@@ -957,6 +1022,105 @@ describe('QuizService', () => {
         service.getWishPractice(QUIZ_SET_ID, 'other-patient'),
       ).rejects.toMatchObject({ code: QuizErrorCode.FORBIDDEN });
       expect(wishClientMock.convert).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── QAB 결과 저장/요약 ─────────────────────────────────────────────
+  describe('saveQabResults', () => {
+    it('유효 환자 ID로 결과를 일괄 저장하고 저장 개수를 반환한다', async () => {
+      qabResultRepo.save.mockResolvedValue([]);
+      const dto: SubmitQabResultsDto = {
+        sessionToken: SESSION_TOKEN,
+        results: [
+          { subtest: 'word', itemRef: 'qw_001', isCorrect: true },
+          { subtest: 'ddk', itemRef: 'ddk_0', isCorrect: true, metric: 11 },
+        ],
+      };
+
+      const res = await service.saveQabResults(PATIENT_ID, dto);
+
+      expect(res).toEqual({ saved: 2 });
+      expect(qabResultRepo.save).toHaveBeenCalledTimes(1);
+      // 클라 입력이 아닌 유효 환자 ID로 저장되어야 한다
+      const savedRows = qabResultRepo.create.mock.calls.map((c) => c[0]);
+      expect(savedRows[0]).toMatchObject({
+        patientId: PATIENT_ID,
+        sessionToken: SESSION_TOKEN,
+        subtest: 'word',
+        isCorrect: true,
+        metric: null,
+      });
+      expect(savedRows[1]).toMatchObject({ subtest: 'ddk', metric: 11 });
+    });
+  });
+
+  describe('getQabSummary', () => {
+    it('검사별 정확도/지표를 집계해 반환한다', async () => {
+      const qb = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([
+          {
+            subtest: 'word',
+            total: '4',
+            correct: '3',
+            avgMetric: null,
+            maxMetric: null,
+            lastAt: new Date('2026-06-20T00:00:00.000Z'),
+          },
+          {
+            subtest: 'ddk',
+            total: '2',
+            correct: '1',
+            avgMetric: '9.5',
+            maxMetric: '11',
+            lastAt: new Date('2026-06-21T00:00:00.000Z'),
+          },
+        ]),
+      };
+      qabResultRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const res = await service.getQabSummary(PATIENT_ID);
+
+      expect(qb.where).toHaveBeenCalledWith('r.patient_id = :pid', {
+        pid: PATIENT_ID,
+      });
+      expect(res.items).toEqual([
+        {
+          subtest: 'word',
+          total: 4,
+          correct: 3,
+          accuracy: 75,
+          avgMetric: null,
+          maxMetric: null,
+          lastAt: '2026-06-20T00:00:00.000Z',
+        },
+        {
+          subtest: 'ddk',
+          total: 2,
+          correct: 1,
+          accuracy: 50,
+          avgMetric: 9.5,
+          maxMetric: 11,
+          lastAt: '2026-06-21T00:00:00.000Z',
+        },
+      ]);
+    });
+
+    it('데이터가 없으면 빈 배열', async () => {
+      const qb = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([]),
+      };
+      qabResultRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const res = await service.getQabSummary(PATIENT_ID);
+      expect(res.items).toEqual([]);
     });
   });
 });

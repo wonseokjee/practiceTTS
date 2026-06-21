@@ -23,11 +23,14 @@ import { resolveEffectivePatientId } from '../auth/effective-patient-id.util';
 import { GenerateQuizDto } from './dto/generate-quiz.dto';
 import { QuizSetSummaryDto } from './dto/quiz-set-summary.dto';
 import { SubmitAttemptDto } from './dto/submit-attempt.dto';
+import { SubmitQabResultsDto } from './dto/submit-qab-results.dto';
 import { QuizError, QuizErrorCode } from './errors/quiz.errors';
 import {
   BestScoreResult,
+  QabSummaryResult,
   QuizSetDetail,
   RequestGenerationResult,
+  SaveQabResultsResult,
   SubmitAttemptsResult,
   QuizService,
 } from './quiz.service';
@@ -141,6 +144,40 @@ export class QuizController {
     const effectivePatientId = resolveEffectivePatientId(req.user);
     try {
       return await this.quizService.getBestScore(id, effectivePatientId);
+    } catch (error) {
+      throw this.mapError(error);
+    }
+  }
+
+  /**
+   * POST /quiz/qab-results
+   * QAB 질문형 검사 결과 일괄 저장 (세션 완료 시 1회). 환자/보호자 모두 호출 가능.
+   */
+  @Post('quiz/qab-results')
+  @HttpCode(HttpStatus.CREATED)
+  async submitQabResults(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: SubmitQabResultsDto,
+  ): Promise<SaveQabResultsResult> {
+    const effectivePatientId = resolveEffectivePatientId(req.user);
+    try {
+      return await this.quizService.saveQabResults(effectivePatientId, dto);
+    } catch (error) {
+      throw this.mapError(error);
+    }
+  }
+
+  /**
+   * GET /quiz/qab-summary
+   * QAB 검사별 회복 추적 요약 (보호자 가시성). 유효 환자 ID 기준 집계.
+   */
+  @Get('quiz/qab-summary')
+  async getQabSummary(
+    @Req() req: AuthenticatedRequest,
+  ): Promise<QabSummaryResult> {
+    const effectivePatientId = resolveEffectivePatientId(req.user);
+    try {
+      return await this.quizService.getQabSummary(effectivePatientId);
     } catch (error) {
       throw this.mapError(error);
     }

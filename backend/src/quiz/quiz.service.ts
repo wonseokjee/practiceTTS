@@ -10,15 +10,19 @@ import {
   toQuizQuestionPublicDto,
 } from './dto/quiz-question-public.dto';
 import { SubmitAttemptDto } from './dto/submit-attempt.dto';
+import { SubmitQabResultsDto } from './dto/submit-qab-results.dto';
+import { QabResult } from './entities/qab-result.entity';
 import { QuizAttempt } from './entities/quiz-attempt.entity';
 import { QuizBestScore } from './entities/quiz-best-score.entity';
 import { QuizQuestion } from './entities/quiz-question.entity';
 import { QuizSet } from './entities/quiz-set.entity';
 import { QuizError, QuizErrorCode } from './errors/quiz.errors';
 import {
+  GeneratedQuizQuestion,
   IQuizGenerationClient,
   QUIZ_GENERATION_CLIENT,
 } from './interfaces/IQuizGenerationClient';
+import { buildTiles } from './services/tile-builder';
 import type { IQuizGenerationPayload } from './interfaces/IQuizGenerationPayload';
 import { IQuizScorer, QUIZ_SCORER } from './interfaces/IQuizScorer';
 import {
@@ -42,6 +46,9 @@ const MAX_RECOVERY_BATCH = 50;
 /** 목록 조회 기본/최대 limit */
 const DEFAULT_LIST_LIMIT = 20;
 const MAX_LIST_LIMIT = 50;
+
+/** 따라읽기(speech) 문항 고정 안내 문구 — 회상이 아니라 단어를 보고/듣고 따라 말한다. */
+const SPEECH_REPEAT_PROMPT = '다음 단어를 듣고 따라 말해보세요';
 
 /** notePreview 카테고리 한글 라벨 */
 const CATEGORY_LABELS: Record<string, string> = {
@@ -91,6 +98,30 @@ export interface RequestGenerationResult {
   generationStatus: 'pending';
 }
 
+/** saveQabResults 반환 타입 */
+export interface SaveQabResultsResult {
+  saved: number;
+}
+
+/** QAB 검사별 회복 추적 요약 (보호자용) */
+export interface QabSubtestSummary {
+  subtest: string;
+  total: number;
+  correct: number;
+  /** 0..100 정확도 */
+  accuracy: number;
+  /** 수치 지표 평균(ddk 등). 없으면 null */
+  avgMetric: number | null;
+  /** 수치 지표 최고값(ddk 최고 횟수 등). 없으면 null */
+  maxMetric: number | null;
+  /** 마지막 측정 시각(ISO). 없으면 null */
+  lastAt: string | null;
+}
+
+export interface QabSummaryResult {
+  items: QabSubtestSummary[];
+}
+
 /**
  * 퀴즈 도메인 서비스 (Phase 3).
  *
@@ -113,6 +144,8 @@ export class QuizService {
     private readonly quizAttemptRepository: Repository<QuizAttempt>,
     @InjectRepository(QuizBestScore)
     private readonly quizBestScoreRepository: Repository<QuizBestScore>,
+    @InjectRepository(QabResult)
+    private readonly qabResultRepository: Repository<QabResult>,
     @InjectRepository(MemoryEntry)
     private readonly memoryEntryRepository: Repository<MemoryEntry>,
     @InjectRepository(PatientMemoryNote)
@@ -305,12 +338,15 @@ export class QuizService {
     try {
       const result = await this.generationClient.generate(payload);
 
+      // 빈칸(fill_blank)을 타일 조합/말하기로 변환 (고령 환자 타이핑 부담 제거).
+      const diversified = this.diversifyRecallQuestions(result.questions);
+
       // 문항 영속화 + ready 전이를 한 트랜잭션으로 묶어 원자성을 보장한다.
       // (questions만 저장되고 set이 pending에 박제되는 부분 상태를 방지)
       await this.dataSource.transaction(async (manager) => {
         const questionRepo = manager.getRepository(QuizQuestion);
         const setRepo = manager.getRepository(QuizSet);
-        const questions = result.questions.map((q, index) =>
+        const questions = diversified.map((q, index) =>
           questionRepo.create({
             quizSetId: quizSet.id,
             orderIndex: index,
@@ -338,6 +374,47 @@ export class QuizService {
       });
       throw error;
     }
+  }
+
+  /**
+   * LLM이 만든 빈칸(fill_blank) 문항을 타일 조합/말하기로 번갈아 변환한다.
+   *
+   * 고령 실어증 환자의 타이핑 부담을 없애기 위해 fill_blank는 저장하지 않고,
+   * 등장 순서대로 tile_arrange(짝수 번째) → speech(홀수 번째)로 변환한다.
+   * (기본 분배 fill_blank=2 → 타일 1 + 말하기 1)
+   *
+   * - tile_arrange: 정답 음절 + 오답 음절을 섞은 타일을 choices에 담는다.
+   *   (정답 음절이 비어 타일을 못 만들면 안전하게 speech로 폴백)
+   * - speech: choices=null, hintFirstChar는 유지(STT 재시도 힌트로 활용).
+   * - 그 외 유형(mc/yn)은 그대로 통과시킨다.
+   */
+  private diversifyRecallQuestions(
+    questions: GeneratedQuizQuestion[],
+  ): GeneratedQuizQuestion[] {
+    let recallIndex = 0;
+    return questions.map((q) => {
+      if (q.type !== 'fill_blank') {
+        return q;
+      }
+      const useTile = recallIndex % 2 === 0;
+      recallIndex += 1;
+
+      if (useTile) {
+        const tiles = buildTiles(q.correctAnswer);
+        if (tiles.length > 0) {
+          return { ...q, type: 'tile_arrange', choices: tiles };
+        }
+      }
+      // speech는 따라읽기(repetition): 빈칸 회상이 아니라 단어를 보여주고 따라 말한다.
+      // prompt를 고정 안내로 교체하고, 읽을 단어는 correctAnswer로 유지(공개 DTO가 targetWord로 노출).
+      return {
+        ...q,
+        type: 'speech',
+        choices: null,
+        prompt: SPEECH_REPEAT_PROMPT,
+        hintFirstChar: null,
+      };
+    });
   }
 
   /**
@@ -622,6 +699,80 @@ export class QuizService {
       bestScore: best.bestScore,
       achievedAt: best.achievedAt.toISOString(),
     };
+  }
+
+  /**
+   * QAB 질문형 검사 결과 일괄 저장 (세션 완료 시 1회).
+   * patientId는 토큰에서 도출된 유효 환자 ID를 사용한다(클라 입력 불신).
+   */
+  async saveQabResults(
+    effectivePatientId: string,
+    dto: SubmitQabResultsDto,
+  ): Promise<SaveQabResultsResult> {
+    const rows = dto.results.map((r) =>
+      this.qabResultRepository.create({
+        patientId: effectivePatientId,
+        sessionToken: dto.sessionToken,
+        subtest: r.subtest,
+        itemRef: r.itemRef,
+        isCorrect: r.isCorrect,
+        metric: r.metric ?? null,
+      }),
+    );
+    await this.qabResultRepository.save(rows);
+    return { saved: rows.length };
+  }
+
+  /**
+   * QAB 검사별 회복 추적 요약 (보호자용).
+   * 검사 종류별로 정확도 + 수치 지표(평균/최고) + 마지막 측정 시각을 집계한다.
+   */
+  async getQabSummary(
+    effectivePatientId: string,
+  ): Promise<QabSummaryResult> {
+    const raw = await this.qabResultRepository
+      .createQueryBuilder('r')
+      .select('r.subtest', 'subtest')
+      .addSelect('COUNT(*)', 'total')
+      .addSelect('SUM(CASE WHEN r.is_correct THEN 1 ELSE 0 END)', 'correct')
+      .addSelect('AVG(r.metric)', 'avgMetric')
+      .addSelect('MAX(r.metric)', 'maxMetric')
+      .addSelect('MAX(r.created_at)', 'lastAt')
+      .where('r.patient_id = :pid', { pid: effectivePatientId })
+      .groupBy('r.subtest')
+      .getRawMany<{
+        subtest: string;
+        total: string;
+        correct: string;
+        avgMetric: string | null;
+        maxMetric: string | null;
+        lastAt: Date | string | null;
+      }>();
+
+    const items: QabSubtestSummary[] = raw.map((row) => {
+      const total = Number(row.total);
+      const correct = Number(row.correct);
+      const avgMetric =
+        row.avgMetric === null ? null : Math.round(Number(row.avgMetric) * 10) / 10;
+      const maxMetric = row.maxMetric === null ? null : Number(row.maxMetric);
+      const lastAt =
+        row.lastAt === null
+          ? null
+          : row.lastAt instanceof Date
+            ? row.lastAt.toISOString()
+            : new Date(row.lastAt).toISOString();
+      return {
+        subtest: row.subtest,
+        total,
+        correct,
+        accuracy: total > 0 ? Math.round((correct / total) * 100) : 0,
+        avgMetric,
+        maxMetric,
+        lastAt,
+      };
+    });
+
+    return { items };
   }
 
   /**

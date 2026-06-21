@@ -6,6 +6,7 @@ import { useMemoryEntries } from '../application/useMemoryEntries.js';
 import { CaptureScreen } from './CaptureScreen.js';
 import { EntryDetailScreen } from './EntryDetailScreen.js';
 import { EntryListScreen } from './EntryListScreen.js';
+import { QabProgressCard } from './QabProgressCard.js';
 
 /** 대시보드 화면 상태 */
 type DashboardView = 'list' | 'capture' | 'detail';
@@ -110,6 +111,9 @@ export function CaregiverDashboard() {
       <main className="max-w-2xl mx-auto px-4 py-6">
         {/* 오늘의 치유 메시지 (Pattern 2) — 목록 화면에서만 노출 */}
         {view === 'list' && <DailyHealingBanner />}
+
+        {/* 발화 검사 회복 추세 (데이터 있을 때만 표시) */}
+        {view === 'list' && <QabProgressCard />}
 
         {/* 목록 화면 */}
         {view === 'list' && (

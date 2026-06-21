@@ -19,12 +19,11 @@ QUIZ_SYSTEM_PROMPT = """당신은 한국어 언어재활 보조 도구의 문제
 
 [문제 분포]
 - 4지선다 {N_MULTIPLE_CHOICE}개
-- 예/아니오 {N_YES_NO}개
 - 빈칸 채우기 {N_FILL_BLANK}개
+- 예/아니오(yes_no) 문제는 만들지 마세요.
 
 [유형별 규칙]
 - multiple_choice: 정답 1개 + 메모에 없는 오답 3개(동일 카테고리, 장소↔장소). choices 정확히 4개.
-- yes_no: 메모 본문 사실이면 정답 "yes", 본문과 모순이면 "no".
 - fill_blank: 메모 핵심 명사 1개를 ___ 로 빈칸 처리. hint_first_char = 정답의 첫 글자(공백 제외).
 
 [입력 — 환자 관련 메모만]
@@ -37,7 +36,6 @@ QUIZ_SYSTEM_PROMPT = """당신은 한국어 언어재활 보조 도구의 문제
 [출력 형식 — JSON만, markdown/설명 금지]
 {{"questions": [
   {{"type": "multiple_choice", "prompt": "...", "choices": ["..","..","..",".."], "correct_answer": ".."}},
-  {{"type": "yes_no", "prompt": "...", "correct_answer": "yes"}},
   {{"type": "fill_blank", "prompt": "오늘 ___을 만났어요.", "correct_answer": "..", "hint_first_char": ".."}}
 ]}}
 추가 설명 없이 JSON만 반환하세요."""

@@ -34,6 +34,7 @@ function makeDetail(): QuizSetDetail {
         prompt: '어디 갔나요?',
         choices: ['공원', '집', '병원', '시장'],
         hintFirstChar: null,
+        targetWord: null,
       },
       {
         id: 'q2',
@@ -42,6 +43,7 @@ function makeDetail(): QuizSetDetail {
         prompt: '날씨가 좋았나요?',
         choices: null,
         hintFirstChar: null,
+        targetWord: null,
       },
     ],
   };
@@ -63,6 +65,8 @@ function makeMockApi(overrides?: MockApiOverrides): IQuizApi {
     listSets: vi.fn(),
     getBestScore: vi.fn(),
     getWishPractice: vi.fn(),
+    submitQabResults: vi.fn(),
+    getQabSummary: vi.fn(),
     getSet: overrides?.getSet ?? vi.fn(async () => makeDetail()),
     submitAttempts:
       overrides?.submitAttempts ??

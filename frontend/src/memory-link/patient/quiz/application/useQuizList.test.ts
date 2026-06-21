@@ -29,6 +29,8 @@ function makeMockApi(listSets: IQuizApi['listSets']): IQuizApi {
     submitAttempts: vi.fn(),
     getBestScore: vi.fn(),
     getWishPractice: vi.fn(),
+    submitQabResults: vi.fn(),
+    getQabSummary: vi.fn(),
   };
 }
 

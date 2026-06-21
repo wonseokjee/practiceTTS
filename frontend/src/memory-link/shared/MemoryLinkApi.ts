@@ -45,7 +45,8 @@ memoryLinkApi.interceptors.response.use(
     if (axios.isAxiosError(error) && error.response?.status === 401) {
       const url = error.config?.url ?? '';
       const isSkipped = SKIP_401_REDIRECT_PATHS.some((p) => url.includes(p));
-      if (!isSkipped) {
+      // 이미 /login이면 다시 리다이렉트하지 않는다 (무한 새로고침 루프 방지).
+      if (!isSkipped && window.location.pathname !== '/login') {
         localStorage.removeItem(ML_TOKEN_KEY);
         window.location.href = '/login';
       }

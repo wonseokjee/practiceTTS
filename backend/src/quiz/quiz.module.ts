@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
 import { MemoryEntry } from '../memory/entities/memory-entry.entity';
 import { PatientMemoryNote } from '../memory/entities/patient-memory-note.entity';
+import { QabResult } from './entities/qab-result.entity';
 import { QuizAttempt } from './entities/quiz-attempt.entity';
 import { QuizBestScore } from './entities/quiz-best-score.entity';
 import { QuizQuestion } from './entities/quiz-question.entity';
@@ -37,6 +38,7 @@ import { WishConversionClient } from './services/wish-conversion.client';
       QuizQuestion,
       QuizAttempt,
       QuizBestScore,
+      QabResult,
       MemoryEntry,
       PatientMemoryNote,
     ]),

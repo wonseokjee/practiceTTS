@@ -179,7 +179,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(
     isDevBypass ? DEV_FAKE_TOKEN : () => localStorage.getItem(ML_TOKEN_KEY),
   );
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  // 저장된 토큰이 있으면 /auth/me로 검증이 끝날 때까지 로딩으로 시작한다.
+  // (검증 전 user=null로 라우트 가드가 /login을 잠깐 렌더해 깜빡이는 문제 방지)
+  const [isLoading, setIsLoading] = useState<boolean>(
+    () => !isDevBypass && localStorage.getItem(ML_TOKEN_KEY) !== null,
+  );
   // 환자 모드 플래그 — localStorage 영속(환자가 새로고침해도 잠금 유지).
   // 보안 경계가 아니라 UX 잠금이며, 실제 환자 식별은 백엔드 토큰 기준.
   const [isPatientMode, setIsPatientMode] = useState<boolean>(

@@ -1,5 +1,5 @@
 import { PatientNoteCategory } from '../constants/patient-note-category';
-import { QuizQuestionType } from '../constants/quiz-question-type';
+import { GeneratableQuizType } from '../constants/quiz-question-type';
 
 /**
  * Phase 3 QuizGenerationClient가 FastAPI(`/quiz/generate`)에 전달할 페이로드의 **화이트리스트**.
@@ -41,9 +41,10 @@ export interface IQuizGenerationPayload {
   targetWords?: ReadonlyArray<string>;
 
   /**
-   * 문제 유형별 분포 요청.
+   * 문제 유형별 분포 요청 (LLM이 생성 가능한 유형만).
+   * tile_arrange/speech는 백엔드가 fill_blank를 변환해 만들므로 여기 포함하지 않는다.
    */
   distribution?: {
-    [K in QuizQuestionType]: number;
+    [K in GeneratableQuizType]: number;
   };
 }

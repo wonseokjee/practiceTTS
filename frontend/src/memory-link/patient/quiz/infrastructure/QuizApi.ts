@@ -19,6 +19,7 @@ import type {
   SubmitAttemptsResult,
   WishPractice,
 } from '../domain/Quiz.js';
+import type { QabResultInput, QabSubtestSummary } from '../domain/QabResult.js';
 
 /** 목록 조회 옵션 */
 export interface ListQuizSetsParams {
@@ -53,6 +54,13 @@ export interface IQuizApi {
   getBestScore(quizSetId: string): Promise<BestScore>;
   /** POST /quiz/sets/:id/wish-practice — 보호자 한마디 → 발화 연습 (Phase 6) */
   getWishPractice(quizSetId: string): Promise<WishPractice>;
+  /** POST /quiz/qab-results — QAB 검사 결과 일괄 저장 (세션 완료 시) */
+  submitQabResults(
+    sessionToken: string,
+    results: QabResultInput[],
+  ): Promise<{ saved: number }>;
+  /** GET /quiz/qab-summary — QAB 검사별 회복 추세 (보호자용) */
+  getQabSummary(): Promise<QabSubtestSummary[]>;
 }
 
 // ─── 런타임 타입가드 ──────────────────────────────────────────────
@@ -68,7 +76,11 @@ function isGenerationStatus(value: unknown): value is QuizGenerationStatus {
 
 function isQuestionType(value: unknown): value is QuizQuestionType {
   return (
-    value === 'multiple_choice' || value === 'yes_no' || value === 'fill_blank'
+    value === 'multiple_choice' ||
+    value === 'yes_no' ||
+    value === 'fill_blank' ||
+    value === 'tile_arrange' ||
+    value === 'speech'
   );
 }
 
@@ -109,7 +121,11 @@ function isQuizQuestionPublic(value: unknown): value is QuizQuestionPublic {
     isQuestionType(obj.type) &&
     typeof obj.prompt === 'string' &&
     (obj.choices === null || isStringArray(obj.choices)) &&
-    (obj.hintFirstChar === null || typeof obj.hintFirstChar === 'string')
+    (obj.hintFirstChar === null || typeof obj.hintFirstChar === 'string') &&
+    // targetWord는 speech 전용 노출 필드. 구버전 응답 호환을 위해 부재(undefined)도 허용.
+    (obj.targetWord === undefined ||
+      obj.targetWord === null ||
+      typeof obj.targetWord === 'string')
   );
 }
 
@@ -171,6 +187,20 @@ function isWishPractice(value: unknown): value is WishPractice {
     typeof fb.prompt === 'string' &&
     typeof fb.answer === 'string' &&
     typeof fb.hintFirstChar === 'string'
+  );
+}
+
+function isQabSubtestSummary(value: unknown): value is QabSubtestSummary {
+  const obj = asRecord(value);
+  if (obj === null) return false;
+  return (
+    typeof obj.subtest === 'string' &&
+    typeof obj.total === 'number' &&
+    typeof obj.correct === 'number' &&
+    typeof obj.accuracy === 'number' &&
+    (obj.avgMetric === null || typeof obj.avgMetric === 'number') &&
+    (obj.maxMetric === null || typeof obj.maxMetric === 'number') &&
+    (obj.lastAt === null || typeof obj.lastAt === 'string')
   );
 }
 
@@ -251,5 +281,30 @@ export const quizApi: IQuizApi = {
       throw new Error(INVALID_RESPONSE_MESSAGE);
     }
     return res.data;
+  },
+
+  async submitQabResults(
+    sessionToken: string,
+    results: QabResultInput[],
+  ): Promise<{ saved: number }> {
+    const res = await memoryLinkApi.post<unknown>('/quiz/qab-results', {
+      sessionToken,
+      results,
+    });
+    const obj = asRecord(res.data);
+    if (obj === null || typeof obj.saved !== 'number') {
+      throw new Error(INVALID_RESPONSE_MESSAGE);
+    }
+    return { saved: obj.saved };
+  },
+
+  async getQabSummary(): Promise<QabSubtestSummary[]> {
+    const res = await memoryLinkApi.get<unknown>('/quiz/qab-summary');
+    const obj = asRecord(res.data);
+    const items = obj?.items;
+    if (!Array.isArray(items) || !items.every(isQabSubtestSummary)) {
+      throw new Error(INVALID_RESPONSE_MESSAGE);
+    }
+    return items;
   },
 };
