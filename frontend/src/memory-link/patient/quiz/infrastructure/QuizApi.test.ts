@@ -176,6 +176,7 @@ describe('quizApi', () => {
         total: 4,
         correct: 3,
         accuracy: 75,
+        assisted: 1,
         avgMetric: null,
         maxMetric: null,
         lastAt: '2026-06-20T00:00:00.000Z',

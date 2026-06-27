@@ -24,6 +24,10 @@ import type { QabSubtest } from '../constants/qab-subtest';
 @Entity('qab_results')
 @Index('IDX_qab_results_patient_subtest', ['patientId', 'subtest'])
 @Index('IDX_qab_results_session', ['sessionToken'])
+// 멱등성: 같은 세션의 같은 문항 결과는 1행만. 재시도/중복 제출 시 추세 이중 집계 방지.
+@Index('UQ_qab_results_dedup', ['patientId', 'sessionToken', 'subtest', 'itemRef'], {
+  unique: true,
+})
 export class QabResult {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -46,6 +50,10 @@ export class QabResult {
 
   @Column({ name: 'is_correct', type: 'boolean' })
   isCorrect: boolean;
+
+  // 보호자가 "넘어가기"로 통과시킨 문항(도움받음). 회복 추세 정확도 집계에서 제외한다.
+  @Column({ name: 'assisted', type: 'boolean', default: false })
+  assisted: boolean;
 
   // ddk 감지 횟수 등 수치 지표(없으면 null)
   @Column({ name: 'metric', type: 'int', nullable: true })

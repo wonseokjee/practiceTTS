@@ -17,6 +17,8 @@ interface PictureNamingItemProps {
   /** 채점 결과 — 피드백 단계에서만 의미 */
   isCorrect: boolean | null;
   onSubmit: (transcript: string) => void;
+  /** 보호자 통과 처리(도움받음). 없으면 목표 이름 제출로 폴백. */
+  onSkip?: () => void;
 }
 
 type NamingStatus = 'idle' | 'listening' | 'recognized' | 'error';
@@ -28,6 +30,7 @@ export function PictureNamingItem({
   showFeedback,
   isCorrect,
   onSubmit,
+  onSkip,
 }: PictureNamingItemProps) {
   const [status, setStatus] = useState<NamingStatus>('idle');
   const [transcript, setTranscript] = useState<string>('');
@@ -64,9 +67,13 @@ export function PictureNamingItem({
     onSubmit(transcript.trim());
   };
 
-  // "넘어가기": 보호자가 답했다고 보고 통과 처리. 정답 이름을 제출 → 정답 처리.
+  // "넘어가기": 보호자가 답했다고 보고 통과 처리(도움받음).
   const handleSkip = (): void => {
     if (!isSelectable) return;
+    if (onSkip) {
+      onSkip();
+      return;
+    }
     onSubmit(item.targetWord);
   };
 

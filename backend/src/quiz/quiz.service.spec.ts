@@ -1048,9 +1048,34 @@ describe('QuizService', () => {
         sessionToken: SESSION_TOKEN,
         subtest: 'word',
         isCorrect: true,
+        assisted: false,
         metric: null,
       });
       expect(savedRows[1]).toMatchObject({ subtest: 'ddk', metric: 11 });
+    });
+
+    it('같은 세션 재제출(UNIQUE 위반)은 멱등 — 던지지 않고 성공 처리', async () => {
+      qabResultRepo.save.mockRejectedValue({ code: '23505' });
+      const dto: SubmitQabResultsDto = {
+        sessionToken: SESSION_TOKEN,
+        results: [{ subtest: 'word', itemRef: 'qw_001', isCorrect: true }],
+      };
+
+      await expect(service.saveQabResults(PATIENT_ID, dto)).resolves.toEqual({
+        saved: 1,
+      });
+    });
+
+    it('UNIQUE 위반이 아닌 DB 오류는 전파한다', async () => {
+      qabResultRepo.save.mockRejectedValue({ code: '08006' }); // connection failure
+      const dto: SubmitQabResultsDto = {
+        sessionToken: SESSION_TOKEN,
+        results: [{ subtest: 'word', itemRef: 'qw_001', isCorrect: true }],
+      };
+
+      await expect(
+        service.saveQabResults(PATIENT_ID, dto),
+      ).rejects.toMatchObject({ code: '08006' });
     });
   });
 
@@ -1066,6 +1091,7 @@ describe('QuizService', () => {
             subtest: 'word',
             total: '4',
             correct: '3',
+            assisted: '1',
             avgMetric: null,
             maxMetric: null,
             lastAt: new Date('2026-06-20T00:00:00.000Z'),
@@ -1074,6 +1100,7 @@ describe('QuizService', () => {
             subtest: 'ddk',
             total: '2',
             correct: '1',
+            assisted: '0',
             avgMetric: '9.5',
             maxMetric: '11',
             lastAt: new Date('2026-06-21T00:00:00.000Z'),
@@ -1093,6 +1120,7 @@ describe('QuizService', () => {
           total: 4,
           correct: 3,
           accuracy: 75,
+          assisted: 1,
           avgMetric: null,
           maxMetric: null,
           lastAt: '2026-06-20T00:00:00.000Z',
@@ -1102,6 +1130,7 @@ describe('QuizService', () => {
           total: 2,
           correct: 1,
           accuracy: 50,
+          assisted: 0,
           avgMetric: 9.5,
           maxMetric: 11,
           lastAt: '2026-06-21T00:00:00.000Z',

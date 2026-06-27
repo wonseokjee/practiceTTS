@@ -184,6 +184,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
           showFeedback={showFeedback}
           isCorrect={showFeedback ? (lastResult?.isCorrect ?? null) : null}
           onSubmit={(transcript) => actions.submitNaming(transcript)}
+          onSkip={actions.skipCurrent}
         />
       ) : currentItem.kind === 'repeat' ? (
         <SpeechCaptureItem
@@ -195,6 +196,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
           showFeedback={showFeedback}
           isCorrect={showFeedback ? (lastResult?.isCorrect ?? null) : null}
           onSubmit={(transcript) => actions.submitSpeech(transcript)}
+          onSkip={actions.skipCurrent}
         />
       ) : currentItem.kind === 'reading' ? (
         <SpeechCaptureItem
@@ -206,6 +208,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
           showFeedback={showFeedback}
           isCorrect={showFeedback ? (lastResult?.isCorrect ?? null) : null}
           onSubmit={(transcript) => actions.submitSpeech(transcript)}
+          onSkip={actions.skipCurrent}
         />
       ) : currentItem.kind === 'ddk' ? (
         <DdkItem
@@ -215,6 +218,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
           showFeedback={showFeedback}
           isCorrect={showFeedback ? (lastResult?.isCorrect ?? null) : null}
           onSubmit={(count) => actions.submitDdk(count)}
+          onSkip={actions.skipCurrent}
         />
       ) : (
         <ImageChoiceQuizItem

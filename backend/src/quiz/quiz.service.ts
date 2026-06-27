@@ -106,10 +106,13 @@ export interface SaveQabResultsResult {
 /** QAB 검사별 회복 추적 요약 (보호자용) */
 export interface QabSubtestSummary {
   subtest: string;
+  /** 보호자 도움(넘어가기) 제외한 실제 응답 수 */
   total: number;
   correct: number;
-  /** 0..100 정확도 */
+  /** 0..100 정확도 (도움 제외 기준) */
   accuracy: number;
+  /** 보호자가 넘어가기로 통과시킨 문항 수 */
+  assisted: number;
   /** 수치 지표 평균(ddk 등). 없으면 null */
   avgMetric: number | null;
   /** 수치 지표 최고값(ddk 최고 횟수 등). 없으면 null */
@@ -716,10 +719,18 @@ export class QuizService {
         subtest: r.subtest,
         itemRef: r.itemRef,
         isCorrect: r.isCorrect,
+        assisted: r.assisted ?? false,
         metric: r.metric ?? null,
       }),
     );
-    await this.qabResultRepository.save(rows);
+    try {
+      await this.qabResultRepository.save(rows);
+    } catch (error) {
+      // 멱등성: 같은 세션 재제출은 UNIQUE 위반 → 이미 저장된 것으로 보고 성공 처리.
+      if (!this.isUniqueViolation(error)) {
+        throw error;
+      }
+    }
     return { saved: rows.length };
   }
 
@@ -732,9 +743,14 @@ export class QuizService {
   ): Promise<QabSummaryResult> {
     const raw = await this.qabResultRepository
       .createQueryBuilder('r')
+      // total/correct는 보호자 도움(assisted) 문항을 제외해 환자 실제 수행만 집계한다.
       .select('r.subtest', 'subtest')
-      .addSelect('COUNT(*)', 'total')
-      .addSelect('SUM(CASE WHEN r.is_correct THEN 1 ELSE 0 END)', 'correct')
+      .addSelect('COUNT(*) FILTER (WHERE NOT r.assisted)', 'total')
+      .addSelect(
+        'SUM(CASE WHEN r.is_correct AND NOT r.assisted THEN 1 ELSE 0 END)',
+        'correct',
+      )
+      .addSelect('SUM(CASE WHEN r.assisted THEN 1 ELSE 0 END)', 'assisted')
       .addSelect('AVG(r.metric)', 'avgMetric')
       .addSelect('MAX(r.metric)', 'maxMetric')
       .addSelect('MAX(r.created_at)', 'lastAt')
@@ -744,6 +760,7 @@ export class QuizService {
         subtest: string;
         total: string;
         correct: string;
+        assisted: string;
         avgMetric: string | null;
         maxMetric: string | null;
         lastAt: Date | string | null;
@@ -752,6 +769,7 @@ export class QuizService {
     const items: QabSubtestSummary[] = raw.map((row) => {
       const total = Number(row.total);
       const correct = Number(row.correct);
+      const assisted = Number(row.assisted);
       const avgMetric =
         row.avgMetric === null ? null : Math.round(Number(row.avgMetric) * 10) / 10;
       const maxMetric = row.maxMetric === null ? null : Number(row.maxMetric);
@@ -766,6 +784,7 @@ export class QuizService {
         total,
         correct,
         accuracy: total > 0 ? Math.round((correct / total) * 100) : 0,
+        assisted,
         avgMetric,
         maxMetric,
         lastAt,

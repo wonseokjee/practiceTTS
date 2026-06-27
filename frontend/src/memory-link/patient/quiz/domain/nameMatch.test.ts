@@ -18,8 +18,13 @@ describe('isNameMatch', () => {
     expect(isNameMatch('apple', 'Apple')).toBe(true);
   });
 
-  it('정답이 인식 텍스트를 포함해도(부분 발화) 정답', () => {
-    expect(isNameMatch('비행', '비행기')).toBe(true);
+  it('정답이 인식 텍스트를 포함해도(충분한 부분 발화) 정답', () => {
+    expect(isNameMatch('비행', '비행기')).toBe(true); // 2/3 ≥ 0.6
+  });
+
+  it('짧은 잡음 한 글자가 긴 정답에 매칭되지 않는다(과대수용 방지)', () => {
+    expect(isNameMatch('기', '비행기')).toBe(false); // 1/3 < 0.6
+    expect(isNameMatch('이', '고양이')).toBe(false);
   });
 
   it('전혀 다른 단어는 오답', () => {

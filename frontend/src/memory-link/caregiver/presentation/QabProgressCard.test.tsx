@@ -11,6 +11,7 @@ function summary(overrides?: Partial<QabSubtestSummary>): QabSubtestSummary {
     total: 4,
     correct: 3,
     accuracy: 75,
+    assisted: 0,
     avgMetric: null,
     maxMetric: null,
     lastAt: '2026-06-20T00:00:00.000Z',
@@ -42,6 +43,31 @@ describe('QabProgressCard', () => {
       expect(screen.getByText('말운동(퍼터커)')).toBeInTheDocument(),
     );
     expect(screen.getByText(/최고 11회/)).toBeInTheDocument();
+  });
+
+  it('보호자 도움(assisted)이 있으면 "도움 N회"를 표시한다', async () => {
+    const fetchSummary = vi
+      .fn()
+      .mockResolvedValue([summary({ assisted: 2 })]);
+    render(<QabProgressCard fetchSummary={fetchSummary} />);
+    await waitFor(() =>
+      expect(screen.getByText('단어 이해')).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/도움 2회/)).toBeInTheDocument();
+  });
+
+  it('직접 응답 없이 도움만 있으면 정답률 막대 대신 안내를 표시한다', async () => {
+    const fetchSummary = vi
+      .fn()
+      .mockResolvedValue([
+        summary({ total: 0, correct: 0, accuracy: 0, assisted: 3 }),
+      ]);
+    render(<QabProgressCard fetchSummary={fetchSummary} />);
+    await waitFor(() =>
+      expect(screen.getByText('단어 이해')).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/아직 직접 푼 기록 없음/)).toBeInTheDocument();
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
   });
 
   it('데이터가 없으면 아무것도 렌더하지 않는다', async () => {

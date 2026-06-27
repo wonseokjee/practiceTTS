@@ -3,11 +3,53 @@
 // 들려주는 단어/문장(promptText)을 듣고 그에 맞는 그림을 고른다(QAB wordComp/sentComp 공용).
 // 음성은 mp3 대신 TTS(WebSpeechTtsService)로 발음한다 → 문항 확장이 자유롭다.
 // 피드백 단계: 정답 카드 초록 + ✓, 내가 고른 오답 카드 빨강 + ✗.
+//
+// 로딩 중에는 그림의 정답(라벨)을 절대 노출하지 않는다 — 중립 로딩/에러 표시만 사용.
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTTS } from '../../../../../shared/hooks/useTTS.js';
 import { WebSpeechTtsService } from '../../../../../shared/infrastructure/WebSpeechTtsService.js';
 import type { QabImageItem } from '../../domain/MixedQuiz.js';
+
+/**
+ * 선택지 그림 — 로딩/실패 상태를 자체 관리한다.
+ * 로딩 전까지 이미지를 투명 처리하고, 라벨이 아닌 중립 표시만 보여 정답 노출을 막는다.
+ */
+function ChoiceImage({ src }: { src: string }) {
+  const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>(
+    'loading',
+  );
+  return (
+    <>
+      {status !== 'loaded' && (
+        <div
+          className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-[#F2F1ED] text-[#A8AFA9]"
+          aria-hidden="true"
+          style={{ zIndex: 0 }}
+        >
+          {status === 'loading' ? (
+            <span className="animate-pulse text-3xl">🖼️</span>
+          ) : (
+            <>
+              <span className="text-2xl">🖼️</span>
+              <span className="text-xs">그림을 불러올 수 없어요</span>
+            </>
+          )}
+        </div>
+      )}
+      <img
+        src={src}
+        alt=""
+        className="absolute inset-0 h-full w-full object-cover transition-opacity duration-150"
+        loading="eager"
+        // 로드 완료 전엔 투명 → 깨진 이미지 아이콘/alt가 정답을 흘리지 않게 한다.
+        style={{ zIndex: 1, opacity: status === 'loaded' ? 1 : 0 }}
+        onLoad={() => setStatus('loaded')}
+        onError={() => setStatus('error')}
+      />
+    </>
+  );
+}
 
 interface ImageChoiceQuizItemProps {
   item: QabImageItem;
@@ -92,25 +134,8 @@ export function ImageChoiceQuizItem({
                 isSelectable ? 'hover:border-[#A8AFA9] active:scale-[0.97]' : ''
               }`}
             >
-              {/* 이미지 로드 실패 폴백 */}
-              <div
-                className="absolute inset-0 flex flex-col items-center justify-center bg-[#F2F1ED] px-2 text-center text-sm font-medium text-[#5C6661]"
-                aria-hidden="true"
-                style={{ zIndex: 0 }}
-              >
-                <span className="mb-1 text-2xl">🖼️</span>
-                <span>{choice.label}</span>
-              </div>
-              <img
-                src={choice.imageUrl}
-                alt={choice.label}
-                className="absolute inset-0 h-full w-full object-cover"
-                loading="eager"
-                style={{ zIndex: 1 }}
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
+              {/* 그림 — 로딩/실패 시 라벨(정답) 노출 없이 중립 표시 */}
+              <ChoiceImage src={choice.imageUrl} />
               {/* 피드백 아이콘 */}
               {icon !== null && (
                 <span

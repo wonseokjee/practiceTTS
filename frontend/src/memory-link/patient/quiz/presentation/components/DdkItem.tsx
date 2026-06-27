@@ -19,6 +19,8 @@ interface DdkItemProps {
   isCorrect: boolean | null;
   /** 감지된 음절 수를 제출 */
   onSubmit: (count: number) => void;
+  /** 보호자 통과 처리(도움받음). 없으면 목표 횟수 제출로 폴백. */
+  onSkip?: () => void;
   /** 녹음기 팩토리 (테스트 주입용) */
   createRecorder?: () => IDdkRecorder;
 }
@@ -32,6 +34,7 @@ export function DdkItem({
   showFeedback,
   isCorrect,
   onSubmit,
+  onSkip,
   createRecorder,
 }: DdkItemProps) {
   const [status, setStatus] = useState<DdkStatus>('idle');
@@ -81,9 +84,13 @@ export function DdkItem({
     onSubmit(count);
   };
 
-  // "넘어가기": 보호자가 했다고 보고 통과 처리(목표 횟수 제출 → 정답).
+  // "넘어가기": 보호자가 했다고 보고 통과 처리(도움받음).
   const handleSkip = (): void => {
     if (!isSelectable) return;
+    if (onSkip) {
+      onSkip();
+      return;
+    }
     onSubmit(item.targetCount);
   };
 

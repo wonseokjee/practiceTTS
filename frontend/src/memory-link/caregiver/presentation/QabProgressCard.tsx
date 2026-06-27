@@ -67,6 +67,8 @@ export function QabProgressCard({ fetchSummary }: QabProgressCardProps) {
       <ul className="flex flex-col gap-3">
         {sorted.map((it) => {
           const label = SUBTEST_LABELS[it.subtest] ?? it.subtest;
+          const assistedSuffix =
+            it.assisted > 0 ? ` · 도움 ${it.assisted}회` : '';
           return (
             <li key={it.subtest} className="flex flex-col gap-1">
               <div className="flex items-baseline justify-between">
@@ -77,27 +79,36 @@ export function QabProgressCard({ fetchSummary }: QabProgressCardProps) {
                   {it.subtest === 'ddk' && it.maxMetric !== null ? (
                     <>최고 {it.maxMetric}회 · </>
                   ) : null}
-                  정답률{' '}
-                  <span className="font-bold text-[#2D6A56]">
-                    {it.accuracy}%
-                  </span>{' '}
-                  ({it.correct}/{it.total})
+                  {it.total > 0 ? (
+                    <>
+                      정답률{' '}
+                      <span className="font-bold text-[#2D6A56]">
+                        {it.accuracy}%
+                      </span>{' '}
+                      ({it.correct}/{it.total}){assistedSuffix}
+                    </>
+                  ) : (
+                    // 환자 직접 응답이 아직 없고 도움만 있는 경우.
+                    <>아직 직접 푼 기록 없음{assistedSuffix}</>
+                  )}
                 </span>
               </div>
-              {/* 정답률 막대 */}
-              <div
-                className="h-2 w-full overflow-hidden rounded-full bg-[#EBEAE6]"
-                role="progressbar"
-                aria-valuenow={it.accuracy}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-label={`${label} 정답률 ${it.accuracy}%`}
-              >
+              {/* 정답률 막대 (직접 응답이 있을 때만) */}
+              {it.total > 0 && (
                 <div
-                  className="h-full rounded-full bg-[#2D6A56] transition-[width] duration-[250ms] ease-in-out"
-                  style={{ width: `${it.accuracy}%` }}
-                />
-              </div>
+                  className="h-2 w-full overflow-hidden rounded-full bg-[#EBEAE6]"
+                  role="progressbar"
+                  aria-valuenow={it.accuracy}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-label={`${label} 정답률 ${it.accuracy}%`}
+                >
+                  <div
+                    className="h-full rounded-full bg-[#2D6A56] transition-[width] duration-[250ms] ease-in-out"
+                    style={{ width: `${it.accuracy}%` }}
+                  />
+                </div>
+              )}
             </li>
           );
         })}

@@ -198,6 +198,7 @@ function isQabSubtestSummary(value: unknown): value is QabSubtestSummary {
     typeof obj.total === 'number' &&
     typeof obj.correct === 'number' &&
     typeof obj.accuracy === 'number' &&
+    typeof obj.assisted === 'number' &&
     (obj.avgMetric === null || typeof obj.avgMetric === 'number') &&
     (obj.maxMetric === null || typeof obj.maxMetric === 'number') &&
     (obj.lastAt === null || typeof obj.lastAt === 'string')

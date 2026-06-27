@@ -352,4 +352,34 @@ describe('useMixedQuizSession', () => {
       { subtest: 'ddk', itemRef: 'ddk_0', isCorrect: true, metric: 11 },
     ]);
   });
+
+  it('넘어가기(skipCurrent)는 도움받음(assisted)으로 기록하고 긍정 피드백을 준다', async () => {
+    const submitQabResults = vi.fn().mockResolvedValue({ saved: 1 });
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi({ submitQabResults }),
+        pickQabItems: () => [],
+        generateSessionToken: () => 'tok-1',
+        dailyCount: 0,
+        qabCount: 0,
+        ...NO_SPEECH,
+        pickNamingItems: () => makeNamingItems(),
+        namingCount: 1,
+      }),
+    );
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+    expect(result.current[0].currentItem?.kind).toBe('naming');
+
+    act(() => result.current[1].skipCurrent());
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    // 환자에겐 긍정 피드백
+    expect(result.current[0].lastResult?.isCorrect).toBe(true);
+
+    act(() => result.current[1].next());
+    expect(result.current[0].phase).toBe('result');
+    // 추세 기록은 assisted=true
+    expect(submitQabResults).toHaveBeenCalledWith('tok-1', [
+      { subtest: 'naming', itemRef: 'naming_n1', isCorrect: true, assisted: true },
+    ]);
+  });
 });

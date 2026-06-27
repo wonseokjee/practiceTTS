@@ -6,8 +6,8 @@
 //   - qab_word : 선택지 isCorrect로 로컬 채점
 // 최종 점수는 10문제 중 정답 비율(0..100)로 합산한다.
 //
-// FSM/ref 미러링 패턴은 useQuizSession과 동일 (이벤트 핸들러에서 최신 단계/인덱스를
-// 동기적으로 읽기 위해 ref 사용, setState 업데이터는 순수 유지).
+// FSM/ref 미러링 패턴: 이벤트 핸들러에서 최신 단계/인덱스를 동기적으로 읽기 위해
+// ref를 사용하고, setState 업데이터는 순수하게 유지한다.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { QuizSetDetail } from '../domain/Quiz.js';
@@ -69,6 +69,8 @@ export interface UseMixedQuizActions {
   submitSpeech: (transcript: string) => void;
   /** QAB 말운동(DDK) 결과 제출 (감지된 음절 수, 로컬 채점) */
   submitDdk: (count: number) => void;
+  /** 발화 문항을 보호자가 "넘어가기"로 통과 처리 (도움받음으로 기록, 정확도 집계 제외) */
+  skipCurrent: () => void;
   /** 피드백 확인 → 다음 문항 또는 결과 */
   next: () => void;
   /** 처음부터 다시 (새 세션 토큰 + 새 QAB 추출) */
@@ -404,6 +406,45 @@ export function useMixedQuizSession(
     [applyResult],
   );
 
+  const skipCurrent = useCallback((): void => {
+    if (phaseRef.current !== 'answering') return;
+    const item = itemsRef.current[indexRef.current];
+    if (!item) return;
+
+    // 발화 검사(이름대기/따라말하기/읽기/말운동)만 넘어가기 대상.
+    let subtest: QabResultInput['subtest'];
+    let correctLabel: string;
+    switch (item.kind) {
+      case 'naming':
+        subtest = 'naming';
+        correctLabel = item.item.targetWord;
+        break;
+      case 'repeat':
+        subtest = 'repeat';
+        correctLabel = item.item.text;
+        break;
+      case 'reading':
+        subtest = 'reading';
+        correctLabel = item.item.text;
+        break;
+      case 'ddk':
+        subtest = 'ddk';
+        correctLabel = `${item.item.targetCount}회 이상`;
+        break;
+      default:
+        return;
+    }
+
+    // 도움받음으로 기록(추세 정확도 집계 제외). 환자에겐 긍정 피드백 유지.
+    qabResultsRef.current.push({
+      subtest,
+      itemRef: item.id,
+      isCorrect: true,
+      assisted: true,
+    });
+    applyResult({ isCorrect: true, correctLabel }, null);
+  }, [applyResult]);
+
   const next = useCallback((): void => {
     if (phaseRef.current !== 'feedback') return;
 
@@ -456,6 +497,7 @@ export function useMixedQuizSession(
       submitNaming,
       submitSpeech,
       submitDdk,
+      skipCurrent,
       next,
       retry,
     },

@@ -23,6 +23,8 @@ interface SpeechCaptureItemProps {
   /** 채점 결과 — 피드백 단계에서만 의미 */
   isCorrect: boolean | null;
   onSubmit: (transcript: string) => void;
+  /** 보호자 통과 처리(도움받음). 없으면 목표 텍스트 제출로 폴백. */
+  onSkip?: () => void;
 }
 
 type CaptureStatus = 'idle' | 'listening' | 'recognized' | 'error';
@@ -36,6 +38,7 @@ export function SpeechCaptureItem({
   showFeedback,
   isCorrect,
   onSubmit,
+  onSkip,
 }: SpeechCaptureItemProps) {
   const [status, setStatus] = useState<CaptureStatus>('idle');
   const [transcript, setTranscript] = useState<string>('');
@@ -78,9 +81,13 @@ export function SpeechCaptureItem({
     onSubmit(transcript.trim());
   };
 
-  // "넘어가기": 보호자가 했다고 보고 통과 처리. 목표 텍스트를 제출 → 정답 처리.
+  // "넘어가기": 보호자가 했다고 보고 통과 처리(도움받음).
   const handleSkip = (): void => {
     if (!isSelectable || text.length === 0) return;
+    if (onSkip) {
+      onSkip();
+      return;
+    }
     onSubmit(text);
   };
 

@@ -28,6 +28,11 @@ export class QabResultItemDto {
   @IsBoolean()
   isCorrect: boolean;
 
+  // 보호자가 "넘어가기"로 통과시킨 문항이면 true(없으면 false). 정확도 집계에서 제외.
+  @IsOptional()
+  @IsBoolean()
+  assisted?: boolean;
+
   // ddk 감지 횟수 등(없으면 생략). 비현실적 값 방지로 0..1000 범위.
   @IsOptional()
   @IsInt()

@@ -27,7 +27,6 @@ const SAMPLE_INTERVAL_MS = 50;
 export class WebAudioDdkRecorder implements IDdkRecorder {
   private stream: MediaStream | null = null;
   private audioCtx: AudioContext | null = null;
-  private analyser: AnalyserNode | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
   private envelope: number[] = [];
   private startedAt = 0;
@@ -36,21 +35,31 @@ export class WebAudioDdkRecorder implements IDdkRecorder {
     this.envelope = [];
     this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-    const AudioCtor: typeof AudioContext =
-      window.AudioContext ??
-      (window as unknown as { webkitAudioContext: typeof AudioContext })
-        .webkitAudioContext;
-    this.audioCtx = new AudioCtor();
-    const source = this.audioCtx.createMediaStreamSource(this.stream);
-    this.analyser = this.audioCtx.createAnalyser();
-    this.analyser.fftSize = 1024;
-    source.connect(this.analyser);
+    // getUserMedia 성공 후 오디오 그래프 구성이 실패하면(브라우저별 AudioContext
+    // 제약 등) 스트림이 살아 마이크가 켜진 채 남으므로, 실패 시 즉시 정리한다.
+    let analyser: AnalyserNode;
+    try {
+      const AudioCtor: typeof AudioContext =
+        window.AudioContext ??
+        (window as unknown as { webkitAudioContext: typeof AudioContext })
+          .webkitAudioContext;
+      this.audioCtx = new AudioCtor();
+      const source = this.audioCtx.createMediaStreamSource(this.stream);
+      analyser = this.audioCtx.createAnalyser();
+      analyser.fftSize = 1024;
+      source.connect(analyser);
+    } catch (err) {
+      this.stream.getTracks().forEach((t) => t.stop());
+      if (this.audioCtx !== null) void this.audioCtx.close();
+      this.stream = null;
+      this.audioCtx = null;
+      throw err;
+    }
 
-    const buffer = new Uint8Array(this.analyser.fftSize);
+    const buffer = new Uint8Array(analyser.fftSize);
     this.startedAt = Date.now();
     this.timer = setInterval(() => {
-      if (this.analyser === null) return;
-      this.analyser.getByteTimeDomainData(buffer);
+      analyser.getByteTimeDomainData(buffer);
       // RMS 음량 (128 중심에서의 편차).
       let sumSq = 0;
       for (let i = 0; i < buffer.length; i += 1) {
@@ -76,7 +85,6 @@ export class WebAudioDdkRecorder implements IDdkRecorder {
     }
     this.stream = null;
     this.audioCtx = null;
-    this.analyser = null;
 
     return { count, durationMs };
   }

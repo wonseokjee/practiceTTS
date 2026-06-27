@@ -10,10 +10,20 @@ function normalizeName(text: string): string {
   return text.normalize('NFC').replace(/\s+/g, '').toLowerCase();
 }
 
+/**
+ * 부분 발화(정답이 인식 텍스트를 포함, 예: "비행"→"비행기")를 인정하되,
+ * 인식 텍스트가 정답의 이 비율 미만이면 거부한다.
+ * (STT 잡음 1글자가 긴 정답에 매칭돼 정확도가 부풀려지는 것을 방지.)
+ */
+const PARTIAL_MIN_RATIO = 0.6;
+
 /** STT 인식 텍스트가 정답 이름과 일치하는지(관대) 판정. */
 export function isNameMatch(transcript: string, targetWord: string): boolean {
   const said = normalizeName(transcript);
   const target = normalizeName(targetWord);
   if (said.length === 0 || target.length === 0) return false;
-  return said === target || said.includes(target) || target.includes(said);
+  // 완전 일치, 혹은 조사/어미가 붙은 경우(said가 target을 포함).
+  if (said === target || said.includes(target)) return true;
+  // 부분 발화(target이 said를 포함)는 said가 정답의 충분한 비율일 때만 인정.
+  return target.includes(said) && said.length >= target.length * PARTIAL_MIN_RATIO;
 }
