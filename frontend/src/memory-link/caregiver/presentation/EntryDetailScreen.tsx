@@ -3,6 +3,7 @@ import { memoryEntryApi } from '../infrastructure/MemoryEntryApi.js';
 import type { MemoryEntry } from '../domain/MemoryEntry.js';
 import { EMOTION_TAG_LABELS } from '../domain/MemoryEntry.js';
 import type { ScenarioStatus } from '../application/useMemoryEntries.js';
+import { extractErrorMessage } from '../../shared/extractErrorMessage.js';
 
 interface EntryDetailScreenProps {
   entryId: string;
@@ -269,18 +270,3 @@ function StatusBadge({ label, isDone, pendingText }: StatusBadgeProps) {
   );
 }
 
-/** 에러 메시지 안전 추출 */
-function extractErrorMessage(err: unknown): string {
-  if (typeof err === 'object' && err !== null) {
-    const obj = err as Record<string, unknown>;
-    if (typeof obj.response === 'object' && obj.response !== null) {
-      const res = obj.response as Record<string, unknown>;
-      if (typeof res.data === 'object' && res.data !== null) {
-        const data = res.data as Record<string, unknown>;
-        if (typeof data.message === 'string') return data.message;
-      }
-    }
-    if (err instanceof Error) return err.message;
-  }
-  return '알 수 없는 오류가 발생했습니다.';
-}

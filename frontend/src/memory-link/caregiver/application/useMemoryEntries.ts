@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { MemoryEntry } from '../domain/MemoryEntry.js';
 import { memoryEntryApi } from '../infrastructure/MemoryEntryApi.js';
+import { extractErrorMessage } from '../../shared/extractErrorMessage.js';
 
 /** 시나리오 트리거 상태 */
 export type ScenarioStatus = 'idle' | 'pending' | 'done' | 'error';
@@ -71,23 +72,3 @@ export function useMemoryEntries(): UseMemoryEntriesReturn {
   return { entries, isLoading, error, refresh, triggerScenario, scenarioStatus };
 }
 
-/** Axios 또는 일반 에러에서 메시지를 안전하게 추출 */
-function extractErrorMessage(err: unknown): string {
-  if (typeof err === 'object' && err !== null) {
-    const obj = err as Record<string, unknown>;
-    // Axios 에러 응답 메시지
-    if (
-      typeof obj.response === 'object' &&
-      obj.response !== null &&
-      typeof (obj.response as Record<string, unknown>).data === 'object'
-    ) {
-      const data = (obj.response as Record<string, unknown>).data as Record<
-        string,
-        unknown
-      >;
-      if (typeof data.message === 'string') return data.message;
-    }
-    if (err instanceof Error) return err.message;
-  }
-  return '알 수 없는 오류가 발생했습니다.';
-}

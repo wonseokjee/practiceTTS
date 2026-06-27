@@ -12,33 +12,9 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useAuth } from './AuthContext.js';
 import type { RegisterData } from './AuthContext.js';
-import axios from 'axios';
+import { extractErrorMessage } from './extractErrorMessage.js';
 
 type Tab = 'login' | 'register';
-
-// ─── 에러 메시지 추출 ─────────────────────────────────────────
-
-function extractErrorMessage(error: unknown): string {
-  if (axios.isAxiosError(error)) {
-    const data = error.response?.data;
-    if (
-      typeof data === 'object' &&
-      data !== null &&
-      'message' in data &&
-      typeof (data as Record<string, unknown>).message === 'string'
-    ) {
-      return (data as Record<string, string>).message;
-    }
-    if (error.response === undefined) {
-      return '서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.';
-    }
-    return '요청 처리 중 오류가 발생했습니다.';
-  }
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return '알 수 없는 오류가 발생했습니다.';
-}
 
 // ─── 로그인 폼 ────────────────────────────────────────────────
 

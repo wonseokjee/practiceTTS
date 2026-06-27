@@ -68,20 +68,30 @@ export function TrainingScreen({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // STT 서비스 콜백 설정
+  // sendMessage/resetTimer를 ref로 미러링한다.
+  // (resetTimer는 isRecording/isSpeaking 토글마다 새 함수가 되므로, 콜백 등록
+  //  effect가 매번 재실행되어 onResult/onError를 재할당하던 것을 방지한다.)
+  const sendMessageRef = useRef(sendMessage);
+  const resetTimerRef = useRef(resetTimer);
+  useEffect(() => {
+    sendMessageRef.current = sendMessage;
+    resetTimerRef.current = resetTimer;
+  });
+
+  // STT 서비스 콜백 설정 — sttService 생명주기당 1회만 등록(ref로 최신 함수 참조).
   useEffect(() => {
     sttService.onResult = async (result) => {
       setIsRecording(false);
       setSttError(null);
-      resetTimer();
-      await sendMessage(result.transcript);
+      resetTimerRef.current();
+      await sendMessageRef.current(result.transcript);
     };
 
     sttService.onError = (errorMessage) => {
       setIsRecording(false);
       setSttError(errorMessage);
     };
-  }, [sttService, sendMessage, resetTimer]);
+  }, [sttService]);
 
   // 세션 자동 시작 (컴포넌트 마운트 시)
   useEffect(() => {

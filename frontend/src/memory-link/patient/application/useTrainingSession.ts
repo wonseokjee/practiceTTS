@@ -3,6 +3,7 @@ import { WebSpeechTtsService } from '../../../shared/infrastructure/WebSpeechTts
 import { useTTS } from '../../../shared/hooks/useTTS.js';
 import type { ConversationMessage, TrainingSession } from '../domain/TrainingSession.js';
 import { trainingSessionApi } from '../infrastructure/TrainingSessionApi.js';
+import { extractErrorMessage } from '../../shared/extractErrorMessage.js';
 
 
 /** useTrainingSession 훅 Props */
@@ -75,28 +76,6 @@ export function useTrainingSession({
     setMessages((prev) => [...prev, { role: 'patient', content }]);
   }, []);
 
-  /** Axios 에러에서 메시지를 안전하게 추출 */
-  const extractErrorMessage = useCallback((err: unknown): string => {
-    if (typeof err === 'object' && err !== null) {
-      const obj = err as Record<string, unknown>;
-      if (
-        typeof obj.response === 'object' &&
-        obj.response !== null
-      ) {
-        const responseData = (obj.response as Record<string, unknown>).data;
-        if (
-          typeof responseData === 'object' &&
-          responseData !== null &&
-          typeof (responseData as Record<string, unknown>).message === 'string'
-        ) {
-          return (responseData as Record<string, unknown>).message as string;
-        }
-      }
-      if (err instanceof Error) return err.message;
-    }
-    return '알 수 없는 오류가 발생했습니다.';
-  }, []);
-
   /**
    * UC-START: 훈련 세션 시작
    * 1. API로 세션 생성
@@ -121,7 +100,7 @@ export function useTrainingSession({
     } finally {
       setIsLoading(false);
     }
-  }, [memoryEntryId, targetWord, addAiMessage, extractErrorMessage]);
+  }, [memoryEntryId, targetWord, addAiMessage]);
 
   /**
    * UC-MESSAGE: 환자 발화 전송
@@ -155,7 +134,7 @@ export function useTrainingSession({
         setIsLoading(false);
       }
     },
-    [addPatientMessage, addAiMessage, extractErrorMessage],
+    [addPatientMessage, addAiMessage],
   );
 
   /**
@@ -177,7 +156,7 @@ export function useTrainingSession({
     } finally {
       setIsLoading(false);
     }
-  }, [extractErrorMessage]);
+  }, []);
 
   /**
    * UC-COMPLETE: 세션 완료 처리
@@ -202,7 +181,7 @@ export function useTrainingSession({
         setIsLoading(false);
       }
     },
-    [extractErrorMessage],
+    [],
   );
 
   return {

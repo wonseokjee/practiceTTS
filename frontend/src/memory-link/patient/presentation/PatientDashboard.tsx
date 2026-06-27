@@ -8,6 +8,7 @@ import type { AvailableEntry } from '../domain/TrainingSession.js';
 import { TrainingScreen } from './TrainingScreen.js';
 import { QuizListScreen } from '../quiz/presentation/QuizListScreen.js';
 import { QuizScreen } from '../quiz/presentation/QuizScreen.js';
+import { extractErrorMessage } from '../../shared/extractErrorMessage.js';
 
 /** 환자 학습 모드 (R9-a: localStorage에 마지막 모드 저장/복원) */
 type PatientMode = 'QUIZ' | 'CONVERSATION';
@@ -425,22 +426,3 @@ function EntryCard({ entry, onStartTraining }: EntryCardProps) {
   );
 }
 
-/** Axios 에러에서 메시지를 안전하게 추출 */
-function extractErrorMessage(err: unknown): string {
-  if (typeof err === 'object' && err !== null) {
-    const obj = err as Record<string, unknown>;
-    if (
-      typeof obj.response === 'object' &&
-      obj.response !== null &&
-      typeof (obj.response as Record<string, unknown>).data === 'object'
-    ) {
-      const data = (obj.response as Record<string, unknown>).data as Record<
-        string,
-        unknown
-      >;
-      if (typeof data.message === 'string') return data.message;
-    }
-    if (err instanceof Error) return err.message;
-  }
-  return '알 수 없는 오류가 발생했습니다.';
-}
