@@ -195,12 +195,12 @@ export function PatientDashboard() {
 
         {/* 개발 환경 전용: QAB 검사 바로가기 버튼 */}
         {import.meta.env.DEV && (
-          <div className="mb-8 p-4 bg-indigo-50 border border-indigo-100 rounded-2xl flex flex-col items-center">
-            <h3 className="text-xl font-bold text-indigo-900 mb-2">테스트용 편의 기능</h3>
+          <div className="mb-8 p-4 bg-[#EBF4F0] border border-[#c8e6d9] rounded-2xl flex flex-col items-center">
+            <h3 className="text-xl font-bold text-[#1A4035] mb-2">테스트용 편의 기능</h3>
             <button
               type="button"
               onClick={() => navigate('/assessment')}
-              className="w-full min-h-[48px] bg-indigo-600 hover:bg-indigo-700 text-white text-xl font-bold rounded-xl transition-colors"
+              className="w-full min-h-[48px] bg-[#2D6A56] hover:bg-[#1F5240] text-white text-xl font-bold rounded-full transition-colors"
             >
               LOC / SentComp 검사하러 가기
             </button>

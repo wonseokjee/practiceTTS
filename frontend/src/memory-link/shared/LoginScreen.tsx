@@ -234,7 +234,7 @@ function RegisterForm() {
           className="w-full min-h-[48px] px-3 py-2 border border-[#E8E4DC] rounded-lg tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-[#2D6A56] focus:border-transparent"
           placeholder="••••"
         />
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-xs text-[#6B6560]">
           어르신께 기기를 건넸다가 돌아올 때 사용하는 4자리 숫자예요.
         </p>
       </div>
