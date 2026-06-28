@@ -13,6 +13,7 @@ import type { FormEvent } from 'react';
 import { useAuth } from './AuthContext.js';
 import type { RegisterData } from './AuthContext.js';
 import { extractErrorMessage } from './extractErrorMessage.js';
+import { WARM_SCREEN_BG } from './theme.js';
 
 type Tab = 'login' | 'register';
 
@@ -53,7 +54,7 @@ function LoginForm() {
   return (
     <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4" noValidate>
       <div>
-        <label htmlFor="login-email" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="login-email" className="block text-sm font-medium text-[#1A1916] mb-1">
           이메일
         </label>
         <input
@@ -62,13 +63,13 @@ function LoginForm() {
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-3 py-2 border border-[#E8E4DC] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D6A56] focus:border-transparent"
           placeholder="example@email.com"
         />
       </div>
 
       <div>
-        <label htmlFor="login-password" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="login-password" className="block text-sm font-medium text-[#1A1916] mb-1">
           비밀번호
         </label>
         <input
@@ -77,13 +78,13 @@ function LoginForm() {
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-3 py-2 border border-[#E8E4DC] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D6A56] focus:border-transparent"
           placeholder="비밀번호를 입력하세요"
         />
       </div>
 
       {error !== null && (
-        <p role="alert" className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
+        <p role="alert" className="text-sm text-[#C94040] bg-[#C94040]/10 px-3 py-2 rounded-lg">
           {error}
         </p>
       )}
@@ -91,7 +92,7 @@ function LoginForm() {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full py-2 px-4 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="w-full min-h-[48px] py-2 px-4 bg-[#2D6A56] text-white font-medium rounded-full hover:bg-[#1F5240] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {isSubmitting ? '로그인 중...' : '로그인'}
       </button>
@@ -158,7 +159,7 @@ function RegisterForm() {
   return (
     <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4" noValidate>
       <div>
-        <label htmlFor="reg-email" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="reg-email" className="block text-sm font-medium text-[#1A1916] mb-1">
           이메일
         </label>
         <input
@@ -167,13 +168,13 @@ function RegisterForm() {
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-3 py-2 border border-[#E8E4DC] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D6A56] focus:border-transparent"
           placeholder="example@email.com"
         />
       </div>
 
       <div>
-        <label htmlFor="reg-password" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="reg-password" className="block text-sm font-medium text-[#1A1916] mb-1">
           비밀번호
         </label>
         <input
@@ -182,13 +183,13 @@ function RegisterForm() {
           autoComplete="new-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-3 py-2 border border-[#E8E4DC] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D6A56] focus:border-transparent"
           placeholder="비밀번호를 입력하세요"
         />
       </div>
 
       <div>
-        <label htmlFor="reg-display-name" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="reg-display-name" className="block text-sm font-medium text-[#1A1916] mb-1">
           내 이름 (보호자)
         </label>
         <input
@@ -197,13 +198,13 @@ function RegisterForm() {
           autoComplete="name"
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
-          className="w-full min-h-[48px] px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D6A56] focus:border-transparent"
+          className="w-full min-h-[48px] px-3 py-2 border border-[#E8E4DC] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D6A56] focus:border-transparent"
           placeholder="내 이름을 입력하세요"
         />
       </div>
 
       <div>
-        <label htmlFor="reg-patient-name" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="reg-patient-name" className="block text-sm font-medium text-[#1A1916] mb-1">
           어르신 성함
         </label>
         <input
@@ -211,13 +212,13 @@ function RegisterForm() {
           type="text"
           value={patientDisplayName}
           onChange={(e) => setPatientDisplayName(e.target.value)}
-          className="w-full min-h-[48px] px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D6A56] focus:border-transparent"
+          className="w-full min-h-[48px] px-3 py-2 border border-[#E8E4DC] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D6A56] focus:border-transparent"
           placeholder="돌보시는 어르신의 성함"
         />
       </div>
 
       <div>
-        <label htmlFor="reg-pin" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="reg-pin" className="block text-sm font-medium text-[#1A1916] mb-1">
           환자 모드 PIN (4자리 숫자)
         </label>
         <input
@@ -230,7 +231,7 @@ function RegisterForm() {
           onChange={(e) =>
             setPatientModePin(e.target.value.replace(/\D/g, '').slice(0, 4))
           }
-          className="w-full min-h-[48px] px-3 py-2 border border-gray-300 rounded-lg tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-[#2D6A56] focus:border-transparent"
+          className="w-full min-h-[48px] px-3 py-2 border border-[#E8E4DC] rounded-lg tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-[#2D6A56] focus:border-transparent"
           placeholder="••••"
         />
         <p className="mt-1 text-xs text-gray-500">
@@ -239,7 +240,7 @@ function RegisterForm() {
       </div>
 
       {error !== null && (
-        <p role="alert" className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
+        <p role="alert" className="text-sm text-[#C94040] bg-[#C94040]/10 px-3 py-2 rounded-lg">
           {error}
         </p>
       )}
@@ -247,7 +248,7 @@ function RegisterForm() {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full py-2 px-4 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="w-full min-h-[48px] py-2 px-4 bg-[#2D6A56] text-white font-medium rounded-full hover:bg-[#1F5240] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {isSubmitting ? '가입 중...' : '회원가입'}
       </button>
@@ -261,23 +262,26 @@ export function LoginScreen() {
   const [activeTab, setActiveTab] = useState<Tab>('login');
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-md overflow-hidden">
+    <div
+      className="min-h-screen flex items-center justify-center px-4"
+      style={{ background: WARM_SCREEN_BG }}
+    >
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-[0_10px_30px_rgba(0,0,0,0.08)] overflow-hidden">
         {/* 헤더 */}
         <div className="px-6 pt-8 pb-4 text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Memory Link</h1>
-          <p className="mt-1 text-sm text-gray-500">인지 훈련 및 기억 연결 플랫폼</p>
+          <h1 className="text-2xl font-bold text-[#1A1916]">Memory Link</h1>
+          <p className="mt-1 text-sm text-[#6B6560]">인지 훈련 및 기억 연결 플랫폼</p>
         </div>
 
         {/* 탭 */}
-        <div className="flex border-b border-gray-200 mx-6">
+        <div className="flex border-b border-[#E8E4DC] mx-6">
           <button
             type="button"
             onClick={() => setActiveTab('login')}
             className={`flex-1 py-3 text-sm font-medium transition-colors ${
               activeTab === 'login'
-                ? 'text-blue-600 border-b-2 border-blue-600'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'text-[#2D6A56] border-b-2 border-[#2D6A56]'
+                : 'text-[#6B6560] hover:text-[#1A1916]'
             }`}
           >
             로그인
@@ -287,8 +291,8 @@ export function LoginScreen() {
             onClick={() => setActiveTab('register')}
             className={`flex-1 py-3 text-sm font-medium transition-colors ${
               activeTab === 'register'
-                ? 'text-blue-600 border-b-2 border-blue-600'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'text-[#2D6A56] border-b-2 border-[#2D6A56]'
+                : 'text-[#6B6560] hover:text-[#1A1916]'
             }`}
           >
             회원가입

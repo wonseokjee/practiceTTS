@@ -6,10 +6,12 @@ import { useMemoryEntries } from '../application/useMemoryEntries.js';
 import { CaptureScreen } from './CaptureScreen.js';
 import { EntryDetailScreen } from './EntryDetailScreen.js';
 import { EntryListScreen } from './EntryListScreen.js';
+import { ProfileScreen } from './ProfileScreen.js';
 import { QabProgressCard } from './QabProgressCard.js';
+import { WARM_SCREEN_BG } from '../../shared/theme.js';
 
 /** 대시보드 화면 상태 */
-type DashboardView = 'list' | 'capture' | 'detail';
+type DashboardView = 'list' | 'capture' | 'detail' | 'profile';
 
 /**
  * 보호자 대시보드
@@ -57,20 +59,23 @@ export function CaregiverDashboard() {
   // patientId 미연결 안내
   if (!patientId) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
-        <div className="w-full max-w-lg bg-white rounded-2xl shadow-md p-8 text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">보호자 대시보드</h1>
-          <p className="text-gray-500 mb-4">
+      <div
+        className="min-h-screen flex flex-col items-center justify-center px-4"
+        style={{ background: WARM_SCREEN_BG }}
+      >
+        <div className="w-full max-w-lg bg-white rounded-3xl shadow-[0_10px_30px_rgba(0,0,0,0.08)] p-8 text-center">
+          <h1 className="text-2xl font-bold text-[#1A1916] mb-2">보호자 대시보드</h1>
+          <p className="text-[#6B6560] mb-4">
             안녕하세요,{' '}
-            <span className="font-medium text-gray-700">{user?.displayName}</span>님
+            <span className="font-medium text-[#1A1916]">{user?.displayName}</span>님
           </p>
-          <p className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-3 mb-6">
+          <p className="text-sm text-[#8a5a1a] bg-[#E8A23C]/12 border border-[#E8A23C]/35 rounded-2xl p-3 mb-6">
             연결된 환자가 없습니다. 관리자에게 환자 연결을 요청해주세요.
           </p>
           <button
             type="button"
             onClick={logout}
-            className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium"
+            className="min-h-[44px] px-6 py-2 bg-[#EBF4F0] text-[#2D6A56] rounded-full hover:bg-[#dcebe4] transition-colors text-sm font-medium"
           >
             로그아웃
           </button>
@@ -80,11 +85,19 @@ export function CaregiverDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ background: WARM_SCREEN_BG }}>
       {/* 헤더 */}
-      <header className="bg-white border-b border-gray-200 px-4 py-3 flex justify-between items-center">
-        <h1 className="text-lg font-bold text-gray-900">Memory Link</h1>
+      <header className="border-b border-[#E8E4DC]/60 px-4 py-3 flex justify-between items-center">
+        <h1 className="text-lg font-bold text-[#1A1916]">Memory Link</h1>
         <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setView('profile')}
+            className="min-h-[44px] rounded-full border border-[#2D6A56] px-4 py-2 text-sm font-medium text-[#2D6A56] transition-colors duration-[180ms] ease-out hover:bg-[#EBF4F0]"
+            aria-label="환자 정보 편집"
+          >
+            환자 정보
+          </button>
           <button
             type="button"
             onClick={enterPatientMode}
@@ -93,13 +106,13 @@ export function CaregiverDashboard() {
           >
             환자에게 건네기
           </button>
-          <span className="hidden text-sm text-gray-600 sm:inline">
+          <span className="hidden text-sm text-[#6B6560] sm:inline">
             {user?.displayName}
           </span>
           <button
             type="button"
             onClick={logout}
-            className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-xs text-[#9AA09B] hover:text-[#6B6560] transition-colors"
             aria-label="로그아웃"
           >
             로그아웃
@@ -127,7 +140,7 @@ export function CaregiverDashboard() {
         {/* 생성 플로우 화면 */}
         {view === 'capture' && (
           <div>
-            <h2 className="text-lg font-bold text-gray-900 mb-4">새 기억 추가</h2>
+            <h2 className="text-lg font-bold text-[#1A1916] mb-4">새 기억 추가</h2>
             <CaptureScreen
               patientId={patientId}
               flow={captureFlow}
@@ -135,6 +148,11 @@ export function CaregiverDashboard() {
               onCancel={handleCaptureCancel}
             />
           </div>
+        )}
+
+        {/* 환자 정보(프로필) 화면 */}
+        {view === 'profile' && (
+          <ProfileScreen onBack={handleBackToList} />
         )}
 
         {/* 상세 화면 */}
