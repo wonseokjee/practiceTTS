@@ -1,6 +1,7 @@
 // 풀 수 있는 퀴즈 목록 화면
 //
-// 'ready' 상태 세트만 카드로 표시(날짜 / notePreview / 사진 썸네일 / 최고점).
+// 'ready' 상태 세트만 카드로 표시(날짜 기반 제목 / 사진 썸네일 / 최고점).
+// 보호자 입력 원문(notePreview)은 카드에 노출하지 않는다.
 // 카드 선택 시 onSelectQuiz(quizSetId) 호출.
 
 import { useQuizList } from '../application/useQuizList.js';
@@ -39,14 +40,14 @@ export function QuizListScreen({ onSelectQuiz, deps }: QuizListScreenProps) {
 
       {!isLoading && error !== null && (
         <div
-          className="rounded-lg border border-[#E07B54] bg-[#FBE9E2] p-6 text-center"
+          className="rounded-3xl border border-[#E07B54] bg-[#FBE9E2] p-6 text-center"
           role="alert"
         >
           <p className="mb-4 text-lg text-[#7A2E15]">{error}</p>
           <button
             type="button"
             onClick={() => void reload()}
-            className="min-h-[48px] rounded-md bg-[#2D6A56] px-6 py-3 text-base font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240]"
+            className="min-h-[48px] rounded-full bg-[#2D6A56] px-6 py-3 text-base font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240]"
           >
             다시 시도
           </button>
@@ -97,22 +98,19 @@ function QuizSetCard({ item, onSelect }: QuizSetCardProps) {
         type="button"
         onClick={() => onSelect(item.quizSetId)}
         aria-label={`${formatDate(item.createdAt)} 퀴즈 풀기`}
-        className="flex w-full items-center gap-4 rounded-lg border-2 border-[#E5E5E0] bg-[#F7F6F3] p-4 text-left transition-colors duration-[180ms] ease-out hover:border-[#2D6A56]"
+        className="flex w-full items-center gap-4 rounded-3xl border border-[#E8E4DC] bg-white p-4 text-left shadow-[0_6px_18px_rgba(0,0,0,0.05)] transition-colors duration-[180ms] ease-out hover:border-[#2D6A56]"
       >
         {item.photoUrl !== null && (
           <img
             src={item.photoUrl}
             alt="기억 사진"
-            className="h-20 w-20 flex-shrink-0 rounded-md object-cover"
+            className="h-20 w-20 flex-shrink-0 rounded-2xl object-cover"
           />
         )}
 
         <div className="flex flex-1 flex-col gap-1">
-          <span className="text-sm text-[#5C6661]">
-            {formatDate(item.createdAt)}
-          </span>
-          <p className="line-clamp-2 text-lg font-medium text-[#1F2A26]">
-            {item.notePreview}
+          <p className="text-lg font-medium text-[#1F2A26]">
+            {formatDate(item.createdAt)} 기억 퀴즈
           </p>
           {item.bestScore !== null && (
             <span className="text-sm tabular-nums text-[#2D6A56]">

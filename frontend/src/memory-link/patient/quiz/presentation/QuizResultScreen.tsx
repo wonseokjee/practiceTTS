@@ -52,7 +52,7 @@ export function QuizResultScreen({
 }: QuizResultScreenProps) {
   return (
     <section
-      className="font-pretendard mx-auto mt-8 w-full max-w-md rounded-lg bg-[#F7F6F3] p-8 text-center"
+      className="font-pretendard mx-auto mt-8 w-full max-w-md rounded-3xl border border-white/90 bg-white/85 p-8 text-center shadow-[0_6px_18px_rgba(0,0,0,0.05)]"
       role="status"
       aria-live="polite"
     >
@@ -96,7 +96,7 @@ export function QuizResultScreen({
         <button
           type="button"
           onClick={onRetry}
-          className="min-h-[56px] rounded-md bg-[#2D6A56] px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240]"
+          className="min-h-[56px] rounded-full bg-[#2D6A56] px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240]"
           aria-label="다시 풀기"
         >
           다시 풀기
@@ -104,7 +104,7 @@ export function QuizResultScreen({
         <button
           type="button"
           onClick={onBackToList}
-          className="min-h-[48px] rounded-md bg-white px-6 py-3 text-base font-medium text-[#5C6661] transition-colors duration-[180ms] ease-out hover:bg-[#EBEAE6]"
+          className="min-h-[48px] rounded-full bg-white px-6 py-3 text-base font-medium text-[#5C6661] transition-colors duration-[180ms] ease-out hover:bg-[#EBEAE6]"
           aria-label="퀴즈 목록으로"
         >
           목록으로

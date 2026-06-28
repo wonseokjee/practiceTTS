@@ -70,7 +70,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
     return (
       <div className="font-pretendard mx-auto mt-10 w-full max-w-md px-4">
         <div
-          className="rounded-lg border border-[#E07B54] bg-[#FBE9E2] p-6 text-center"
+          className="rounded-3xl border border-[#E07B54] bg-[#FBE9E2] p-6 text-center"
           role="alert"
         >
           <p className="mb-5 text-lg text-[#7A2E15]">
@@ -80,14 +80,14 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
             <button
               type="button"
               onClick={() => void actions.retry()}
-              className="min-h-[56px] rounded-md bg-[#2D6A56] px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240]"
+              className="min-h-[56px] rounded-full bg-[#2D6A56] px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240]"
             >
               {isSessionExpired ? '다시 시작' : '다시 시도'}
             </button>
             <button
               type="button"
               onClick={onExit}
-              className="min-h-[48px] rounded-md bg-white px-6 py-3 text-base font-medium text-[#5C6661] transition-colors duration-[180ms] ease-out hover:bg-[#EBEAE6]"
+              className="min-h-[48px] rounded-full bg-white px-6 py-3 text-base font-medium text-[#5C6661] transition-colors duration-[180ms] ease-out hover:bg-[#EBEAE6]"
             >
               목록으로
             </button>
@@ -253,7 +253,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
           <button
             type="button"
             onClick={actions.next}
-            className="min-h-[56px] w-full rounded-md bg-[#2D6A56] px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240]"
+            className="min-h-[56px] w-full rounded-full bg-[#2D6A56] px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240]"
             aria-label={isLastQuestion ? '결과 보기' : '다음 문제'}
           >
             {isLastQuestion ? '결과 보기' : '다음 문제'}

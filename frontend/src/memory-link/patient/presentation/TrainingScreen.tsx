@@ -1,22 +1,34 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ConversationMessage } from '../domain/TrainingSession.js';
 import { WebSpeechSttService } from '../infrastructure/SttService.js';
 import { useSilenceDetector } from '../application/useSilenceDetector.js';
 import { useTrainingSession } from '../application/useTrainingSession.js';
+import { WARM_SCREEN_BG } from '../../shared/theme.js';
 
 interface TrainingScreenProps {
   memoryEntryId: string;
   targetWord: string;
+  /** 회상 단서 사진 URL (없으면 플레이스홀더 표시) */
+  photoUrl?: string | null;
+  /** 사진 캡션용 장소 태그 */
+  locationTag?: string | null;
   onComplete: () => void;
 }
 
+/** 배경 그라데이션은 환자 흐름 화면 공통 상수(WARM_SCREEN_BG)를 사용한다. */
+const SCREEN_BG = WARM_SCREEN_BG;
+
 /**
- * 환자 훈련 화면
+ * 환자 훈련 화면 (디자인 시안 A: 따뜻한 회상)
+ *
+ * 레이아웃:
+ * - 상단: 회상 단서 사진(둥근 카드)
+ * - 가운데: 현재 AI 질문 한 장(반투명 흰 카드) — 채팅 이력 누적 대신 질문 하나에 집중
+ * - 하단: 힌트 · 테라코타 마이크 · 완료
  *
  * 접근성 원칙:
  * - 모든 텍스트: text-2xl 이상
  * - 터치 영역: min-h-[48px] 이상
- * - 흰 배경 / 검정 텍스트 고대비
+ * - Warm Clinical 토큰 (세이지 그린/크림/테라코타), 파란색 미사용
  * - 음성 우선 인터페이스
  *
  * 침묵 감지 흐름:
@@ -26,6 +38,8 @@ interface TrainingScreenProps {
 export function TrainingScreen({
   memoryEntryId,
   targetWord,
+  photoUrl = null,
+  locationTag = null,
   onComplete,
 }: TrainingScreenProps) {
   const {
@@ -44,11 +58,18 @@ export function TrainingScreen({
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [sttError, setSttError] = useState<string | null>(null);
 
-  // 대화 이력 스크롤 컨테이너 ref
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
   // STT 서비스 인스턴스 (컴포넌트 생명주기와 동일)
   const sttService = useMemo(() => new WebSpeechSttService(), []);
+
+  // 가운데 카드에 표시할 최신 AI 질문 / 환자 발화 (채팅 누적 대신 마지막 발화만 강조)
+  const latestAiMessage = useMemo(
+    () => [...messages].reverse().find((msg) => msg.role === 'ai') ?? null,
+    [messages],
+  );
+  const latestPatientMessage = useMemo(
+    () => [...messages].reverse().find((msg) => msg.role === 'patient') ?? null,
+    [messages],
+  );
 
   // 침묵 감지: STT 대기 중 10초 경과 시 힌트 자동 증가
   const handleSilence = useCallback(async () => {
@@ -62,11 +83,6 @@ export function TrainingScreen({
     timeoutMs: 10_000,
     isActive: isRecording && !isSpeaking,
   });
-
-  // 새 메시지 도착 시 스크롤 하단으로 이동
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
 
   // sendMessage/resetTimer를 ref로 미러링한다.
   // (resetTimer는 isRecording/isSpeaking 토글마다 새 함수가 되므로, 콜백 등록
@@ -96,7 +112,7 @@ export function TrainingScreen({
   // 세션 자동 시작 (컴포넌트 마운트 시)
   useEffect(() => {
     void startSession();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 컴포넌트 언마운트 시 STT 중단
@@ -138,8 +154,11 @@ export function TrainingScreen({
   // 로딩 상태 (세션 시작 전)
   if (session === null && isLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <p className="text-2xl text-gray-700">훈련을 준비하고 있습니다...</p>
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: SCREEN_BG }}
+      >
+        <p className="text-2xl text-[#6B6560]">훈련을 준비하고 있습니다...</p>
       </div>
     );
   }
@@ -147,15 +166,18 @@ export function TrainingScreen({
   // 세션 시작 실패
   if (session === null && error !== null) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center px-6 gap-6">
-        <p className="text-2xl text-red-600 text-center" role="alert">
+      <div
+        className="min-h-screen flex flex-col items-center justify-center px-6 gap-6"
+        style={{ background: SCREEN_BG }}
+      >
+        <p className="text-2xl text-[#C94040] text-center font-semibold" role="alert">
           훈련을 시작할 수 없습니다.
         </p>
-        <p className="text-xl text-gray-600 text-center">{error}</p>
+        <p className="text-xl text-[#6B6560] text-center">{error}</p>
         <button
           type="button"
           onClick={onComplete}
-          className="min-h-[48px] px-8 py-3 bg-gray-200 text-gray-800 text-xl font-semibold rounded-2xl"
+          className="min-h-[48px] px-8 py-3 bg-white/80 text-[#1A1916] text-xl font-semibold rounded-full border border-[#E8E4DC]"
         >
           돌아가기
         </button>
@@ -168,65 +190,107 @@ export function TrainingScreen({
   const canRecord = !isLoading && !isSpeaking && session?.status === 'active';
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ background: SCREEN_BG }}>
       {/* 헤더 */}
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">기억 훈련</h1>
+      <header className="px-6 py-4 flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-[#1A1916]">기억 훈련</h1>
         {/* 힌트 단계 표시 */}
         <div className="flex items-center gap-2" aria-label={`힌트 단계 ${hintLevel}/2`}>
+          <span className="text-base text-[#6B6560] mr-1">힌트</span>
           {[0, 1, 2].map((level) => (
             <div
               key={level}
-              className={`w-4 h-4 rounded-full ${
-                level <= hintLevel ? 'bg-blue-500' : 'bg-gray-200'
+              className={`w-3 h-3 rounded-full ${
+                level <= hintLevel ? 'bg-[#2D6A56]' : 'bg-[#E8E4DC]'
               }`}
               aria-hidden="true"
             />
           ))}
-          <span className="text-lg text-gray-600 ml-1">힌트</span>
         </div>
       </header>
 
-      {/* 대화 이력 영역 */}
+      {/* 본문 — 사진 단서 + 현재 질문 한 장 */}
       <main
-        className="flex-1 overflow-y-auto px-6 py-4"
+        className="flex-1 flex flex-col px-5 pb-2 max-w-2xl w-full mx-auto"
         aria-label="대화 내용"
         aria-live="polite"
       >
-        <div className="max-w-2xl mx-auto flex flex-col gap-4">
-          {messages.map((msg, index) => (
-            <MessageBubble key={index} message={msg} />
-          ))}
-
-          {/* 로딩 인디케이터 */}
-          {isLoading && (
-            <div className="flex justify-start">
-              <div className="bg-gray-100 rounded-2xl px-5 py-4">
-                <p className="text-2xl text-gray-500">답변을 생성하고 있어요...</p>
-              </div>
-            </div>
-          )}
-
-          {/* TTS 재생 중 표시 */}
-          {isSpeaking && (
+        {/* 회상 단서 사진 */}
+        <div className="mt-2">
+          {photoUrl !== null ? (
+            <img
+              src={photoUrl}
+              alt={locationTag !== null ? `${locationTag} 사진` : '기억 사진'}
+              className="w-full h-44 object-cover rounded-3xl shadow-[0_8px_22px_rgba(45,106,86,0.10)]"
+            />
+          ) : (
             <div
-              className="flex items-center gap-2 text-blue-600"
-              aria-live="assertive"
-              role="status"
+              className="w-full h-44 rounded-3xl flex items-center justify-center shadow-[0_8px_22px_rgba(45,106,86,0.10)]"
+              style={{
+                background:
+                  'radial-gradient(120% 80% at 30% 20%,#f3d9c4 0%,transparent 60%),linear-gradient(160deg,#e8c9a8 0%,#cbb79a 55%,#9aa890 100%)',
+              }}
+              aria-hidden="true"
             >
-              <span className="text-2xl">음성을 재생하고 있어요</span>
+              <span className="text-5xl opacity-70">🖼️</span>
             </div>
           )}
+          {locationTag !== null && (
+            <p className="mt-2 text-center text-lg text-[#6B6560]">{locationTag}</p>
+          )}
+        </div>
 
-          <div ref={messagesEndRef} />
+        {/* 현재 질문 카드 (반투명 흰 카드) */}
+        <div className="flex-1 flex flex-col justify-center py-4">
+          <div className="bg-white/85 border border-white/90 rounded-3xl px-6 py-6 shadow-[0_6px_18px_rgba(0,0,0,0.05)]">
+            <span className="text-sm font-bold text-[#2D6A56]">AI 선생님</span>
+
+            {isLoading ? (
+              /* AI 질문 준비 중 */
+              <div className="mt-3 flex items-center gap-2" role="status" aria-label="질문 준비 중">
+                <span className="flex gap-1.5" aria-hidden="true">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#9fd0bc] animate-pulse [animation-delay:0ms]" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#9fd0bc] animate-pulse [animation-delay:200ms]" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#9fd0bc] animate-pulse [animation-delay:400ms]" />
+                </span>
+                <span className="text-xl text-[#6B6560]">질문을 준비하고 있어요</span>
+              </div>
+            ) : latestAiMessage !== null ? (
+              <p className="mt-3 text-2xl leading-relaxed font-semibold text-[#1A1916]">
+                {latestAiMessage.content}
+              </p>
+            ) : (
+              <p className="mt-3 text-2xl leading-relaxed text-[#6B6560]">
+                잠시만 기다려 주세요.
+              </p>
+            )}
+
+            {/* TTS 재생 중 표시 */}
+            {isSpeaking && (
+              <p
+                className="mt-3 text-lg text-[#2D6A56]"
+                aria-live="assertive"
+                role="status"
+              >
+                🔊 질문을 읽어드리고 있어요
+              </p>
+            )}
+          </div>
+
+          {/* 환자의 마지막 답변 (맥락 유지용, 작게) */}
+          {latestPatientMessage !== null && !isRecording && (
+            <p className="mt-3 px-2 text-center text-lg text-[#6B6560]">
+              방금 이렇게 답하셨어요 · “{latestPatientMessage.content}”
+            </p>
+          )}
         </div>
       </main>
 
       {/* 에러 메시지 */}
       {(error !== null || sttError !== null) && (
-        <div className="px-6 py-3 bg-red-50 border-t border-red-200">
+        <div className="px-6 py-3 mx-5 mb-2 bg-[#C94040]/10 border border-[#C94040]/30 rounded-2xl">
           <p
-            className="text-xl text-red-700 text-center"
+            className="text-xl text-[#C94040] text-center"
             role="alert"
             aria-live="assertive"
           >
@@ -236,12 +300,12 @@ export function TrainingScreen({
       )}
 
       {/* 하단 컨트롤 영역 */}
-      <footer className="bg-white border-t border-gray-200 px-6 py-6">
-        <div className="max-w-2xl mx-auto">
-          {/* STT 녹음 중 표시 */}
+      <footer className="px-6 pb-8 pt-2">
+        <div className="max-w-2xl mx-auto flex flex-col items-center gap-4">
+          {/* STT 녹음 중 안내 */}
           {isRecording && (
             <p
-              className="text-center text-2xl text-red-600 font-semibold mb-4"
+              className="text-2xl text-[#C94040] font-semibold"
               role="status"
               aria-live="polite"
             >
@@ -249,17 +313,17 @@ export function TrainingScreen({
             </p>
           )}
 
-          <div className="flex items-center justify-center gap-4">
+          <div className="flex items-center justify-center gap-5">
             {/* 힌트 버튼 */}
             {canRequestHint && (
               <button
                 type="button"
                 onClick={handleHintRequest}
                 disabled={isLoading}
-                className="min-h-[48px] px-6 py-3 bg-yellow-100 text-yellow-800 text-xl font-semibold rounded-2xl border-2 border-yellow-300 disabled:opacity-50 active:scale-95 transition-transform"
+                className="min-h-[52px] px-5 py-3 bg-white/70 text-[#2D6A56] text-xl font-bold rounded-full disabled:opacity-50 active:scale-95 transition-transform"
                 aria-label="힌트 요청"
               >
-                힌트 ({hintLevel}/2)
+                힌트 {hintLevel}/2
               </button>
             )}
 
@@ -268,16 +332,16 @@ export function TrainingScreen({
               <button
                 type="button"
                 onClick={handleMicClick}
-                disabled={!canRecord}
-                className={`min-h-[80px] min-w-[80px] rounded-full text-white text-3xl font-bold transition-all active:scale-95 disabled:opacity-50 ${
+                disabled={!canRecord && !isRecording}
+                className={`min-h-[84px] min-w-[84px] rounded-full text-white text-3xl font-bold transition-all active:scale-95 disabled:opacity-50 ${
                   isRecording
-                    ? 'bg-red-500 scale-110 shadow-lg shadow-red-300'
-                    : 'bg-blue-600 hover:bg-blue-700 shadow-md'
+                    ? 'bg-[#C94040] scale-110 shadow-lg shadow-[#C94040]/40'
+                    : 'bg-[#E07B54] shadow-[0_10px_24px_rgba(224,123,84,0.45)]'
                 }`}
                 aria-label={isRecording ? '녹음 중지' : '말하기'}
                 aria-pressed={isRecording}
               >
-                {isRecording ? '■' : '●'}
+                {isRecording ? '■' : '🎤'}
               </button>
             )}
 
@@ -286,7 +350,7 @@ export function TrainingScreen({
               <button
                 type="button"
                 onClick={handleSuccess}
-                className="min-h-[48px] px-6 py-3 bg-green-600 text-white text-xl font-semibold rounded-2xl active:scale-95 transition-transform"
+                className="min-h-[52px] px-5 py-3 bg-white/70 text-[#6B6560] text-xl font-bold rounded-full active:scale-95 transition-transform"
                 aria-label="훈련 성공으로 완료"
               >
                 완료
@@ -294,60 +358,24 @@ export function TrainingScreen({
             )}
           </div>
 
+          {/* 안내 문구 */}
+          {!isRecording && canRecord && (
+            <span className="text-base text-[#6B6560]">버튼을 누르고 말씀해 주세요</span>
+          )}
+
           {/* 포기 버튼 */}
           {session?.status === 'active' && !isLoading && (
-            <div className="mt-4 flex justify-center">
-              <button
-                type="button"
-                onClick={handleGiveUp}
-                className="min-h-[48px] px-6 py-2 text-gray-500 text-lg underline active:scale-95 transition-transform"
-                aria-label="훈련 중단"
-              >
-                훈련 중단하기
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handleGiveUp}
+              className="min-h-[44px] px-6 py-2 text-[#6B6560] text-lg underline active:scale-95 transition-transform"
+              aria-label="훈련 중단"
+            >
+              훈련 중단하기
+            </button>
           )}
         </div>
       </footer>
-    </div>
-  );
-}
-
-// ─── 보조 컴포넌트 ──────────────────────────────────────────────────────────
-
-interface MessageBubbleProps {
-  message: ConversationMessage;
-}
-
-function MessageBubble({ message }: MessageBubbleProps) {
-  const isAi = message.role === 'ai';
-
-  return (
-    <div
-      className={`flex ${isAi ? 'justify-start' : 'justify-end'}`}
-      role="listitem"
-    >
-      <div
-        className={`max-w-[85%] rounded-2xl px-5 py-4 ${
-          isAi
-            ? 'bg-gray-100 text-gray-900'
-            : 'bg-blue-600 text-white'
-        }`}
-      >
-        {/* 발화자 레이블 */}
-        <p
-          className={`text-sm font-semibold mb-1 ${
-            isAi ? 'text-gray-500' : 'text-blue-200'
-          }`}
-        >
-          {isAi ? 'AI' : '나'}
-        </p>
-        <p className="text-2xl leading-relaxed">{message.content}</p>
-        {/* 힌트 트리거 표시 */}
-        {message.hintTriggered === true && (
-          <p className="text-sm text-yellow-600 mt-1">힌트 포함</p>
-        )}
-      </div>
     </div>
   );
 }
