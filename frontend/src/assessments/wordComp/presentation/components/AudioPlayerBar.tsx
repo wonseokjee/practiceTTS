@@ -23,20 +23,20 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
   onReplay,
 }) => {
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-4 flex items-center justify-between gap-4">
+    <div className="bg-white rounded-2xl shadow-sm border border-[#E8E4DC] px-6 py-4 flex items-center justify-between gap-4">
       {/* 단어 표시 영역 */}
       <div className="flex items-center gap-3 flex-1">
         {/* 오디오 재생 인디케이터 */}
         <div
           className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
             isPlaying
-              ? 'bg-blue-500 animate-pulse'
-              : 'bg-gray-100'
+              ? 'bg-[#2D6A56] animate-pulse'
+              : 'bg-[#F2F1EC]'
           }`}
           aria-hidden="true"
         >
           <svg
-            className={`w-5 h-5 ${isPlaying ? 'text-white' : 'text-gray-400'}`}
+            className={`w-5 h-5 ${isPlaying ? 'text-white' : 'text-[#9AA09B]'}`}
             fill="currentColor"
             viewBox="0 0 20 20"
           >
@@ -49,10 +49,10 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
         </div>
 
         <div>
-          <p className="text-xs text-gray-400 mb-0.5">
+          <p className="text-xs text-[#9AA09B] mb-0.5">
             {isPlaying ? '음성 재생 중...' : '음성 재생 완료'}
           </p>
-          <p className="text-base font-semibold text-gray-700">
+          <p className="text-base font-semibold text-[#1A1916]">
             단어를 듣고 그림을 선택하세요
           </p>
         </div>
@@ -65,8 +65,8 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
           flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all
           ${
             isReplayEnabled
-              ? 'bg-gray-50 text-gray-600 hover:bg-blue-50 hover:text-blue-600 border border-gray-200'
-              : 'bg-gray-50 text-gray-300 cursor-not-allowed border border-gray-100'
+              ? 'bg-[#F7F6F3] text-[#6B6560] hover:bg-[#EBF4F0] hover:text-[#2D6A56] border border-[#E8E4DC]'
+              : 'bg-[#F7F6F3] text-[#9AA09B] cursor-not-allowed border border-[#E8E4DC]'
           }
         `}
         disabled={!isReplayEnabled}

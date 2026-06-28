@@ -24,22 +24,22 @@ export const AssessmentProgressBar: React.FC<AssessmentProgressBarProps> = ({
     <div className="w-full" aria-label={`진행 현황: ${current} / ${total} 문항`}>
       {/* 문항 수 텍스트 */}
       <div className="flex justify-between items-center mb-1">
-        <span className="text-sm text-gray-600 font-medium">
+        <span className="text-sm text-[#6B6560] font-medium">
           {current} / {total} 문항
         </span>
-        <span className="text-sm text-gray-400">{progressPercent}%</span>
+        <span className="text-sm text-[#9AA09B]">{progressPercent}%</span>
       </div>
 
       {/* 진행 바 */}
       <div
-        className="w-full h-2 bg-gray-200 rounded-full overflow-hidden"
+        className="w-full h-2 bg-[#E8E4DC] rounded-full overflow-hidden"
         role="progressbar"
         aria-valuenow={current}
         aria-valuemin={0}
         aria-valuemax={total}
       >
         <div
-          className="h-full bg-blue-500 rounded-full transition-all duration-300 ease-out"
+          className="h-full bg-[#2D6A56] rounded-full transition-all duration-300 ease-out"
           style={{ width: `${progressPercent}%` }}
         />
       </div>

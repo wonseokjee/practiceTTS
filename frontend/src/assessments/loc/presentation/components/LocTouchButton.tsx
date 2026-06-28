@@ -31,7 +31,7 @@ export function LocTouchButton({ isSelectable, onTouch }: LocTouchButtonProps) {
               'cursor-pointer',
             ].join(' ')
           : [
-              'bg-gray-200 text-gray-400',
+              'bg-[#E8E4DC] text-[#9AA09B]',
               'cursor-not-allowed',
             ].join(' '),
       ].join(' ')}

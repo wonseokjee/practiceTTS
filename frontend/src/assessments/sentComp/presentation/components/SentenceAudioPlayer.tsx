@@ -27,7 +27,7 @@ export const SentenceAudioPlayer: React.FC<SentenceAudioPlayerProps> = ({
 }) => {
   return (
     <div
-      className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col items-center gap-4"
+      className="bg-white rounded-2xl shadow-sm border border-[#E8E4DC] p-6 flex flex-col items-center gap-4"
       aria-label="문장 오디오 재생 영역"
     >
       {/* 오디오 재생 상태 표시 */}
@@ -40,7 +40,7 @@ export const SentenceAudioPlayer: React.FC<SentenceAudioPlayerProps> = ({
           {[0, 1, 2, 3].map((i) => (
             <div
               key={i}
-              className={`w-1.5 bg-blue-500 rounded-full ${
+              className={`w-1.5 bg-[#2D6A56] rounded-full ${
                 isPlaying ? 'animate-bounce' : ''
               }`}
               style={{
@@ -54,7 +54,7 @@ export const SentenceAudioPlayer: React.FC<SentenceAudioPlayerProps> = ({
         {/* 상태 텍스트 */}
         <span
           className={`text-sm font-medium ${
-            isPlaying ? 'text-blue-600' : 'text-gray-400'
+            isPlaying ? 'text-[#2D6A56]' : 'text-[#9AA09B]'
           }`}
           aria-live="polite"
         >
@@ -64,7 +64,7 @@ export const SentenceAudioPlayer: React.FC<SentenceAudioPlayerProps> = ({
 
       {/* 문장 표시 */}
       <p
-        className="text-xl font-medium text-gray-800 text-center leading-relaxed"
+        className="text-xl font-medium text-[#1A1916] text-center leading-relaxed"
         aria-label={`문장: ${sentence}`}
       >
         {sentence}
@@ -75,8 +75,8 @@ export const SentenceAudioPlayer: React.FC<SentenceAudioPlayerProps> = ({
         type="button"
         className={`px-6 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
           isReplayEnabled
-            ? 'bg-blue-50 text-blue-600 hover:bg-blue-100 active:scale-95 cursor-pointer'
-            : 'bg-gray-50 text-gray-300 cursor-not-allowed'
+            ? 'bg-[#EBF4F0] text-[#2D6A56] hover:bg-[#dcebe4] active:scale-95 cursor-pointer'
+            : 'bg-[#F7F6F3] text-[#9AA09B] cursor-not-allowed'
         }`}
         onClick={onReplay}
         disabled={!isReplayEnabled}

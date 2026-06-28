@@ -20,14 +20,14 @@ export const ItemProgressBar: React.FC<ItemProgressBarProps> = ({
   return (
     <div className="w-full">
       <div className="flex justify-between items-center mb-1.5">
-        <span className="text-sm font-medium text-gray-600">
+        <span className="text-sm font-medium text-[#6B6560]">
           {current} / {total}
         </span>
-        <span className="text-sm text-gray-400">{percentage}%</span>
+        <span className="text-sm text-[#9AA09B]">{percentage}%</span>
       </div>
-      <div className="w-full bg-gray-100 rounded-full h-2">
+      <div className="w-full bg-[#F2F1EC] rounded-full h-2">
         <div
-          className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+          className="bg-[#2D6A56] h-2 rounded-full transition-all duration-300"
           style={{ width: `${percentage}%` }}
           role="progressbar"
           aria-valuenow={current}

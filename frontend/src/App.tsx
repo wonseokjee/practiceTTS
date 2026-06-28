@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   BrowserRouter,
   Routes,
@@ -30,7 +30,22 @@ interface CompletedAssessments {
 }
 
 function AssessmentContent() {
-  const { session } = useSessionContext();
+  const { session, startSession } = useSessionContext();
+  const { user } = useAuth();
+
+  // 로그인 사용자의 환자 ID를 검사 세션에 자동 사용 (보호자=연결 환자, 환자=본인).
+  // 회원 로그인을 하므로 환자 ID 수동 입력은 불필요하다.
+  const effectivePatientId = user
+    ? user.role === 'caregiver'
+      ? user.patientId
+      : user.id
+    : null;
+  // 화면 표시용 환자 이름 (보호자=돌보는 어르신 성함, 환자=본인 이름)
+  const effectivePatientName = user
+    ? user.role === 'caregiver'
+      ? (user.patientDisplayName ?? undefined)
+      : user.displayName
+    : undefined;
 
   const [appPhase, setAppPhase] = useState<AppPhase>('LOC');
   const [completedAssessments, setCompletedAssessments] =
@@ -59,7 +74,30 @@ function AssessmentContent() {
     setAppPhase('HUB');
   };
 
-  if (session === null) {
+  // 로그인 사용자의 환자 ID/이름과 세션이 일치하지 않으면(미생성 · 옛 수동입력값 ·
+  // 이름 미반영) 동기화한다.
+  const needsSync =
+    effectivePatientId !== null &&
+    (session?.patientId !== effectivePatientId ||
+      (effectivePatientName !== undefined &&
+        session?.patientName !== effectivePatientName));
+
+  useEffect(() => {
+    if (needsSync && effectivePatientId) {
+      startSession(effectivePatientId, effectivePatientName);
+    }
+  }, [needsSync, effectivePatientId, effectivePatientName, startSession]);
+
+  if (session === null || needsSync) {
+    // 로그인되어 환자 ID가 있으면 위 effect가 곧 세션을 만든다(짧은 대기).
+    // 비로그인 등으로 환자 ID가 없을 때만 수동 입력 폴백을 보여준다.
+    if (effectivePatientId) {
+      return (
+        <div className="h-full bg-[#F7F6F3] flex items-center justify-center p-6">
+          <p className="text-[#6B6560]">검사를 준비하고 있어요...</p>
+        </div>
+      );
+    }
     return <PatientSetupScreen />;
   }
 
@@ -99,7 +137,7 @@ function CaregiverRoute({ children }: { children: ReactNode }) {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <span className="text-gray-500">로딩 중...</span>
+        <span className="text-[#6B6560]">로딩 중...</span>
       </div>
     );
   }
@@ -111,7 +149,7 @@ function CaregiverRoute({ children }: { children: ReactNode }) {
   if (user.role !== 'caregiver') {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-red-600">보호자 계정으로만 접근할 수 있습니다.</p>
+        <p className="text-[#C94040]">보호자 계정으로만 접근할 수 있습니다.</p>
       </div>
     );
   }
@@ -133,7 +171,7 @@ function PatientRoute({ children }: { children: ReactNode }) {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <span className="text-gray-500">로딩 중...</span>
+        <span className="text-[#6B6560]">로딩 중...</span>
       </div>
     );
   }
@@ -169,7 +207,7 @@ function RootRedirect() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <span className="text-gray-500">로딩 중...</span>
+        <span className="text-[#6B6560]">로딩 중...</span>
       </div>
     );
   }
@@ -202,7 +240,7 @@ function LoginRoute() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <span className="text-gray-500">로딩 중...</span>
+        <span className="text-[#6B6560]">로딩 중...</span>
       </div>
     );
   }

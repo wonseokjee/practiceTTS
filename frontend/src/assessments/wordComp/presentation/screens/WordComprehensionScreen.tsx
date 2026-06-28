@@ -40,9 +40,9 @@ export const WordComprehensionScreen: React.FC<WordComprehensionScreenProps> = (
   // session이 없으면 patientId를 알 수 없으므로 에러 상태 표시
   if (session === null) {
     return (
-      <div className="h-full bg-gray-50 flex items-center justify-center">
+      <div className="h-full bg-[#F7F6F3] flex items-center justify-center">
         <div className="text-center px-4">
-          <p className="text-red-500 font-medium mb-4">
+          <p className="text-[#C94040] font-medium mb-4">
             세션 정보가 없습니다. 검사를 다시 시작해주세요.
           </p>
         </div>
@@ -53,6 +53,7 @@ export const WordComprehensionScreen: React.FC<WordComprehensionScreenProps> = (
   return (
     <WordComprehensionScreenInner
       patientId={session.patientId}
+      patientName={session.patientName}
       onComplete={onComplete}
       onEndSession={endSession}
     />
@@ -61,6 +62,7 @@ export const WordComprehensionScreen: React.FC<WordComprehensionScreenProps> = (
 
 interface InnerProps {
   patientId: string;
+  patientName?: string;
   onComplete?: (summary: SessionSummaryDTO) => void;
   onEndSession: () => void;
 }
@@ -71,9 +73,12 @@ interface InnerProps {
  */
 const WordComprehensionScreenInner: React.FC<InnerProps> = ({
   patientId,
+  patientName,
   onComplete,
   onEndSession,
 }) => {
+  // 표시용 환자 이름 (없으면 식별자로 폴백)
+  const patientLabel = patientName ?? patientId;
   const { viewState, actions } = useWordComprehensionViewModel(
     patientId,
     onComplete,
@@ -96,7 +101,7 @@ const WordComprehensionScreenInner: React.FC<InnerProps> = ({
   // LOADING: 문항 불러오는 중
   if (phase.type === 'LOADING') {
     return (
-      <div className="h-full bg-gray-50 flex items-center justify-center">
+      <div className="h-full bg-[#F7F6F3] flex items-center justify-center">
         <LoadingOverlay message="문항 불러오는 중..." />
       </div>
     );
@@ -105,15 +110,15 @@ const WordComprehensionScreenInner: React.FC<InnerProps> = ({
   // COMPLETED: 검사 완료 - 요약 결과 표시
   if (phase.type === 'COMPLETED') {
     return (
-      <div className="h-full bg-gray-50 flex flex-col">
-        <header className="bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between shadow-sm">
+      <div className="h-full bg-[#F7F6F3] flex flex-col">
+        <header className="bg-white border-b border-[#E8E4DC] px-4 py-3 flex items-center justify-between shadow-sm">
           <div>
-            <h1 className="text-base font-semibold text-gray-800">
+            <h1 className="text-base font-semibold text-[#1A1916]">
               단어 이해 검사
             </h1>
-            <p className="text-xs text-gray-400">검사 완료</p>
+            <p className="text-xs text-[#9AA09B]">검사 완료</p>
           </div>
-          <span className="text-xs text-gray-400">환자 ID: {patientId}</span>
+          <span className="text-xs text-[#9AA09B]">환자: {patientLabel}</span>
         </header>
         <main className="flex-1 px-4 py-4 max-w-xl mx-auto w-full overflow-y-auto">
           {summary !== null ? (
@@ -129,14 +134,14 @@ const WordComprehensionScreenInner: React.FC<InnerProps> = ({
   // ERROR: 오류 발생
   if (phase.type === 'ERROR') {
     return (
-      <div className="h-full bg-gray-50 flex items-center justify-center">
+      <div className="h-full bg-[#F7F6F3] flex items-center justify-center">
         <div className="text-center px-6 max-w-sm w-full">
           <div
-            className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4"
+            className="w-16 h-16 bg-[#C94040]/10 rounded-full flex items-center justify-center mx-auto mb-4"
             aria-hidden="true"
           >
             <svg
-              className="w-8 h-8 text-red-500"
+              className="w-8 h-8 text-[#C94040]"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -149,13 +154,13 @@ const WordComprehensionScreenInner: React.FC<InnerProps> = ({
               />
             </svg>
           </div>
-          <p className="text-gray-700 font-medium mb-2">오류가 발생했습니다</p>
-          <p className="text-gray-500 text-sm mb-6">
+          <p className="text-[#1A1916] font-medium mb-2">오류가 발생했습니다</p>
+          <p className="text-[#6B6560] text-sm mb-6">
             {errorMessage ?? phase.message}
           </p>
           <button
             type="button"
-            className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-xl transition-colors"
+            className="w-full py-3 bg-[#2D6A56] hover:bg-[#1F5240] text-white font-semibold rounded-xl transition-colors"
             onClick={onRetry}
           >
             다시 시도
@@ -168,9 +173,9 @@ const WordComprehensionScreenInner: React.FC<InnerProps> = ({
   // TRANSITIONING: 다음 문항으로 전환 중
   if (phase.type === 'TRANSITIONING') {
     return (
-      <div className="h-full bg-gray-50 flex flex-col">
+      <div className="h-full bg-[#F7F6F3] flex flex-col">
         <AssessmentHeader
-          patientId={patientId}
+          patientLabel={patientLabel}
           currentItemIndex={currentItemIndex}
           totalItems={totalItems}
           onEndSession={onEndSession}
@@ -186,7 +191,7 @@ const WordComprehensionScreenInner: React.FC<InnerProps> = ({
   // currentItem이 없으면 렌더링 불가 (LOADING 이후 반드시 설정됨)
   if (currentItem === null) {
     return (
-      <div className="h-full bg-gray-50 flex items-center justify-center">
+      <div className="h-full bg-[#F7F6F3] flex items-center justify-center">
         <LoadingOverlay message="문항 불러오는 중..." />
       </div>
     );
@@ -195,9 +200,9 @@ const WordComprehensionScreenInner: React.FC<InnerProps> = ({
   const isSubmitting = phase.type === 'SUBMITTING';
 
   return (
-    <div className="h-full bg-gray-50 flex flex-col">
+    <div className="h-full bg-[#F7F6F3] flex flex-col">
       <AssessmentHeader
-        patientId={patientId}
+        patientLabel={patientLabel}
         currentItemIndex={currentItemIndex}
         totalItems={totalItems}
         onEndSession={onEndSession}
@@ -229,12 +234,12 @@ const WordComprehensionScreenInner: React.FC<InnerProps> = ({
         {/* 제출 중 오버레이 표시 */}
         {isSubmitting && (
           <div
-            className="flex items-center justify-center gap-2 py-2 text-blue-500 text-sm"
+            className="flex items-center justify-center gap-2 py-2 text-[#2D6A56] text-sm"
             role="status"
             aria-live="polite"
           >
             <div
-              className="w-4 h-4 border-2 border-blue-200 border-t-blue-500 rounded-full animate-spin"
+              className="w-4 h-4 border-2 border-[#c8e6d9] border-t-[#2D6A56] rounded-full animate-spin"
               aria-hidden="true"
             />
             <span>처리 중...</span>
@@ -247,36 +252,36 @@ const WordComprehensionScreenInner: React.FC<InnerProps> = ({
 
 /** 검사 화면 공통 헤더 */
 interface AssessmentHeaderProps {
-  patientId: string;
+  patientLabel: string;
   currentItemIndex: number;
   totalItems: number;
   onEndSession: () => void;
 }
 
 const AssessmentHeader: React.FC<AssessmentHeaderProps> = ({
-  patientId,
+  patientLabel,
   currentItemIndex,
   totalItems,
   onEndSession,
 }) => {
   return (
-    <header className="bg-white border-b border-gray-100 px-4 py-3 shadow-sm">
+    <header className="bg-white border-b border-[#E8E4DC] px-4 py-3 shadow-sm">
       <div className="max-w-xl mx-auto flex items-center justify-between">
         <div>
-          <h1 className="text-base font-semibold text-gray-800">
+          <h1 className="text-base font-semibold text-[#1A1916]">
             단어 이해 검사
           </h1>
-          <p className="text-xs text-gray-400">
-            QAB 하위검사 3번 &nbsp;·&nbsp; 환자 ID: {patientId}
+          <p className="text-xs text-[#9AA09B]">
+            QAB 하위검사 3번 &nbsp;·&nbsp; 환자: {patientLabel}
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-400 hidden sm:inline">
+          <span className="text-xs text-[#9AA09B] hidden sm:inline">
             {currentItemIndex + 1} / {totalItems}
           </span>
           <button
             type="button"
-            className="px-3 py-1.5 text-xs text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            className="px-3 py-1.5 text-xs text-[#6B6560] border border-[#E8E4DC] rounded-lg hover:bg-[#EBF4F0] transition-colors"
             onClick={onEndSession}
             aria-label="검사 세션 종료"
           >
