@@ -8,7 +8,6 @@ import { EntryDetailScreen } from './EntryDetailScreen.js';
 import { EntryListScreen } from './EntryListScreen.js';
 import { ProfileScreen } from './ProfileScreen.js';
 import { QabProgressCard } from './QabProgressCard.js';
-import { WARM_SCREEN_BG } from '../../shared/theme.js';
 
 /** 대시보드 화면 상태 */
 type DashboardView = 'list' | 'capture' | 'detail' | 'profile';
@@ -59,10 +58,7 @@ export function CaregiverDashboard() {
   // patientId 미연결 안내
   if (!patientId) {
     return (
-      <div
-        className="min-h-screen flex flex-col items-center justify-center px-4"
-        style={{ background: WARM_SCREEN_BG }}
-      >
+      <div className="min-h-screen bg-[#F7F6F3] flex flex-col items-center justify-center px-4">
         <div className="w-full max-w-lg bg-white rounded-3xl shadow-[0_10px_30px_rgba(0,0,0,0.08)] p-8 text-center">
           <h1 className="text-2xl font-bold text-[#1A1916] mb-2">보호자 대시보드</h1>
           <p className="text-[#6B6560] mb-4">
@@ -85,7 +81,7 @@ export function CaregiverDashboard() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: WARM_SCREEN_BG }}>
+    <div className="min-h-screen bg-[#F7F6F3]">
       {/* 헤더 */}
       <header className="border-b border-[#E8E4DC]/60 px-4 py-3 flex justify-between items-center">
         <h1 className="text-lg font-bold text-[#1A1916]">Memory Link</h1>

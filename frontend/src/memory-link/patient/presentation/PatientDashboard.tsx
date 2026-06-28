@@ -150,7 +150,7 @@ export function PatientDashboard() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: WARM_SCREEN_BG }}>
+    <div className="min-h-screen bg-[#F7F6F3]">
       {/* 헤더 */}
       <header className="px-6 py-5 flex items-center justify-between">
         <div>

@@ -13,7 +13,6 @@ import type { FormEvent } from 'react';
 import { useAuth } from './AuthContext.js';
 import type { RegisterData } from './AuthContext.js';
 import { extractErrorMessage } from './extractErrorMessage.js';
-import { WARM_SCREEN_BG } from './theme.js';
 
 type Tab = 'login' | 'register';
 
@@ -262,10 +261,7 @@ export function LoginScreen() {
   const [activeTab, setActiveTab] = useState<Tab>('login');
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center px-4"
-      style={{ background: WARM_SCREEN_BG }}
-    >
+    <div className="min-h-screen bg-[#F7F6F3] flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-white rounded-3xl shadow-[0_10px_30px_rgba(0,0,0,0.08)] overflow-hidden">
         {/* 헤더 */}
         <div className="px-6 pt-8 pb-4 text-center">
