@@ -55,6 +55,10 @@ export function CaregiverDashboard() {
     setView('list');
   };
 
+  // 상단 요약 통계 — 실제 데이터만 사용(오늘 훈련 횟수·회복 추세 화살표는 API 부재).
+  const entries = memoryEntries.entries;
+  const readyCount = entries.filter((entry) => entry.hasScenario).length;
+
   // patientId 미연결 안내
   if (!patientId) {
     return (
@@ -118,19 +122,49 @@ export function CaregiverDashboard() {
 
       {/* 메인 콘텐츠 */}
       <main className="max-w-2xl mx-auto px-4 py-6">
-        {/* 오늘의 치유 메시지 (Pattern 2) — 목록 화면에서만 노출 */}
-        {view === 'list' && <DailyHealingBanner />}
-
-        {/* 발화 검사 회복 추세 (데이터 있을 때만 표시) */}
-        {view === 'list' && <QabProgressCard />}
-
-        {/* 목록 화면 */}
+        {/* 목록 화면 — 시안 A: 환자 요약 → 통계 → 추가 → 회복 추세 → 기억 그리드 */}
         {view === 'list' && (
-          <EntryListScreen
-            memoryEntries={memoryEntries}
-            onSelectEntry={handleSelectEntry}
-            onAddNew={handleAddNew}
-          />
+          <>
+            {/* 환자 인사 */}
+            <div className="mb-5">
+              <h2 className="text-2xl font-bold text-[#1A1916]">
+                {user?.patientDisplayName ?? '환자'} 어르신
+              </h2>
+              <p className="mt-1 text-sm text-[#6B6560]">오늘도 함께해요</p>
+            </div>
+
+            {/* 요약 통계 카드 */}
+            <div className="mb-4 flex gap-3">
+              <StatCard label="등록한 기억" value={`${entries.length}`} unit="개" />
+              <StatCard
+                label="훈련 준비"
+                value={`${readyCount}`}
+                unit={`/ ${entries.length}`}
+              />
+            </div>
+
+            {/* 오늘의 기억 추가 (히어로 액션) */}
+            <button
+              type="button"
+              onClick={handleAddNew}
+              className="mb-6 flex w-full min-h-[56px] items-center justify-center gap-2 rounded-full bg-[#E07B54] text-lg font-bold text-white shadow-[0_8px_20px_rgba(224,123,84,0.35)] transition hover:bg-[#c96a45] active:scale-[0.99]"
+              aria-label="오늘의 기억 추가"
+            >
+              ＋ 오늘의 기억 추가
+            </button>
+
+            {/* 오늘의 치유 메시지 (Pattern 2) */}
+            <DailyHealingBanner />
+
+            {/* 발화 검사 회복 추세 (데이터 있을 때만 표시) */}
+            <QabProgressCard />
+
+            {/* 기억 목록 그리드 */}
+            <EntryListScreen
+              memoryEntries={memoryEntries}
+              onSelectEntry={handleSelectEntry}
+            />
+          </>
         )}
 
         {/* 생성 플로우 화면 */}
@@ -163,6 +197,31 @@ export function CaregiverDashboard() {
           />
         )}
       </main>
+    </div>
+  );
+}
+
+// ─── 요약 통계 카드 ──────────────────────────────────────────
+
+interface StatCardProps {
+  label: string;
+  value: string;
+  unit?: string;
+}
+
+/** 환자 상태 요약용 작은 통계 카드 (등록한 기억 / 훈련 준비 등) */
+function StatCard({ label, value, unit }: StatCardProps) {
+  return (
+    <div className="flex-1 rounded-2xl border border-[#E8E4DC] bg-white p-3">
+      <p className="text-xs text-[#6B6560]">{label}</p>
+      <p className="mt-1 text-2xl font-extrabold tabular-nums text-[#2D6A56]">
+        {value}
+        {unit !== undefined && (
+          <span className="ml-0.5 text-sm font-semibold text-[#6B6560]">
+            {unit}
+          </span>
+        )}
+      </p>
     </div>
   );
 }

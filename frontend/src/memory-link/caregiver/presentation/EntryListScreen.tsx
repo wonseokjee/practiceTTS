@@ -5,18 +5,17 @@ import type { UseMemoryEntriesReturn } from '../application/useMemoryEntries.js'
 interface EntryListScreenProps {
   memoryEntries: UseMemoryEntriesReturn;
   onSelectEntry: (id: string) => void;
-  onAddNew: () => void;
 }
 
 /**
  * 메모리 엔트리 목록 화면
  * - 카드 형태로 엔트리 목록 표시
  * - 비즈니스 로직 없음 (useMemoryEntries 훅에 위임)
+ * - 기억 추가는 상위(CaregiverDashboard) 히어로 버튼이 담당한다.
  */
 export function EntryListScreen({
   memoryEntries,
   onSelectEntry,
-  onAddNew,
 }: EntryListScreenProps) {
   const { entries, isLoading, error, refresh } = memoryEntries;
 
@@ -54,17 +53,7 @@ export function EntryListScreen({
   return (
     <div className="w-full">
       {/* 헤더 영역 */}
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-bold text-[#1A1916]">기억 목록</h2>
-        <button
-          type="button"
-          onClick={onAddNew}
-          className="min-h-[44px] px-4 py-2 bg-[#2D6A56] text-white rounded-full text-sm font-medium hover:bg-[#1F5240] transition-colors"
-          aria-label="새 기억 추가"
-        >
-          + 새 기억
-        </button>
-      </div>
+      <h2 className="text-lg font-bold text-[#1A1916] mb-4">기억 목록</h2>
 
       {/* 빈 상태 */}
       {entries.length === 0 ? (
