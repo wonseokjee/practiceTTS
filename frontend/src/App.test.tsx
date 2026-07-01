@@ -137,6 +137,7 @@ vi.mock('react-router-dom', async (importOriginal) => {
     Routes: ({ children }: { children: React.ReactNode }) => <>{children}</>,
     Route: ({ element }: { path?: string; element: React.ReactNode }) => <>{element}</>,
     Navigate: () => null,
+    useNavigate: () => vi.fn(),
   };
 });
 

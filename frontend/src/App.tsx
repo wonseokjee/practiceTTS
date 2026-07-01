@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   BrowserRouter,
   Routes,
   Route,
   Navigate,
+  useNavigate,
 } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { SessionProvider, useSessionContext } from './shared/session/SessionContext.js';
@@ -32,6 +33,10 @@ interface CompletedAssessments {
 function AssessmentContent() {
   const { session, startSession } = useSessionContext();
   const { user } = useAuth();
+  const navigate = useNavigate();
+  // 로그인 사용자용 세션을 최초 1회만 자동 생성했는지 추적.
+  // (종료 후 자동 재생성되어 '세션 종료'가 안 먹던 문제 방지)
+  const hasAutoStartedRef = useRef(false);
 
   // 로그인 사용자의 환자 ID를 검사 세션에 자동 사용 (보호자=연결 환자, 환자=본인).
   // 회원 로그인을 하므로 환자 ID 수동 입력은 불필요하다.
@@ -82,11 +87,23 @@ function AssessmentContent() {
       (effectivePatientName !== undefined &&
         session?.patientName !== effectivePatientName));
 
+  // 최초 진입 시 1회만 자동 세션 생성. 이후 세션 종료(session=null)는 재생성하지
+  // 않고 아래 effect가 대시보드로 복귀시킨다.
   useEffect(() => {
-    if (needsSync && effectivePatientId) {
+    if (needsSync && effectivePatientId && !hasAutoStartedRef.current) {
       startSession(effectivePatientId, effectivePatientName);
+      hasAutoStartedRef.current = true;
     }
   }, [needsSync, effectivePatientId, effectivePatientName, startSession]);
+
+  // 세션 종료 시 로그인 사용자는 원래 화면(역할별 대시보드)으로 복귀.
+  useEffect(() => {
+    if (hasAutoStartedRef.current && session === null && user) {
+      navigate(user.role === 'caregiver' ? '/caregiver' : '/patient', {
+        replace: true,
+      });
+    }
+  }, [session, user, navigate]);
 
   if (session === null || needsSync) {
     // 로그인되어 환자 ID가 있으면 위 effect가 곧 세션을 만든다(짧은 대기).
