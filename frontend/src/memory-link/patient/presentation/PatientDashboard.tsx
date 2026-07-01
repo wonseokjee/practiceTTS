@@ -193,22 +193,13 @@ export function PatientDashboard() {
         {/* 오늘의 치유 메시지 (Pattern 2) */}
         <DailyHealingBanner />
 
-        {/* 개발 환경 전용: QAB 검사 바로가기 버튼 */}
-        {import.meta.env.DEV && (
-          <div className="mb-8 p-4 bg-[#EBF4F0] border border-[#c8e6d9] rounded-2xl flex flex-col items-center">
-            <h3 className="text-xl font-bold text-[#1A4035] mb-2">테스트용 편의 기능</h3>
-            <button
-              type="button"
-              onClick={() => navigate('/assessment')}
-              className="w-full min-h-[48px] bg-[#2D6A56] hover:bg-[#1F5240] text-white text-xl font-bold rounded-full transition-colors"
-            >
-              LOC / SentComp 검사하러 가기
-            </button>
-          </div>
-        )}
-
-        {/* 모드 토글 (퀴즈 / 대화) — 마지막 선택은 localStorage에 저장 */}
-        <ModeToggle mode={mode} onSelectMode={handleSelectMode} />
+        {/* 모드 토글 (퀴즈 / 대화 / 기본 검사) — 마지막 선택은 localStorage에 저장.
+            기본 검사는 개인 맞춤 없이 표준 문항으로 언어·인지를 점검하는 진입점. */}
+        <ModeToggle
+          mode={mode}
+          onSelectMode={handleSelectMode}
+          onOpenAssessment={() => navigate('/assessment')}
+        />
 
         {/* 퀴즈 모드: 퀴즈 목록 화면 위임 */}
         {mode === 'QUIZ' && (
@@ -235,13 +226,19 @@ export function PatientDashboard() {
 interface ModeToggleProps {
   mode: PatientMode;
   onSelectMode: (mode: PatientMode) => void;
+  /** 표준 언어·인지 검사(개인 맞춤 없음) 화면으로 이동 */
+  onOpenAssessment: () => void;
 }
 
-/** 퀴즈 / 대화 두 학습 모드 전환 토글 */
-function ModeToggle({ mode, onSelectMode }: ModeToggleProps) {
+/**
+ * 퀴즈 / 대화 / 기본 검사 선택 토글.
+ * - 퀴즈·대화는 학습 모드 전환(localStorage 저장)
+ * - 기본 검사는 개인 맞춤 없이 표준 문항으로 언어·인지를 점검하는 검사 화면으로 이동
+ */
+function ModeToggle({ mode, onSelectMode, onOpenAssessment }: ModeToggleProps) {
   const options: Array<{ value: PatientMode; label: string }> = [
-    { value: 'QUIZ', label: '퀴즈 모드' },
-    { value: 'CONVERSATION', label: '대화 모드' },
+    { value: 'QUIZ', label: '퀴즈' },
+    { value: 'CONVERSATION', label: '대화' },
   ];
 
   return (
@@ -259,7 +256,7 @@ function ModeToggle({ mode, onSelectMode }: ModeToggleProps) {
             role="tab"
             aria-selected={isActive}
             onClick={() => onSelectMode(opt.value)}
-            className={`min-h-[48px] flex-1 rounded-full text-lg font-semibold transition-colors duration-[180ms] ease-out ${
+            className={`min-h-[48px] flex-1 rounded-full text-base font-semibold transition-colors duration-[180ms] ease-out ${
               isActive
                 ? 'bg-white text-[#2D6A56] shadow-sm'
                 : 'bg-transparent text-[#6B6560] hover:text-[#1A1916]'
@@ -269,6 +266,16 @@ function ModeToggle({ mode, onSelectMode }: ModeToggleProps) {
           </button>
         );
       })}
+
+      {/* 기본 검사 — 모드 전환이 아니라 표준 검사 화면으로 이동(개인 맞춤 없음) */}
+      <button
+        type="button"
+        onClick={onOpenAssessment}
+        aria-label="표준 언어·인지 검사 (사진·일기 없이 기본 문항으로 점검)"
+        className="min-h-[48px] flex-1 rounded-full text-base font-semibold bg-transparent text-[#6B6560] transition-colors duration-[180ms] ease-out hover:text-[#1A1916]"
+      >
+        기본 검사
+      </button>
     </div>
   );
 }
