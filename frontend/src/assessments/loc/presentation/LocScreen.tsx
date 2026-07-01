@@ -7,6 +7,12 @@
  *
  * 비즈니스 로직은 useLocViewModel에, 렌더링만 이 컴포넌트에 존재한다.
  *
+ * UI 원칙(직관성):
+ * - "지금 이 순간 할 일"을 화면 중앙에 하나만 크게 노출한다.
+ *   IDLE → 시작 버튼 / TTS_PLAYING → 안내+음파 / AWAITING_TOUCH → 큰 터치 버튼+카운트다운
+ *   / 처리 중 → 확인 표시 / 완료 → 결과.
+ * - 상태를 여러 곳에 중복 표기하거나 invisible로 깜빡이게 하지 않는다.
+ *
  * sessionId와 patientId는 SessionContext에서 주입받는다.
  */
 
@@ -55,6 +61,26 @@ function TrialResultRow({ result }: { result: LocTrialResponseDTO }) {
       <span className={`font-bold text-lg ${scoreColorClass}`}>
         {result.score}점
       </span>
+    </div>
+  );
+}
+
+/** 시도 진행 점 표시 (1/3, 2/3, 3/3) */
+function TrialDots({ current }: { current: number }) {
+  return (
+    <div className="flex items-center gap-2" aria-label={`시도 ${current} / 3`}>
+      <span className="text-[#6B6560] font-medium">시도 {current} / 3</span>
+      <div className="flex gap-1.5">
+        {[1, 2, 3].map((n) => (
+          <div
+            key={n}
+            className={`h-2.5 w-2.5 rounded-full ${
+              n <= current ? 'bg-[#2D6A56]' : 'bg-[#E8E4DC]'
+            }`}
+            aria-hidden="true"
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -118,6 +144,11 @@ export function LocScreen({ onComplete, onProceed }: LocScreenProps) {
     isButtonEnabled,
   } = viewState;
 
+  const isComplete = assessmentState === 'ASSESSMENT_COMPLETE';
+  const isProcessing =
+    assessmentState === 'TOUCH_DETECTED' ||
+    assessmentState === 'TRIAL_COMPLETE';
+
   // === 렌더링 ===
   return (
     <div className="h-full bg-[#F7F6F3] flex flex-col">
@@ -128,7 +159,8 @@ export function LocScreen({ onComplete, onProceed }: LocScreenProps) {
             의식 수준(LOC) 검사
           </h1>
           <p className="text-sm text-[#6B6560] mt-1">
-            QAB 하위검사 1번 &nbsp;·&nbsp; 환자: <span className="font-medium text-[#1A1916]">{patientLabel}</span>
+            QAB 하위검사 1번 &nbsp;·&nbsp; 환자:{' '}
+            <span className="font-medium text-[#1A1916]">{patientLabel}</span>
           </p>
         </div>
         <button
@@ -142,49 +174,8 @@ export function LocScreen({ onComplete, onProceed }: LocScreenProps) {
 
       {/* 메인 컨텐츠 */}
       <main className="flex-1 flex flex-col px-6 py-4 gap-4 max-w-2xl mx-auto w-full overflow-y-auto min-h-0">
-
-        {/* 진행 상태 표시 (검사 완료 화면에서는 숨김 - 완료 화면에 시도별 결과 표시됨) */}
-        {assessmentState !== 'ASSESSMENT_COMPLETE' && (
-          <div className="flex items-center justify-between">
-            <span className="text-[#6B6560] font-medium">
-              시도 {currentTrialNumber} / 3
-            </span>
-            <span className="text-sm text-[#9AA09B] bg-[#F2F1EC] px-3 py-1 rounded-full">
-              {assessmentState === 'IDLE' && '대기 중'}
-              {assessmentState === 'TTS_PLAYING' && '음성 재생 중'}
-              {assessmentState === 'AWAITING_TOUCH' && '터치 대기 중'}
-              {assessmentState === 'TOUCH_DETECTED' && '처리 중'}
-              {assessmentState === 'TRIAL_COMPLETE' && '시도 완료'}
-            </span>
-          </div>
-        )}
-
-        {/* 에러 메시지 */}
-        {errorMessage !== null && (
-          <div
-            className="bg-[#C94040]/10 border border-[#C94040]/30 rounded-lg px-4 py-3 text-[#C94040]"
-            role="alert"
-          >
-            {errorMessage}
-          </div>
-        )}
-
-        {/* TTS 재생 중 표시 + 카운트다운 진행 바 (검사 완료 화면에서는 숨김) */}
-        {assessmentState !== 'ASSESSMENT_COMPLETE' && (
-          <>
-            <div className="flex justify-center py-2">
-              <LocAudioIndicator isTtsPlaying={isTtsPlaying} />
-            </div>
-            <LocProgressBar
-              isActive={assessmentState === 'AWAITING_TOUCH'}
-              remainingSeconds={remainingSeconds}
-              totalSeconds={10}
-            />
-          </>
-        )}
-
-        {/* 검사 완료 화면 */}
-        {assessmentState === 'ASSESSMENT_COMPLETE' ? (
+        {isComplete ? (
+          /* ===== 검사 완료 화면 ===== */
           <div className="flex flex-col items-center gap-6 py-8">
             <div className="text-6xl">✅</div>
             <h2 className="text-2xl font-bold text-[#1A1916]">검사 완료</h2>
@@ -219,40 +210,101 @@ export function LocScreen({ onComplete, onProceed }: LocScreenProps) {
             </button>
           </div>
         ) : (
-          <div className="flex-1 flex flex-col gap-4 min-h-0">
-            {/* 대형 터치 버튼 */}
-            <LocTouchButton
-              isSelectable={isButtonEnabled}
-              onTouch={actions.handleButtonTouch}
-            />
+          /* ===== 검사 진행 화면 ===== */
+          <>
+            {/* 상단: 시도 진행 표시 */}
+            <TrialDots current={currentTrialNumber} />
 
-            {/* 시작 버튼 (IDLE 상태에서만 활성, 다른 상태에서는 공간 유지) */}
-            <button
-              type="button"
-              className={`w-full bg-[#2D6A56] text-white font-semibold py-4 rounded-2xl text-lg transition-colors ${
-                assessmentState === 'IDLE'
-                  ? 'hover:bg-[#1F5240]'
-                  : 'invisible pointer-events-none'
-              }`}
-              onClick={() => { void actions.startAssessment(); }}
-            >
-              검사 시작
-            </button>
-          </div>
-        )}
+            {/* 에러 메시지 */}
+            {errorMessage !== null && (
+              <div
+                className="bg-[#C94040]/10 border border-[#C94040]/30 rounded-lg px-4 py-3 text-[#C94040]"
+                role="alert"
+              >
+                {errorMessage}
+              </div>
+            )}
 
-        {/* 시도 결과 이력 (검사 진행 중) */}
-        {trialResults.length > 0 &&
-          assessmentState !== 'ASSESSMENT_COMPLETE' && (
-            <div className="bg-white rounded-xl shadow-sm p-4">
-              <h3 className="font-semibold text-[#1A1916] mb-2 text-sm">
-                진행 결과
-              </h3>
-              {trialResults.map((result) => (
-                <TrialResultRow key={result.trialNumber} result={result} />
-              ))}
+            {/* 중앙: 현재 상태에서 할 일 하나만 크게 */}
+            <div className="flex-1 flex flex-col min-h-0">
+              {assessmentState === 'IDLE' && (
+                <div className="flex-1 flex flex-col items-center justify-center gap-7 text-center">
+                  <div className="text-6xl" aria-hidden="true">🎧</div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-[#1A1916]">
+                      검사를 시작할까요?
+                    </h2>
+                    <p className="mt-3 text-lg leading-relaxed text-[#6B6560]">
+                      시작을 누르면 소리가 나와요.
+                      <br />
+                      소리를 들은 뒤 화면을 터치해 주세요.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="w-full max-w-sm bg-[#2D6A56] hover:bg-[#1F5240] text-white font-semibold py-4 rounded-2xl text-xl transition-colors"
+                    onClick={() => {
+                      void actions.startAssessment();
+                    }}
+                  >
+                    검사 시작
+                  </button>
+                </div>
+              )}
+
+              {assessmentState === 'TTS_PLAYING' && (
+                <div className="flex-1 flex flex-col items-center justify-center gap-6 text-center">
+                  <LocAudioIndicator isTtsPlaying={isTtsPlaying} />
+                  <div>
+                    <h2 className="text-2xl font-bold text-[#2D6A56]">
+                      잘 들어보세요
+                    </h2>
+                    <p className="mt-2 text-lg text-[#6B6560]">
+                      소리가 끝나면 화면을 터치할 수 있어요.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {assessmentState === 'AWAITING_TOUCH' && (
+                <div className="flex-1 flex flex-col gap-4 min-h-0">
+                  <p className="text-center text-lg font-semibold text-[#2D6A56]">
+                    지금 화면을 터치하세요
+                  </p>
+                  <LocTouchButton
+                    isSelectable={isButtonEnabled}
+                    onTouch={actions.handleButtonTouch}
+                  />
+                  <LocProgressBar
+                    isActive
+                    remainingSeconds={remainingSeconds}
+                    totalSeconds={10}
+                  />
+                </div>
+              )}
+
+              {isProcessing && (
+                <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center">
+                  <div className="text-6xl" aria-hidden="true">✓</div>
+                  <h2 className="text-2xl font-bold text-[#2D6A56]">확인했어요</h2>
+                  <p className="text-lg text-[#6B6560]">잠시만 기다려 주세요…</p>
+                </div>
+              )}
             </div>
-          )}
+
+            {/* 진행 결과 이력 (검사 진행 중, 있을 때만) */}
+            {trialResults.length > 0 && (
+              <div className="bg-white rounded-xl shadow-sm p-4">
+                <h3 className="font-semibold text-[#1A1916] mb-2 text-sm">
+                  진행 결과
+                </h3>
+                {trialResults.map((result) => (
+                  <TrialResultRow key={result.trialNumber} result={result} />
+                ))}
+              </div>
+            )}
+          </>
+        )}
       </main>
     </div>
   );
