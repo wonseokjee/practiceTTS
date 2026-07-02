@@ -31,6 +31,11 @@ describe('isNameMatch', () => {
     expect(isNameMatch('바나나', '사과')).toBe(false);
   });
 
+  it('조음 유사 혼동(구음장애·노인)은 정답으로 본다', () => {
+    expect(isNameMatch('파다', '바다')).toBe(true); // ㅂ↔ㅍ 양순 파열음
+    expect(isNameMatch('바다', '바따')).toBe(true); // ㄷ↔ㄸ 치조 파열음
+  });
+
   it('빈 입력은 오답', () => {
     expect(isNameMatch('', '사과')).toBe(false);
     expect(isNameMatch('   ', '사과')).toBe(false);

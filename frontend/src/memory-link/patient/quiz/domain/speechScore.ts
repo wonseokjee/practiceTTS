@@ -2,6 +2,12 @@
 //
 // 단어는 음절(글자) 단위, 문장은 어절(공백) 단위 편집거리로 오류율(WER)을 구한다.
 // 실어증 + 브라우저 STT 특성상 관대하게 보며, 오류율이 임계값 이하이면 정답으로 본다.
+//
+// 단어(word) 모드는 음소 유사 가중 편집거리(phoneticEditDistance)를 써서, 구음장애·
+// 노인 발화의 조음 유사 혼동(ㅂ↔ㅍ, 종성 탈락 등)을 부분 오류로 관대하게 본다.
+// 문장(sentence) 모드는 어절 단위라 음소 거리가 부적합해 표준 편집거리를 유지한다.
+
+import { phoneticEditDistance } from './phoneticDistance.js';
 
 /** 비교용 정규화: NFC + 소문자 + 구두점 제거 + 공백 정리. */
 function normalize(text: string): string {
@@ -59,7 +65,12 @@ export function speechErrorRate(
   const said = tokenize(transcript, mode);
   const want = tokenize(target, mode);
   if (want.length === 0) return said.length === 0 ? 0 : 1;
-  return editDistance(said, want) / want.length;
+  // 단어는 음소 유사 가중 거리(조음 유사 혼동에 관대), 문장은 어절 표준 거리.
+  const distance =
+    mode === 'word'
+      ? phoneticEditDistance(said, want)
+      : editDistance(said, want);
+  return distance / want.length;
 }
 
 /** 관대한 정답 임계값 — 오류율이 이 값 이하이면 정답. */

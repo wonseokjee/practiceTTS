@@ -9,9 +9,14 @@ describe('speechErrorRate', () => {
     expect(speechErrorRate('오늘 날씨가 좋아요', '오늘 날씨가 좋아요', 'sentence')).toBe(0);
   });
 
-  it('단어: 한 음절 차이는 1/길이', () => {
-    // "사과"(2음절) 중 1음절 치환 → 0.5
-    expect(speechErrorRate('사가', '사과', 'word')).toBeCloseTo(0.5, 5);
+  it('단어: 조음 유사 음절 혼동은 관대(작은 오류율)', () => {
+    // "바다"→"파다"(ㅂ↔ㅍ 양순 파열음): 구음장애 흔한 혼동 → 부분 오류만
+    expect(speechErrorRate('파다', '바다', 'word')).toBeLessThan(0.2);
+  });
+
+  it('단어: 조음 위치가 다른 음절 치환은 큰 오류율(변별력 보존)', () => {
+    // "바다"→"하수"(초성·중성 모두 다른 그룹)
+    expect(speechErrorRate('하수', '바다', 'word')).toBeGreaterThan(0.34);
   });
 
   it('문장: 한 어절 차이는 1/어절수', () => {
