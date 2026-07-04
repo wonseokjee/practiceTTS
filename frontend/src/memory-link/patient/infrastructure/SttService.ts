@@ -7,8 +7,12 @@ import type { SttResult } from '../domain/TrainingSession.js';
  * - confidence < 0.6 이면 재시도 유도 (onError 콜백으로 처리)
  */
 export interface ISttService {
-  /** STT 인식 시작 */
-  start(): void;
+  /**
+   * STT 인식 시작.
+   * @param candidates 정답 후보(phrase hint). 서버 STT가 제약 인식에 활용한다.
+   *                   Web Speech 구현은 무시한다(브라우저 API 제약).
+   */
+  start(candidates?: string[]): void;
   /** STT 인식 중단 */
   stop(): void;
   /** 인식 성공 시 콜백 (신뢰도 기준 충족 시에만 호출) */
@@ -45,7 +49,9 @@ export class WebSpeechSttService implements ISttService {
     }
   }
 
-  start(): void {
+  start(candidates?: string[]): void {
+    // Web Speech API는 phrase hint를 지원하지 않으므로 candidates는 무시한다.
+    void candidates;
     if (this.recognition === null) {
       this.onError?.('이 브라우저는 음성 인식을 지원하지 않습니다. Chrome 사용을 권장합니다.');
       return;

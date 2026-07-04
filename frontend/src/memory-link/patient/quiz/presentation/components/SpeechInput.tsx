@@ -11,7 +11,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTTS } from '../../../../../shared/hooks/useTTS.js';
 import { WebSpeechTtsService } from '../../../../../shared/infrastructure/WebSpeechTtsService.js';
-import { WebSpeechSttService } from '../../../infrastructure/SttService.js';
+import { createSttService } from '../../infrastructure/sttFactory.js';
 
 interface SpeechInputProps {
   /** 따라 읽을 단어 (speech 문항이면 항상 존재) */
@@ -43,10 +43,12 @@ export function SpeechInput({
   const word = targetWord ?? '';
 
   // STT/TTS 서비스 인스턴스 (컴포넌트 생명주기와 동일). 문제 전환 시 부모가 key로 리마운트.
-  const stt = useMemo(() => new WebSpeechSttService(), []);
+  const stt = useMemo(() => createSttService(), []);
   const ttsService = useMemo(() => new WebSpeechTtsService(), []);
   const { isPlaying, speak } = useTTS(ttsService);
 
+  // STT 콜백 프로퍼티 할당(TrainingScreen 등과 동일한 코드베이스 공통 패턴).
+  /* eslint-disable react-hooks/immutability */
   useEffect(() => {
     stt.onResult = (result) => {
       setTranscript(result.transcript);
@@ -62,6 +64,7 @@ export function SpeechInput({
       stt.stop();
     };
   }, [stt]);
+  /* eslint-enable react-hooks/immutability */
 
   const handleListenModel = (): void => {
     if (word.length === 0) return;
@@ -72,7 +75,8 @@ export function SpeechInput({
     if (!isSelectable) return;
     setErrorMessage('');
     setStatus('listening');
-    stt.start();
+    // 따라읽기 정답 단어를 phrase hint로 전달(서버 STT 제약 인식).
+    stt.start(word.length > 0 ? [word] : undefined);
   };
 
   const handleSubmitTranscript = (): void => {

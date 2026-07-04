@@ -7,7 +7,7 @@
 // STT는 훈련 기능에서 검증된 WebSpeechSttService를 재사용한다.
 
 import { useEffect, useMemo, useState } from 'react';
-import { WebSpeechSttService } from '../../../infrastructure/SttService.js';
+import { createSttService } from '../../infrastructure/sttFactory.js';
 import type { QabNamingItem } from '../../domain/MixedQuiz.js';
 
 interface PictureNamingItemProps {
@@ -37,8 +37,10 @@ export function PictureNamingItem({
   const [errorMessage, setErrorMessage] = useState<string>('');
 
   // STT 인스턴스 (컴포넌트 생명주기와 동일). 문제 전환 시 부모가 key로 리마운트.
-  const stt = useMemo(() => new WebSpeechSttService(), []);
+  const stt = useMemo(() => createSttService(), []);
 
+  // STT 콜백 프로퍼티 할당(TrainingScreen 등과 동일한 코드베이스 공통 패턴).
+  /* eslint-disable react-hooks/immutability */
   useEffect(() => {
     stt.onResult = (result) => {
       setTranscript(result.transcript);
@@ -54,12 +56,14 @@ export function PictureNamingItem({
       stt.stop();
     };
   }, [stt]);
+  /* eslint-enable react-hooks/immutability */
 
   const handleStartRecord = (): void => {
     if (!isSelectable) return;
     setErrorMessage('');
     setStatus('listening');
-    stt.start();
+    // 정답 이름을 phrase hint로 전달(서버 STT 제약 인식).
+    stt.start(item.targetWord.length > 0 ? [item.targetWord] : undefined);
   };
 
   const handleSubmitTranscript = (): void => {

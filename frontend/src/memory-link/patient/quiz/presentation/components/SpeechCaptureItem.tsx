@@ -9,7 +9,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTTS } from '../../../../../shared/hooks/useTTS.js';
 import { WebSpeechTtsService } from '../../../../../shared/infrastructure/WebSpeechTtsService.js';
-import { WebSpeechSttService } from '../../../infrastructure/SttService.js';
+import { createSttService } from '../../infrastructure/sttFactory.js';
 
 interface SpeechCaptureItemProps {
   /** 보여줄/들려줄 내용 */
@@ -44,10 +44,12 @@ export function SpeechCaptureItem({
   const [transcript, setTranscript] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
 
-  const stt = useMemo(() => new WebSpeechSttService(), []);
+  const stt = useMemo(() => createSttService(), []);
   const ttsService = useMemo(() => new WebSpeechTtsService(), []);
   const { isPlaying, speak } = useTTS(ttsService);
 
+  // STT 콜백 프로퍼티 할당(TrainingScreen 등과 동일한 코드베이스 공통 패턴).
+  /* eslint-disable react-hooks/immutability */
   useEffect(() => {
     stt.onResult = (result) => {
       setTranscript(result.transcript);
@@ -63,6 +65,7 @@ export function SpeechCaptureItem({
       stt.stop();
     };
   }, [stt]);
+  /* eslint-enable react-hooks/immutability */
 
   const handleListenModel = (): void => {
     if (text.length === 0) return;
@@ -73,7 +76,8 @@ export function SpeechCaptureItem({
     if (!isSelectable) return;
     setErrorMessage('');
     setStatus('listening');
-    stt.start();
+    // 따라말하기/읽기 목표 텍스트를 phrase hint로 전달(서버 STT 제약 인식).
+    stt.start(text.length > 0 ? [text] : undefined);
   };
 
   const handleSubmitTranscript = (): void => {

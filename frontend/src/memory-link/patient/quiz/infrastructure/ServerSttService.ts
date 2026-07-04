@@ -1,0 +1,87 @@
+// 서버 STT 구현 (ISttService) — 마이크를 WAV로 녹음해 ai-service /stt로 인식한다.
+//
+// start(candidates): 녹음 시작 + 정답 후보(phrase hint) 저장.
+// stop(): 녹음 종료 → WAV 인코딩 → POST /stt → onResult/onError.
+//
+// 실패(마이크·서버·인식) 시 onError로 알린다. 엔진 선택(서버 vs Web Speech)은
+// sttFactory가 조립 시점에 담당한다(런타임 오디오 소실 방지).
+
+import type { SttResult } from '../../domain/TrainingSession.js';
+import type { ISttService } from '../../infrastructure/SttService.js';
+import { WavRecorder } from './WavRecorder.js';
+
+/** ai-service 베이스 URL (기본 로컬 8000). CORS는 ai-service에서 5173 허용됨. */
+const AI_SERVICE_URL =
+  (import.meta.env.VITE_AI_SERVICE_URL as string | undefined) ??
+  'http://localhost:8000';
+
+/** Azure 서버 STT 서비스 (WAV 녹음 + phrase hint 제약 인식). */
+export class ServerSttService implements ISttService {
+  onResult: ((result: SttResult) => void) | null = null;
+  onError: ((error: string) => void) | null = null;
+
+  private readonly recorder = new WavRecorder();
+  private readonly lang: string;
+  private candidates: string[] = [];
+  private isRecording = false;
+
+  constructor(lang = 'ko-KR') {
+    this.lang = lang;
+  }
+
+  start(candidates?: string[]): void {
+    if (this.isRecording) return;
+    this.candidates = candidates ?? [];
+    this.isRecording = true;
+    this.recorder.start().catch(() => {
+      this.isRecording = false;
+      this.onError?.('마이크를 시작할 수 없습니다. 권한을 확인해주세요.');
+    });
+  }
+
+  stop(): void {
+    if (!this.isRecording) return;
+    this.isRecording = false;
+    void this.recognize();
+  }
+
+  private async recognize(): Promise<void> {
+    let wav: Blob;
+    try {
+      wav = await this.recorder.stop();
+    } catch {
+      this.onError?.('녹음을 처리하지 못했습니다. 다시 시도해주세요.');
+      return;
+    }
+
+    try {
+      const form = new FormData();
+      form.append('audio', wav, 'speech.wav');
+      form.append('lang', this.lang);
+      for (const candidate of this.candidates) {
+        form.append('candidates', candidate);
+      }
+
+      const res = await fetch(`${AI_SERVICE_URL}/stt`, {
+        method: 'POST',
+        body: form,
+      });
+      if (!res.ok) throw new Error(`STT ${res.status}`);
+
+      const data = (await res.json()) as {
+        transcript?: string;
+        confidence?: number;
+      };
+      const transcript = (data.transcript ?? '').trim();
+      if (transcript.length === 0) {
+        this.onError?.('음성을 인식하지 못했습니다. 다시 말씀해주세요.');
+        return;
+      }
+      this.onResult?.({ transcript, confidence: data.confidence ?? 0 });
+    } catch {
+      this.onError?.(
+        '음성 인식 서버에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.',
+      );
+    }
+  }
+}
