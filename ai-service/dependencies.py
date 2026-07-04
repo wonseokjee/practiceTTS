@@ -9,6 +9,7 @@ import os
 
 from fastapi import HTTPException, status
 
+from infra.azure_stt import AzureSttEngine
 from infra.gemini_client import GeminiClient
 from infra.in_memory_masking_store import InMemoryMaskingStore
 from infra.in_memory_vector_store import InMemoryVectorStore
@@ -16,6 +17,7 @@ from services.chat_service import ChatService
 from services.masking_service import MaskingService
 from services.quiz_service import QuizGeneratorService
 from services.scenario_service import ScenarioService
+from services.stt_service import SttService
 from services.tagging_service import TaggingService
 from services.wish_service import WishToPracticeService
 
@@ -30,6 +32,7 @@ _scenario_service: ScenarioService | None = None
 _chat_service: ChatService | None = None
 _quiz_generator_service: QuizGeneratorService | None = None
 _wish_service: WishToPracticeService | None = None
+_stt_service: SttService | None = None
 
 
 def _get_gemini_client() -> GeminiClient:
@@ -138,3 +141,25 @@ def get_wish_service() -> WishToPracticeService:
                 detail=f"LLM_NOT_CONFIGURED: {exc}",
             ) from exc
     return _wish_service
+
+
+def get_stt_service() -> SttService:
+    """SttService 싱글턴 반환 (FastAPI Depends 용).
+
+    AZURE_SPEECH_KEY/REGION 미설정 시 503(STT_NOT_CONFIGURED)으로 변환해,
+    상위(NestJS/프론트)가 '미구성'을 구분하고 폴백할 수 있게 한다.
+    """
+    global _stt_service
+    if _stt_service is None:
+        try:
+            engine = AzureSttEngine(
+                speech_key=os.getenv("AZURE_SPEECH_KEY", ""),
+                speech_region=os.getenv("AZURE_SPEECH_REGION", ""),
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"STT_NOT_CONFIGURED: {exc}",
+            ) from exc
+        _stt_service = SttService(engine=engine)
+    return _stt_service
