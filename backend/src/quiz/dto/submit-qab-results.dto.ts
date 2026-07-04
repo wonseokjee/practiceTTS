@@ -39,6 +39,13 @@ export class QabResultItemDto {
   @Min(0)
   @Max(1000)
   metric?: number;
+
+  // 발음 정확도 점수(0~100). 발화 항목(따라말하기/읽기)만 전송, 그 외 생략.
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  score?: number;
 }
 
 /**

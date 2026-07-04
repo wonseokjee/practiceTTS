@@ -7,6 +7,7 @@
 // "들려주고 → 그림 고르기"로 형태가 같아 하나의 이미지 선택형 타입으로 일반화한다.
 
 import type { QuizQuestionPublic } from './Quiz.js';
+import type { PronunciationGrade } from './pronunciationScore.js';
 
 /** QAB 이미지 선택지 (프론트 로컬 채점을 위해 isCorrect 포함). */
 export interface QabImageChoice {
@@ -104,4 +105,8 @@ export interface PlayResult {
   isCorrect: boolean;
   /** 피드백에 노출할 정답 표기 (데일리=correctAnswer, QAB=정답 라벨) */
   correctLabel: string | null;
+  /** 발음 5단계 등급 (발화 항목만). 어르신 격려 문구 표시에 사용 */
+  grade?: PronunciationGrade;
+  /** 어르신용 격려 문구 (발화 항목만) */
+  encouragement?: string;
 }

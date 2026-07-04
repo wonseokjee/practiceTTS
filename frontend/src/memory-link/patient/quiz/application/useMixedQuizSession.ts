@@ -21,7 +21,7 @@ import type {
   QabDdkItem,
 } from '../domain/MixedQuiz.js';
 import { isNameMatch } from '../domain/nameMatch.js';
-import { isSpeechCorrect } from '../domain/speechScore.js';
+import { evaluateSpeech } from '../domain/pronunciationScore.js';
 import { isDdkPass } from '../domain/ddkScore.js';
 import type { QabResultInput } from '../domain/QabResult.js';
 import { quizApi } from '../infrastructure/QuizApi.js';
@@ -360,23 +360,41 @@ export function useMixedQuizSession(
 
       if (item.kind === 'repeat') {
         const mode = item.item.category === 'sentence' ? 'sentence' : 'word';
-        const correct = isSpeechCorrect(transcript, item.item.text, mode);
+        const evaluation = evaluateSpeech(transcript, item.item.text, mode);
         qabResultsRef.current.push({
           subtest: 'repeat',
           itemRef: item.item.itemId,
-          isCorrect: correct,
+          isCorrect: evaluation.isCorrect,
+          score: evaluation.score,
         });
-        applyResult({ isCorrect: correct, correctLabel: item.item.text }, null);
+        applyResult(
+          {
+            isCorrect: evaluation.isCorrect,
+            correctLabel: item.item.text,
+            grade: evaluation.grade,
+            encouragement: evaluation.encouragement,
+          },
+          null,
+        );
         return;
       }
       if (item.kind === 'reading') {
-        const correct = isSpeechCorrect(transcript, item.item.text, 'sentence');
+        const evaluation = evaluateSpeech(transcript, item.item.text, 'sentence');
         qabResultsRef.current.push({
           subtest: 'reading',
           itemRef: item.item.itemId,
-          isCorrect: correct,
+          isCorrect: evaluation.isCorrect,
+          score: evaluation.score,
         });
-        applyResult({ isCorrect: correct, correctLabel: item.item.text }, null);
+        applyResult(
+          {
+            isCorrect: evaluation.isCorrect,
+            correctLabel: item.item.text,
+            grade: evaluation.grade,
+            encouragement: evaluation.encouragement,
+          },
+          null,
+        );
       }
     },
     [applyResult],

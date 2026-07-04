@@ -86,6 +86,15 @@ export function QabProgressCard({ fetchSummary }: QabProgressCardProps) {
                         {it.accuracy}%
                       </span>{' '}
                       ({it.correct}/{it.total}){assistedSuffix}
+                      {/* 발화 항목(따라말하기/읽기) 발음 정확도 평균 — 보호자용 숫자 */}
+                      {it.avgScore !== null && (
+                        <>
+                          {' · 발음 '}
+                          <span className="font-bold text-[#2D6A56]">
+                            {it.avgScore}점
+                          </span>
+                        </>
+                      )}
                     </>
                   ) : (
                     // 환자 직접 응답이 아직 없고 도움만 있는 경우.

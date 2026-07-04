@@ -248,7 +248,9 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
             role="status"
             aria-live="polite"
           >
-            {lastResult.isCorrect ? '정답이에요!' : '아쉬워요'}
+            {/* 발화 항목은 5단계 격려 문구(어르신용, 숫자 미노출), 그 외는 정오답 */}
+            {lastResult.encouragement ??
+              (lastResult.isCorrect ? '정답이에요!' : '아쉬워요')}
           </p>
           <button
             type="button"

@@ -59,6 +59,11 @@ export class QabResult {
   @Column({ name: 'metric', type: 'int', nullable: true })
   metric: number | null;
 
+  // 발음 정확도 점수(0~100). 따라말하기/읽기 등 발화 항목만 기록(그 외 null).
+  // 보호자용 발음 추세 집계에 사용한다.
+  @Column({ name: 'score', type: 'int', nullable: true })
+  score: number | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }

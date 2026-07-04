@@ -22,6 +22,8 @@ export interface QabResultInput {
   assisted?: boolean;
   /** 수치 지표(ddk 감지 횟수 등). 없으면 생략 */
   metric?: number;
+  /** 발음 정확도 점수(0~100). 발화 항목(따라말하기/읽기)만. 없으면 생략 */
+  score?: number;
 }
 
 /** 검사별 회복 추적 요약 (보호자용) */
@@ -36,5 +38,7 @@ export interface QabSubtestSummary {
   assisted: number;
   avgMetric: number | null;
   maxMetric: number | null;
+  /** 발음 정확도 평균(0..100). 발화 기록 없으면 null */
+  avgScore: number | null;
   lastAt: string | null;
 }

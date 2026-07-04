@@ -14,6 +14,7 @@ function summary(overrides?: Partial<QabSubtestSummary>): QabSubtestSummary {
     assisted: 0,
     avgMetric: null,
     maxMetric: null,
+    avgScore: null,
     lastAt: '2026-06-20T00:00:00.000Z',
     ...overrides,
   };

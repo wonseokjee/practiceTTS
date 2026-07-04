@@ -94,7 +94,6 @@ function isQuizSetSummary(value: unknown): value is QuizSetSummary {
   return (
     typeof obj.quizSetId === 'string' &&
     typeof obj.memoryEntryId === 'string' &&
-    typeof obj.notePreview === 'string' &&
     (obj.photoUrl === null || typeof obj.photoUrl === 'string') &&
     isGenerationStatus(obj.generationStatus) &&
     (obj.bestScore === null || typeof obj.bestScore === 'number') &&
@@ -201,6 +200,7 @@ function isQabSubtestSummary(value: unknown): value is QabSubtestSummary {
     typeof obj.assisted === 'number' &&
     (obj.avgMetric === null || typeof obj.avgMetric === 'number') &&
     (obj.maxMetric === null || typeof obj.maxMetric === 'number') &&
+    (obj.avgScore === null || typeof obj.avgScore === 'number') &&
     (obj.lastAt === null || typeof obj.lastAt === 'string')
   );
 }

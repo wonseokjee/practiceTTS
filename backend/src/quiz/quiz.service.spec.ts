@@ -869,12 +869,9 @@ describe('QuizService', () => {
       expect(result).toEqual([]);
     });
 
-    it('set 목록을 요약 DTO(quizSetId/notePreview/bestScore 등)로 매핑해야 한다', async () => {
+    it('set 목록을 요약 DTO(quizSetId/bestScore 등)로 매핑해야 한다', async () => {
       const set = buildSet();
       quizSetRepo.createQueryBuilder.mockReturnValue(buildQueryBuilder([set]));
-      patientMemoryNoteRepo.createQueryBuilder.mockReturnValue(
-        buildQueryBuilder([buildNote()]),
-      );
       memoryEntryRepo.createQueryBuilder.mockReturnValue(
         buildQueryBuilder([buildEntry()]),
       );
@@ -887,8 +884,9 @@ describe('QuizService', () => {
       expect(result).toHaveLength(1);
       expect(result[0].quizSetId).toBe(QUIZ_SET_ID);
       expect(result[0].bestScore).toBe(60);
-      expect(result[0].notePreview).toContain('공원 산책');
       expect(result[0].generationStatus).toBe('ready');
+      // 보호자 입력 원문(notePreview)은 더 이상 노출하지 않는다
+      expect('notePreview' in result[0]).toBe(false);
     });
 
     it('limit을 최대 50으로 캡하고, 유효하지 않은 값(NaN)은 기본 20으로 보정해야 한다 (Nit)', async () => {
@@ -1094,6 +1092,7 @@ describe('QuizService', () => {
             assisted: '1',
             avgMetric: null,
             maxMetric: null,
+            avgScore: '82.4',
             lastAt: new Date('2026-06-20T00:00:00.000Z'),
           },
           {
@@ -1103,6 +1102,7 @@ describe('QuizService', () => {
             assisted: '0',
             avgMetric: '9.5',
             maxMetric: '11',
+            avgScore: null,
             lastAt: new Date('2026-06-21T00:00:00.000Z'),
           },
         ]),
@@ -1123,6 +1123,7 @@ describe('QuizService', () => {
           assisted: 1,
           avgMetric: null,
           maxMetric: null,
+          avgScore: 82,
           lastAt: '2026-06-20T00:00:00.000Z',
         },
         {
@@ -1133,6 +1134,7 @@ describe('QuizService', () => {
           assisted: 0,
           avgMetric: 9.5,
           maxMetric: 11,
+          avgScore: null,
           lastAt: '2026-06-21T00:00:00.000Z',
         },
       ]);

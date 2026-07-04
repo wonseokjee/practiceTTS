@@ -50,13 +50,6 @@ const MAX_LIST_LIMIT = 50;
 /** 따라읽기(speech) 문항 고정 안내 문구 — 회상이 아니라 단어를 보고/듣고 따라 말한다. */
 const SPEECH_REPEAT_PROMPT = '다음 단어를 듣고 따라 말해보세요';
 
-/** notePreview 카테고리 한글 라벨 */
-const CATEGORY_LABELS: Record<string, string> = {
-  activity: '활동',
-  moment: '순간',
-  context: '맥락',
-};
-
 /** 단일 답안 채점 결과 */
 export interface AttemptResult {
   questionId: string;
@@ -117,6 +110,8 @@ export interface QabSubtestSummary {
   avgMetric: number | null;
   /** 수치 지표 최고값(ddk 최고 횟수 등). 없으면 null */
   maxMetric: number | null;
+  /** 발음 정확도 평균(0..100). 발화 항목 기록이 없으면 null */
+  avgScore: number | null;
   /** 마지막 측정 시각(ISO). 없으면 null */
   lastAt: string | null;
 }
@@ -458,12 +453,7 @@ export class QuizService {
     const memoryEntryIds = sets.map((s) => s.memoryEntryId);
     const quizSetIds = sets.map((s) => s.id);
 
-    const [notes, entries, bestScores] = await Promise.all([
-      this.patientMemoryNoteRepository
-        .createQueryBuilder('note')
-        .where('note.memory_entry_id IN (:...ids)', { ids: memoryEntryIds })
-        .orderBy('note.order_index', 'ASC')
-        .getMany(),
+    const [entries, bestScores] = await Promise.all([
       this.memoryEntryRepository
         .createQueryBuilder('entry')
         .where('entry.id IN (:...ids)', { ids: memoryEntryIds })
@@ -474,7 +464,6 @@ export class QuizService {
         .getMany(),
     ]);
 
-    const notesByEntry = this.groupNotesByEntry(notes);
     const photoByEntry = new Map<string, string | null>(
       entries.map((e) => [e.id, e.photoUrl ?? null]),
     );
@@ -485,9 +474,6 @@ export class QuizService {
     return sets.map((set) => ({
       quizSetId: set.id,
       memoryEntryId: set.memoryEntryId,
-      notePreview: this.buildNotePreview(
-        notesByEntry.get(set.memoryEntryId) ?? [],
-      ),
       photoUrl: photoByEntry.get(set.memoryEntryId) ?? null,
       generationStatus: set.generationStatus,
       generationError:
@@ -721,6 +707,7 @@ export class QuizService {
         isCorrect: r.isCorrect,
         assisted: r.assisted ?? false,
         metric: r.metric ?? null,
+        score: r.score ?? null,
       }),
     );
     try {
@@ -753,6 +740,7 @@ export class QuizService {
       .addSelect('SUM(CASE WHEN r.assisted THEN 1 ELSE 0 END)', 'assisted')
       .addSelect('AVG(r.metric)', 'avgMetric')
       .addSelect('MAX(r.metric)', 'maxMetric')
+      .addSelect('AVG(r.score)', 'avgScore')
       .addSelect('MAX(r.created_at)', 'lastAt')
       .where('r.patient_id = :pid', { pid: effectivePatientId })
       .groupBy('r.subtest')
@@ -763,6 +751,7 @@ export class QuizService {
         assisted: string;
         avgMetric: string | null;
         maxMetric: string | null;
+        avgScore: string | null;
         lastAt: Date | string | null;
       }>();
 
@@ -773,6 +762,8 @@ export class QuizService {
       const avgMetric =
         row.avgMetric === null ? null : Math.round(Number(row.avgMetric) * 10) / 10;
       const maxMetric = row.maxMetric === null ? null : Number(row.maxMetric);
+      const avgScore =
+        row.avgScore === null ? null : Math.round(Number(row.avgScore));
       const lastAt =
         row.lastAt === null
           ? null
@@ -787,6 +778,7 @@ export class QuizService {
         assisted,
         avgMetric,
         maxMetric,
+        avgScore,
         lastAt,
       };
     });
@@ -994,26 +986,4 @@ export class QuizService {
     }
   }
 
-  /** "활동: ... · 순간: ..." 형태로 조합 후 앞 40자 미리보기 */
-  private buildNotePreview(notes: PatientMemoryNote[]): string {
-    const preview = notes
-      .map((note) => {
-        const label = CATEGORY_LABELS[note.category] ?? note.category;
-        return `${label}: ${note.answerText}`;
-      })
-      .join(' · ');
-    return preview.length > 40 ? `${preview.slice(0, 40)}...` : preview;
-  }
-
-  private groupNotesByEntry(
-    notes: PatientMemoryNote[],
-  ): Map<string, PatientMemoryNote[]> {
-    const map = new Map<string, PatientMemoryNote[]>();
-    for (const note of notes) {
-      const bucket = map.get(note.memoryEntryId) ?? [];
-      bucket.push(note);
-      map.set(note.memoryEntryId, bucket);
-    }
-    return map;
-  }
 }

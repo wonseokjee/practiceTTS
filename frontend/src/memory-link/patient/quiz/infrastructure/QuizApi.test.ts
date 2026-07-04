@@ -24,7 +24,6 @@ import type { QuizSetSummary } from '../domain/Quiz.js';
 const VALID_SUMMARY: QuizSetSummary = {
   quizSetId: 'set-1',
   memoryEntryId: 'entry-1',
-  notePreview: '어제 산책했어요',
   photoUrl: null,
   generationStatus: 'ready',
   bestScore: 80,
@@ -179,6 +178,7 @@ describe('quizApi', () => {
         assisted: 1,
         avgMetric: null,
         maxMetric: null,
+        avgScore: null,
         lastAt: '2026-06-20T00:00:00.000Z',
       };
       getMock.mockResolvedValue({ data: { items: [item] } });
