@@ -15,6 +15,9 @@ const AI_SERVICE_URL =
   (import.meta.env.VITE_AI_SERVICE_URL as string | undefined) ??
   'http://localhost:8000';
 
+/** /stt 응답 대기 상한(ms). 초과 시 요청을 abort하고 폴백 안내한다. */
+const FETCH_TIMEOUT_MS = 10000;
+
 /** Azure 서버 STT 서비스 (WAV 녹음 + phrase hint 제약 인식). */
 export class ServerSttService implements ISttService {
   onResult: ((result: SttResult) => void) | null = null;
@@ -24,6 +27,10 @@ export class ServerSttService implements ISttService {
   private readonly lang: string;
   private candidates: string[] = [];
   private isRecording = false;
+  // recorder.start()는 마이크 권한으로 비동기다. 시작 완료 전 stop()이 눌리는
+  // 경합에 대비해 시작 프로미스를 보관하고, recognize()에서 이를 기다린다.
+  private startPromise: Promise<void> | null = null;
+  private startFailed = false;
 
   constructor(lang = 'ko-KR') {
     this.lang = lang;
@@ -33,8 +40,11 @@ export class ServerSttService implements ISttService {
     if (this.isRecording) return;
     this.candidates = candidates ?? [];
     this.isRecording = true;
-    this.recorder.start().catch(() => {
+    this.startFailed = false;
+    // catch로 거부를 흡수해 startPromise는 항상 resolve → 미대기 unhandled rejection 방지.
+    this.startPromise = this.recorder.start().catch(() => {
       this.isRecording = false;
+      this.startFailed = true;
       this.onError?.('마이크를 시작할 수 없습니다. 권한을 확인해주세요.');
     });
   }
@@ -46,6 +56,10 @@ export class ServerSttService implements ISttService {
   }
 
   private async recognize(): Promise<void> {
+    // 녹음 시작이 끝나기 전 stop이 눌렸을 수 있으므로 시작 완료를 먼저 기다린다.
+    await this.startPromise;
+    if (this.startFailed) return;
+
     let wav: Blob;
     try {
       wav = await this.recorder.stop();
@@ -54,6 +68,9 @@ export class ServerSttService implements ISttService {
       return;
     }
 
+    // 서버가 무응답이면 UI가 "듣는 중"에 갇히지 않도록 타임아웃으로 abort한다.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     try {
       const form = new FormData();
       form.append('audio', wav, 'speech.wav');
@@ -65,6 +82,7 @@ export class ServerSttService implements ISttService {
       const res = await fetch(`${AI_SERVICE_URL}/stt`, {
         method: 'POST',
         body: form,
+        signal: controller.signal,
       });
       if (!res.ok) throw new Error(`STT ${res.status}`);
 
@@ -82,6 +100,8 @@ export class ServerSttService implements ISttService {
       this.onError?.(
         '음성 인식 서버에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.',
       );
+    } finally {
+      clearTimeout(timer);
     }
   }
 }

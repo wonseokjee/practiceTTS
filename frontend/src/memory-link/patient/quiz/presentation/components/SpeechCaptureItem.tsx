@@ -80,6 +80,12 @@ export function SpeechCaptureItem({
     stt.start(text.length > 0 ? [text] : undefined);
   };
 
+  // 서버 STT는 자동 종료되지 않으므로 사용자가 발화 종료를 알린다(→ 인식 실행).
+  // Web Speech는 stop()이 최종 결과를 확정한다. 두 구현 모두에서 안전.
+  const handleStopRecord = (): void => {
+    stt.stop();
+  };
+
   const handleSubmitTranscript = (): void => {
     if (transcript.trim().length === 0) return;
     onSubmit(transcript.trim());
@@ -169,20 +175,28 @@ export function SpeechCaptureItem({
       {/* 컨트롤 (피드백 단계에선 숨김) */}
       {!showFeedback && (
         <div className="flex flex-col gap-3">
-          <button
-            type="button"
-            onClick={handleStartRecord}
-            disabled={!isSelectable || status === 'listening'}
-            className="flex min-h-[64px] items-center justify-center gap-2 rounded-md border-2 border-[#2D6A56] bg-white px-6 py-4 text-xl font-medium text-[#2D6A56] transition-colors duration-[180ms] ease-out hover:bg-[#EBF4F0] disabled:cursor-not-allowed disabled:border-[#C5C8C5] disabled:text-[#A8AFA9]"
-            aria-label={status === 'idle' ? '말하기' : '다시 말하기'}
-          >
-            <span aria-hidden="true" className="text-2xl">🎤</span>
-            {status === 'idle'
-              ? '말하기'
-              : status === 'listening'
-                ? '듣는 중…'
-                : '다시 말하기'}
-          </button>
+          {status === 'listening' ? (
+            <button
+              type="button"
+              onClick={handleStopRecord}
+              className="flex min-h-[64px] items-center justify-center gap-2 rounded-md border-2 border-[#E07B54] bg-white px-6 py-4 text-xl font-medium text-[#7A2E15] transition-colors duration-[180ms] ease-out hover:bg-[#FBE9E2]"
+              aria-label="다 말했어요"
+            >
+              <span aria-hidden="true" className="text-2xl">✓</span>
+              다 말했어요
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleStartRecord}
+              disabled={!isSelectable}
+              className="flex min-h-[64px] items-center justify-center gap-2 rounded-md border-2 border-[#2D6A56] bg-white px-6 py-4 text-xl font-medium text-[#2D6A56] transition-colors duration-[180ms] ease-out hover:bg-[#EBF4F0] disabled:cursor-not-allowed disabled:border-[#C5C8C5] disabled:text-[#A8AFA9]"
+              aria-label={status === 'idle' ? '말하기' : '다시 말하기'}
+            >
+              <span aria-hidden="true" className="text-2xl">🎤</span>
+              {status === 'idle' ? '말하기' : '다시 말하기'}
+            </button>
+          )}
 
           {status === 'recognized' && (
             <button

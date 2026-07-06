@@ -4,9 +4,11 @@
 - PhraseListGrammar로 정답 후보(candidates)를 부스팅해 병리 발화 인식률을 높인다.
 - Detailed 출력으로 confidence/n-best를 파싱한다.
 """
+import gc
 import json
 import os
 import tempfile
+import time
 
 import azure.cognitiveservices.speech as speechsdk
 
@@ -41,6 +43,8 @@ class AzureSttEngine(ISttEngine):
         speech_config.output_format = speechsdk.OutputFormat.Detailed
 
         tmp_path: str | None = None
+        recognizer = None
+        audio_config = None
         try:
             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
                 tmp.write(wav_bytes)
@@ -60,8 +64,17 @@ class AzureSttEngine(ISttEngine):
 
             result = recognizer.recognize_once()
         finally:
+            # Windows: SDK가 WAV 파일 핸들을 놓도록 객체를 먼저 해제한 뒤 삭제한다.
+            recognizer = None
+            audio_config = None
+            gc.collect()
             if tmp_path and os.path.exists(tmp_path):
-                os.unlink(tmp_path)
+                for _ in range(5):
+                    try:
+                        os.unlink(tmp_path)
+                        break
+                    except PermissionError:
+                        time.sleep(0.1)
 
         if result.reason == speechsdk.ResultReason.RecognizedSpeech:
             return self._parse(result)

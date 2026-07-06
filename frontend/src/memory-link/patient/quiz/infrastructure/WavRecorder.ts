@@ -67,7 +67,7 @@ export class WavRecorder {
 }
 
 /** Float32 청크들을 하나로 병합. */
-function mergeChunks(chunks: readonly Float32Array[]): Float32Array {
+export function mergeChunks(chunks: readonly Float32Array[]): Float32Array {
   const total = chunks.reduce((sum, c) => sum + c.length, 0);
   const out = new Float32Array(total);
   let offset = 0;
@@ -79,7 +79,7 @@ function mergeChunks(chunks: readonly Float32Array[]): Float32Array {
 }
 
 /** 선형 보간 리샘플링 (from → to Hz). from===to면 그대로 반환. */
-function resampleLinear(
+export function resampleLinear(
   input: Float32Array,
   fromRate: number,
   toRate: number,
@@ -100,7 +100,7 @@ function resampleLinear(
 }
 
 /** Float32 PCM([-1,1]) → 16bit PCM WAV Blob. */
-function encodeWav(samples: Float32Array, sampleRate: number): Blob {
+export function encodeWav(samples: Float32Array, sampleRate: number): Blob {
   const bytesPerSample = 2;
   const blockAlign = bytesPerSample; // mono
   const dataSize = samples.length * bytesPerSample;
