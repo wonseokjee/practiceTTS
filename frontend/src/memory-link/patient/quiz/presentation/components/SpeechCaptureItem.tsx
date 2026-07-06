@@ -8,7 +8,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useTTS } from '../../../../../shared/hooks/useTTS.js';
-import { WebSpeechTtsService } from '../../../../../shared/infrastructure/WebSpeechTtsService.js';
+import { createTtsService } from '../../../../../shared/infrastructure/ttsFactory.js';
 import { createSttService } from '../../infrastructure/sttFactory.js';
 
 interface SpeechCaptureItemProps {
@@ -45,7 +45,7 @@ export function SpeechCaptureItem({
   const [errorMessage, setErrorMessage] = useState<string>('');
 
   const stt = useMemo(() => createSttService(), []);
-  const ttsService = useMemo(() => new WebSpeechTtsService(), []);
+  const ttsService = useMemo(() => createTtsService(), []);
   const { isPlaying, speak } = useTTS(ttsService);
 
   // STT 콜백 프로퍼티 할당(TrainingScreen 등과 동일한 코드베이스 공통 패턴).

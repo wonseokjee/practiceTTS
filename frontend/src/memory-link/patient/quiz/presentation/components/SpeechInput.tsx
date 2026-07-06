@@ -10,7 +10,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useTTS } from '../../../../../shared/hooks/useTTS.js';
-import { WebSpeechTtsService } from '../../../../../shared/infrastructure/WebSpeechTtsService.js';
+import { createTtsService } from '../../../../../shared/infrastructure/ttsFactory.js';
 import { createSttService } from '../../infrastructure/sttFactory.js';
 
 interface SpeechInputProps {
@@ -44,7 +44,7 @@ export function SpeechInput({
 
   // STT/TTS 서비스 인스턴스 (컴포넌트 생명주기와 동일). 문제 전환 시 부모가 key로 리마운트.
   const stt = useMemo(() => createSttService(), []);
-  const ttsService = useMemo(() => new WebSpeechTtsService(), []);
+  const ttsService = useMemo(() => createTtsService(), []);
   const { isPlaying, speak } = useTTS(ttsService);
 
   // STT 콜백 프로퍼티 할당(TrainingScreen 등과 동일한 코드베이스 공통 패턴).

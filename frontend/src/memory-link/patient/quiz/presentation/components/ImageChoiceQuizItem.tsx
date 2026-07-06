@@ -1,14 +1,14 @@
 // QAB 이미지 선택형 문항 렌더러 (kind 'qab')
 //
 // 들려주는 단어/문장(promptText)을 듣고 그에 맞는 그림을 고른다(QAB wordComp/sentComp 공용).
-// 음성은 mp3 대신 TTS(WebSpeechTtsService)로 발음한다 → 문항 확장이 자유롭다.
+// 음성은 mp3 대신 TTS(서버 Azure 뉴럴 → Web Speech 폴백)로 발음한다 → 문항 확장이 자유롭다.
 // 피드백 단계: 정답 카드 초록 + ✓, 내가 고른 오답 카드 빨강 + ✗.
 //
 // 로딩 중에는 그림의 정답(라벨)을 절대 노출하지 않는다 — 중립 로딩/에러 표시만 사용.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTTS } from '../../../../../shared/hooks/useTTS.js';
-import { WebSpeechTtsService } from '../../../../../shared/infrastructure/WebSpeechTtsService.js';
+import { createTtsService } from '../../../../../shared/infrastructure/ttsFactory.js';
 import type { QabImageItem } from '../../domain/MixedQuiz.js';
 
 /**
@@ -68,7 +68,7 @@ export function ImageChoiceQuizItem({
   selectedChoiceId,
   onSelect,
 }: ImageChoiceQuizItemProps) {
-  const ttsService = useMemo(() => new WebSpeechTtsService(), []);
+  const ttsService = useMemo(() => createTtsService(), []);
   const { isPlaying, speak } = useTTS(ttsService);
 
   // 문항 진입 시 1회 자동 발음 (브라우저 정책상 막히면 버튼으로 재생).

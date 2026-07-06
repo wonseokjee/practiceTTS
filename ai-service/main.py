@@ -19,7 +19,7 @@ app.add_middleware(
 )
 
 # 라우터 등록
-from routers import tagging, masking, scenario, chat, quiz, wish, stt
+from routers import tagging, masking, scenario, chat, quiz, wish, stt, tts
 
 app.include_router(tagging.router)
 app.include_router(masking.router)
@@ -28,6 +28,7 @@ app.include_router(chat.router)
 app.include_router(quiz.router)
 app.include_router(wish.router)
 app.include_router(stt.router)
+app.include_router(tts.router)
 
 
 @app.get("/health")

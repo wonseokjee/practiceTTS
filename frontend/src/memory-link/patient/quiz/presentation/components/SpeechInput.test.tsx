@@ -39,16 +39,16 @@ vi.mock('../../../infrastructure/SttService.js', () => {
   return { WebSpeechSttService: MockStt };
 });
 
-vi.mock('../../../../../shared/infrastructure/WebSpeechTtsService.js', () => ({
-  WebSpeechTtsService: class {
-    speak = ttsSpeak.mockResolvedValue({
+// TTS는 서버/브라우저 구현 선택을 팩토리가 담당하므로 팩토리를 목으로 대체한다.
+vi.mock('../../../../../shared/infrastructure/ttsFactory.js', () => ({
+  createTtsService: () => ({
+    speak: ttsSpeak.mockResolvedValue({
       startTime: 0,
       endTime: 0,
       durationMs: 0,
-    });
-    cancel = vi.fn();
-    preloadVoice = vi.fn();
-  },
+    }),
+    cancel: vi.fn(),
+  }),
 }));
 
 interface Overrides {

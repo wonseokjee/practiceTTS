@@ -10,6 +10,7 @@ import os
 from fastapi import HTTPException, status
 
 from infra.azure_stt import AzureSttEngine
+from infra.azure_tts import AzureTtsEngine
 from infra.gemini_client import GeminiClient
 from infra.in_memory_masking_store import InMemoryMaskingStore
 from infra.in_memory_vector_store import InMemoryVectorStore
@@ -19,6 +20,7 @@ from services.quiz_service import QuizGeneratorService
 from services.scenario_service import ScenarioService
 from services.stt_service import SttService
 from services.tagging_service import TaggingService
+from services.tts_service import TtsService
 from services.wish_service import WishToPracticeService
 
 # 싱글턴 인스턴스 초기화
@@ -33,6 +35,7 @@ _chat_service: ChatService | None = None
 _quiz_generator_service: QuizGeneratorService | None = None
 _wish_service: WishToPracticeService | None = None
 _stt_service: SttService | None = None
+_tts_service: TtsService | None = None
 
 
 def _get_gemini_client() -> GeminiClient:
@@ -163,3 +166,28 @@ def get_stt_service() -> SttService:
             ) from exc
         _stt_service = SttService(engine=engine)
     return _stt_service
+
+
+def get_tts_service() -> TtsService:
+    """TtsService 싱글턴 반환 (FastAPI Depends 용).
+
+    AZURE_SPEECH_KEY/REGION 미설정 시 503(TTS_NOT_CONFIGURED)으로 변환해,
+    상위(프론트)가 '미구성'을 구분하고 Web Speech로 폴백할 수 있게 한다.
+    캐시는 TTS_CACHE_DIR/dynamic(기본 ../tts-cache/dynamic)에 둔다.
+    """
+    global _tts_service
+    if _tts_service is None:
+        try:
+            engine = AzureTtsEngine(
+                speech_key=os.getenv("AZURE_SPEECH_KEY", ""),
+                speech_region=os.getenv("AZURE_SPEECH_REGION", ""),
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"TTS_NOT_CONFIGURED: {exc}",
+            ) from exc
+        cache_root = os.getenv("TTS_CACHE_DIR", "../tts-cache")
+        cache_dir = os.path.join(cache_root, "dynamic")
+        _tts_service = TtsService(engine=engine, cache_dir=cache_dir)
+    return _tts_service
