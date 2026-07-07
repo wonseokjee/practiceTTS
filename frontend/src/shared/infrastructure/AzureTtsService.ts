@@ -15,6 +15,12 @@ const AI_SERVICE_URL =
 /** 기본 음성 (따뜻한 여성, ai-service 기본과 동일). */
 const DEFAULT_VOICE = 'ko-KR-SunHiNeural';
 
+/**
+ * 서버 응답(오디오 로드) 대기 상한(ms). 초과 시 재생을 멈추고 Web Speech로 폴백한다.
+ * 재생(play) 자체는 실제 음성 길이만큼 걸리므로 타임아웃하지 않고 load만 제한한다.
+ */
+const LOAD_TIMEOUT_MS = 10000;
+
 /** Azure 서버 TTS 서비스 (뉴럴 음성 MP3 재생 + Web Speech 폴백). */
 export class AzureTtsService implements ITtsService {
   private readonly audioPlayer: IAudioPlayer;
@@ -40,7 +46,8 @@ export class AzureTtsService implements ITtsService {
       `?text=${encodeURIComponent(text)}` +
       `&voice=${encodeURIComponent(this.voice)}`;
     try {
-      await this.audioPlayer.load(url);
+      // load만 타임아웃으로 제한(서버 무응답 시 버튼이 영구히 "재생 중"에 갇히지 않게).
+      await this.withTimeout(this.audioPlayer.load(url), LOAD_TIMEOUT_MS);
       const startTime = performance.now();
       const endTime = await this.audioPlayer.play();
       return Object.freeze<TtsPlaybackResult>({
@@ -49,7 +56,7 @@ export class AzureTtsService implements ITtsService {
         durationMs: endTime - startTime,
       });
     } catch {
-      // 서버/네트워크/합성 실패 → 브라우저 음성으로 폴백.
+      // 서버/네트워크/합성/타임아웃 실패 → 브라우저 음성으로 폴백.
       return this.fallback.speak(text);
     }
   }
@@ -57,5 +64,25 @@ export class AzureTtsService implements ITtsService {
   cancel(): void {
     this.audioPlayer.stop();
     this.fallback.cancel();
+  }
+
+  /** load가 ms 내 완료되지 않으면 재생기를 멈추고 거부한다(폴백 유도). */
+  private withTimeout(promise: Promise<void>, ms: number): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.audioPlayer.stop();
+        reject(new Error('TTS 서버 응답이 지연됩니다.'));
+      }, ms);
+      promise.then(
+        () => {
+          clearTimeout(timer);
+          resolve();
+        },
+        (err: unknown) => {
+          clearTimeout(timer);
+          reject(err instanceof Error ? err : new Error(String(err)));
+        },
+      );
+    });
   }
 }

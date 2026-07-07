@@ -1,7 +1,11 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { AzureTtsService } from './AzureTtsService.js';
 import type { IAudioPlayer } from '../domain/IAudioPlayer.js';
 import type { ITtsService } from '../domain/ITtsService.js';
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 function fakePlayer(overrides: Partial<IAudioPlayer> = {}): IAudioPlayer {
   return {
@@ -65,6 +69,29 @@ describe('AzureTtsService', () => {
     await svc.speak('바다');
 
     expect(fallback.speak).toHaveBeenCalledWith('바다');
+  });
+
+  it('load가 지연되면 타임아웃 후 재생기를 멈추고 fallback으로 위임한다', async () => {
+    vi.useFakeTimers();
+    // load가 영원히 완료되지 않는 상황(서버 무응답).
+    const player = fakePlayer({
+      load: vi.fn().mockReturnValue(new Promise<void>(() => {})),
+    });
+    const fallbackResult = { startTime: 0, endTime: 0, durationMs: 0 };
+    const fallback: ITtsService = {
+      speak: vi.fn().mockResolvedValue(fallbackResult),
+      cancel: vi.fn(),
+    };
+    const svc = new AzureTtsService(player, fallback, 'http://x');
+
+    const pending = svc.speak('바다');
+    await vi.advanceTimersByTimeAsync(10000); // LOAD_TIMEOUT_MS 도달
+    const result = await pending;
+
+    expect(player.stop).toHaveBeenCalled(); // hang 재생기 정리
+    expect(player.play).not.toHaveBeenCalled(); // 재생 진입 안 함
+    expect(fallback.speak).toHaveBeenCalledWith('바다');
+    expect(result).toBe(fallbackResult);
   });
 
   it('cancel은 player.stop과 fallback.cancel을 모두 호출한다', () => {

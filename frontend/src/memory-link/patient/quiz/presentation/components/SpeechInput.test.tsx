@@ -99,6 +99,14 @@ describe('SpeechInput (따라읽기)', () => {
     expect(sttInstances[0].start).toHaveBeenCalledTimes(1);
   });
 
+  it('말하기 중 "다 말했어요"를 누르면 STT 인식을 종료한다(서버 STT 자동종료 대체)', () => {
+    renderInput();
+    fireEvent.click(screen.getByRole('button', { name: '따라 말하기' }));
+    // 녹음 중에는 마이크 버튼이 "다 말했어요"로 바뀐다.
+    fireEvent.click(screen.getByRole('button', { name: '다 말했어요' }));
+    expect(sttInstances[0].stop).toHaveBeenCalledTimes(1);
+  });
+
   it('인식 성공 후 제출하면 onSubmit이 인식 텍스트로 호출된다', () => {
     const { onSubmit } = renderInput({ targetWord: '바다' });
     fireEvent.click(screen.getByRole('button', { name: '따라 말하기' }));

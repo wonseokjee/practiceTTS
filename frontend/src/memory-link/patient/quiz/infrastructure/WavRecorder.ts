@@ -23,21 +23,33 @@ export class WavRecorder {
     this.stream = await navigator.mediaDevices.getUserMedia({
       audio: { channelCount: 1 },
     });
-    const Ctor: typeof AudioContext =
-      window.AudioContext ??
-      (window as unknown as { webkitAudioContext: typeof AudioContext })
-        .webkitAudioContext;
-    this.ctx = new Ctor();
-    this.sourceSampleRate = this.ctx.sampleRate;
-    this.source = this.ctx.createMediaStreamSource(this.stream);
-    this.processor = this.ctx.createScriptProcessor(4096, 1, 1);
-    this.chunks = [];
-    this.processor.onaudioprocess = (event) => {
-      // 채널 데이터를 복사해 누적(버퍼는 재사용되므로 복사 필수).
-      this.chunks.push(new Float32Array(event.inputBuffer.getChannelData(0)));
-    };
-    this.source.connect(this.processor);
-    this.processor.connect(this.ctx.destination);
+    // getUserMedia로 마이크가 켜진 뒤 AudioContext 구성 중 예외가 나면 트랙/컨텍스트가
+    // 누수된다(마이크 표시 켜진 채 유지). 실패 시 반드시 정리하고 다시 던진다.
+    try {
+      const Ctor: typeof AudioContext =
+        window.AudioContext ??
+        (window as unknown as { webkitAudioContext: typeof AudioContext })
+          .webkitAudioContext;
+      this.ctx = new Ctor();
+      this.sourceSampleRate = this.ctx.sampleRate;
+      this.source = this.ctx.createMediaStreamSource(this.stream);
+      this.processor = this.ctx.createScriptProcessor(4096, 1, 1);
+      this.chunks = [];
+      this.processor.onaudioprocess = (event) => {
+        // 채널 데이터를 복사해 누적(버퍼는 재사용되므로 복사 필수).
+        this.chunks.push(new Float32Array(event.inputBuffer.getChannelData(0)));
+      };
+      this.source.connect(this.processor);
+      this.processor.connect(this.ctx.destination);
+    } catch (err) {
+      this.stream?.getTracks().forEach((track) => track.stop());
+      if (this.ctx) void this.ctx.close();
+      this.ctx = null;
+      this.processor = null;
+      this.source = null;
+      this.stream = null;
+      throw err;
+    }
   }
 
   /** 녹음을 종료하고 16kHz mono WAV Blob을 반환한다. */

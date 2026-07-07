@@ -14,6 +14,21 @@ DEFAULT_VOICE = "ko-KR-SunHiNeural"
 # 어르신·실어증 명료도를 위해 표준보다 느리게(WebSpeech 폴백의 rate 0.85와 유사).
 SPEECH_RATE = "-10%"
 
+# 허용 음성 화이트리스트. voice는 요청 파라미터라 그대로 SSML에 넣으면 인젝션/SSRF
+# (Azure SSML은 <audio src>를 지원) 위험이 있어, 경계에서 화이트리스트로 제한한다.
+ALLOWED_VOICES = frozenset(
+    {
+        "ko-KR-SunHiNeural",
+        "ko-KR-InJoonNeural",
+        "ko-KR-JiMinNeural",
+        "ko-KR-SeoHyeonNeural",
+        "ko-KR-BongJinNeural",
+        "ko-KR-GookMinNeural",
+        "ko-KR-YuJinNeural",
+        "ko-KR-HyunsuMultilingualNeural",
+    }
+)
+
 
 class AzureTtsEngine(ITtsEngine):
     """Azure Cognitive Services Speech 기반 TTS 엔진."""
@@ -55,12 +70,16 @@ class AzureTtsEngine(ITtsEngine):
 
     @staticmethod
     def _build_ssml(text: str, voice: str) -> str:
-        """XML-escape한 텍스트를 느린 prosody SSML로 감싼다."""
-        safe = escape(text)
+        """XML-escape한 텍스트/음성을 느린 prosody SSML로 감싼다.
+
+        voice는 라우터에서 화이트리스트 검증하지만, 심층 방어로 속성 이스케이프도 한다.
+        """
+        safe_text = escape(text)
+        safe_voice = escape(voice, {'"': "&quot;"})
         return (
             '<speak version="1.0" '
             'xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="ko-KR">'
-            f'<voice name="{voice}">'
-            f'<prosody rate="{SPEECH_RATE}">{safe}</prosody>'
+            f'<voice name="{safe_voice}">'
+            f'<prosody rate="{SPEECH_RATE}">{safe_text}</prosody>'
             "</voice></speak>"
         )

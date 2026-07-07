@@ -5,6 +5,7 @@
 캐시 경로/전략은 여기에 국한된다.
 """
 import hashlib
+import uuid
 from pathlib import Path
 
 from interfaces.tts_engine import ITtsEngine
@@ -26,9 +27,15 @@ class TtsService:
 
         audio = self._engine.synthesize(text, voice)
         # 부분쓰기가 캐시로 노출되지 않도록 임시파일에 쓰고 원자적 교체.
-        tmp = path.with_suffix(".mp3.tmp")
-        tmp.write_bytes(audio)
-        tmp.replace(path)
+        # 동시 최초요청이 같은 tmp를 밟지 않도록 tmp 이름에 uuid를 부여한다.
+        tmp = path.with_name(f"{path.stem}.{uuid.uuid4().hex}.tmp")
+        try:
+            tmp.write_bytes(audio)
+            tmp.replace(path)
+        finally:
+            # replace 실패 등으로 tmp가 남으면 정리.
+            if tmp.exists():
+                tmp.unlink(missing_ok=True)
         return audio
 
     @property

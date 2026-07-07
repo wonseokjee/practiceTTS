@@ -6,7 +6,18 @@
 import main
 from dependencies import get_tts_service
 from fastapi.testclient import TestClient
+from infra.azure_tts import AzureTtsEngine
 from services.tts_service import TtsService
+
+
+# ── SSML 이스케이프 (인젝션 방어) ─────────────────────────────
+
+
+def test_ssml_escapes_text_and_voice():
+    ssml = AzureTtsEngine._build_ssml('개 & <고양이>', 'ko-KR-SunHiNeural')
+    assert "&amp;" in ssml
+    assert "&lt;고양이&gt;" in ssml
+    assert "<고양이>" not in ssml  # raw 꺾쇠가 그대로 들어가면 안 됨
 
 
 class FakeEngine:
@@ -97,6 +108,35 @@ def test_tts_endpoint_too_long_returns_413(tmp_path):
     try:
         resp = client.get("/tts", params={"text": "가" * 501})
         assert resp.status_code == 413
+    finally:
+        main.app.dependency_overrides.clear()
+
+
+def test_tts_endpoint_rejects_unknown_voice(tmp_path):
+    """voice는 SSML에 들어가므로 화이트리스트 밖(인젝션 시도 포함)은 400."""
+    engine = FakeEngine(b"MP3DATA")
+    client = _client_with(TtsService(engine, str(tmp_path)))
+    try:
+        resp = client.get(
+            "/tts",
+            params={"text": "바다", "voice": 'x"><audio src="http://evil"/>'},
+        )
+        assert resp.status_code == 400
+        # 엔진까지 도달하지 않아야 한다.
+        assert engine.calls == []
+    finally:
+        main.app.dependency_overrides.clear()
+
+
+def test_tts_endpoint_accepts_whitelisted_voice(tmp_path):
+    engine = FakeEngine(b"MP3DATA")
+    client = _client_with(TtsService(engine, str(tmp_path)))
+    try:
+        resp = client.get(
+            "/tts", params={"text": "바다", "voice": "ko-KR-InJoonNeural"}
+        )
+        assert resp.status_code == 200
+        assert engine.calls[0][1] == "ko-KR-InJoonNeural"
     finally:
         main.app.dependency_overrides.clear()
 

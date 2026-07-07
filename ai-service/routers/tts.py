@@ -7,13 +7,13 @@ GET /tts?text=...&voice=... → Azure 뉴럴 음성 MP3(audio/mpeg).
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from dependencies import get_tts_service
+from infra.azure_tts import ALLOWED_VOICES, DEFAULT_VOICE
 from services.tts_service import TtsService
 
 router = APIRouter(prefix="/tts", tags=["tts"])
 
 # 재활 문장은 짧다. 과대 요청 방지 상한.
 MAX_TEXT_LEN = 500
-DEFAULT_VOICE = "ko-KR-SunHiNeural"
 
 
 @router.get("")
@@ -33,6 +33,12 @@ def synthesize(
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail="텍스트가 너무 깁니다.",
+        )
+    # voice는 그대로 SSML에 들어가므로 화이트리스트로 제한(인젝션/SSRF 차단).
+    if voice not in ALLOWED_VOICES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="지원하지 않는 음성입니다.",
         )
 
     try:
