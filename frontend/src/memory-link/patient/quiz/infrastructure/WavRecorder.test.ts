@@ -1,5 +1,27 @@
 import { describe, it, expect } from 'vitest';
-import { encodeWav, resampleLinear, mergeChunks } from './WavRecorder.js';
+import {
+  encodeWav,
+  resampleLinear,
+  mergeChunks,
+  lowPassFir,
+  downsample,
+} from './WavRecorder.js';
+
+/** 지정 주파수의 사인파 생성. */
+function sine(freqHz: number, sampleRate: number, length: number): Float32Array {
+  const out = new Float32Array(length);
+  for (let i = 0; i < length; i += 1) {
+    out[i] = Math.sin((2 * Math.PI * freqHz * i) / sampleRate);
+  }
+  return out;
+}
+
+/** RMS(신호 세기). */
+function rms(x: Float32Array): number {
+  let sum = 0;
+  for (let i = 0; i < x.length; i += 1) sum += x[i] * x[i];
+  return Math.sqrt(sum / x.length);
+}
 
 describe('mergeChunks', () => {
   it('여러 Float32 청크를 순서대로 병합한다', () => {
@@ -40,6 +62,58 @@ describe('resampleLinear', () => {
     expect(out.length).toBe(2);
     expect(out[0]).toBeCloseTo(0);
     expect(out[1]).toBeCloseTo(2);
+  });
+});
+
+describe('lowPassFir', () => {
+  it('빈 입력이면 그대로 반환', () => {
+    const input = new Float32Array(0);
+    expect(lowPassFir(input, 48000, 7200)).toBe(input);
+  });
+
+  it('DC(상수) 신호는 게인 1로 통과시킨다', () => {
+    const input = new Float32Array(4800).fill(0.5);
+    const out = lowPassFir(input, 48000, 7200);
+    // 경계 왜곡을 피해 중앙 샘플 확인
+    expect(out[2400]).toBeCloseTo(0.5, 3);
+  });
+
+  it('차단 아래 저주파(1kHz)는 세기를 대부분 보존한다', () => {
+    const input = sine(1000, 48000, 4800);
+    const ratio = rms(lowPassFir(input, 48000, 7200)) / rms(input);
+    expect(ratio).toBeGreaterThan(0.9);
+  });
+
+  it('차단 위 고주파(12kHz)는 강하게 감쇠한다', () => {
+    const input = sine(12000, 48000, 4800);
+    const ratio = rms(lowPassFir(input, 48000, 7200)) / rms(input);
+    expect(ratio).toBeLessThan(0.1);
+  });
+});
+
+describe('downsample (anti-alias)', () => {
+  it('같은 레이트면 입력 참조를 그대로 반환', () => {
+    const input = new Float32Array([0.1, 0.2, 0.3]);
+    expect(downsample(input, 16000, 16000)).toBe(input);
+  });
+
+  it('48k→16k는 길이를 약 1/3로 줄인다', () => {
+    const out = downsample(new Float32Array(4800), 48000, 16000);
+    expect(out.length).toBe(1600);
+  });
+
+  it('나이퀴스트 초과(10kHz) 성분의 앨리어싱을 저역통과로 억제한다', () => {
+    // 10kHz는 16k로 데시메이션하면 6kHz로 접힌다(가청 대역 오염).
+    const tone = sine(10000, 48000, 4800);
+    const naive = resampleLinear(tone, 48000, 16000); // 필터 없음 → 접힘 그대로
+    const antiAliased = downsample(tone, 48000, 16000); // 저역통과 후 데시메이션
+    expect(rms(antiAliased)).toBeLessThan(rms(naive) * 0.2);
+  });
+
+  it('저주파(500Hz)는 다운샘플 후에도 세기를 보존한다', () => {
+    const tone = sine(500, 48000, 4800);
+    const out = downsample(tone, 48000, 16000);
+    expect(rms(out)).toBeGreaterThan(rms(tone) * 0.9);
   });
 });
 

@@ -59,7 +59,7 @@ export class WavRecorder {
     this.stream?.getTracks().forEach((track) => track.stop());
 
     const merged = mergeChunks(this.chunks);
-    const resampled = resampleLinear(
+    const resampled = downsample(
       merged,
       this.sourceSampleRate,
       TARGET_SAMPLE_RATE,
@@ -109,6 +109,82 @@ export function resampleLinear(
     out[i] = a + (b - a) * frac;
   }
   return out;
+}
+
+/** 안티앨리어싱 FIR 저역통과의 기본 탭 수(홀수, 선형위상 대칭). */
+const DEFAULT_LOWPASS_TAPS = 127;
+
+/**
+ * 윈도우드-sinc(Hann) FIR 저역통과 필터를 적용한다.
+ *
+ * 다운샘플 전 나이퀴스트 초과 성분을 제거해 앨리어싱을 막는다. 선형보간만으로
+ * 데시메이션하면 8kHz(16k 나이퀴스트) 초과 성분이 접혀 고주파 자음(ㅅ/ㅊ/ㅎ,
+ * 파찰음)의 명료도를 떨어뜨리는데, 이는 구음장애 환자가 가장 어려워하는 소리라
+ * 재활 STT 정확도에 특히 불리하다.
+ *
+ * - 이상적 sinc 저역통과에 Hann 창을 곱해 링잉을 억제한 선형위상 FIR.
+ * - DC 게인이 1이 되도록 정규화(음량 보존).
+ * - 경계는 zero-pad('same' 컨볼루션)로 처리 — 양끝 소수 샘플만 감쇠(무시 가능).
+ *
+ * @param cutoffHz 차단 주파수(Hz)
+ * @param numTaps  탭 수(짝수면 +1 하여 홀수화)
+ */
+export function lowPassFir(
+  input: Float32Array,
+  sampleRate: number,
+  cutoffHz: number,
+  numTaps: number = DEFAULT_LOWPASS_TAPS,
+): Float32Array {
+  if (input.length === 0) return input;
+
+  const taps = numTaps % 2 === 0 ? numTaps + 1 : numTaps;
+  const mid = (taps - 1) / 2;
+  const fc = cutoffHz / sampleRate; // 정규화 주파수(cycles/sample), 0..0.5
+
+  // 계수 설계: 이상적 sinc × Hann 창, DC 게인 1로 정규화
+  const coeffs = new Float32Array(taps);
+  let sum = 0;
+  for (let n = 0; n < taps; n += 1) {
+    const k = n - mid;
+    const sinc = k === 0 ? 2 * fc : Math.sin(2 * Math.PI * fc * k) / (Math.PI * k);
+    const hann = 0.5 - 0.5 * Math.cos((2 * Math.PI * n) / (taps - 1));
+    const h = sinc * hann;
+    coeffs[n] = h;
+    sum += h;
+  }
+  for (let n = 0; n < taps; n += 1) coeffs[n] /= sum;
+
+  // 중심 정렬('same' 길이) 컨볼루션 — 선형위상 지연을 보정
+  const out = new Float32Array(input.length);
+  for (let i = 0; i < input.length; i += 1) {
+    let acc = 0;
+    for (let j = 0; j < taps; j += 1) {
+      const idx = i + j - mid;
+      if (idx >= 0 && idx < input.length) acc += input[idx] * coeffs[j];
+    }
+    out[i] = acc;
+  }
+  return out;
+}
+
+/**
+ * 안티앨리어싱 다운샘플: 다운샘플 시 저역통과 후 선형보간, 그 외엔 선형보간만.
+ *
+ * 차단 주파수는 목표 나이퀴스트 아래(0.45×toRate)로 두어 접힘 성분을 확실히
+ * 억제한다. 업샘플/동일 레이트에서는 앨리어싱이 없으므로 필터를 생략한다.
+ */
+export function downsample(
+  input: Float32Array,
+  fromRate: number,
+  toRate: number,
+): Float32Array {
+  if (fromRate === toRate || input.length === 0) return input;
+  if (toRate < fromRate) {
+    const cutoffHz = 0.45 * toRate; // 16k 목표 → 7200Hz
+    const filtered = lowPassFir(input, fromRate, cutoffHz);
+    return resampleLinear(filtered, fromRate, toRate);
+  }
+  return resampleLinear(input, fromRate, toRate);
 }
 
 /** Float32 PCM([-1,1]) → 16bit PCM WAV Blob. */
