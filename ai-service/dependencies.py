@@ -7,13 +7,14 @@
 """
 import os
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Request, status
 
 from infra.azure_stt import AzureSttEngine
 from infra.azure_tts import AzureTtsEngine
 from infra.gemini_client import GeminiClient
 from infra.in_memory_masking_store import InMemoryMaskingStore
 from infra.in_memory_vector_store import InMemoryVectorStore
+from infra.rate_limiter import SlidingWindowRateLimiter
 from services.chat_service import ChatService
 from services.masking_service import MaskingService
 from services.quiz_service import QuizGeneratorService
@@ -36,6 +37,12 @@ _quiz_generator_service: QuizGeneratorService | None = None
 _wish_service: WishToPracticeService | None = None
 _stt_service: SttService | None = None
 _tts_service: TtsService | None = None
+
+_tts_rate_limiter: SlidingWindowRateLimiter | None = None
+_stt_rate_limiter: SlidingWindowRateLimiter | None = None
+
+# 기본 캐시 상한 200MB. 재활 문장은 짧아(수 KB/개) 수만 개까지 캐시 가능.
+_DEFAULT_TTS_CACHE_MAX_BYTES = 200 * 1024 * 1024
 
 
 def _get_gemini_client() -> GeminiClient:
@@ -189,5 +196,49 @@ def get_tts_service() -> TtsService:
             ) from exc
         cache_root = os.getenv("TTS_CACHE_DIR", "../tts-cache")
         cache_dir = os.path.join(cache_root, "dynamic")
-        _tts_service = TtsService(engine=engine, cache_dir=cache_dir)
+        max_bytes = _int_env("TTS_CACHE_MAX_BYTES", _DEFAULT_TTS_CACHE_MAX_BYTES)
+        _tts_service = TtsService(
+            engine=engine, cache_dir=cache_dir, max_cache_bytes=max_bytes
+        )
     return _tts_service
+
+
+def _int_env(name: str, default: int) -> int:
+    """정수 환경변수 파싱 — 미설정/파싱 실패 시 기본값."""
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
+def client_key(request: Request) -> str:
+    """레이트리밋 키(클라이언트 IP). 프록시 뒤면 X-Forwarded-For 첫 IP를 쓴다."""
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def get_tts_rate_limiter() -> SlidingWindowRateLimiter:
+    """/tts 레이트리밋 싱글턴 (기본 120회/분/IP)."""
+    global _tts_rate_limiter
+    if _tts_rate_limiter is None:
+        _tts_rate_limiter = SlidingWindowRateLimiter(
+            max_requests=_int_env("TTS_RATE_LIMIT_PER_MIN", 120),
+            window_seconds=60.0,
+        )
+    return _tts_rate_limiter
+
+
+def get_stt_rate_limiter() -> SlidingWindowRateLimiter:
+    """/stt 레이트리밋 싱글턴 (기본 60회/분/IP)."""
+    global _stt_rate_limiter
+    if _stt_rate_limiter is None:
+        _stt_rate_limiter = SlidingWindowRateLimiter(
+            max_requests=_int_env("STT_RATE_LIMIT_PER_MIN", 60),
+            window_seconds=60.0,
+        )
+    return _stt_rate_limiter

@@ -9,11 +9,13 @@ from fastapi import (
     File,
     Form,
     HTTPException,
+    Request,
     UploadFile,
     status,
 )
 
-from dependencies import get_stt_service
+from dependencies import client_key, get_stt_rate_limiter, get_stt_service
+from infra.rate_limiter import SlidingWindowRateLimiter
 from models.stt import SttNBestResponse, SttResponse
 from services.stt_service import SttService
 
@@ -25,10 +27,12 @@ MAX_AUDIO_BYTES = 5 * 1024 * 1024  # 5MB
 
 @router.post("", response_model=SttResponse, status_code=status.HTTP_200_OK)
 async def recognize(
+    request: Request,
     audio: UploadFile = File(...),
     lang: str = Form("ko-KR"),
     candidates: list[str] = Form(default=[]),
     service: SttService = Depends(get_stt_service),
+    rate_limiter: SlidingWindowRateLimiter = Depends(get_stt_rate_limiter),
 ) -> SttResponse:
     """WAV 오디오를 받아 (정답 후보 phrase hint와 함께) 인식한다.
 
@@ -36,6 +40,12 @@ async def recognize(
     - lang: 언어 코드 (기본 ko-KR)
     - candidates: 정답 후보(phrase hint). 없으면 자유 인식.
     """
+    # STT 엔진 폭주로 Azure 할당량을 소진시키는 것을 막는다(직접 노출 방어).
+    if not rate_limiter.allow(client_key(request)):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="요청이 너무 잦습니다. 잠시 후 다시 시도해주세요.",
+        )
     wav_bytes = await audio.read()
     if not wav_bytes:
         raise HTTPException(

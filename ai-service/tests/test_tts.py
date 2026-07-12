@@ -3,10 +3,13 @@
 핵심: (1) 같은 텍스트는 캐시로 재사용돼 엔진이 1회만 호출되고,
 (2) 라우터가 audio/mpeg 바이트를 반환하며 빈/과대 텍스트를 거른다.
 """
+import os
+
 import main
-from dependencies import get_tts_service
+from dependencies import get_tts_rate_limiter, get_tts_service
 from fastapi.testclient import TestClient
 from infra.azure_tts import AzureTtsEngine
+from infra.rate_limiter import SlidingWindowRateLimiter
 from services.tts_service import TtsService
 
 
@@ -73,6 +76,46 @@ def test_service_different_voice_is_separate_cache(tmp_path):
 
     # voice가 다르면 키가 달라 각각 합성
     assert len(engine.calls) == 2
+
+
+# ── 캐시 축출(LRU, 디스크 DoS 방어) ───────────────────────────
+
+VOICE = "ko-KR-SunHiNeural"
+
+
+def test_service_evicts_oldest_over_cap(tmp_path):
+    # 10바이트/개, 상한 25바이트 → 2개까지 보관, 3번째에서 가장 오래된 것 축출
+    svc = TtsService(FakeEngine(b"0123456789"), str(tmp_path), max_cache_bytes=25)
+
+    svc.synthesize("a", VOICE)
+    os.utime(svc._cache_path("a", VOICE), (100, 100))  # a가 가장 오래됨
+    svc.synthesize("b", VOICE)
+    os.utime(svc._cache_path("b", VOICE), (101, 101))
+    svc.synthesize("c", VOICE)  # 이 시점 총 30B > 25B → a 축출
+
+    assert not svc._cache_path("a", VOICE).exists()
+    assert svc._cache_path("b", VOICE).exists()
+    assert svc._cache_path("c", VOICE).exists()
+    total = sum(p.stat().st_size for p in tmp_path.glob("*.mp3"))
+    assert total <= 25
+
+
+def test_service_unlimited_cache_keeps_all(tmp_path):
+    # 상한 None(기본) → 축출 없음
+    svc = TtsService(FakeEngine(b"0123456789"), str(tmp_path))
+    for text in ["a", "b", "c", "d", "e"]:
+        svc.synthesize(text, VOICE)
+    assert len(list(tmp_path.glob("*.mp3"))) == 5
+
+
+def test_service_cache_hit_touches_mtime(tmp_path):
+    # 히트 시 mtime 갱신으로 LRU가 '최근 사용'을 반영
+    svc = TtsService(FakeEngine(b"MP3DATA"), str(tmp_path))
+    svc.synthesize("바다", VOICE)
+    path = svc._cache_path("바다", VOICE)
+    os.utime(path, (100, 100))
+    svc.synthesize("바다", VOICE)  # 캐시 히트 → touch
+    assert path.stat().st_mtime > 100
 
 
 # ── GET /tts ──────────────────────────────────────────────────
@@ -150,5 +193,27 @@ def test_tts_endpoint_engine_error_returns_502(tmp_path):
     try:
         resp = client.get("/tts", params={"text": "바다"})
         assert resp.status_code == 502
+    finally:
+        main.app.dependency_overrides.clear()
+
+
+def test_tts_endpoint_rate_limited_returns_429(tmp_path):
+    """한도 초과 시 429 — 임의 텍스트 폭주로 Azure 할당량 소진 방어."""
+    engine = FakeEngine(b"MP3DATA")
+    main.app.dependency_overrides[get_tts_service] = lambda: TtsService(
+        engine, str(tmp_path)
+    )
+    # 한도 1회/분으로 좁혀 두 번째 요청이 차단되는지 확인.
+    # (요청마다 동일 인스턴스를 반환해야 카운트가 누적됨 — 프로덕션은 싱글턴)
+    limiter = SlidingWindowRateLimiter(1, 60.0)
+    main.app.dependency_overrides[get_tts_rate_limiter] = lambda: limiter
+    try:
+        client = TestClient(main.app)
+        first = client.get("/tts", params={"text": "바다"})
+        second = client.get("/tts", params={"text": "산"})
+        assert first.status_code == 200
+        assert second.status_code == 429
+        # 차단된 요청은 엔진에 도달하지 않는다(합성 1회뿐).
+        assert len(engine.calls) == 1
     finally:
         main.app.dependency_overrides.clear()
