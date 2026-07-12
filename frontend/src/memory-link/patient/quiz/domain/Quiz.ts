@@ -32,7 +32,6 @@ export type PatientNoteCategory = 'activity' | 'moment' | 'context';
 export interface QuizSetSummary {
   quizSetId: string;
   memoryEntryId: string;
-  notePreview: string;
   photoUrl: string | null;
   generationStatus: QuizGenerationStatus;
   bestScore: number | null;

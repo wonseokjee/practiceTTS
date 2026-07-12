@@ -15,7 +15,6 @@ import type { QuizSetSummary } from '../domain/Quiz.js';
 const SUMMARY: QuizSetSummary = {
   quizSetId: 'set-1',
   memoryEntryId: 'entry-1',
-  notePreview: '산책 다녀온 날',
   photoUrl: null,
   generationStatus: 'ready',
   bestScore: null,
