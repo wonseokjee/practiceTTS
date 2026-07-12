@@ -23,8 +23,8 @@ from prompts.chat_prompt import (
     GUARDRAIL_FALLBACK_RESPONSE,
 )
 
-# 대화 에이전트 모델
-_CHAT_MODEL = "gemini-1.5-pro"
+# 대화 에이전트 모델 (gemini-1.5-pro는 retired되어 404 → 2.5-flash로 교체)
+_CHAT_MODEL = "gemini-2.5-flash"
 # Window Buffer 최대 턴 수 (사용자 발화 + AI 응답 각 1개 = 1턴)
 _MAX_WINDOW_SIZE = 10
 

@@ -18,8 +18,8 @@ from prompts.masking_prompt import MASKING_SYSTEM_PROMPT
 
 # 최대 입력 텍스트 길이
 _MAX_TEXT_LENGTH = 5000
-# 마스킹 모델 (빠른 flash 모델 사용)
-_MASKING_MODEL = "gemini-2.0-flash"
+# 마스킹 모델 (gemini-2.0-flash는 retired되어 404 → 2.5-flash로 교체)
+_MASKING_MODEL = "gemini-2.5-flash"
 
 # 정규식 패턴: 1차 마스킹 대상
 _PATTERNS = {

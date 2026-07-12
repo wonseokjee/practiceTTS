@@ -12,8 +12,8 @@ from prompts.tagging_prompt import TAGGING_SYSTEM_PROMPT
 
 # 이미지 최대 허용 크기: 5MB (Base64 인코딩 전 원본 기준)
 _MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
-# Vision 모델
-_VISION_MODEL = "gemini-1.5-pro"
+# Vision 모델 (gemini-1.5-pro는 retired되어 404 → 2.5-flash로 교체)
+_VISION_MODEL = "gemini-2.5-flash"
 
 
 class TaggingService:

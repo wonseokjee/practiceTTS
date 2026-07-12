@@ -19,8 +19,8 @@ from interfaces.llm_client import ILlmClient
 from interfaces.vector_store import IVectorStore
 from prompts.scenario_prompt import SCENARIO_FALLBACK_PROMPT, SCENARIO_SYSTEM_PROMPT
 
-# 시나리오 생성 모델
-_SCENARIO_MODEL = "gemini-1.5-pro"
+# 시나리오 생성 모델 (gemini-1.5-pro는 retired되어 404 → 2.5-flash로 교체)
+_SCENARIO_MODEL = "gemini-2.5-flash"
 # Guardrail 최대 재시도 횟수
 _MAX_GUARDRAIL_RETRIES = 2
 
