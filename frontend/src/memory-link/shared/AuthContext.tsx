@@ -130,6 +130,28 @@ type DevAuthMode = 'patient' | 'caregiver' | 'off';
 
 const DEV_FAKE_TOKEN = 'fake-local-token';
 
+// ─── 개발용 실제-자동로그인 ───────────────────────────────────
+//
+// VITE_DEV_AUTH=off 이면서 아래 값이 설정되면, 개발 빌드에서 앱 시작 시
+// 해당 계정으로 실제 /auth/login 을 자동 호출한다(계정이 없으면 자동 가입).
+// 가짜 토큰 바이패스와 달리 실제 JWT를 발급받으므로 백엔드 인증이 필요한
+// 화면(프로필·메모리·시나리오)까지 로그인 없이 테스트할 수 있다.
+const DEV_AUTOLOGIN_EMAIL = import.meta.env.VITE_DEV_AUTOLOGIN_EMAIL as
+  | string
+  | undefined;
+const DEV_AUTOLOGIN_PASSWORD = import.meta.env.VITE_DEV_AUTOLOGIN_PASSWORD as
+  | string
+  | undefined;
+
+function isDevAutoLoginEnabled(): boolean {
+  return (
+    import.meta.env.DEV &&
+    !!DEV_AUTOLOGIN_EMAIL &&
+    !!DEV_AUTOLOGIN_PASSWORD &&
+    localStorage.getItem(ML_TOKEN_KEY) === null
+  );
+}
+
 function resolveDevAuthMode(): DevAuthMode {
   if (!import.meta.env.DEV) return 'off';
   const raw = (
@@ -182,7 +204,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // 저장된 토큰이 있으면 /auth/me로 검증이 끝날 때까지 로딩으로 시작한다.
   // (검증 전 user=null로 라우트 가드가 /login을 잠깐 렌더해 깜빡이는 문제 방지)
   const [isLoading, setIsLoading] = useState<boolean>(
-    () => !isDevBypass && localStorage.getItem(ML_TOKEN_KEY) !== null,
+    () =>
+      !isDevBypass &&
+      (localStorage.getItem(ML_TOKEN_KEY) !== null || isDevAutoLoginEnabled()),
   );
   // 환자 모드 플래그 — localStorage 영속(환자가 새로고침해도 잠금 유지).
   // 보안 경계가 아니라 UX 잠금이며, 실제 환자 식별은 백엔드 토큰 기준.
@@ -209,7 +233,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const storedToken = localStorage.getItem(ML_TOKEN_KEY);
     if (!storedToken) {
-      setIsLoading(false);
+      // 개발용 자동 로그인이 활성화된 경우 별도 useEffect가 처리하므로 로딩 유지
+      if (!isDevAutoLoginEnabled()) {
+        setIsLoading(false);
+      }
       return;
     }
 
@@ -242,6 +269,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, [clearAuth, isDevBypass]);
+
+  /** 개발용 실제-자동로그인: 토큰이 없으면 테스트 계정으로 로그인(없으면 가입) */
+  useEffect(() => {
+    if (isDevBypass) return;
+    if (!isDevAutoLoginEnabled()) return;
+
+    let cancelled = false;
+    const email = DEV_AUTOLOGIN_EMAIL as string;
+    const password = DEV_AUTOLOGIN_PASSWORD as string;
+
+    (async () => {
+      setIsLoading(true);
+      try {
+        await login(email, password);
+      } catch {
+        // 계정이 없으면 가입 후 자동 로그인
+        try {
+          await register({
+            email,
+            password,
+            displayName: '개발 보호자',
+            patientDisplayName: '개발 어르신',
+            patientModePin: '0000',
+          });
+        } catch (err) {
+          if (!cancelled) {
+            console.warn('[dev-autologin] 자동 로그인 실패:', err);
+          }
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // login/register는 mount 시 1회만 실행하면 되므로 의존성에서 제외
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /** 로그인 */
   const login = useCallback(

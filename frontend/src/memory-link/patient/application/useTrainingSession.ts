@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { WebSpeechTtsService } from '../../../shared/infrastructure/WebSpeechTtsService.js';
+import { createTtsService } from '../../../shared/infrastructure/ttsFactory.js';
 import { useTTS } from '../../../shared/hooks/useTTS.js';
 import type { ConversationMessage, TrainingSession } from '../domain/TrainingSession.js';
 import { trainingSessionApi } from '../infrastructure/TrainingSessionApi.js';
@@ -56,11 +56,13 @@ export function useTrainingSession({
   const [hintLevel, setHintLevel] = useState<number>(0);
 
   // Composition Root: TTS 서비스 인스턴스 (컴포넌트 생명주기와 동일)
-  const ttsService = useMemo(() => new WebSpeechTtsService(), []);
+  const ttsService = useMemo(() => createTtsService(), []);
   const { isPlaying: isSpeaking, speak } = useTTS(ttsService);
 
   // 세션 ID를 ref로 유지 (비동기 클로저에서 최신 값 참조)
   const sessionIdRef = useRef<string | null>(null);
+  // 세션 시작 중복 방지 (React StrictMode의 useEffect 이중 실행 대응)
+  const startedRef = useRef<boolean>(false);
 
   /** AI 메시지를 대화 이력에 추가하고 TTS 재생 */
   const addAiMessage = useCallback(
@@ -82,6 +84,10 @@ export function useTrainingSession({
    * 2. openingQuestion을 대화 이력에 추가 + TTS 재생
    */
   const startSession = useCallback(async (): Promise<void> => {
+    // StrictMode 이중 호출 방지: 이미 시작했으면 중복 생성하지 않는다.
+    if (startedRef.current) return;
+    startedRef.current = true;
+
     setIsLoading(true);
     setError(null);
 
@@ -91,11 +97,16 @@ export function useTrainingSession({
       sessionIdRef.current = newSession.id;
       setHintLevel(newSession.hintLevel);
 
+      // 질문 텍스트 수신 완료 → '준비 중' 종료. 이후 음성 재생은 isSpeaking으로 표시.
+      setIsLoading(false);
+
       // AI 오프닝 질문 TTS 재생
       if (newSession.openingQuestion) {
         await addAiMessage(newSession.openingQuestion);
       }
     } catch (err) {
+      // 실패 시 가드를 풀어 재시도(돌아가기 후 재진입)를 허용한다.
+      startedRef.current = false;
       setError(extractErrorMessage(err));
     } finally {
       setIsLoading(false);
@@ -127,6 +138,8 @@ export function useTrainingSession({
         );
 
         setHintLevel(response.hintLevel);
+        // 응답 텍스트 수신 완료 → '준비 중' 종료. 이후 음성 재생은 isSpeaking으로 표시.
+        setIsLoading(false);
         await addAiMessage(response.aiMessage, response.hintTriggered);
       } catch (err) {
         setError(extractErrorMessage(err));

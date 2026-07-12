@@ -81,21 +81,6 @@ function isSendMessageResponse(value: unknown): value is SendMessageResponse {
 export const trainingSessionApi: ITrainingSessionApi = {
   /** GET /training/entries */
   async getAvailableEntries(): Promise<AvailableEntry[]> {
-    if (import.meta.env.DEV) {
-      // 로컬 프론트엔드 단독 테스트 시 백엔드 네트워크 에러 우회를 위한 가짜 데이터 반환
-      return [
-        {
-          id: 'mock-entry-1',
-          hasScenario: true,
-          targetWords: ['사과', '바나나'],
-          createdAt: new Date().toISOString(),
-          photoUrl: 'https://via.placeholder.com/150',
-          locationTag: '로컬 거실',
-          emotionTag: '즐거움',
-        },
-      ] as AvailableEntry[];
-    }
-  
     const res = await memoryLinkApi.get<unknown>('/training/entries');
     const data = res.data;
     if (!Array.isArray(data)) {
