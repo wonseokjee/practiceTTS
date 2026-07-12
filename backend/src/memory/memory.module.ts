@@ -2,6 +2,7 @@ import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
+import { ProfileModule } from '../profile/profile.module';
 import { CaregiverReflection } from './entities/caregiver-reflection.entity';
 import { DiaryQuestion } from './entities/diary-question.entity';
 import { HealingMessage } from './entities/healing-message.entity';
@@ -36,6 +37,7 @@ import { HealingMessageService } from './services/healing-message.service';
     ]),
     HttpModule,
     AuthModule,
+    ProfileModule,
   ],
   controllers: [MemoryController],
   providers: [

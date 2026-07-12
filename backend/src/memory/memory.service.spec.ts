@@ -12,6 +12,7 @@ import { MemoryEntryService } from './memory.service';
 import { CryptoService } from './services/crypto.service';
 import { FastApiClientService } from './services/fast-api-client.service';
 import { FileStorageService } from './services/file-storage.service';
+import { PersonaContextService } from '../profile/services/persona-context.service';
 
 /**
  * MemoryEntryService.create() 트랜잭션 회귀 테스트 (Phase 1 §10-3)
@@ -83,6 +84,18 @@ describe('MemoryEntryService.create() — 3-step 트랜잭션 회귀', () => {
     generateScenario: jest.fn(),
   };
 
+  // 프로필 미등록 기본값 — 개인화 생략(baseContext 그대로) 흐름을 재현
+  const personaContextMock = {
+    buildPersonaContext: jest.fn(
+      async (_patientId: string, baseContext: string) => ({
+        tokenizedContext: baseContext,
+        tokenMap: {},
+      }),
+    ),
+    buildTokenMap: jest.fn(async () => ({})),
+    restorePersonaText: jest.fn((text: string) => text),
+  };
+
   const cryptoServiceMock = {
     encrypt: jest.fn((s: string) => `enc:${s}`),
     decrypt: jest.fn((s: string) => s.replace(/^enc:/, '')),
@@ -150,6 +163,7 @@ describe('MemoryEntryService.create() — 3-step 트랜잭션 회귀', () => {
         { provide: CryptoService, useValue: cryptoServiceMock },
         { provide: FileStorageService, useValue: fileStorageServiceMock },
         { provide: EventEmitter2, useValue: { emit: jest.fn() } },
+        { provide: PersonaContextService, useValue: personaContextMock },
       ],
     }).compile();
 

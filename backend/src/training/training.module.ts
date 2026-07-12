@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
 import { MemoryEntry } from '../memory/entities/memory-entry.entity';
 import { CryptoService } from '../memory/services/crypto.service';
+import { ProfileModule } from '../profile/profile.module';
 import { ConversationLog } from './entities/conversation-log.entity';
 import { TrainingSession } from './entities/training-session.entity';
 import { FastApiChatClientService } from './services/fast-api-chat-client.service';
@@ -24,6 +25,7 @@ import { TrainingService } from './training.service';
     TypeOrmModule.forFeature([TrainingSession, ConversationLog, MemoryEntry]),
     HttpModule,
     AuthModule,
+    ProfileModule,
   ],
   controllers: [TrainingController],
   providers: [

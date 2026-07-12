@@ -10,28 +10,32 @@ import type {
  */
 export interface IFastApiClient {
   /**
-   * 이미지 URL로 AI 자동 태깅 수행
-   * @param imageUrl 공개 접근 가능한 이미지 URL
+   * Base64 이미지로 AI 자동 태깅 수행
+   * @param imageBase64 Base64 인코딩된 이미지 데이터
+   * @param memoryEntryId 메모리 엔트리 UUID
    * @returns locationTag, objectTags
    */
-  tag(imageUrl: string): Promise<AiTagResult>;
+  tag(imageBase64: string, memoryEntryId: string): Promise<AiTagResult>;
 
   /**
    * 컨텍스트 텍스트의 PII(개인식별정보) 마스킹 수행
-   * @param context 마스킹할 원본 텍스트
+   * @param rawText 마스킹할 원본 텍스트
+   * @param memoryEntryId 메모리 엔트리 UUID
    * @returns maskedText (entity_map은 즉시 폐기)
    */
-  mask(context: string): Promise<AiMaskResult>;
+  mask(rawText: string, memoryEntryId: string): Promise<AiMaskResult>;
 
   /**
    * 마스킹된 컨텍스트로 훈련 시나리오 생성
    * @param maskedContext 마스킹 완료된 컨텍스트 텍스트
    * @param targetWords 훈련 목표 단어 목록
-   * @param hintLevel 힌트 수준 (0: 없음, 1: 약함, 2: 강함)
+   * @param emotionTag 감정 태그 (happy | calm | nostalgic | excited)
+   * @param memoryEntryId 메모리 엔트리 UUID
    */
   generateScenario(
     maskedContext: string,
     targetWords: string[],
-    hintLevel: 0 | 1 | 2,
+    emotionTag: string,
+    memoryEntryId: string,
   ): Promise<ScenarioCacheData>;
 }

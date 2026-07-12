@@ -57,15 +57,15 @@ export class FastApiClientService implements IFastApiClient {
   }
 
   /**
-   * 이미지 URL로 AI 자동 태깅 수행
+   * Base64 이미지로 AI 자동 태깅 수행
    * - POST {baseUrl}/tag
    */
-  async tag(imageUrl: string): Promise<AiTagResult> {
+  async tag(imageBase64: string, memoryEntryId: string): Promise<AiTagResult> {
     try {
       const response = await firstValueFrom(
         this.httpService.post<RawTagResponse>(
           `${this.baseUrl}/tag`,
-          { image_url: imageUrl },
+          { image_base64: imageBase64, memory_entry_id: memoryEntryId },
           { timeout: FastApiClientService.DEFAULT_TIMEOUT_MS },
         ),
       );
@@ -87,12 +87,12 @@ export class FastApiClientService implements IFastApiClient {
    * - POST {baseUrl}/mask
    * - entity_map은 응답에서 수신하더라도 즉시 폐기 (절대 외부 노출 금지)
    */
-  async mask(context: string): Promise<AiMaskResult> {
+  async mask(rawText: string, memoryEntryId: string): Promise<AiMaskResult> {
     try {
       const response = await firstValueFrom(
         this.httpService.post<RawMaskResponse>(
           `${this.baseUrl}/mask`,
-          { context },
+          { raw_text: rawText, memory_entry_id: memoryEntryId },
           { timeout: FastApiClientService.DEFAULT_TIMEOUT_MS },
         ),
       );
@@ -117,7 +117,8 @@ export class FastApiClientService implements IFastApiClient {
   async generateScenario(
     maskedContext: string,
     targetWords: string[],
-    hintLevel: 0 | 1 | 2,
+    emotionTag: string,
+    memoryEntryId: string,
   ): Promise<ScenarioCacheData> {
     try {
       const response = await firstValueFrom(
@@ -126,7 +127,8 @@ export class FastApiClientService implements IFastApiClient {
           {
             masked_context: maskedContext,
             target_words: targetWords,
-            hint_level: hintLevel,
+            emotion_tag: emotionTag,
+            memory_entry_id: memoryEntryId,
           },
           { timeout: FastApiClientService.SCENARIO_TIMEOUT_MS },
         ),

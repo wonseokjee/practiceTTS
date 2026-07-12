@@ -119,6 +119,12 @@ export function PatientDayStep({
           )}
         </div>
 
+        {/* 사진은 선택이지만, 첨부하면 더 풍부한 훈련 시나리오가 생성됨 */}
+        <p className="mt-1 text-xs text-[#5C6661]">
+          사진이 없어도 시나리오를 만들 수 있어요. 다만 사진을 첨부하면 더 생생한
+          훈련 시나리오가 만들어집니다.
+        </p>
+
         {photoPreview ? (
           <img
             src={photoPreview}

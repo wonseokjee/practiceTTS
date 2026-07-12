@@ -28,6 +28,7 @@ import type {
   CaregiverInfo,
   IMemoryEntryService,
 } from './interfaces/IMemoryEntryService';
+import { PersonaContextService } from '../profile/services/persona-context.service';
 import { CryptoService } from './services/crypto.service';
 import { FastApiClientService } from './services/fast-api-client.service';
 import { FileStorageService } from './services/file-storage.service';
@@ -45,6 +46,7 @@ export class MemoryEntryService implements IMemoryEntryService {
     private readonly cryptoService: CryptoService,
     private readonly fileStorageService: FileStorageService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly personaContext: PersonaContextService,
   ) {}
 
   /**
@@ -141,9 +143,19 @@ export class MemoryEntryService implements IMemoryEntryService {
     }
 
     // (5) FastAPI tag/mask — best-effort, 트랜잭션 외부
-    if (photoUrl) {
+    // 컨텍스트 소스: 사진(선택) + 보호자가 기록한 "환자분의 하루"(savedNotes).
+    // 둘 중 하나라도 있으면 실행. (사진 없이 기록만으로도 maskedContext가
+    // 채워져 시나리오 생성이 가능. patientNotes의 'patient'는 답변자가 아니라
+    // 답변의 주제 — 실제 입력 주체는 보호자다.)
+    if (photo || savedNotes.length > 0) {
+      const noteTexts = savedNotes.map((n) => n.answerText);
       const { locationTag, objectTags, maskedContext } =
-        await this.runTagAndMaskBestEffort(photoUrl);
+        await this.runTagAndMaskBestEffort(
+          photo?.filename ?? null,
+          noteTexts,
+          savedEntry.id,
+          dto.patientId,
+        );
 
       // 결과를 별도 update로 반영 (실패해도 부분 성공 허용)
       if (
@@ -282,7 +294,8 @@ export class MemoryEntryService implements IMemoryEntryService {
       scenarioData = await this.fastApiClient.generateScenario(
         decryptedMaskedContext,
         entry.targetWords,
-        0,
+        entry.emotionTag ?? 'happy',
+        id,
       );
     } catch (error) {
       if (error instanceof MemoryEntryError) {
@@ -404,9 +417,18 @@ export class MemoryEntryService implements IMemoryEntryService {
   }
 
   /**
-   * FastAPI tag/mask 호출 — 부분 성공 허용
+   * FastAPI tag/mask 호출 — 부분 성공 허용.
+   * - filename이 있으면 사진 태깅 시도(실패해도 기록 기반 컨텍스트로 진행).
+   * - 사진 태그 + 보호자가 기록한 "환자분의 하루"(noteTexts)를 결합해
+   *   마스킹 → maskedContext 생성.
+   * - 컨텍스트가 비면(사진·기록 모두 없음) 마스킹을 생략한다.
    */
-  private async runTagAndMaskBestEffort(photoUrl: string): Promise<{
+  private async runTagAndMaskBestEffort(
+    filename: string | null,
+    noteTexts: string[],
+    memoryEntryId: string,
+    patientId: string,
+  ): Promise<{
     locationTag: string | null;
     objectTags: string[] | null;
     maskedContext: string | null;
@@ -415,20 +437,51 @@ export class MemoryEntryService implements IMemoryEntryService {
     let objectTags: string[] | null = null;
     let maskedContext: string | null = null;
 
-    try {
-      const tagResult = await this.fastApiClient.tag(photoUrl);
-      if (tagResult) {
-        locationTag = tagResult.locationTag;
-        objectTags = tagResult.objectTags;
+    // 사진이 있으면 태깅 시도 (읽기/호출 실패해도 노트 컨텍스트로 진행)
+    if (filename) {
+      let imageBase64: string | null = null;
+      try {
+        imageBase64 = await this.fileStorageService.readAsBase64(filename);
+      } catch {
+        // 사진 파일 읽기 실패는 부분 성공 허용
       }
-    } catch {
-      // 태그 실패는 부분 성공 허용
+      if (imageBase64) {
+        try {
+          const tagResult = await this.fastApiClient.tag(
+            imageBase64,
+            memoryEntryId,
+          );
+          if (tagResult) {
+            locationTag = tagResult.locationTag;
+            objectTags = tagResult.objectTags;
+          }
+        } catch {
+          // 태그 실패는 부분 성공 허용
+        }
+      }
     }
 
-    if (locationTag !== null && objectTags !== null) {
-      const context = this.buildContext(locationTag, objectTags);
+    // 사진 태그 + 환자 답변을 결합해 컨텍스트 구성
+    let context = this.buildContext(locationTag, objectTags, noteTexts);
+    if (context) {
+      // 프로필 기반 페르소나 토큰화 (best-effort) — /mask 전에 실명·지명을 토큰으로.
+      // 외부 LLM에는 토큰만 흐르고, 환자 표시 시점(training)에 역치환된다.
+      // 프로필 미등록/실패 시 원문 유지(/mask가 PII 2차 방어).
       try {
-        const maskResponse = await this.fastApiClient.mask(context);
+        const persona = await this.personaContext.buildPersonaContext(
+          patientId,
+          context,
+        );
+        context = persona.tokenizedContext;
+      } catch {
+        // 페르소나 토큰화 실패는 부분 성공 허용
+      }
+
+      try {
+        const maskResponse = await this.fastApiClient.mask(
+          context,
+          memoryEntryId,
+        );
         maskedContext = this.cryptoService.encrypt(maskResponse.maskedText);
       } catch {
         // 마스킹 실패는 부분 성공 허용
@@ -459,10 +512,32 @@ export class MemoryEntryService implements IMemoryEntryService {
     return entry;
   }
 
-  private buildContext(locationTag: string, objectTags: string[]): string {
-    const objectPart =
-      objectTags.length > 0 ? `사물: ${objectTags.join(', ')}` : '';
-    return [`장소: ${locationTag}`, objectPart].filter(Boolean).join(', ');
+  /**
+   * 시나리오/마스킹용 컨텍스트 텍스트 구성.
+   * - 사진 태그(장소·사물)는 선택, 보호자가 기록한 "환자분의 하루"(noteTexts)는
+   *   회상 맥락의 핵심 소스(환자의 일상을 아는 보호자가 직접 적어줌).
+   * - 사진이 없어도 기록만으로 컨텍스트가 구성되도록 한다(①번 전략).
+   * - 셋 다 비면 빈 문자열 → 호출자가 마스킹을 생략한다.
+   */
+  private buildContext(
+    locationTag: string | null,
+    objectTags: string[] | null,
+    noteTexts: string[],
+  ): string {
+    const parts: string[] = [];
+    if (locationTag) {
+      parts.push(`장소: ${locationTag}`);
+    }
+    if (objectTags && objectTags.length > 0) {
+      parts.push(`사물: ${objectTags.join(', ')}`);
+    }
+    const notes = noteTexts
+      .map((t) => t?.trim())
+      .filter((t): t is string => Boolean(t));
+    if (notes.length > 0) {
+      parts.push(`기록: ${notes.join(' ')}`);
+    }
+    return parts.join('\n');
   }
 
   private groupNotesByEntry(

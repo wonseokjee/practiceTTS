@@ -9,6 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MemoryEntry } from '../memory/entities/memory-entry.entity';
 import { CryptoService } from '../memory/services/crypto.service';
+import { PersonaContextService } from '../profile/services/persona-context.service';
 import { CreateSessionDto } from './dto/create-session.dto';
 import { MessageResponseDto } from './dto/message-response.dto';
 import { SendMessageDto } from './dto/send-message.dto';
@@ -56,6 +57,7 @@ export class TrainingService implements ITrainingService {
     private readonly memoryEntryRepository: Repository<MemoryEntry>,
     private readonly fastApiChatClient: FastApiChatClientService,
     private readonly cryptoService: CryptoService,
+    private readonly personaContext: PersonaContextService,
   ) {}
 
   /**
@@ -86,8 +88,14 @@ export class TrainingService implements ITrainingService {
       );
     }
 
-    // scenarioCache 복호화 → openingQuestion 추출
-    const openingQuestion = this.extractOpeningQuestion(entry.scenarioCache);
+    // scenarioCache 복호화 → openingQuestion 추출 (토큰 상태)
+    const tokenizedOpening = this.extractOpeningQuestion(entry.scenarioCache);
+    // 페르소나 역치환: 관계/장소 토큰을 환자 실명으로 복원 (표시 직전)
+    const tokenMap = await this.personaContext.buildTokenMap(patientId);
+    const openingQuestion = this.personaContext.restorePersonaText(
+      tokenizedOpening,
+      tokenMap,
+    );
 
     // 훈련 세션 생성
     const session = this.sessionRepository.create({

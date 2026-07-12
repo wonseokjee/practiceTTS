@@ -32,6 +32,20 @@ export class FileStorageService {
   }
 
   /**
+   * 업로드 디렉토리에 저장된 파일을 Base64 문자열로 읽는다.
+   * - FastAPI /tag 호출 시 image_base64 페이로드로 전달하기 위함.
+   * - 파일이 없거나 읽기 실패 시 throw (호출자가 best-effort로 흡수).
+   *
+   * @param filename UUID 기반 파일명 (경로 구분자 포함 불가)
+   * @returns Base64 인코딩된 파일 내용
+   */
+  async readAsBase64(filename: string): Promise<string> {
+    const filePath = join(this.uploadDir, filename);
+    const buffer = await fs.readFile(filePath);
+    return buffer.toString('base64');
+  }
+
+  /**
    * 업로드 디렉토리에 저장된 파일을 삭제한다.
    * - 트랜잭션 롤백 시 고아 파일 cleanup 용도 (P1-N6=(a)).
    * - 파일이 이미 없으면(ENOENT) 조용히 통과한다.
