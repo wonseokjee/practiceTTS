@@ -94,11 +94,15 @@ export class SeedDiaryQuestions1747454600000 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     for (const row of SEED_ROWS) {
+      // INSERT ... SELECT 에서는 대상 컬럼 타입이 SELECT 리스트의 파라미터로
+      // 전파되지 않는다. $1/$3은 SELECT 리스트와 WHERE 양쪽에 쓰여 서로 다른
+      // 타입으로 추론되므로("inconsistent types deduced"), 명시적으로 캐스트한다.
       await queryRunner.query(
         `INSERT INTO "diary_questions" ("id", "scope", "category", "text", "is_active", "order_hint", "created_at")
-         SELECT gen_random_uuid(), $1, $2, $3, TRUE, 0, now()
+         SELECT gen_random_uuid(), $1::varchar, $2::varchar, $3::varchar, TRUE, 0, now()
          WHERE NOT EXISTS (
-           SELECT 1 FROM "diary_questions" WHERE "scope" = $1 AND "text" = $3
+           SELECT 1 FROM "diary_questions"
+            WHERE "scope" = $1::varchar AND "text" = $3::varchar
          )`,
         [row.scope, row.category, row.text],
       );

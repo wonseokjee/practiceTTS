@@ -57,9 +57,13 @@ export class CreatePatientProfileTables1783900000000
           FOREIGN KEY ("profile_id") REFERENCES "patient_profiles"("id") ON DELETE CASCADE
       )
     `);
-    // 동일 관계 내 서수로 토큰([아들1])을 결정적으로 생성 — 중복 방지
+    // 동일 관계 내 서수로 토큰([아들1])을 결정적으로 생성한다.
+    // NOTE: 엔티티의 @Index가 unique가 아니므로 여기서도 비유니크로 맞춘다.
+    // (계획서는 UNIQUE를 의도했으나 구현이 비유니크다. UNIQUE로 올리면
+    //  ProfileService.nextOrdinal의 count+1 채번이 삭제 후 서수를 충돌시켜
+    //  운영에서만 실패한다 — 채번 로직 수정이 선행되어야 한다.)
     await queryRunner.query(`
-      CREATE UNIQUE INDEX "UQ_family_members_profile_relation_ord"
+      CREATE INDEX "UQ_family_members_profile_relation_ord"
         ON "family_members" ("profile_id", "relation", "relation_ordinal")
     `);
   }

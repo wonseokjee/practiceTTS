@@ -56,10 +56,12 @@ export class CreateHealingMessages1748700000000 implements MigrationInterface {
 
     for (let i = 0; i < SEED_TEXTS.length; i += 1) {
       await queryRunner.query(
+        // $1은 SELECT 리스트와 WHERE 양쪽에 쓰여 타입이 다르게 추론되므로
+        // ("inconsistent types deduced") 명시적으로 캐스트한다.
         `INSERT INTO "healing_messages" ("id", "text", "is_active", "order_index", "created_at")
-         SELECT gen_random_uuid(), $1, TRUE, $2, now()
+         SELECT gen_random_uuid(), $1::text, TRUE, $2::int, now()
          WHERE NOT EXISTS (
-           SELECT 1 FROM "healing_messages" WHERE "text" = $1
+           SELECT 1 FROM "healing_messages" WHERE "text" = $1::text
          )`,
         [SEED_TEXTS[i], i],
       );
