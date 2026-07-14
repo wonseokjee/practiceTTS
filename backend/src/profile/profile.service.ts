@@ -257,13 +257,26 @@ export class ProfileService {
     }
   }
 
+  /**
+   * 동일 관계 내 다음 서수를 채번한다.
+   *
+   * count+1은 삭제로 생긴 구멍을 무시해 충돌한다(아들1·아들2 중 아들1 삭제 시
+   * count=1 → 다음도 2 → 아들2와 중복). 중복 서수는 두 사람이 같은 토큰
+   * ([아들2])을 갖게 해 페르소나 역치환의 결정성을 깨뜨리므로, 서수를 재사용하지
+   * 않도록 MAX+1로 채번한다.
+   */
   private async nextOrdinal(
     profileId: string,
     relation: FamilyRelation,
   ): Promise<number> {
-    const count = await this.familyRepository.count({
-      where: { profileId, relation },
-    });
-    return count + 1;
+    const row = await this.familyRepository
+      .createQueryBuilder('member')
+      .select('MAX(member.relationOrdinal)', 'max')
+      .where('member.profileId = :profileId', { profileId })
+      .andWhere('member.relation = :relation', { relation })
+      .getRawOne<{ max: number | string | null }>();
+
+    const max = row?.max == null ? 0 : Number(row.max);
+    return max + 1;
   }
 }

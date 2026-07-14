@@ -17,11 +17,14 @@ import { PatientProfile } from './patient-profile.entity';
  * - (profileId, relation, relationOrdinal)로 토큰을 결정적으로 생성한다.
  */
 @Entity('family_members')
-@Index('UQ_family_members_profile_relation_ord', [
-  'profileId',
-  'relation',
-  'relationOrdinal',
-])
+// 서수는 토큰([아들1])을 결정적으로 만드는 키다. 중복되면 두 사람이 같은 토큰을
+// 갖게 되어 역치환이 깨지므로 UNIQUE로 강제한다.
+// (채번은 ProfileService.nextOrdinal의 MAX+1이 서수 재사용을 막는다.)
+@Index(
+  'UQ_family_members_profile_relation_ord',
+  ['profileId', 'relation', 'relationOrdinal'],
+  { unique: true },
+)
 export class FamilyMember {
   @PrimaryGeneratedColumn('uuid')
   id: string;
