@@ -1,7 +1,8 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
+import { retryTransient } from '../../common/retry.util';
 import {
   MemoryEntryError,
   MemoryEntryErrorCode,
@@ -38,6 +39,7 @@ interface RawScenarioResponse {
  */
 @Injectable()
 export class FastApiClientService implements IFastApiClient {
+  private readonly logger = new Logger(FastApiClientService.name);
   private readonly baseUrl: string;
 
   /** 시나리오 생성 타임아웃: 30초 */
@@ -89,12 +91,22 @@ export class FastApiClientService implements IFastApiClient {
    */
   async mask(rawText: string, memoryEntryId: string): Promise<AiMaskResult> {
     try {
-      const response = await firstValueFrom(
-        this.httpService.post<RawMaskResponse>(
-          `${this.baseUrl}/mask`,
-          { raw_text: rawText, memory_entry_id: memoryEntryId },
-          { timeout: FastApiClientService.DEFAULT_TIMEOUT_MS },
-        ),
+      // 퀴즈 경로의 마스킹은 fail-closed다(실패 시 생성 중단). 일시적 업스트림
+      // 오류로 퀴즈가 통째로 실패하지 않도록 백오프 재시도로 흡수한다.
+      const response = await retryTransient(
+        () =>
+          firstValueFrom(
+            this.httpService.post<RawMaskResponse>(
+              `${this.baseUrl}/mask`,
+              { raw_text: rawText, memory_entry_id: memoryEntryId },
+              { timeout: FastApiClientService.DEFAULT_TIMEOUT_MS },
+            ),
+          ),
+        {},
+        (attempt, delayMs) =>
+          this.logger.warn(
+            `마스킹 일시 실패 — ${delayMs}ms 후 재시도 (${attempt}번째)`,
+          ),
       );
 
       // entity_map은 여기서 즉시 무시하고 maskedText만 추출

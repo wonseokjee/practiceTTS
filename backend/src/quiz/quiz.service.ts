@@ -58,6 +58,12 @@ const SPEECH_REPEAT_PROMPT = '다음 단어를 듣고 따라 말해보세요';
  */
 const RESIDUAL_TOKEN_PATTERN = /\[[^\]\n]{0,30}\]/;
 
+/**
+ * /mask 동시 호출 상한. 노트(최대 5개)를 전부 병렬로 쏘면 곧바로 이어지는
+ * /quiz/generate와 겹쳐 Gemini 레이트리밋을 유발한다(E2E에서 502 관측).
+ */
+const MASK_CONCURRENCY = 2;
+
 /** 단일 답안 채점 결과 */
 export interface AttemptResult {
   questionId: string;
@@ -407,8 +413,13 @@ export class QuizService {
    * 토큰화는 프로필에 등록된 가족·지명만 가린다. 그 밖의 PII(주소, 병원·기관명,
    * 등록되지 않은 지인 이름 등)는 /mask가 익명화한다.
    *
-   * 노트별로 병렬 호출한다 — 여러 노트를 한 문자열로 이어 붙여 한 번에 마스킹하면
+   * 노트별로 호출한다 — 여러 노트를 한 문자열로 이어 붙여 한 번에 마스킹하면
    * LLM이 구분자를 보존한다는 보장이 없어 되쪼개기가 깨질 수 있다.
+   *
+   * 다만 전부 동시에 쏘지 않고 동시성을 제한한다: 노트 5개를 병렬로 쏘면 곧바로
+   * /quiz/generate까지 겹쳐 Gemini 레이트리밋(429/502)을 유발한다. 실제로 E2E에서
+   * 이 버스트로 퀴즈 생성이 간헐 실패했다.
+   *
    * 마스킹 실패는 삼키지 않는다(fail-closed): 호출자가 생성을 실패 처리한다.
    */
   private async maskNotes(
@@ -416,19 +427,30 @@ export class QuizService {
     memoryEntryId: string,
     tokenMap: Record<string, string>,
   ): Promise<IQuizGenerationPayload['patientNotes']> {
-    return Promise.all(
-      notes.map(async (note) => {
-        const tokenized = this.personaContext.tokenizeWithMap(
-          note.answerText,
-          tokenMap,
-        );
-        const { maskedText } = await this.fastApiClient.mask(
-          tokenized,
-          memoryEntryId,
-        );
-        return { category: note.category, answerText: maskedText };
-      }),
-    );
+    const masked: Array<{
+      category: PatientMemoryNote['category'];
+      answerText: string;
+    }> = [];
+
+    for (let i = 0; i < notes.length; i += MASK_CONCURRENCY) {
+      const chunk = notes.slice(i, i + MASK_CONCURRENCY);
+      const results = await Promise.all(
+        chunk.map(async (note) => {
+          const tokenized = this.personaContext.tokenizeWithMap(
+            note.answerText,
+            tokenMap,
+          );
+          const { maskedText } = await this.fastApiClient.mask(
+            tokenized,
+            memoryEntryId,
+          );
+          return { category: note.category, answerText: maskedText };
+        }),
+      );
+      masked.push(...results);
+    }
+
+    return masked;
   }
 
   /**

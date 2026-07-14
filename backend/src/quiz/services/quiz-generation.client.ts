@@ -2,6 +2,7 @@ import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
+import { retryTransient } from '../../common/retry.util';
 import { QuizQuestionType } from '../constants/quiz-question-type';
 import { QuizError, QuizErrorCode } from '../errors/quiz.errors';
 import type {
@@ -78,12 +79,22 @@ export class QuizGenerationClient implements IQuizGenerationClient {
     };
 
     try {
-      const response = await firstValueFrom(
-        this.httpService.post<RawQuizGenerateResponse>(
-          `${this.baseUrl}/quiz/generate`,
-          body,
-          { timeout: QuizGenerationClient.GENERATE_TIMEOUT_MS },
-        ),
+      // 일시적 업스트림 오류(429/502/타임아웃 등)는 백오프 재시도로 흡수한다.
+      // 재시도가 없으면 Gemini 레이트리밋 한 번에 퀴즈가 영구 failed로 굳는다.
+      const response = await retryTransient(
+        () =>
+          firstValueFrom(
+            this.httpService.post<RawQuizGenerateResponse>(
+              `${this.baseUrl}/quiz/generate`,
+              body,
+              { timeout: QuizGenerationClient.GENERATE_TIMEOUT_MS },
+            ),
+          ),
+        {},
+        (attempt, delayMs) =>
+          this.logger.warn(
+            `퀴즈 생성 일시 실패 — ${delayMs}ms 후 재시도 (${attempt}번째)`,
+          ),
       );
 
       const data = response.data;
