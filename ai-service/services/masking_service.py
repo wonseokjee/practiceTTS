@@ -21,6 +21,14 @@ _MAX_TEXT_LENGTH = 5000
 # 마스킹 모델 (gemini-2.0-flash는 retired되어 404 → 2.5-flash로 교체)
 _MASKING_MODEL = "gemini-2.5-flash"
 
+# 페르소나 토큰(예: [손자1], [장소1]).
+#
+# backend가 프로필의 실명·지명을 미리 치환해 넣은 자리표시자다. 이미 익명화된
+# 값이라 마스킹 대상이 아니며, 훼손되면 backend의 역치환이 실패해 환자에게
+# 실명 대신 라벨이나 [Family_M1] 같은 찌꺼기가 노출된다.
+# 프롬프트로도 "무시하라"고 지시하지만, LLM 준수를 믿지 않고 코드로 강제한다.
+_PERSONA_TOKEN_PATTERN = re.compile(r"\[[^\[\]\n]{1,30}\]")
+
 # 정규식 패턴: 1차 마스킹 대상
 _PATTERNS = {
     "phone": re.compile(
@@ -77,13 +85,18 @@ class MaskingService:
         # 2. entity_map 초기화 (원본 → 익명 식별자)
         entity_map: dict[str, str] = {}
 
+        # 2-1. 이미 익명화된 페르소나 토큰을 보호 대상으로 수집
+        persona_tokens = set(_PERSONA_TOKEN_PATTERN.findall(raw_text))
+
         # 3. 정규식 1차 마스킹 (전화번호, 주민번호, 이메일)
         text_after_regex = self._apply_regex_masking(raw_text, entity_map)
 
         # 4. Gemini 2차 마스킹 (이름, 장소명)
         try:
             gemini_entities = await self._detect_pii_with_gemini(text_after_regex)
-            self._merge_gemini_entities(gemini_entities, entity_map)
+            self._merge_gemini_entities(
+                gemini_entities, entity_map, persona_tokens
+            )
         except GeminiApiError:
             # Gemini API 실패 시 정규식 결과만으로 부분 마스킹 진행 (UC-2 예외 흐름)
             pass
@@ -147,19 +160,38 @@ class MaskingService:
         data = json.loads(cleaned)
         return data.get("entities", [])
 
+    @staticmethod
+    def _overlaps_persona_token(original: str, persona_tokens: set[str]) -> bool:
+        """감지된 원본이 페르소나 토큰과 겹치는지 판단.
+
+        Gemini가 "[손자1]" 전체를 사람 이름으로 잡거나("original" == 토큰),
+        "손자1"/"장소" 처럼 토큰 내부 일부만 잡는 경우를 모두 걸러낸다.
+        """
+        return any(
+            original in token or token in original for token in persona_tokens
+        )
+
     def _merge_gemini_entities(
         self,
         entities: list[dict],
         entity_map: dict[str, str],
+        persona_tokens: set[str] | None = None,
     ) -> None:
-        """Gemini 감지 결과를 entity_map에 병합."""
+        """Gemini 감지 결과를 entity_map에 병합.
+
+        페르소나 토큰과 겹치는 감지 결과는 무시한다 — 이미 익명화된 자리표시자를
+        다시 치환하면 backend의 역치환이 깨진다.
+        """
         person_counters: dict[str, int] = {"M": 0, "F": 0, "U": 0}
         place_counter = 0
+        tokens = persona_tokens or set()
 
         for entity in entities:
             original = entity.get("original", "").strip()
             entity_type = entity.get("type", "")
             if not original or original in entity_map:
+                continue
+            if self._overlaps_persona_token(original, tokens):
                 continue
 
             if entity_type == "person":
