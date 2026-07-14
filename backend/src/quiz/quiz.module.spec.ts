@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { MemoryEntry } from '../memory/entities/memory-entry.entity';
 import { PatientMemoryNote } from '../memory/entities/patient-memory-note.entity';
+import { PersonaContextService } from '../profile/services/persona-context.service';
 import { QuizAttempt } from './entities/quiz-attempt.entity';
 import { QuizBestScore } from './entities/quiz-best-score.entity';
 import { QabResult } from './entities/qab-result.entity';
@@ -69,6 +70,14 @@ describe('Quiz Phase 3 와이어링', () => {
         {
           provide: WISH_CONVERSION_CLIENT,
           useValue: { convert: jest.fn() },
+        },
+        {
+          provide: PersonaContextService,
+          useValue: {
+            buildTokenMap: jest.fn(async () => ({})),
+            tokenizeWithMap: jest.fn((text: string) => text),
+            restorePersonaText: jest.fn((text: string) => text),
+          },
         },
       ],
     }).compile();

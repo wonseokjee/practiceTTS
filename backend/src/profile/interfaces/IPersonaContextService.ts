@@ -31,6 +31,15 @@ export interface IPersonaContextService {
   buildTokenMap(patientId: string): Promise<Record<string, string>>;
 
   /**
+   * 이미 만든 tokenMap으로 임의 텍스트의 실명을 토큰으로 치환한다.
+   *
+   * buildPersonaContext는 컨텍스트 한 덩어리를 전제로 배경 문장까지 덧붙이므로,
+   * 여러 조각(퀴즈의 노트별 answerText 등)을 각각 치환할 때 쓴다.
+   * - tokenMap이 비면(프로필 미등록) 원문을 그대로 반환한다.
+   */
+  tokenizeWithMap(text: string, tokenMap: Record<string, string>): string;
+
+  /**
    * LLM 산출물의 토큰을 실명으로 역치환한다.
    * - 매핑에 없는 토큰은 관계/장소 라벨로 폴백하여 토큰이 환자에게 노출되지 않게 한다.
    */

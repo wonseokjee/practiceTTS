@@ -3,6 +3,7 @@ import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, LessThan, Repository } from 'typeorm';
 import { MemoryEntry } from '../memory/entities/memory-entry.entity';
 import { PatientMemoryNote } from '../memory/entities/patient-memory-note.entity';
+import { PersonaContextService } from '../profile/services/persona-context.service';
 import { DEFAULT_QUIZ_DISTRIBUTION } from './constants/quiz-distribution';
 import { QuizSetSummaryDto } from './dto/quiz-set-summary.dto';
 import {
@@ -156,6 +157,7 @@ export class QuizService {
     private readonly scorer: IQuizScorer,
     @Inject(WISH_CONVERSION_CLIENT)
     private readonly wishClient: IWishConversionClient,
+    private readonly personaContext: PersonaContextService,
   ) {}
 
   /**
@@ -320,14 +322,23 @@ export class QuizService {
     entry: MemoryEntry,
     notes: PatientMemoryNote[],
   ): Promise<void> {
+    // 페르소나 토큰화: 가족 실명·지명이 외부 LLM(Gemini)에 그대로 나가지 않도록
+    // [아들1]/[장소1] 토큰으로 치환한다. 프로필 미등록이면 빈 맵 → 원문 유지(무중단).
+    const tokenMap = await this.buildTokenMapBestEffort(entry.patientId);
+
     const payload: IQuizGenerationPayload = {
       patientNotes: notes.map((note) => ({
         category: note.category,
-        answerText: note.answerText,
+        answerText: this.personaContext.tokenizeWithMap(
+          note.answerText,
+          tokenMap,
+        ),
       })),
       targetWords:
         entry.targetWords && entry.targetWords.length > 0
-          ? entry.targetWords
+          ? entry.targetWords.map((w) =>
+              this.personaContext.tokenizeWithMap(w, tokenMap),
+            )
           : undefined,
       distribution: DEFAULT_QUIZ_DISTRIBUTION,
       // photoTags는 R7=(c)에 따라 미전달 (Phase 2에서 R7=(b)로 전환)
@@ -336,8 +347,15 @@ export class QuizService {
     try {
       const result = await this.generationClient.generate(payload);
 
+      // 역치환: LLM이 돌려준 토큰을 실명으로 되돌린다.
+      // 시나리오 경로(토큰 상태로 저장 후 표시 시 역치환)와 달리, 퀴즈는 정답이
+      // 타일 분해·채점 비교·speech 노출 3곳에서 쓰이므로 저장 전에 되돌린다.
+      // (DB는 이미 patient_memory_notes.answer_text에 평문 실명을 보관하므로
+      //  새로운 PII 노출 클래스가 아니다. 경계는 외부 LLM이다.)
+      const restored = this.restorePersonaQuestions(result.questions, tokenMap);
+
       // 빈칸(fill_blank)을 타일 조합/말하기로 변환 (고령 환자 타이핑 부담 제거).
-      const diversified = this.diversifyRecallQuestions(result.questions);
+      const diversified = this.diversifyRecallQuestions(restored);
 
       // 문항 영속화 + ready 전이를 한 트랜잭션으로 묶어 원자성을 보장한다.
       // (questions만 저장되고 set이 pending에 박제되는 부분 상태를 방지)
@@ -372,6 +390,54 @@ export class QuizService {
       });
       throw error;
     }
+  }
+
+  /**
+   * 프로필 기반 tokenMap을 best-effort로 만든다.
+   * 프로필 미등록·조회 실패 시 빈 맵 → 개인화만 생략하고 퀴즈 생성은 계속한다.
+   */
+  private async buildTokenMapBestEffort(
+    patientId: string,
+  ): Promise<Record<string, string>> {
+    try {
+      return await this.personaContext.buildTokenMap(patientId);
+    } catch {
+      return {};
+    }
+  }
+
+  /**
+   * LLM 산출 문항의 토큰([아들1])을 실명(민준)으로 되돌린다.
+   *
+   * 정답이 토큰이었다면 hintFirstChar가 '['가 되어버리므로, 정답이 실제로
+   * 바뀐 경우에만 복원된 정답의 첫 글자로 다시 뽑는다.
+   */
+  private restorePersonaQuestions(
+    questions: GeneratedQuizQuestion[],
+    tokenMap: Record<string, string>,
+  ): GeneratedQuizQuestion[] {
+    if (Object.keys(tokenMap).length === 0) {
+      return questions;
+    }
+    return questions.map((q) => {
+      const correctAnswer = this.personaContext.restorePersonaText(
+        q.correctAnswer,
+        tokenMap,
+      );
+      const answerChanged = correctAnswer !== q.correctAnswer;
+      return {
+        ...q,
+        prompt: this.personaContext.restorePersonaText(q.prompt, tokenMap),
+        choices:
+          q.choices?.map((c) =>
+            this.personaContext.restorePersonaText(c, tokenMap),
+          ) ?? null,
+        correctAnswer,
+        hintFirstChar: answerChanged
+          ? (correctAnswer.trim()[0] ?? null)
+          : q.hintFirstChar,
+      };
+    });
   }
 
   /**

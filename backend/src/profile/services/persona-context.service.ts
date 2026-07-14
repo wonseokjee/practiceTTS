@@ -83,6 +83,27 @@ export class PersonaContextService implements IPersonaContextService {
     return this.buildMappings(source).tokenMap;
   }
 
+  tokenizeWithMap(text: string, tokenMap: Record<string, string>): string {
+    const pairs: ReplacePair[] = Object.entries(tokenMap).map(
+      ([token, realName]) => ({ token, realName }),
+    );
+    if (pairs.length === 0 || !text) {
+      return text;
+    }
+    // 긴 실명 우선(부분 문자열 오치환 방지) — sealRealNames가 정렬 없이도
+    // 전부 봉합하지만, 여기서 순서를 지켜야 "영희"가 "영희자"를 깨지 않는다.
+    const sorted = [...pairs].sort(
+      (a, b) => b.realName.length - a.realName.length,
+    );
+    let tokenized = text;
+    for (const { realName, token } of sorted) {
+      if (realName) {
+        tokenized = tokenized.split(realName).join(token);
+      }
+    }
+    return tokenized;
+  }
+
   restorePersonaText(
     tokenizedText: string,
     tokenMap: Record<string, string>,

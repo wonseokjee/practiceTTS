@@ -12,6 +12,7 @@ import { QuizSet } from './entities/quiz-set.entity';
 import { QUIZ_GENERATION_CLIENT } from './interfaces/IQuizGenerationClient';
 import { QUIZ_SCORER } from './interfaces/IQuizScorer';
 import { WISH_CONVERSION_CLIENT } from './interfaces/IWishConversionClient';
+import { ProfileModule } from '../profile/profile.module';
 import { QuizController } from './quiz.controller';
 import { QuizService } from './quiz.service';
 import { QuizGenerationClient } from './services/quiz-generation.client';
@@ -44,6 +45,8 @@ import { WishConversionClient } from './services/wish-conversion.client';
     ]),
     HttpModule,
     AuthModule,
+    // 퀴즈 생성 시 가족 실명·지명을 토큰화(LLM 노출 차단)하고 산출물을 역치환한다.
+    ProfileModule,
   ],
   controllers: [QuizController],
   providers: [

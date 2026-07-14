@@ -121,6 +121,34 @@ describe('PersonaContextService', () => {
     });
   });
 
+  describe('tokenizeWithMap', () => {
+    it('tokenMap의 실명을 토큰으로 치환한다', () => {
+      const out = service.tokenizeWithMap('철수랑 민준이가 왔다', {
+        '[아들1]': '철수',
+        '[손자1]': '민준',
+      });
+      expect(out).toBe('[아들1]랑 [손자1]이가 왔다');
+      expect(out).not.toContain('철수');
+      expect(out).not.toContain('민준');
+    });
+
+    it('긴 실명을 우선 치환해 부분 문자열을 깨뜨리지 않는다', () => {
+      const out = service.tokenizeWithMap('영희자와 영희', {
+        '[딸1]': '영희',
+        '[친구1]': '영희자',
+      });
+      expect(out).toBe('[친구1]와 [딸1]');
+    });
+
+    it('tokenMap이 비면(프로필 미등록) 원문을 그대로 반환한다', () => {
+      expect(service.tokenizeWithMap('철수랑 갔다', {})).toBe('철수랑 갔다');
+    });
+
+    it('빈 문자열은 그대로 반환한다', () => {
+      expect(service.tokenizeWithMap('', { '[아들1]': '철수' })).toBe('');
+    });
+  });
+
   describe('restorePersonaText', () => {
     it('토큰을 실명으로 복원한다', () => {
       const restored = service.restorePersonaText('[손자1]와 함께 갔던 곳', {

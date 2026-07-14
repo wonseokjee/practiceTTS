@@ -13,6 +13,11 @@ import { QuizError, QuizErrorCode } from './errors/quiz.errors';
 import { QUIZ_GENERATION_CLIENT } from './interfaces/IQuizGenerationClient';
 import { QUIZ_SCORER } from './interfaces/IQuizScorer';
 import { WISH_CONVERSION_CLIENT } from './interfaces/IWishConversionClient';
+import { PersonaContextService } from '../profile/services/persona-context.service';
+import type {
+  PersonaSource,
+  ProfileService,
+} from '../profile/profile.service';
 import { QuizService } from './quiz.service';
 
 /**
@@ -47,6 +52,11 @@ describe('QuizService', () => {
   let generationClientMock: { generate: jest.Mock };
   let scorerMock: { isCorrect: jest.Mock; toScore: jest.Mock };
   let wishClientMock: { convert: jest.Mock };
+
+  // 페르소나는 목이 아니라 실제 구현을 쓴다(스텁 프로필 소스만 주입).
+  // 토큰화·역치환이 실제로 도는지 검증해야 PII 경계가 보장되기 때문.
+  let personaSource: PersonaSource | null;
+  let personaContextMock: PersonaContextService;
 
   function buildRepoMock() {
     return {
@@ -121,6 +131,12 @@ describe('QuizService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
 
+    // 기본값: 프로필 미등록 → 개인화 생략(원문 그대로 통과)
+    personaSource = null;
+    personaContextMock = new PersonaContextService({
+      getPersonaSource: jest.fn(async () => personaSource),
+    } as unknown as ProfileService);
+
     quizSetRepo = buildRepoMock();
     quizQuestionRepo = buildRepoMock();
     quizAttemptRepo = buildRepoMock();
@@ -184,10 +200,118 @@ describe('QuizService', () => {
         { provide: QUIZ_GENERATION_CLIENT, useValue: generationClientMock },
         { provide: QUIZ_SCORER, useValue: scorerMock },
         { provide: WISH_CONVERSION_CLIENT, useValue: wishClientMock },
+        { provide: PersonaContextService, useValue: personaContextMock },
       ],
     }).compile();
 
     service = moduleRef.get<QuizService>(QuizService);
+  });
+
+  // ─── 페르소나 개인화 (PII 경계) ──────────────────────────────────
+  describe('generateForMemoryEntry — 페르소나 토큰화/역치환', () => {
+    /** 프로필(손자=민준, 고향=강릉)이 등록된 상태를 구성한다 */
+    function arrangeWithProfile(): void {
+      personaSource = {
+        hometown: '강릉',
+        occupation: null,
+        hobbies: [],
+        significantPlaces: [],
+        family: [
+          {
+            relation: 'grandson',
+            name: '민준',
+            gender: 'M',
+            relationOrdinal: 1,
+          },
+        ],
+      };
+      memoryEntryRepo.findOne.mockResolvedValue(buildEntry());
+      patientMemoryNoteRepo.find.mockResolvedValue([
+        buildNote({ answerText: '민준이랑 강릉 바다에 다녀왔어요' }),
+      ]);
+      quizSetRepo.findOne.mockResolvedValue(null);
+      quizSetRepo.save.mockResolvedValue(
+        buildSet({ generationStatus: 'pending' }),
+      );
+      quizQuestionRepo.save.mockResolvedValue([]);
+      quizSetRepo.update.mockResolvedValue({ affected: 1 });
+    }
+
+    it('가족 실명·지명이 LLM 페이로드에 나가지 않는다 (토큰만 전달)', async () => {
+      arrangeWithProfile();
+      generationClientMock.generate.mockResolvedValue({
+        questions: [],
+        model: 'm',
+        fallbackUsed: false,
+      });
+
+      await service.generateForMemoryEntry(MEMORY_ENTRY_ID);
+
+      const sent = JSON.stringify(
+        generationClientMock.generate.mock.calls[0][0],
+      );
+      expect(sent).not.toContain('민준');
+      expect(sent).not.toContain('강릉');
+      expect(sent).toContain('[손자1]');
+      expect(sent).toContain('[장소1]');
+    });
+
+    it('LLM이 돌려준 토큰은 실명으로 역치환되어 저장된다', async () => {
+      arrangeWithProfile();
+      generationClientMock.generate.mockResolvedValue({
+        questions: [
+          {
+            type: 'multiple_choice',
+            prompt: '[손자1]와 어디에 갔나요?',
+            choices: ['[장소1]', '서울'],
+            correctAnswer: '[장소1]',
+            hintFirstChar: null,
+          },
+        ],
+        model: 'm',
+        fallbackUsed: false,
+      });
+
+      await service.generateForMemoryEntry(MEMORY_ENTRY_ID);
+
+      const saved = quizQuestionRepo.create.mock.calls[0][0] as {
+        prompt: string;
+        choices: string[];
+        correctAnswer: string;
+      };
+      expect(saved.prompt).toBe('민준와 어디에 갔나요?');
+      expect(saved.choices).toEqual(['강릉', '서울']);
+      expect(saved.correctAnswer).toBe('강릉');
+      // 토큰이 환자에게 그대로 노출되면 안 된다
+      expect(JSON.stringify(saved)).not.toContain('[손자');
+      expect(JSON.stringify(saved)).not.toContain('[장소');
+    });
+
+    it('프로필 미등록이면 원문을 그대로 전달하고 생성은 계속된다', async () => {
+      personaSource = null; // 미등록
+      memoryEntryRepo.findOne.mockResolvedValue(buildEntry());
+      patientMemoryNoteRepo.find.mockResolvedValue([
+        buildNote({ answerText: '민준이랑 바다에 갔어요' }),
+      ]);
+      quizSetRepo.findOne.mockResolvedValue(null);
+      quizSetRepo.save.mockResolvedValue(
+        buildSet({ generationStatus: 'pending' }),
+      );
+      quizQuestionRepo.save.mockResolvedValue([]);
+      quizSetRepo.update.mockResolvedValue({ affected: 1 });
+      generationClientMock.generate.mockResolvedValue({
+        questions: [],
+        model: 'm',
+        fallbackUsed: false,
+      });
+
+      await service.generateForMemoryEntry(MEMORY_ENTRY_ID);
+
+      const payload = generationClientMock.generate.mock.calls[0][0] as {
+        patientNotes: Array<{ answerText: string }>;
+      };
+      expect(payload.patientNotes[0].answerText).toBe('민준이랑 바다에 갔어요');
+    });
   });
 
   // ─── 자동 생성 ─────────────────────────────────────────────────────
