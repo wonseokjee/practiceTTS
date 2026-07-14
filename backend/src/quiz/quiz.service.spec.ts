@@ -1148,12 +1148,12 @@ describe('QuizService', () => {
     });
   });
 
-  // ─── 고아 pending 복구 (TODO#3: 이벤트 durability) ────────────────────
-  describe('recoverStalePendingSets', () => {
+  // ─── 막힌 QuizSet 복구 (pending durability + failed 구제) ─────────
+  describe('recoverStuckSets', () => {
     it('stale pending set이 없으면 아무 것도 하지 않고 0을 반환한다', async () => {
       quizSetRepo.find.mockResolvedValue([]);
 
-      const result = await service.recoverStalePendingSets();
+      const result = await service.recoverStuckSets();
 
       expect(result).toEqual({ recovered: 0, failed: 0, skipped: 0 });
       expect(generationClientMock.generate).not.toHaveBeenCalled();
@@ -1181,7 +1181,7 @@ describe('QuizService', () => {
       quizQuestionRepo.save.mockResolvedValue([]);
       quizSetRepo.update.mockResolvedValue({ affected: 1 });
 
-      const result = await service.recoverStalePendingSets();
+      const result = await service.recoverStuckSets();
 
       expect(result.recovered).toBe(1);
       expect(generationClientMock.generate).toHaveBeenCalledTimes(1);
@@ -1197,7 +1197,7 @@ describe('QuizService', () => {
       ]);
       memoryEntryRepo.findOne.mockResolvedValue(null); // 삭제됨
 
-      const result = await service.recoverStalePendingSets();
+      const result = await service.recoverStuckSets();
 
       expect(result.failed).toBe(1);
       expect(generationClientMock.generate).not.toHaveBeenCalled();
@@ -1214,7 +1214,7 @@ describe('QuizService', () => {
       memoryEntryRepo.findOne.mockResolvedValue(buildEntry());
       patientMemoryNoteRepo.find.mockResolvedValue([]); // 노트 없음
 
-      const result = await service.recoverStalePendingSets();
+      const result = await service.recoverStuckSets();
 
       expect(result.failed).toBe(1);
       expect(generationClientMock.generate).not.toHaveBeenCalled();
@@ -1222,6 +1222,94 @@ describe('QuizService', () => {
         QUIZ_SET_ID,
         expect.objectContaining({ generationStatus: 'failed' }),
       );
+    });
+
+    it('되살릴 수 없는 set은 재시도 대상에서 영구 제외한다 (attempts를 상한으로)', async () => {
+      quizSetRepo.find.mockResolvedValue([
+        buildSet({ generationStatus: 'pending' }),
+      ]);
+      memoryEntryRepo.findOne.mockResolvedValue(null); // 원본 삭제됨
+
+      await service.recoverStuckSets();
+
+      // 매 부팅마다 같은 set을 다시 집어들지 않도록 상한을 박아둔다
+      expect(quizSetRepo.update).toHaveBeenCalledWith(
+        QUIZ_SET_ID,
+        expect.objectContaining({ generationAttempts: 3 }),
+      );
+    });
+
+    it('failed set(업스트림 일시 오류)도 재시도해 ready로 복구한다', async () => {
+      quizSetRepo.find.mockResolvedValue([
+        buildSet({ generationStatus: 'failed', generationAttempts: 1 }),
+      ]);
+      memoryEntryRepo.findOne.mockResolvedValue(buildEntry());
+      patientMemoryNoteRepo.find.mockResolvedValue([buildNote()]);
+      generationClientMock.generate.mockResolvedValue({
+        questions: [
+          {
+            type: 'multiple_choice',
+            prompt: 'p',
+            choices: ['a', 'b'],
+            correctAnswer: 'a',
+            hintFirstChar: null,
+          },
+        ],
+        model: 'm',
+        fallbackUsed: false,
+      });
+      quizQuestionRepo.save.mockResolvedValue([]);
+      quizSetRepo.update.mockResolvedValue({ affected: 1 });
+
+      const result = await service.recoverStuckSets();
+
+      expect(result.recovered).toBe(1);
+      expect(quizSetRepo.update).toHaveBeenCalledWith(
+        QUIZ_SET_ID,
+        expect.objectContaining({ generationStatus: 'ready' }),
+      );
+    });
+
+    it('시도 상한 미만인 set만 조회한다 (영구 실패 콘텐츠 무한 재시도 방지)', async () => {
+      quizSetRepo.find.mockResolvedValue([]);
+
+      await service.recoverStuckSets();
+
+      // pending/failed 두 조건 모두 attempts < 3 으로 제한되어야 한다
+      const where = quizSetRepo.find.mock.calls[0][0].where as Array<
+        Record<string, unknown>
+      >;
+      expect(where).toHaveLength(2);
+      for (const condition of where) {
+        expect(condition.generationAttempts).toBeDefined();
+      }
+      expect(where.map((c) => c.generationStatus)).toEqual([
+        'pending',
+        'failed',
+      ]);
+    });
+
+    it('생성 시도 시작 시점에 attempts를 증가시킨다 (도중 crash에도 카운트 유지)', async () => {
+      memoryEntryRepo.findOne.mockResolvedValue(buildEntry());
+      patientMemoryNoteRepo.find.mockResolvedValue([buildNote()]);
+      quizSetRepo.findOne.mockResolvedValue(null);
+      quizSetRepo.save.mockResolvedValue(
+        buildSet({ generationStatus: 'pending', generationAttempts: 1 }),
+      );
+      generationClientMock.generate.mockResolvedValue({
+        questions: [],
+        model: 'm',
+        fallbackUsed: false,
+      });
+      quizQuestionRepo.save.mockResolvedValue([]);
+      quizSetRepo.update.mockResolvedValue({ affected: 1 });
+
+      await service.generateForMemoryEntry(MEMORY_ENTRY_ID);
+
+      // LLM 호출 전에 attempts=2로 선반영
+      expect(quizSetRepo.update).toHaveBeenCalledWith(QUIZ_SET_ID, {
+        generationAttempts: 2,
+      });
     });
   });
 

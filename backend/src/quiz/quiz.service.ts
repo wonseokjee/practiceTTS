@@ -45,6 +45,13 @@ const STALE_PENDING_MS = 10 * 60 * 1000;
 /** 1회 복구에서 처리할 최대 QuizSet 수 (부팅 스톰 방지) */
 const MAX_RECOVERY_BATCH = 50;
 
+/**
+ * 생성 시도 상한. 부팅 복구가 failed set을 재시도하되, 노트 부족(422)처럼
+ * 영원히 실패할 콘텐츠가 매 부팅마다 LLM을 때리는 것을 막는다.
+ * 상한을 넘긴 set은 수동 재생성(force)으로만 되살릴 수 있다.
+ */
+const MAX_GENERATION_ATTEMPTS = 3;
+
 /** 목록 조회 기본/최대 limit */
 const DEFAULT_LIST_LIMIT = 20;
 const MAX_LIST_LIMIT = 50;
@@ -336,6 +343,12 @@ export class QuizService {
     entry: MemoryEntry,
     notes: PatientMemoryNote[],
   ): Promise<void> {
+    // 시도 횟수를 '시작' 시점에 기록한다. 생성 도중 프로세스가 죽어도 카운트가
+    // 남아야 부팅 복구가 같은 set을 영원히 재시도하지 않는다.
+    await this.quizSetRepository.update(quizSet.id, {
+      generationAttempts: (quizSet.generationAttempts ?? 0) + 1,
+    });
+
     try {
       // 페르소나 토큰화: 가족 실명·지명이 외부 LLM(Gemini)에 그대로 나가지 않도록
       // [아들1]/[장소1] 토큰으로 치환한다. 프로필 미등록이면 빈 맵 → 원문 유지(무중단).
@@ -948,25 +961,43 @@ export class QuizService {
   }
 
   /**
-   * 고아 pending QuizSet 복구 (이벤트 durability 보강).
+   * 막힌 QuizSet 복구 (이벤트 durability 보강 + 일시 실패 구제).
    *
-   * 배경: 자동 트리거는 in-process EventEmitter2 fire-and-forget이라,
-   * pending QuizSet 저장 후 LLM 생성 완료 전 프로세스가 죽거나 재시작되면
-   * 해당 set이 'pending'에 영구히 박제된다(환자에게 영영 도착하지 않음).
+   * 두 종류를 되살린다:
    *
-   * 본 메서드는 부팅 시(@OnApplicationBootstrap) 호출되어, STALE_PENDING_MS보다
-   * 오래된 pending set을 찾아 생성을 재시도한다. 정상 진행 중인 생성(25s 이내)은
-   * 임계값 밖이라 건드리지 않는다.
+   * 1. 고아 pending — 자동 트리거는 in-process EventEmitter2 fire-and-forget이라,
+   *    pending 저장 후 LLM 생성 완료 전 프로세스가 죽으면 'pending'에 영구히
+   *    박제된다. STALE_PENDING_MS보다 오래된 것만 잡아 정상 진행 중인 생성은
+   *    건드리지 않는다.
    *
-   * - 원본 라이프로그가 삭제됐거나 노트가 없으면 더 이상 생성 불가 → failed로 마감.
+   * 2. failed — 업스트림 일시 오류(Gemini 레이트리밋 등)로 실패한 set은
+   *    재시도하면 대개 성공한다. 재시도가 없으면 보호자가 글을 써도 퀴즈가
+   *    조용히 안 만들어진 채로 남는다.
+   *
+   * 무한 재시도 방지: generationAttempts가 MAX_GENERATION_ATTEMPTS에 도달한 set은
+   * 제외한다. 노트 부족(422)처럼 영원히 실패할 콘텐츠가 매 부팅마다 LLM을 때리는
+   * 것을 막는다. 상한을 넘긴 set은 수동 재생성(force)으로만 되살릴 수 있다.
+   *
+   * - 원본 라이프로그가 삭제됐거나 노트가 없으면 더 이상 생성 불가 → failed로 마감하고
+   *   재시도 대상에서 영구 제외한다(attempts를 상한으로 올린다).
    * - 각 set 처리 실패는 다음 set 처리를 막지 않는다(독립적).
    */
-  async recoverStalePendingSets(
+  async recoverStuckSets(
     now: Date = new Date(),
   ): Promise<{ recovered: number; failed: number; skipped: number }> {
     const threshold = new Date(now.getTime() - STALE_PENDING_MS);
     const stale = await this.quizSetRepository.find({
-      where: { generationStatus: 'pending', createdAt: LessThan(threshold) },
+      where: [
+        {
+          generationStatus: 'pending',
+          createdAt: LessThan(threshold),
+          generationAttempts: LessThan(MAX_GENERATION_ATTEMPTS),
+        },
+        {
+          generationStatus: 'failed',
+          generationAttempts: LessThan(MAX_GENERATION_ATTEMPTS),
+        },
+      ],
       order: { createdAt: 'ASC' },
       take: MAX_RECOVERY_BATCH,
     });
@@ -982,9 +1013,11 @@ export class QuizService {
         where: { id: set.memoryEntryId, isActive: true },
       });
       if (!entry) {
+        // 되살릴 방법이 없다 → 재시도 대상에서 영구 제외
         await this.quizSetRepository.update(set.id, {
           generationStatus: 'failed',
           generationError: '원본 라이프로그가 삭제되어 문제를 만들 수 없어요.',
+          generationAttempts: MAX_GENERATION_ATTEMPTS,
         });
         failed += 1;
         continue;
@@ -998,6 +1031,7 @@ export class QuizService {
         await this.quizSetRepository.update(set.id, {
           generationStatus: 'failed',
           generationError: '환자 답변이 없어 문제를 만들 수 없어요.',
+          generationAttempts: MAX_GENERATION_ATTEMPTS,
         });
         failed += 1;
         continue;
@@ -1010,15 +1044,13 @@ export class QuizService {
         // runGeneration이 이미 status=failed로 기록함. 여기서는 집계만.
         const message =
           error instanceof Error ? error.message : '알 수 없는 오류';
-        this.logger.warn(
-          `pending 복구 실패 (quizSetId=${set.id}): ${message}`,
-        );
+        this.logger.warn(`QuizSet 복구 실패 (quizSetId=${set.id}): ${message}`);
         failed += 1;
       }
     }
 
     this.logger.log(
-      `pending QuizSet 복구 완료 (recovered=${recovered}, failed=${failed}, scanned=${stale.length})`,
+      `막힌 QuizSet 복구 완료 (recovered=${recovered}, failed=${failed}, scanned=${stale.length})`,
     );
     return { recovered, failed, skipped: 0 };
   }

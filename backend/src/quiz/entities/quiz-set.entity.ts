@@ -60,6 +60,12 @@ export class QuizSet {
   })
   generationStatus: QuizGenerationStatus;
 
+  // 생성 시도 횟수. 부팅 복구가 failed set을 재시도하되 무한 반복하지 않도록
+  // 상한(MAX_GENERATION_ATTEMPTS)을 거는 근거가 된다.
+  // 시도 '시작' 시점에 증가시켜, 생성 도중 프로세스가 죽어도 카운트가 남는다.
+  @Column({ name: 'generation_attempts', type: 'smallint', default: 0 })
+  generationAttempts: number;
+
   // 실패 시 사유 저장
   @Column({ name: 'generation_error', type: 'text', nullable: true })
   generationError: string | null;

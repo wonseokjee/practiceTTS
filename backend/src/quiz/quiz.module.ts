@@ -71,15 +71,16 @@ export class QuizModule implements OnApplicationBootstrap {
   constructor(private readonly quizService: QuizService) {}
 
   /**
-   * 부팅 직후 고아 pending QuizSet을 복구한다 (이벤트 durability 보강).
-   * - 이전 프로세스가 LLM 생성 중 죽어 'pending'에 박제된 set을 재시도.
+   * 부팅 직후 막힌 QuizSet을 복구한다.
+   * - 고아 pending: 이전 프로세스가 LLM 생성 중 죽어 박제된 set.
+   * - failed: 업스트림 일시 오류로 실패한 set (시도 상한까지만 재시도).
    * - fire-and-forget: 복구 작업(LLM 호출 다수)이 앱 부팅을 막지 않도록 await하지 않는다.
    */
   onApplicationBootstrap(): void {
-    void this.quizService.recoverStalePendingSets().catch((error) => {
+    void this.quizService.recoverStuckSets().catch((error) => {
       const message =
         error instanceof Error ? error.message : '알 수 없는 오류';
-      this.logger.warn(`pending QuizSet 복구 작업 실패: ${message}`);
+      this.logger.warn(`QuizSet 복구 작업 실패: ${message}`);
     });
   }
 }
