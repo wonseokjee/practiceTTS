@@ -296,6 +296,41 @@ describe('QuizService', () => {
       expect(JSON.stringify(saved)).not.toContain('[장소');
     });
 
+    it('토큰이 훼손된 문항([___1])은 저장하지 않고 제외한다', async () => {
+      // 실제 관측된 실패: LLM이 빈칸을 토큰 안쪽에 뚫어 [손자1] → [___1]이 되면
+      // 역치환도 라벨 폴백도 걸리지 않아 찌꺼기가 환자 화면에 노출된다.
+      arrangeWithProfile();
+      generationClientMock.generate.mockResolvedValue({
+        questions: [
+          {
+            type: 'multiple_choice',
+            prompt: '[손자1]과 어디에 갔나요?',
+            choices: ['[장소1]', '서울'],
+            correctAnswer: '[장소1]',
+            hintFirstChar: null,
+          },
+          {
+            type: 'multiple_choice',
+            prompt: '[___1]이랑 바다에 갔어요',
+            choices: ['조개', '파도'],
+            correctAnswer: '조개',
+            hintFirstChar: null,
+          },
+        ],
+        model: 'm',
+        fallbackUsed: false,
+      });
+
+      await service.generateForMemoryEntry(MEMORY_ENTRY_ID);
+
+      // 정상 문항 1개만 저장된다
+      expect(quizQuestionRepo.create).toHaveBeenCalledTimes(1);
+      const saved = quizQuestionRepo.create.mock.calls[0][0] as {
+        prompt: string;
+      };
+      expect(saved.prompt).toBe('민준과 어디에 갔나요?');
+    });
+
     it('프로필 미등록이면 원문을 그대로 전달하고 생성은 계속된다', async () => {
       personaSource = null; // 미등록
       memoryEntryRepo.findOne.mockResolvedValue(buildEntry());

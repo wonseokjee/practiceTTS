@@ -52,6 +52,12 @@ const MAX_LIST_LIMIT = 50;
 /** 따라읽기(speech) 문항 고정 안내 문구 — 회상이 아니라 단어를 보고/듣고 따라 말한다. */
 const SPEECH_REPEAT_PROMPT = '다음 단어를 듣고 따라 말해보세요';
 
+/**
+ * 역치환 후에도 남은 대괄호 잔재를 탐지한다(예: "[___1]", "[Family_M1]").
+ * 정상 문항에 대괄호가 쓰일 일은 없으므로 잔재는 곧 토큰 훼손을 뜻한다.
+ */
+const RESIDUAL_TOKEN_PATTERN = /\[[^\]\n]{0,30}\]/;
+
 /** 단일 답안 채점 결과 */
 export interface AttemptResult {
   questionId: string;
@@ -444,6 +450,9 @@ export class QuizService {
    *
    * 정답이 토큰이었다면 hintFirstChar가 '['가 되어버리므로, 정답이 실제로
    * 바뀐 경우에만 복원된 정답의 첫 글자로 다시 뽑는다.
+   *
+   * 역치환 후에도 대괄호 잔재가 남은 문항은 버린다 — LLM이 토큰을 훼손한
+   * 것이므로 정상 복원이 불가능하다(§dropBrokenPersonaQuestions).
    */
   private restorePersonaQuestions(
     questions: GeneratedQuizQuestion[],
@@ -452,7 +461,7 @@ export class QuizService {
     if (Object.keys(tokenMap).length === 0) {
       return questions;
     }
-    return questions.map((q) => {
+    const restored = questions.map((q) => {
       const correctAnswer = this.personaContext.restorePersonaText(
         q.correctAnswer,
         tokenMap,
@@ -471,6 +480,37 @@ export class QuizService {
           : q.hintFirstChar,
       };
     });
+
+    return this.dropBrokenPersonaQuestions(restored);
+  }
+
+  /**
+   * 역치환 후에도 대괄호 잔재가 남은 문항을 제거한다.
+   *
+   * LLM이 토큰을 통째로 보존하지 않고 훼손하는 경우가 실제로 관측된다.
+   * 대표적으로 빈칸을 토큰 **안쪽**에 뚫어버리는 경우: [손자1] → [___1].
+   * 이러면 tokenMap에도 없고 한글 라벨 폴백에도 걸리지 않아 "[___1]" 찌꺼기가
+   * 그대로 환자 화면에 노출되고, 정답도 실명이 아닌 관계 라벨이 되어버린다.
+   *
+   * 프롬프트로도 금지하지만 준수를 믿지 않고, 깨진 문항은 버린다.
+   * (문항 수가 줄어드는 편이 깨진 문항을 환자에게 보여주는 것보다 낫다.)
+   */
+  private dropBrokenPersonaQuestions(
+    questions: GeneratedQuizQuestion[],
+  ): GeneratedQuizQuestion[] {
+    const hasBracketArtifact = (q: GeneratedQuizQuestion): boolean =>
+      [q.prompt, q.correctAnswer, ...(q.choices ?? [])].some((text) =>
+        RESIDUAL_TOKEN_PATTERN.test(text ?? ''),
+      );
+
+    const kept = questions.filter((q) => !hasBracketArtifact(q));
+    const dropped = questions.length - kept.length;
+    if (dropped > 0) {
+      this.logger.warn(
+        `페르소나 토큰이 훼손된 문항 ${dropped}개를 제외했습니다 (LLM이 토큰을 쪼갬).`,
+      );
+    }
+    return kept;
   }
 
   /**
