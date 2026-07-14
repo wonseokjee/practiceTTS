@@ -185,8 +185,18 @@ export class TrainingService implements ITrainingService {
       throw new BadGatewayException('AI 서비스 호출에 실패했습니다.');
     }
 
-    // AI 응답을 암호화하여 저장
-    const encryptedAiMessage = this.encryptContent(chatResult.ai_message);
+    // 페르소나 역치환: /chat은 토큰화된 masked_context로 답을 만들므로 응답에
+    // [손자1] 같은 토큰이 그대로 섞여 나온다. 환자에게 보여주기 전에 실명으로
+    // 되돌린다. (createSession의 openingQuestion만 되돌리고 이후 대화 턴을
+    // 빠뜨리면, 첫 질문 뒤 모든 대화에서 환자가 토큰을 보게 된다.)
+    const tokenMap = await this.personaContext.buildTokenMap(patientId);
+    const aiMessage = this.personaContext.restorePersonaText(
+      chatResult.ai_message,
+      tokenMap,
+    );
+
+    // AI 응답을 암호화하여 저장 (환자가 실제로 본 문장을 남긴다)
+    const encryptedAiMessage = this.encryptContent(aiMessage);
     const aiLog = this.logRepository.create({
       sessionId,
       role: 'ai',
@@ -196,7 +206,7 @@ export class TrainingService implements ITrainingService {
     await this.logRepository.save(aiLog);
 
     return {
-      aiMessage: chatResult.ai_message,
+      aiMessage,
       hintTriggered: chatResult.hint_triggered,
       hintLevel: chatResult.hint_level,
     };

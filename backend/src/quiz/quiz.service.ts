@@ -60,10 +60,19 @@ const MAX_LIST_LIMIT = 50;
 const SPEECH_REPEAT_PROMPT = '다음 단어를 듣고 따라 말해보세요';
 
 /**
- * 역치환 후에도 남은 대괄호 잔재를 탐지한다(예: "[___1]", "[Family_M1]").
- * 정상 문항에 대괄호가 쓰일 일은 없으므로 잔재는 곧 토큰 훼손을 뜻한다.
+ * 환자에게 절대 보여선 안 되는 기계 잔재를 탐지한다.
+ *
+ * 두 종류가 섞여 들어온다:
+ * 1. 훼손된 페르소나 토큰 — 대괄호 잔재("[___1]"). LLM이 토큰을 쪼갠 흔적.
+ * 2. /mask가 만든 익명화 라벨 — "Family_M1", "Place_1", "PHONE_1" 등.
+ *    프로필에 등록되지 않은 이름·장소는 마스킹되어 이 라벨로 바뀌고, 퀴즈 LLM은
+ *    그 라벨을 그대로 문제에 쓴다("Family_F1과 어디에 갔나요?"). 대괄호가 없어
+ *    토큰 잔재 검사에 걸리지 않는다.
+ *
+ * 정상 문항에 이런 문자열이 쓰일 일은 없다.
  */
-const RESIDUAL_TOKEN_PATTERN = /\[[^\]\n]{0,30}\]/;
+const RESIDUAL_ARTIFACT_PATTERN =
+  /\[[^\]\n]{0,30}\]|(?:Family|Place|PHONE|SSN|EMAIL)_[A-Z]?\d+/;
 
 /**
  * /mask 동시 호출 상한. 노트(최대 5개)를 전부 병렬로 쏘면 곧바로 이어지는
@@ -385,6 +394,17 @@ export class QuizService {
       // 빈칸(fill_blank)을 타일 조합/말하기로 변환 (고령 환자 타이핑 부담 제거).
       const diversified = this.diversifyRecallQuestions(restored);
 
+      // 쓸 만한 문항이 하나도 안 남았으면 ready로 넘기지 않는다.
+      // 0문항 set을 ready로 두면 환자는 문제 없는 퀴즈를 열고, submitAttempts의
+      // completed(totalQuestions > 0 && ...)가 영영 false라 완료조차 못 한다.
+      // failed로 마감해 복구(재생성) 경로를 타게 한다.
+      if (diversified.length === 0) {
+        throw new QuizError(
+          QuizErrorCode.LLM_GENERATION_FAILED,
+          '문제를 만들지 못했어요. 잠시 후 다시 시도해주세요.',
+        );
+      }
+
       // 문항 영속화 + ready 전이를 한 트랜잭션으로 묶어 원자성을 보장한다.
       // (questions만 저장되고 set이 pending에 박제되는 부분 상태를 방지)
       await this.dataSource.transaction(async (manager) => {
@@ -493,8 +513,10 @@ export class QuizService {
     questions: GeneratedQuizQuestion[],
     tokenMap: Record<string, string>,
   ): GeneratedQuizQuestion[] {
+    // 프로필이 없어도 잔재 검사는 반드시 돈다 — /mask가 만드는 Family_M1/Place_1
+    // 라벨은 프로필 등록 여부와 무관하게 생기고, 그대로 두면 환자가 보게 된다.
     if (Object.keys(tokenMap).length === 0) {
-      return questions;
+      return this.dropArtifactQuestions(questions);
     }
     const restored = questions.map((q) => {
       const correctAnswer = this.personaContext.restorePersonaText(
@@ -516,33 +538,33 @@ export class QuizService {
       };
     });
 
-    return this.dropBrokenPersonaQuestions(restored);
+    return this.dropArtifactQuestions(restored);
   }
 
   /**
-   * 역치환 후에도 대괄호 잔재가 남은 문항을 제거한다.
+   * 기계 잔재가 남은 문항을 제거한다 (환자 노출 차단).
    *
-   * LLM이 토큰을 통째로 보존하지 않고 훼손하는 경우가 실제로 관측된다.
-   * 대표적으로 빈칸을 토큰 **안쪽**에 뚫어버리는 경우: [손자1] → [___1].
-   * 이러면 tokenMap에도 없고 한글 라벨 폴백에도 걸리지 않아 "[___1]" 찌꺼기가
-   * 그대로 환자 화면에 노출되고, 정답도 실명이 아닌 관계 라벨이 되어버린다.
+   * 두 경우 모두 실제로 관측된다:
+   * - LLM이 페르소나 토큰을 쪼갬: [손자1] → [___1]. 역치환도 라벨 폴백도 못 걸린다.
+   * - /mask 라벨을 그대로 문제에 씀: "Family_F1과 어디에 갔나요?".
+   *   프로필에 없는 이름·장소는 마스킹되므로 프로필 등록 여부와 무관하게 생긴다.
    *
-   * 프롬프트로도 금지하지만 준수를 믿지 않고, 깨진 문항은 버린다.
-   * (문항 수가 줄어드는 편이 깨진 문항을 환자에게 보여주는 것보다 낫다.)
+   * 프롬프트로도 금지하지만 LLM 준수를 믿지 않는다. 깨진 문항은 버린다 —
+   * 문항 수가 줄어드는 편이 뜻 모를 문자열을 환자에게 보여주는 것보다 낫다.
    */
-  private dropBrokenPersonaQuestions(
+  private dropArtifactQuestions(
     questions: GeneratedQuizQuestion[],
   ): GeneratedQuizQuestion[] {
-    const hasBracketArtifact = (q: GeneratedQuizQuestion): boolean =>
+    const hasArtifact = (q: GeneratedQuizQuestion): boolean =>
       [q.prompt, q.correctAnswer, ...(q.choices ?? [])].some((text) =>
-        RESIDUAL_TOKEN_PATTERN.test(text ?? ''),
+        RESIDUAL_ARTIFACT_PATTERN.test(text ?? ''),
       );
 
-    const kept = questions.filter((q) => !hasBracketArtifact(q));
+    const kept = questions.filter((q) => !hasArtifact(q));
     const dropped = questions.length - kept.length;
     if (dropped > 0) {
       this.logger.warn(
-        `페르소나 토큰이 훼손된 문항 ${dropped}개를 제외했습니다 (LLM이 토큰을 쪼갬).`,
+        `기계 잔재(훼손 토큰·마스킹 라벨)가 남은 문항 ${dropped}개를 제외했습니다.`,
       );
     }
     return kept;

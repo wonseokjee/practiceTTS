@@ -151,6 +151,82 @@ describe('ProfileService', () => {
     });
   });
 
+  describe('upsert — 가족 목록 교체 시 서수 보존', () => {
+    it('기존 구성원의 서수를 유지한다 (옛 시나리오 토큰이 딴 사람으로 복원되면 안 됨)', async () => {
+      // 아들1=철수, 아들2=영수 상태에서 철수를 빼고 영수만 남겨 저장.
+      // 서수를 1부터 재부여하면 영수가 [아들1]이 되고, 옛 시나리오의 [아들1](=철수)이
+      // 영수 이름으로 복원된다 → 환자에게 엉뚱한 가족 이름 노출.
+      familyRepoMock.find.mockResolvedValue([
+        {
+          relation: 'son',
+          name: 'enc:철수',
+          relationOrdinal: 1,
+          gender: 'M',
+        },
+        {
+          relation: 'son',
+          name: 'enc:영수',
+          relationOrdinal: 2,
+          gender: 'M',
+        },
+      ] as unknown as FamilyMember[]);
+
+      const savedEntities: Array<Partial<FamilyMember>> = [];
+      familyRepoMock.save.mockImplementation(
+        (input: Array<Partial<FamilyMember>>) => {
+          savedEntities.push(...input);
+          return Promise.resolve(input);
+        },
+      );
+      profileRepoMock.save.mockImplementation((p: unknown) =>
+        Promise.resolve({ ...(p as object), id: PROFILE_ID }),
+      );
+
+      await service.upsert(CAREGIVER_ID, caregiver, PATIENT_ID, {
+        family: [{ relation: 'son', name: '영수' }],
+      });
+
+      // 영수는 서수 2를 그대로 유지해야 한다 (1로 당겨지면 안 됨)
+      expect(savedEntities).toHaveLength(1);
+      expect(savedEntities[0].relationOrdinal).toBe(2);
+    });
+
+    it('새 구성원에게는 쓰인 적 없는 서수를 준다 (재사용 금지)', async () => {
+      familyRepoMock.find.mockResolvedValue([
+        {
+          relation: 'son',
+          name: 'enc:철수',
+          relationOrdinal: 2,
+          gender: 'M',
+        },
+      ] as unknown as FamilyMember[]);
+
+      const savedEntities: Array<Partial<FamilyMember>> = [];
+      familyRepoMock.save.mockImplementation(
+        (input: Array<Partial<FamilyMember>>) => {
+          savedEntities.push(...input);
+          return Promise.resolve(input);
+        },
+      );
+      profileRepoMock.save.mockImplementation((p: unknown) =>
+        Promise.resolve({ ...(p as object), id: PROFILE_ID }),
+      );
+
+      await service.upsert(CAREGIVER_ID, caregiver, PATIENT_ID, {
+        family: [
+          { relation: 'son', name: '철수' },
+          { relation: 'son', name: '민수' }, // 신규
+        ],
+      });
+
+      const byName = new Map(
+        savedEntities.map((e) => [e.name, e.relationOrdinal]),
+      );
+      expect(byName.get('enc:철수')).toBe(2); // 유지
+      expect(byName.get('enc:민수')).toBe(3); // MAX+1, 1을 재사용하지 않는다
+    });
+  });
+
   describe('소유권 검증', () => {
     it('연결되지 않은 환자면 ForbiddenException', async () => {
       const other: CaregiverContext = { patientId: 'another-patient' };

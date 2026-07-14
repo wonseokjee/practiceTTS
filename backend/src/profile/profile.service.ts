@@ -232,22 +232,54 @@ export class ProfileService {
     return profile;
   }
 
+  /**
+   * 가족 목록 전체 교체 — 단, 기존 구성원의 서수(relationOrdinal)는 보존한다.
+   *
+   * 서수는 페르소나 토큰([아들1])을 만드는 키이고, memory_entries의
+   * masked_context·scenario_cache는 **토큰 상태로 저장**되어 표시 시점에 *현재*
+   * 프로필로 역치환된다. 그래서 서수를 1부터 재부여하면, 보호자가 아들 한 명을
+   * 빼고 저장하는 순간 옛 기억 속 [아들1]이 **다른 아들의 이름으로 복원**된다.
+   * 환자에게 엉뚱한 가족 이름을 보여주는 것이라 반드시 막아야 한다.
+   *
+   * 따라서 (relation, name)이 같은 기존 구성원은 서수를 그대로 물려주고,
+   * 새 구성원에게만 MAX+1로 새 서수를 준다(서수 재사용 금지).
+   */
   private async replaceFamily(
     profileId: string,
     members: FamilyMemberInputDto[],
   ): Promise<void> {
+    const existing = await this.familyRepository.find({ where: { profileId } });
+
+    // (relation, 복호화된 실명) → 기존 서수
+    const ordinalByKey = new Map<string, number>();
+    // relation → 지금까지 쓰인 최대 서수 (새 구성원 채번의 출발점)
+    const maxByRelation = new Map<FamilyRelation, number>();
+    for (const member of existing) {
+      const name = this.cryptoService.decrypt(member.name);
+      ordinalByKey.set(`${member.relation} ${name}`, member.relationOrdinal);
+      maxByRelation.set(
+        member.relation,
+        Math.max(maxByRelation.get(member.relation) ?? 0, member.relationOrdinal),
+      );
+    }
+
     await this.familyRepository.delete({ profileId });
 
-    const ordinalByRelation = new Map<FamilyRelation, number>();
     const entities = members.slice(0, MAX_FAMILY_MEMBERS).map((m) => {
-      const next = (ordinalByRelation.get(m.relation) ?? 0) + 1;
-      ordinalByRelation.set(m.relation, next);
+      const key = `${m.relation} ${m.name}`;
+      let ordinal = ordinalByKey.get(key);
+      if (ordinal === undefined) {
+        // 새 구성원 → 해당 관계에서 쓰인 적 없는 서수를 준다(재사용 금지)
+        ordinal = (maxByRelation.get(m.relation) ?? 0) + 1;
+        maxByRelation.set(m.relation, ordinal);
+        ordinalByKey.set(key, ordinal);
+      }
       return this.familyRepository.create({
         profileId,
         relation: m.relation,
         name: this.cryptoService.encrypt(m.name),
         gender: m.gender ?? 'U',
-        relationOrdinal: next,
+        relationOrdinal: ordinal,
         note: m.note ? this.cryptoService.encrypt(m.note) : null,
       });
     });

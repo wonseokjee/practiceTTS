@@ -64,6 +64,41 @@ def test_partial_window_expiry():
     assert limiter.allow("ip1") is False  # 다시 한도
 
 
+def test_expired_keys_are_pruned_not_leaked():
+    """윈도우가 지난 키는 제거된다.
+
+    이게 없으면 본 적 있는 키마다 항목이 영구히 남아, 위조 IP를 흘리는 공격자가
+    레이트리밋터 자체를 메모리 DoS 벡터로 쓸 수 있다.
+    """
+    clock = FakeClock()
+    limiter = SlidingWindowRateLimiter(5, 60.0, time_fn=clock)
+
+    for i in range(100):
+        limiter.allow(f"ip-{i}")
+    assert len(limiter._hits) == 100
+
+    clock.advance(61.0)  # 모든 기록이 윈도우 밖으로
+    limiter.allow("ip-new")  # allow 시점에 프루닝
+
+    # 만료된 100개는 사라지고 방금 것만 남는다
+    assert len(limiter._hits) == 1
+    assert "ip-new" in limiter._hits
+
+
+def test_pruning_does_not_drop_active_keys():
+    clock = FakeClock()
+    limiter = SlidingWindowRateLimiter(5, 60.0, time_fn=clock)
+
+    limiter.allow("old")
+    clock.advance(30.0)
+    limiter.allow("recent")
+    clock.advance(31.0)  # old(t=0)만 만료, recent(t=30)는 유효
+    limiter.allow("new")
+
+    assert "old" not in limiter._hits
+    assert "recent" in limiter._hits
+
+
 def test_invalid_config_raises():
     with pytest.raises(ValueError):
         SlidingWindowRateLimiter(0, 60.0)

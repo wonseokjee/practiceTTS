@@ -215,11 +215,30 @@ def _int_env(name: str, default: int) -> int:
 
 
 def client_key(request: Request) -> str:
-    """레이트리밋 키(클라이언트 IP). 프록시 뒤면 X-Forwarded-For 첫 IP를 쓴다."""
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
+    """레이트리밋 키(클라이언트 IP).
+
+    X-Forwarded-For는 클라이언트가 마음대로 넣을 수 있는 헤더다. 무조건 신뢰하면
+    공격자가 요청마다 임의의 XFF를 넣어 (1) 매번 새 버킷을 받아 한도를 완전히
+    우회하고, (2) 레이트리밋터 내부 맵을 위조 IP로 무한히 부풀린다. 보호장치가
+    오히려 DoS 벡터가 된다.
+
+    따라서 기본값은 소켓 IP다. 실제로 신뢰할 수 있는 리버스 프록시 뒤에 배포할
+    때만 TRUST_PROXY_HEADER=true로 켠다.
+    """
+    if _trust_proxy_header():
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
     return request.client.host if request.client else "unknown"
+
+
+def _trust_proxy_header() -> bool:
+    """신뢰할 수 있는 프록시 뒤에 있을 때만 XFF를 존중한다(기본 false)."""
+    return os.getenv("TRUST_PROXY_HEADER", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }
 
 
 def get_tts_rate_limiter() -> SlidingWindowRateLimiter:

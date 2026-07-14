@@ -248,8 +248,18 @@ describe('QuizService', () => {
 
     it('가족 실명·지명이 LLM 페이로드에 나가지 않는다 (토큰만 전달)', async () => {
       arrangeWithProfile();
+      // 이 테스트들의 관심사는 LLM에 나간 페이로드다. 다만 문항이 0개면
+      // "0문항 → failed" 가드에 걸리므로 통과용 문항 1개를 돌려준다.
       generationClientMock.generate.mockResolvedValue({
-        questions: [],
+        questions: [
+          {
+            type: 'multiple_choice',
+            prompt: '무엇을 했나요?',
+            choices: ['산책', '독서'],
+            correctAnswer: '산책',
+            hintFirstChar: null,
+          },
+        ],
         model: 'm',
         fallbackUsed: false,
       });
@@ -331,6 +341,106 @@ describe('QuizService', () => {
       expect(saved.prompt).toBe('민준과 어디에 갔나요?');
     });
 
+    it('마스킹 라벨(Family_F1/Place_1)이 남은 문항은 환자에게 노출하지 않는다', async () => {
+      // 프로필에 없는 이름·장소는 /mask가 Family_F1/Place_1로 바꾼다. 퀴즈 LLM이
+      // 그 라벨을 문제에 그대로 쓰면 환자는 "Family_F1과 어디에 갔나요?"를 본다.
+      // 대괄호가 없어 토큰 잔재 검사에는 안 걸리므로 별도로 막아야 한다.
+      arrangeWithProfile();
+      generationClientMock.generate.mockResolvedValue({
+        questions: [
+          {
+            type: 'multiple_choice',
+            prompt: '[손자1]과 어디에 갔나요?',
+            choices: ['바다', '서울'],
+            correctAnswer: '바다',
+            hintFirstChar: null,
+          },
+          {
+            type: 'multiple_choice',
+            prompt: 'Family_F1과 무엇을 했나요?',
+            choices: ['Place_1', '공원'],
+            correctAnswer: 'Place_1',
+            hintFirstChar: null,
+          },
+        ],
+        model: 'm',
+        fallbackUsed: false,
+      });
+
+      await service.generateForMemoryEntry(MEMORY_ENTRY_ID);
+
+      expect(quizQuestionRepo.create).toHaveBeenCalledTimes(1);
+      const saved = quizQuestionRepo.create.mock.calls[0][0] as {
+        prompt: string;
+      };
+      expect(saved.prompt).toBe('민준과 어디에 갔나요?');
+    });
+
+    it('프로필이 없어도 마스킹 라벨 문항은 제외한다', async () => {
+      // 마스킹 라벨은 프로필 등록 여부와 무관하게 생긴다 → 잔재 검사는 항상 돌아야 한다
+      personaSource = null;
+      memoryEntryRepo.findOne.mockResolvedValue(buildEntry());
+      patientMemoryNoteRepo.find.mockResolvedValue([buildNote()]);
+      quizSetRepo.findOne.mockResolvedValue(null);
+      quizSetRepo.save.mockResolvedValue(
+        buildSet({ generationStatus: 'pending' }),
+      );
+      quizQuestionRepo.save.mockResolvedValue([]);
+      quizSetRepo.update.mockResolvedValue({ affected: 1 });
+      generationClientMock.generate.mockResolvedValue({
+        questions: [
+          {
+            type: 'multiple_choice',
+            prompt: '무엇을 주웠나요?',
+            choices: ['조개', '돌'],
+            correctAnswer: '조개',
+            hintFirstChar: null,
+          },
+          {
+            type: 'multiple_choice',
+            prompt: 'Place_1에 갔나요?',
+            choices: ['네', '아니오'],
+            correctAnswer: '네',
+            hintFirstChar: null,
+          },
+        ],
+        model: 'm',
+        fallbackUsed: false,
+      });
+
+      await service.generateForMemoryEntry(MEMORY_ENTRY_ID);
+
+      expect(quizQuestionRepo.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('쓸 만한 문항이 0개면 ready로 두지 않고 failed로 마감한다', async () => {
+      // 0문항 set을 ready로 두면 환자는 문제 없는 퀴즈를 열고 완료조차 못 한다.
+      arrangeWithProfile();
+      generationClientMock.generate.mockResolvedValue({
+        questions: [
+          {
+            type: 'multiple_choice',
+            prompt: 'Family_F1과 어디에?',
+            choices: ['Place_1', 'Place_2'],
+            correctAnswer: 'Place_1',
+            hintFirstChar: null,
+          },
+        ],
+        model: 'm',
+        fallbackUsed: false,
+      });
+
+      await expect(
+        service.generateForMemoryEntry(MEMORY_ENTRY_ID),
+      ).rejects.toThrow();
+
+      expect(quizQuestionRepo.create).not.toHaveBeenCalled();
+      expect(quizSetRepo.update).toHaveBeenCalledWith(
+        QUIZ_SET_ID,
+        expect.objectContaining({ generationStatus: 'failed' }),
+      );
+    });
+
     it('프로필 미등록이면 원문을 그대로 전달하고 생성은 계속된다', async () => {
       personaSource = null; // 미등록
       memoryEntryRepo.findOne.mockResolvedValue(buildEntry());
@@ -343,8 +453,18 @@ describe('QuizService', () => {
       );
       quizQuestionRepo.save.mockResolvedValue([]);
       quizSetRepo.update.mockResolvedValue({ affected: 1 });
+      // 이 테스트들의 관심사는 LLM에 나간 페이로드다. 다만 문항이 0개면
+      // "0문항 → failed" 가드에 걸리므로 통과용 문항 1개를 돌려준다.
       generationClientMock.generate.mockResolvedValue({
-        questions: [],
+        questions: [
+          {
+            type: 'multiple_choice',
+            prompt: '무엇을 했나요?',
+            choices: ['산책', '독서'],
+            correctAnswer: '산책',
+            hintFirstChar: null,
+          },
+        ],
         model: 'm',
         fallbackUsed: false,
       });
@@ -369,8 +489,18 @@ describe('QuizService', () => {
       );
       quizQuestionRepo.save.mockResolvedValue([]);
       quizSetRepo.update.mockResolvedValue({ affected: 1 });
+      // 이 테스트들의 관심사는 LLM에 나간 페이로드다. 다만 문항이 0개면
+      // "0문항 → failed" 가드에 걸리므로 통과용 문항 1개를 돌려준다.
       generationClientMock.generate.mockResolvedValue({
-        questions: [],
+        questions: [
+          {
+            type: 'multiple_choice',
+            prompt: '무엇을 했나요?',
+            choices: ['산책', '독서'],
+            correctAnswer: '산책',
+            hintFirstChar: null,
+          },
+        ],
         model: 'm',
         fallbackUsed: false,
       });
@@ -545,8 +675,18 @@ describe('QuizService', () => {
       quizSetRepo.save.mockResolvedValue(
         buildSet({ generationStatus: 'pending' }),
       );
+      // 이 테스트들의 관심사는 LLM에 나간 페이로드다. 다만 문항이 0개면
+      // "0문항 → failed" 가드에 걸리므로 통과용 문항 1개를 돌려준다.
       generationClientMock.generate.mockResolvedValue({
-        questions: [],
+        questions: [
+          {
+            type: 'multiple_choice',
+            prompt: '무엇을 했나요?',
+            choices: ['산책', '독서'],
+            correctAnswer: '산책',
+            hintFirstChar: null,
+          },
+        ],
         model: 'm',
         fallbackUsed: false,
       });
@@ -653,8 +793,18 @@ describe('QuizService', () => {
         buildSet({ generationStatus: 'pending' }),
       );
       // 백그라운드 runGeneration이 호출하는 의존성 — 즉시 resolve
+      // 이 테스트들의 관심사는 LLM에 나간 페이로드다. 다만 문항이 0개면
+      // "0문항 → failed" 가드에 걸리므로 통과용 문항 1개를 돌려준다.
       generationClientMock.generate.mockResolvedValue({
-        questions: [],
+        questions: [
+          {
+            type: 'multiple_choice',
+            prompt: '무엇을 했나요?',
+            choices: ['산책', '독서'],
+            correctAnswer: '산책',
+            hintFirstChar: null,
+          },
+        ],
         model: 'm',
         fallbackUsed: false,
       });
@@ -684,8 +834,18 @@ describe('QuizService', () => {
         buildSet({ id: 'new-set', generationStatus: 'pending' }),
       );
       // 백그라운드 runGeneration 의존성
+      // 이 테스트들의 관심사는 LLM에 나간 페이로드다. 다만 문항이 0개면
+      // "0문항 → failed" 가드에 걸리므로 통과용 문항 1개를 돌려준다.
       generationClientMock.generate.mockResolvedValue({
-        questions: [],
+        questions: [
+          {
+            type: 'multiple_choice',
+            prompt: '무엇을 했나요?',
+            choices: ['산책', '독서'],
+            correctAnswer: '산책',
+            hintFirstChar: null,
+          },
+        ],
         model: 'm',
         fallbackUsed: false,
       });
@@ -721,8 +881,18 @@ describe('QuizService', () => {
       quizSetRepo.save.mockResolvedValue(
         buildSet({ id: 'retry-set', generationStatus: 'pending' }),
       );
+      // 이 테스트들의 관심사는 LLM에 나간 페이로드다. 다만 문항이 0개면
+      // "0문항 → failed" 가드에 걸리므로 통과용 문항 1개를 돌려준다.
       generationClientMock.generate.mockResolvedValue({
-        questions: [],
+        questions: [
+          {
+            type: 'multiple_choice',
+            prompt: '무엇을 했나요?',
+            choices: ['산책', '독서'],
+            correctAnswer: '산책',
+            hintFirstChar: null,
+          },
+        ],
         model: 'm',
         fallbackUsed: false,
       });
@@ -1296,8 +1466,18 @@ describe('QuizService', () => {
       quizSetRepo.save.mockResolvedValue(
         buildSet({ generationStatus: 'pending', generationAttempts: 1 }),
       );
+      // 이 테스트들의 관심사는 LLM에 나간 페이로드다. 다만 문항이 0개면
+      // "0문항 → failed" 가드에 걸리므로 통과용 문항 1개를 돌려준다.
       generationClientMock.generate.mockResolvedValue({
-        questions: [],
+        questions: [
+          {
+            type: 'multiple_choice',
+            prompt: '무엇을 했나요?',
+            choices: ['산책', '독서'],
+            correctAnswer: '산책',
+            hintFirstChar: null,
+          },
+        ],
         model: 'm',
         fallbackUsed: false,
       });

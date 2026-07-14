@@ -37,6 +37,8 @@ class SlidingWindowRateLimiter:
         now = self._time()
         cutoff = now - self._window
         with self._lock:
+            self._prune(cutoff)
+
             hits = self._hits[key]
             # 윈도우를 벗어난 오래된 기록 제거
             while hits and hits[0] <= cutoff:
@@ -45,3 +47,18 @@ class SlidingWindowRateLimiter:
                 return False
             hits.append(now)
             return True
+
+    def _prune(self, cutoff: float) -> None:
+        """윈도우가 완전히 비워진 키를 제거한다 (호출자가 락을 쥔 상태여야 함).
+
+        이게 없으면 _hits는 본 적 있는 키마다 항목을 남겨 무한히 커진다.
+        키가 클라이언트 IP라 위조 가능한 헤더에서 온다면 그 자체로 메모리 DoS가
+        된다 — 레이트리밋이 막으려던 바로 그 공격에 문을 열어주는 셈.
+        """
+        stale = [
+            key
+            for key, hits in self._hits.items()
+            if not hits or hits[-1] <= cutoff
+        ]
+        for key in stale:
+            del self._hits[key]
