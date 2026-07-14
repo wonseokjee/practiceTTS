@@ -3,6 +3,7 @@ import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, LessThan, Repository } from 'typeorm';
 import { MemoryEntry } from '../memory/entities/memory-entry.entity';
 import { PatientMemoryNote } from '../memory/entities/patient-memory-note.entity';
+import { FastApiClientService } from '../memory/services/fast-api-client.service';
 import { PersonaContextService } from '../profile/services/persona-context.service';
 import { DEFAULT_QUIZ_DISTRIBUTION } from './constants/quiz-distribution';
 import { QuizSetSummaryDto } from './dto/quiz-set-summary.dto';
@@ -158,6 +159,7 @@ export class QuizService {
     @Inject(WISH_CONVERSION_CLIENT)
     private readonly wishClient: IWishConversionClient,
     private readonly personaContext: PersonaContextService,
+    private readonly fastApiClient: FastApiClientService,
   ) {}
 
   /**
@@ -322,29 +324,30 @@ export class QuizService {
     entry: MemoryEntry,
     notes: PatientMemoryNote[],
   ): Promise<void> {
-    // 페르소나 토큰화: 가족 실명·지명이 외부 LLM(Gemini)에 그대로 나가지 않도록
-    // [아들1]/[장소1] 토큰으로 치환한다. 프로필 미등록이면 빈 맵 → 원문 유지(무중단).
-    const tokenMap = await this.buildTokenMapBestEffort(entry.patientId);
-
-    const payload: IQuizGenerationPayload = {
-      patientNotes: notes.map((note) => ({
-        category: note.category,
-        answerText: this.personaContext.tokenizeWithMap(
-          note.answerText,
-          tokenMap,
-        ),
-      })),
-      targetWords:
-        entry.targetWords && entry.targetWords.length > 0
-          ? entry.targetWords.map((w) =>
-              this.personaContext.tokenizeWithMap(w, tokenMap),
-            )
-          : undefined,
-      distribution: DEFAULT_QUIZ_DISTRIBUTION,
-      // photoTags는 R7=(c)에 따라 미전달 (Phase 2에서 R7=(b)로 전환)
-    };
-
     try {
+      // 페르소나 토큰화: 가족 실명·지명이 외부 LLM(Gemini)에 그대로 나가지 않도록
+      // [아들1]/[장소1] 토큰으로 치환한다. 프로필 미등록이면 빈 맵 → 원문 유지(무중단).
+      const tokenMap = await this.buildTokenMapBestEffort(entry.patientId);
+
+      // 마스킹: 프로필에 없는 PII(주소·기관명·미등록 지인 등)를 익명화한다.
+      // 실패 시 생성을 중단한다(fail-closed) — 마스킹 없는 원문을 LLM에 보내지 않는다.
+      // 시나리오 경로와 동일한 순서: 토큰화 → 마스킹 → LLM.
+      const patientNotes = await this.maskNotes(notes, entry.id, tokenMap);
+
+      const payload: IQuizGenerationPayload = {
+        patientNotes,
+        // 목표 단어는 보호자가 고른 훈련 어휘라 PII 위험이 낮아 마스킹하지 않는다
+        // (실명이 섞였을 경우는 토큰화가 걸러낸다).
+        targetWords:
+          entry.targetWords && entry.targetWords.length > 0
+            ? entry.targetWords.map((w) =>
+                this.personaContext.tokenizeWithMap(w, tokenMap),
+              )
+            : undefined,
+        distribution: DEFAULT_QUIZ_DISTRIBUTION,
+        // photoTags는 R7=(c)에 따라 미전달 (Phase 2에서 R7=(b)로 전환)
+      };
+
       const result = await this.generationClient.generate(payload);
 
       // 역치환: LLM이 돌려준 토큰을 실명으로 되돌린다.
@@ -390,6 +393,36 @@ export class QuizService {
       });
       throw error;
     }
+  }
+
+  /**
+   * 노트를 토큰화 → 마스킹하여 LLM 페이로드용 답변 텍스트를 만든다.
+   *
+   * 토큰화는 프로필에 등록된 가족·지명만 가린다. 그 밖의 PII(주소, 병원·기관명,
+   * 등록되지 않은 지인 이름 등)는 /mask가 익명화한다.
+   *
+   * 노트별로 병렬 호출한다 — 여러 노트를 한 문자열로 이어 붙여 한 번에 마스킹하면
+   * LLM이 구분자를 보존한다는 보장이 없어 되쪼개기가 깨질 수 있다.
+   * 마스킹 실패는 삼키지 않는다(fail-closed): 호출자가 생성을 실패 처리한다.
+   */
+  private async maskNotes(
+    notes: PatientMemoryNote[],
+    memoryEntryId: string,
+    tokenMap: Record<string, string>,
+  ): Promise<IQuizGenerationPayload['patientNotes']> {
+    return Promise.all(
+      notes.map(async (note) => {
+        const tokenized = this.personaContext.tokenizeWithMap(
+          note.answerText,
+          tokenMap,
+        );
+        const { maskedText } = await this.fastApiClient.mask(
+          tokenized,
+          memoryEntryId,
+        );
+        return { category: note.category, answerText: maskedText };
+      }),
+    );
   }
 
   /**

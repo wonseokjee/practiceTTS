@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
 import { MemoryEntry } from '../memory/entities/memory-entry.entity';
 import { PatientMemoryNote } from '../memory/entities/patient-memory-note.entity';
+import { FastApiClientService } from '../memory/services/fast-api-client.service';
 import { QabResult } from './entities/qab-result.entity';
 import { QuizAttempt } from './entities/quiz-attempt.entity';
 import { QuizBestScore } from './entities/quiz-best-score.entity';
@@ -52,6 +53,12 @@ import { WishConversionClient } from './services/wish-conversion.client';
   providers: [
     QuizService,
     QuizGenerationListener,
+    // /mask 재사용 — 프로필 밖 PII를 LLM 전에 익명화한다.
+    // MemoryModule을 통째로 import하지 않고 provider만 등록한다: 모듈을 끌어오면
+    // MemoryController까지 딸려와 불필요한 결합(과 테스트 부담)이 생긴다.
+    // HttpService/ConfigService만 의존하는 stateless 클라이언트라 인스턴스가
+    // 둘이어도 무해하다.
+    FastApiClientService,
     { provide: QUIZ_GENERATION_CLIENT, useClass: QuizGenerationClient },
     { provide: QUIZ_SCORER, useClass: QuizScorerService },
     { provide: WISH_CONVERSION_CLIENT, useClass: WishConversionClient },

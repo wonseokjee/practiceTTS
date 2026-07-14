@@ -13,6 +13,7 @@ import { QuizError, QuizErrorCode } from './errors/quiz.errors';
 import { QUIZ_GENERATION_CLIENT } from './interfaces/IQuizGenerationClient';
 import { QUIZ_SCORER } from './interfaces/IQuizScorer';
 import { WISH_CONVERSION_CLIENT } from './interfaces/IWishConversionClient';
+import { FastApiClientService } from '../memory/services/fast-api-client.service';
 import { PersonaContextService } from '../profile/services/persona-context.service';
 import type {
   PersonaSource,
@@ -57,6 +58,9 @@ describe('QuizService', () => {
   // 토큰화·역치환이 실제로 도는지 검증해야 PII 경계가 보장되기 때문.
   let personaSource: PersonaSource | null;
   let personaContextMock: PersonaContextService;
+
+  // /mask 목 — 기본은 입력을 그대로 돌려준다(마스킹 통과).
+  let fastApiClientMock: { mask: jest.Mock };
 
   function buildRepoMock() {
     return {
@@ -137,6 +141,10 @@ describe('QuizService', () => {
       getPersonaSource: jest.fn(async () => personaSource),
     } as unknown as ProfileService);
 
+    fastApiClientMock = {
+      mask: jest.fn(async (text: string) => ({ maskedText: text })),
+    };
+
     quizSetRepo = buildRepoMock();
     quizQuestionRepo = buildRepoMock();
     quizAttemptRepo = buildRepoMock();
@@ -201,6 +209,7 @@ describe('QuizService', () => {
         { provide: QUIZ_SCORER, useValue: scorerMock },
         { provide: WISH_CONVERSION_CLIENT, useValue: wishClientMock },
         { provide: PersonaContextService, useValue: personaContextMock },
+        { provide: FastApiClientService, useValue: fastApiClientMock },
       ],
     }).compile();
 
@@ -311,6 +320,84 @@ describe('QuizService', () => {
         patientNotes: Array<{ answerText: string }>;
       };
       expect(payload.patientNotes[0].answerText).toBe('민준이랑 바다에 갔어요');
+    });
+  });
+
+  // ─── 마스킹 (프로필 밖 PII) ──────────────────────────────────────
+  describe('generateForMemoryEntry — /mask 마스킹', () => {
+    function arrangeNotes(answerText: string): void {
+      memoryEntryRepo.findOne.mockResolvedValue(buildEntry());
+      patientMemoryNoteRepo.find.mockResolvedValue([buildNote({ answerText })]);
+      quizSetRepo.findOne.mockResolvedValue(null);
+      quizSetRepo.save.mockResolvedValue(
+        buildSet({ generationStatus: 'pending' }),
+      );
+      quizQuestionRepo.save.mockResolvedValue([]);
+      quizSetRepo.update.mockResolvedValue({ affected: 1 });
+      generationClientMock.generate.mockResolvedValue({
+        questions: [],
+        model: 'm',
+        fallbackUsed: false,
+      });
+    }
+
+    it('노트를 /mask에 태운 뒤 마스킹된 텍스트를 LLM에 보낸다', async () => {
+      arrangeNotes('서울 강남구 삼성병원에 다녀왔어요');
+      fastApiClientMock.mask.mockResolvedValue({
+        maskedText: '[장소]에 다녀왔어요',
+      });
+
+      await service.generateForMemoryEntry(MEMORY_ENTRY_ID);
+
+      expect(fastApiClientMock.mask).toHaveBeenCalledWith(
+        '서울 강남구 삼성병원에 다녀왔어요',
+        MEMORY_ENTRY_ID,
+      );
+      const payload = generationClientMock.generate.mock.calls[0][0] as {
+        patientNotes: Array<{ answerText: string }>;
+      };
+      expect(payload.patientNotes[0].answerText).toBe('[장소]에 다녀왔어요');
+    });
+
+    it('토큰화 → 마스킹 순서로 처리한다 (마스킹은 토큰화된 텍스트를 받는다)', async () => {
+      personaSource = {
+        hometown: null,
+        occupation: null,
+        hobbies: [],
+        significantPlaces: [],
+        family: [
+          {
+            relation: 'grandson',
+            name: '민준',
+            gender: 'M',
+            relationOrdinal: 1,
+          },
+        ],
+      };
+      arrangeNotes('민준이랑 삼성병원에 갔어요');
+
+      await service.generateForMemoryEntry(MEMORY_ENTRY_ID);
+
+      // /mask가 받은 텍스트에는 이미 실명이 토큰으로 바뀌어 있어야 한다
+      const maskedInput = fastApiClientMock.mask.mock.calls[0][0] as string;
+      expect(maskedInput).toContain('[손자1]');
+      expect(maskedInput).not.toContain('민준');
+    });
+
+    it('마스킹 실패 시 LLM을 호출하지 않고 생성을 실패 처리한다 (fail-closed)', async () => {
+      arrangeNotes('서울 강남구에 다녀왔어요');
+      fastApiClientMock.mask.mockRejectedValue(new Error('mask 503'));
+
+      await expect(
+        service.generateForMemoryEntry(MEMORY_ENTRY_ID),
+      ).rejects.toThrow('mask 503');
+
+      // 마스킹 안 된 원문이 외부 LLM으로 나가면 안 된다
+      expect(generationClientMock.generate).not.toHaveBeenCalled();
+      expect(quizSetRepo.update).toHaveBeenCalledWith(
+        QUIZ_SET_ID,
+        expect.objectContaining({ generationStatus: 'failed' }),
+      );
     });
   });
 
