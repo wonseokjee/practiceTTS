@@ -88,6 +88,64 @@ async def test_real_pii_still_masked_alongside_tokens():
     assert "Place_1" in result.masked_text
 
 
+# ── 정규식 PII는 Gemini에 나가기 전에 치환된다 ────────────────
+#
+# 회귀 배경: _apply_regex_masking이 entity_map만 채우고 원문을 그대로 반환해,
+# 그 원문이 _detect_pii_with_gemini로 나갔다. 즉 마스킹이 Gemini 응답을 사후
+# 라벨링할 뿐이라 전화번호·주민번호·이메일이 외부 LLM을 그대로 거쳤다.
+
+
+@pytest.mark.asyncio
+async def test_phone_not_sent_to_gemini():
+    service, llm = build_service([])
+
+    await service.mask_text("연락처는 010-1234-5678 이에요", ENTRY_ID)
+
+    sent = llm.prompts[0]
+    assert "010-1234-5678" not in sent
+    assert "PHONE_1" in sent
+
+
+@pytest.mark.asyncio
+async def test_ssn_and_email_not_sent_to_gemini():
+    service, llm = build_service([])
+
+    await service.mask_text(
+        "주민번호 900101-1234567, 메일 hong@example.com", ENTRY_ID
+    )
+
+    sent = llm.prompts[0]
+    assert "900101-1234567" not in sent
+    assert "hong@example.com" not in sent
+    assert "SSN_1" in sent
+    assert "EMAIL_1" in sent
+
+
+@pytest.mark.asyncio
+async def test_regex_pii_still_masked_in_result():
+    """Gemini로 나가는 텍스트뿐 아니라 최종 결과에서도 여전히 마스킹된다."""
+    service, _ = build_service([])
+
+    result = await service.mask_text("전화 010-1234-5678", ENTRY_ID)
+
+    assert "010-1234-5678" not in result.masked_text
+    assert "PHONE_1" in result.masked_text
+
+
+@pytest.mark.asyncio
+async def test_persona_token_survives_regex_masking():
+    """정규식 치환이 페르소나 토큰을 건드리지 않는다."""
+    service, llm = build_service([])
+
+    result = await service.mask_text(
+        "[손자1]에게 010-1234-5678로 전화했어요", ENTRY_ID
+    )
+
+    assert "[손자1]" in llm.prompts[0]  # Gemini에 나갈 때도 토큰 보존
+    assert "[손자1]" in result.masked_text
+    assert "010-1234-5678" not in result.masked_text
+
+
 # ── 기존 마스킹 동작 (회귀) ───────────────────────────────────
 
 

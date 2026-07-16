@@ -46,8 +46,22 @@ _PATTERNS = {
 class MaskingService:
     """텍스트 PII 마스킹 서비스.
 
-    1단계: 정규식으로 전화번호/주민번호/이메일 마스킹
+    1단계: 정규식으로 전화번호/주민번호/이메일을 **Gemini 호출 전에** 치환
     2단계: Gemini로 이름/장소명 감지 후 익명 식별자로 치환
+
+    ── 신뢰 경계에 대한 정직한 서술 (과대평가 금지) ───────────────
+    이 서비스는 "PII가 외부 LLM에 절대 닿지 않게" 만들지 못한다. 2단계는 이름·장소
+    **감지 자체를 Gemini에 의뢰**하므로, 정규식으로 잡지 못하는 PII(사람 이름,
+    기관명, 주소 등)는 감지되기 위해 Gemini를 한 번 거친다. 그 결과는 사후 치환이다.
+
+    실제 방어선은 두 겹이고, 각자 덮는 범위가 다르다:
+      1. 페르소나 토큰화(backend) — 프로필에 등록된 가족·장소를 LLM에 보내기 전에
+         [손자1]/[장소1]로 치환. 외부에 원문이 나가지 않는 유일한 층.
+      2. 정규식 마스킹(여기 1단계) — 전화·주민번호·이메일. 형태가 확실해 사전 치환 가능.
+      3. Gemini 감지(여기 2단계) — 나머지 이름·장소. **원문이 Gemini를 거친다.**
+
+    즉 미등록 인물·기관명은 Gemini에 노출된다. 이를 없애려면 로컬 NER 등
+    외부 호출 없는 감지기가 필요하다(별도 과제).
     """
 
     def __init__(
@@ -120,10 +134,17 @@ class MaskingService:
         text: str,
         entity_map: dict[str, str],
     ) -> str:
-        """정규식으로 전화번호/주민번호/이메일을 감지하고 entity_map에 추가."""
+        """정규식으로 전화번호/주민번호/이메일을 감지·치환한 텍스트를 반환한다.
+
+        중요: 감지만 하고 원문을 그대로 돌려주면, 그 원문이 _detect_pii_with_gemini를
+        통해 외부 LLM으로 나간다(마스킹이 사후 라벨링에 그친다). 정규식으로 확실히
+        잡을 수 있는 PII는 Gemini에 보내기 **전에** 실제로 치환해야 한다.
+        """
         counters: dict[str, int] = {"phone": 0, "ssn": 0, "email": 0}
+        masked = text
 
         for pattern_name, pattern in _PATTERNS.items():
+            # 원문 기준으로 수집한 뒤 치환한다(치환 중 finditer가 흔들리지 않도록).
             for match in pattern.finditer(text):
                 original = match.group()
                 if original not in entity_map:
@@ -131,7 +152,11 @@ class MaskingService:
                     label = f"{pattern_name.upper()}_{counters[pattern_name]}"
                     entity_map[original] = label
 
-        return text
+        # 긴 원본부터 치환(부분 문자열 오치환 방지)
+        for original in sorted(entity_map.keys(), key=len, reverse=True):
+            masked = masked.replace(original, entity_map[original])
+
+        return masked
 
     async def _detect_pii_with_gemini(
         self,
