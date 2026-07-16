@@ -8,6 +8,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import {
+  MAX_FAMILY_MEMBERS,
   MAX_HOBBIES,
   MAX_NOTES_LENGTH,
   MAX_SIGNIFICANT_PLACES,
@@ -52,8 +53,13 @@ export class UpsertPatientProfileDto {
   @Length(0, MAX_NOTES_LENGTH)
   notes?: string;
 
+  // 상한을 넘기면 400으로 거절한다. 검증이 없으면 서비스의 slice(0, MAX)가
+  // 초과분을 조용히 버리고 200을 돌려줘, 보호자는 저장된 줄 알고 넘어간다.
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(MAX_FAMILY_MEMBERS, {
+    message: `가족은 최대 ${MAX_FAMILY_MEMBERS}명까지 등록할 수 있습니다.`,
+  })
   @ValidateNested({ each: true })
   @Type(() => FamilyMemberInputDto)
   family?: FamilyMemberInputDto[];

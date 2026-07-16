@@ -14,6 +14,12 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  *   - users.patient_mode_pin_hash           → M5(1748600000000)
  * (두 ALTER 모두 ADD COLUMN IF NOT EXISTS라 순서만 지키면 안전하다.)
  *
+ * IF NOT EXISTS를 쓰는 이유: 이 베이스라인은 기존 마이그레이션들보다 앞선
+ * 타임스탬프를 갖는다(공백을 메우려면 그래야 한다). 그래서 synchronize:true로
+ * 이미 스키마가 만들어진 DB에 체인을 처음 돌리면 여기서 "already exists"로
+ * 터진다. IF NOT EXISTS면 그런 DB에서도 no-op으로 지나가 뒤 마이그레이션이
+ * 이어진다. 빈 DB에서는 평소대로 전부 생성한다.
+ *
  * 생성 순서는 FK 의존을 따른다:
  *   users → memory_entries → training_sessions → conversation_logs, qab_results
  */
@@ -23,7 +29,7 @@ export class CreateInitialSchema1747454200000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     // 1) users (patient_id 자기참조 FK — 보호자가 담당 환자를 가리킨다)
     await queryRunner.query(`
-      CREATE TABLE "users" (
+      CREATE TABLE IF NOT EXISTS "users" (
         "id" UUID NOT NULL DEFAULT gen_random_uuid(),
         "email" VARCHAR NOT NULL,
         "password_hash" VARCHAR NOT NULL,
@@ -40,7 +46,7 @@ export class CreateInitialSchema1747454200000 implements MigrationInterface {
 
     // 2) memory_entries (보호자·환자 FK)
     await queryRunner.query(`
-      CREATE TABLE "memory_entries" (
+      CREATE TABLE IF NOT EXISTS "memory_entries" (
         "id" UUID NOT NULL DEFAULT gen_random_uuid(),
         "caregiver_id" UUID NOT NULL,
         "patient_id" UUID NOT NULL,
@@ -63,7 +69,7 @@ export class CreateInitialSchema1747454200000 implements MigrationInterface {
 
     // 3) training_sessions (환자·메모리엔트리 FK)
     await queryRunner.query(`
-      CREATE TABLE "training_sessions" (
+      CREATE TABLE IF NOT EXISTS "training_sessions" (
         "id" UUID NOT NULL DEFAULT gen_random_uuid(),
         "patient_id" UUID NOT NULL,
         "memory_entry_id" UUID NOT NULL,
@@ -83,7 +89,7 @@ export class CreateInitialSchema1747454200000 implements MigrationInterface {
 
     // 4) conversation_logs (세션 FK, content는 AES 암호문)
     await queryRunner.query(`
-      CREATE TABLE "conversation_logs" (
+      CREATE TABLE IF NOT EXISTS "conversation_logs" (
         "id" UUID NOT NULL DEFAULT gen_random_uuid(),
         "session_id" UUID NOT NULL,
         "role" VARCHAR(10) NOT NULL,
@@ -98,7 +104,7 @@ export class CreateInitialSchema1747454200000 implements MigrationInterface {
 
     // 5) qab_results (환자 FK + 멱등 dedup 인덱스)
     await queryRunner.query(`
-      CREATE TABLE "qab_results" (
+      CREATE TABLE IF NOT EXISTS "qab_results" (
         "id" UUID NOT NULL DEFAULT gen_random_uuid(),
         "patient_id" UUID NOT NULL,
         "session_token" UUID NOT NULL,
@@ -115,15 +121,15 @@ export class CreateInitialSchema1747454200000 implements MigrationInterface {
       )
     `);
     await queryRunner.query(`
-      CREATE INDEX "IDX_qab_results_patient_subtest"
+      CREATE INDEX IF NOT EXISTS "IDX_qab_results_patient_subtest"
         ON "qab_results" ("patient_id", "subtest")
     `);
     await queryRunner.query(`
-      CREATE INDEX "IDX_qab_results_session" ON "qab_results" ("session_token")
+      CREATE INDEX IF NOT EXISTS "IDX_qab_results_session" ON "qab_results" ("session_token")
     `);
     // 멱등성: 같은 세션의 같은 문항 결과는 1행만 (재시도 중복 집계 방지)
     await queryRunner.query(`
-      CREATE UNIQUE INDEX "UQ_qab_results_dedup"
+      CREATE UNIQUE INDEX IF NOT EXISTS "UQ_qab_results_dedup"
         ON "qab_results" ("patient_id", "session_token", "subtest", "item_ref")
     `);
   }

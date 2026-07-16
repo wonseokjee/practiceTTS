@@ -46,6 +46,17 @@ async def recognize(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="요청이 너무 잦습니다. 잠시 후 다시 시도해주세요.",
         )
+
+    # 본문을 읽기 전에 선언된 크기부터 거른다. read()로 다 받은 뒤 검사하면
+    # UploadFile이 임계값을 넘는 순간 디스크로 스풀되므로, 1GB 업로드도 전부
+    # 디스크에 쓰인 뒤에야 거절된다(공격자 비용 0, 서버는 IO 소모).
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit() and int(declared) > MAX_AUDIO_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="오디오가 너무 큽니다.",
+        )
+
     wav_bytes = await audio.read()
     if not wav_bytes:
         raise HTTPException(

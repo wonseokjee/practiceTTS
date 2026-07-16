@@ -11,8 +11,13 @@ import hashlib
 import os
 import uuid
 from pathlib import Path
+from threading import Lock
 
 from interfaces.tts_engine import ITtsEngine
+
+# 축출 시 상한이 아니라 이 비율까지 지운다. 상한에 딱 맞춰 지우면 다음 쓰기가
+# 곧바로 다시 상한을 넘겨 미스마다 O(N) 스캔이 돌게 된다.
+_EVICT_LOW_WATER_RATIO = 0.8
 
 
 class TtsService:
@@ -31,14 +36,26 @@ class TtsService:
         self._max_cache_bytes = (
             max_cache_bytes if max_cache_bytes and max_cache_bytes > 0 else None
         )
+        # 캐시 총 바이트 추적 (None = 아직 실측 전). 미스마다 디렉토리를 스캔하지
+        # 않으려고 메모리에 들고 있다가, 축출 스캔 때 실측으로 보정한다.
+        self._tracked_bytes: int | None = None
+        self._size_lock = Lock()
 
     def synthesize(self, text: str, voice: str) -> bytes:
         """캐시 히트면 즉시 반환, 미스면 엔진 합성 후 캐시에 저장."""
         path = self._cache_path(text, voice)
-        if path.exists():
-            # 접근 시각을 갱신해 LRU가 '최근 사용'을 반영하도록 한다.
-            self._touch(path)
-            return path.read_bytes()
+        # exists() 확인과 read_bytes() 사이에 축출 스레드가 파일을 지울 수 있다.
+        # (FastAPI 동기 엔드포인트는 스레드풀에서 돈다.) 그 경합으로 502를 내지
+        # 않도록, 사라졌으면 캐시 미스처럼 합성으로 넘어간다.
+        try:
+            audio = path.read_bytes()
+            self._touch(path)  # 접근 시각 갱신 → LRU가 '최근 사용'을 반영
+            return audio
+        except FileNotFoundError:
+            pass
+        except OSError:
+            # 손상/권한 문제도 캐시 미스로 취급(합성으로 복구 가능)
+            pass
 
         audio = self._engine.synthesize(text, voice)
         # 부분쓰기가 캐시로 노출되지 않도록 임시파일에 쓰고 원자적 교체.
@@ -51,7 +68,7 @@ class TtsService:
             # replace 실패 등으로 tmp가 남으면 정리.
             if tmp.exists():
                 tmp.unlink(missing_ok=True)
-        self._evict_if_needed()
+        self._maybe_evict(len(audio))
         return audio
 
     @property
@@ -70,10 +87,47 @@ class TtsService:
         except OSError:
             pass
 
-    def _evict_if_needed(self) -> None:
-        """캐시 총량이 상한을 넘으면 오래된(mtime 오름차순) mp3부터 삭제한다."""
+    def _maybe_evict(self, written_bytes: int) -> None:
+        """캐시 크기를 추적하다가 상한을 넘겼을 때만 실제 축출(스캔)을 돌린다.
+
+        예전엔 캐시 미스마다 디렉토리 전체를 glob+stat 했다. 200MB/10KB ≈ 2만 파일이면
+        미스 한 번에 수만 syscall이라, 임의 텍스트 폭주이 CPU/IO DoS가 된다.
+        이제 크기를 메모리에 들고 있다가 상한 초과 시에만 스캔한다.
+        """
         if self._max_cache_bytes is None:
             return
+
+        with self._size_lock:
+            if self._tracked_bytes is None:
+                # 최초 1회만 실측(프로세스 수명 동안 이후엔 증감으로 유지)
+                self._tracked_bytes = self._scan_total_bytes()
+            self._tracked_bytes += written_bytes
+            if self._tracked_bytes <= self._max_cache_bytes:
+                return
+
+        self._evict_if_needed()
+
+    def _scan_total_bytes(self) -> int:
+        """캐시 디렉토리의 mp3 총 바이트를 실측한다(O(N))."""
+        total = 0
+        for p in self._cache_dir.glob("*.mp3"):
+            try:
+                total += p.stat().st_size
+            except OSError:
+                continue
+        return total
+
+    def _evict_if_needed(self) -> None:
+        """상한 초과 시 오래된(mtime 오름차순) mp3부터 저수위까지 삭제한다.
+
+        상한이 아니라 저수위(80%)까지 지우는 이유: 상한에 딱 맞춰 지우면 다음 쓰기가
+        곧바로 다시 상한을 넘겨 미스마다 스캔이 돌아 O(N)으로 되돌아간다.
+        여유를 만들어 두면 그만큼의 쓰기 동안은 스캔 없이 진행한다.
+        """
+        if self._max_cache_bytes is None:
+            return
+
+        low_water = int(self._max_cache_bytes * _EVICT_LOW_WATER_RATIO)
 
         # (경로, mtime, size) 수집 — 열거 중 파일이 사라질 수 있어 개별 stat 보호.
         entries: list[tuple[Path, float, int]] = []
@@ -86,15 +140,17 @@ class TtsService:
             entries.append((p, st.st_mtime, st.st_size))
             total += st.st_size
 
-        if total <= self._max_cache_bytes:
-            return
+        if total > self._max_cache_bytes:
+            for p, _mtime, size in sorted(entries, key=lambda e: e[1]):
+                if total <= low_water:
+                    break
+                try:
+                    p.unlink(missing_ok=True)
+                    total -= size
+                except OSError:
+                    # 삭제 실패(권한/경합)는 다음 축출 기회로 미룬다.
+                    continue
 
-        for p, _mtime, size in sorted(entries, key=lambda e: e[1]):
-            if total <= self._max_cache_bytes:
-                break
-            try:
-                p.unlink(missing_ok=True)
-                total -= size
-            except OSError:
-                # 삭제 실패(권한/경합)는 다음 축출 기회로 미룬다.
-                continue
+        # 스캔했으니 추적값을 실측으로 보정한다(누적 오차 제거)
+        with self._size_lock:
+            self._tracked_bytes = total

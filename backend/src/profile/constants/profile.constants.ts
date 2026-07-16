@@ -35,4 +35,13 @@ export const MAX_HOBBIES = 10;
 export const MAX_SIGNIFICANT_PLACES = 10;
 export const MAX_FAMILY_MEMBERS = 20;
 export const MAX_TEXT_FIELD_LENGTH = 100;
+
+/**
+ * 가족 이름 최소 길이.
+ *
+ * 이름은 노트 본문에서 통째로 찾아 토큰으로 치환하는 열쇠다. 1자를 허용하면
+ * 그 글자가 든 무관한 낱말까지 전부 치환돼("김밥" → "[아들1]밥") LLM 입력이
+ * 망가진다. 한국 성씨는 대개 1자라 성만 입력하는 실수도 함께 막힌다.
+ */
+export const MIN_FAMILY_NAME_LENGTH = 2;
 export const MAX_NOTES_LENGTH = 1000;

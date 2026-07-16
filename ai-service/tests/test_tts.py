@@ -108,6 +108,42 @@ def test_service_unlimited_cache_keeps_all(tmp_path):
     assert len(list(tmp_path.glob("*.mp3"))) == 5
 
 
+def test_service_survives_file_deleted_between_check_and_read(tmp_path):
+    """축출 스레드가 파일을 지워도 502가 아니라 재합성으로 복구한다.
+
+    FastAPI 동기 엔드포인트는 스레드풀에서 돌기 때문에, 캐시 존재 확인과 읽기
+    사이에 축출이 끼어들 수 있다. 그 경합으로 사용자에게 502를 주면 안 된다.
+    """
+    engine = FakeEngine(b"MP3DATA")
+    svc = TtsService(engine, str(tmp_path))
+    svc.synthesize("바다", VOICE)  # 캐시 생성
+
+    # 축출이 지운 상황을 재현
+    svc._cache_path("바다", VOICE).unlink()
+
+    audio = svc.synthesize("바다", VOICE)
+
+    assert audio == b"MP3DATA"
+    assert len(engine.calls) == 2  # 재합성으로 복구
+
+
+def test_service_evicts_down_to_low_water_not_just_under_cap(tmp_path):
+    """상한이 아니라 저수위(80%)까지 지운다.
+
+    상한에 딱 맞춰 지우면 다음 쓰기가 곧바로 상한을 다시 넘겨, 미스마다 O(N)
+    디렉토리 스캔이 돌아 캐시가 CPU/IO DoS 벡터가 된다.
+    """
+    # 10바이트/개, 상한 100 → 저수위 80. 11개(110B) 쓰면 80 이하로 내려가야 한다.
+    svc = TtsService(FakeEngine(b"0123456789"), str(tmp_path), max_cache_bytes=100)
+
+    for i in range(11):
+        svc.synthesize(f"text-{i}", VOICE)
+        os.utime(svc._cache_path(f"text-{i}", VOICE), (100 + i, 100 + i))
+
+    total = sum(p.stat().st_size for p in tmp_path.glob("*.mp3"))
+    assert total <= 80  # 상한(100)이 아니라 저수위(80)까지
+
+
 def test_service_cache_hit_touches_mtime(tmp_path):
     # 히트 시 mtime 갱신으로 LRU가 '최근 사용'을 반영
     svc = TtsService(FakeEngine(b"MP3DATA"), str(tmp_path))
