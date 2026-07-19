@@ -5,6 +5,7 @@ import type { ITtsService } from '../domain/ITtsService.js';
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllGlobals();
 });
 
 function fakePlayer(overrides: Partial<IAudioPlayer> = {}): IAudioPlayer {
@@ -23,23 +24,69 @@ function fakeFallback(): ITtsService {
   return { speak: vi.fn(), cancel: vi.fn() };
 }
 
+/** 백엔드 프록시 응답과 Blob URL 생성을 흉내낸다. */
+function mockAudioFetch(ok = true) {
+  const blob = new Blob([new Uint8Array([1, 2, 3])], { type: 'audio/mpeg' });
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok,
+    status: ok ? 200 : 502,
+    blob: () => Promise.resolve(blob),
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  vi.stubGlobal('URL', {
+    ...URL,
+    createObjectURL: vi.fn(() => 'blob:mock-audio'),
+    revokeObjectURL: vi.fn(),
+  });
+  return fetchMock;
+}
+
 describe('AzureTtsService', () => {
-  it('text/voice를 URL 인코딩해 /tts를 load하고 재생한다', async () => {
+  it('백엔드 프록시에서 오디오를 받아 Blob URL로 재생한다', async () => {
+    // URL을 <audio src>에 바로 넣으면 인증 헤더를 못 붙여 토큰을 URL에 실어야 한다.
+    // fetch로 받아 Blob URL을 만들면 헤더를 쓸 수 있다.
+    const fetchMock = mockAudioFetch();
     const player = fakePlayer();
     const fallback = fakeFallback();
     const svc = new AzureTtsService(player, fallback, 'http://x', 'ko-KR-SunHiNeural');
 
     const result = await svc.speak('바다 사과');
 
-    expect(player.load).toHaveBeenCalledWith(
-      `http://x/tts?text=${encodeURIComponent('바다 사과')}&voice=ko-KR-SunHiNeural`,
+    expect(fetchMock).toHaveBeenCalledWith(
+      `http://x/ai/tts?text=${encodeURIComponent('바다 사과')}&voice=ko-KR-SunHiNeural`,
+      expect.anything(),
     );
+    // ai-service를 직접 부르지 않는다
+    expect(String(fetchMock.mock.calls[0][0])).not.toContain(':8000');
+    expect(player.load).toHaveBeenCalledWith('blob:mock-audio');
     expect(player.play).toHaveBeenCalled();
     expect(fallback.speak).not.toHaveBeenCalled();
     expect(result.durationMs).toBeGreaterThanOrEqual(0);
   });
 
+  it('재생 후 Blob URL을 해제한다 (메모리 누수 방지)', async () => {
+    mockAudioFetch();
+    const svc = new AzureTtsService(fakePlayer(), fakeFallback(), 'http://x');
+
+    await svc.speak('바다');
+
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-audio');
+  });
+
+  it('프록시가 실패하면 fallback으로 위임한다', async () => {
+    mockAudioFetch(false);
+    const fallbackResult = { startTime: 0, endTime: 1, durationMs: 1 };
+    const fallback: ITtsService = {
+      speak: vi.fn().mockResolvedValue(fallbackResult),
+      cancel: vi.fn(),
+    };
+    const svc = new AzureTtsService(fakePlayer(), fallback, 'http://x');
+
+    expect(await svc.speak('바다')).toBe(fallbackResult);
+  });
+
   it('load 실패 시 fallback.speak로 위임한다', async () => {
+    mockAudioFetch();
     const player = fakePlayer({
       load: vi.fn().mockRejectedValue(new Error('404')),
     });
@@ -57,6 +104,7 @@ describe('AzureTtsService', () => {
   });
 
   it('play 실패 시에도 fallback으로 위임한다', async () => {
+    mockAudioFetch();
     const player = fakePlayer({
       play: vi.fn().mockRejectedValue(new Error('재생 실패')),
     });

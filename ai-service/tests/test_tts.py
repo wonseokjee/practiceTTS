@@ -8,6 +8,8 @@ import os
 import main
 from dependencies import get_tts_rate_limiter, get_tts_service
 from fastapi.testclient import TestClient
+
+from tests.service_auth_helper import SERVICE_HEADERS
 from infra.azure_tts import AzureTtsEngine
 from infra.rate_limiter import SlidingWindowRateLimiter
 from services.tts_service import TtsService
@@ -159,7 +161,7 @@ def test_service_cache_hit_touches_mtime(tmp_path):
 
 def _client_with(service: TtsService) -> TestClient:
     main.app.dependency_overrides[get_tts_service] = lambda: service
-    return TestClient(main.app)
+    return TestClient(main.app, headers=SERVICE_HEADERS)
 
 
 def test_tts_endpoint_returns_audio(tmp_path):
@@ -244,7 +246,7 @@ def test_tts_endpoint_rate_limited_returns_429(tmp_path):
     limiter = SlidingWindowRateLimiter(1, 60.0)
     main.app.dependency_overrides[get_tts_rate_limiter] = lambda: limiter
     try:
-        client = TestClient(main.app)
+        client = TestClient(main.app, headers=SERVICE_HEADERS)
         first = client.get("/tts", params={"text": "바다"})
         second = client.get("/tts", params={"text": "산"})
         assert first.status_code == 200

@@ -1,4 +1,4 @@
-// 서버 STT 구현 (ISttService) — 마이크를 WAV로 녹음해 ai-service /stt로 인식한다.
+// 서버 STT 구현 (ISttService) — 마이크를 WAV로 녹음해 백엔드 /ai/stt로 인식한다.
 //
 // start(candidates): 녹음 시작 + 정답 후보(phrase hint) 저장.
 // stop(): 녹음 종료 → WAV 인코딩 → POST /stt → onResult/onError.
@@ -9,11 +9,10 @@
 import type { SttResult } from '../../domain/TrainingSession.js';
 import type { ISttService } from '../../infrastructure/SttService.js';
 import { WavRecorder } from './WavRecorder.js';
+import { API_BASE_URL, ML_TOKEN_KEY } from '../../../shared/MemoryLinkApi.js';
 
-/** ai-service 베이스 URL (기본 로컬 8000). CORS는 ai-service에서 5173 허용됨. */
-const AI_SERVICE_URL =
-  (import.meta.env.VITE_AI_SERVICE_URL as string | undefined) ??
-  'http://localhost:8000';
+// ai-service를 브라우저가 직접 부르지 않는다. 그러면 그 경로만 인증을 걸 수 없어
+// 누구나 Azure 음성 할당량을 태울 수 있다. 백엔드 프록시를 거쳐 JWT로 막는다.
 
 /** /stt 응답 대기 상한(ms). 초과 시 요청을 abort하고 폴백 안내한다. */
 const FETCH_TIMEOUT_MS = 10000;
@@ -79,9 +78,11 @@ export class ServerSttService implements ISttService {
         form.append('candidates', candidate);
       }
 
-      const res = await fetch(`${AI_SERVICE_URL}/stt`, {
+      const token = localStorage.getItem(ML_TOKEN_KEY);
+      const res = await fetch(`${API_BASE_URL}/ai/stt`, {
         method: 'POST',
         body: form,
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         signal: controller.signal,
       });
       if (!res.ok) throw new Error(`STT ${res.status}`);

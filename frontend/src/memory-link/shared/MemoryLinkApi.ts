@@ -11,6 +11,11 @@ import axios from 'axios';
 const BASE_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:3000';
 
 /**
+ * 백엔드 오리진. axios를 쓰지 않는 호출(fetch로 오디오를 받는 등)에서 필요하다.
+ */
+export const API_BASE_URL = BASE_URL;
+
+/**
  * 백엔드가 내려주는 상대 경로 미디어 URL(예: /uploads/memory-images/a.jpg)을
  * API 오리진 기준 절대 URL로 바꾼다.
  *

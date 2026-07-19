@@ -1,6 +1,8 @@
 """STT 서비스·라우터 테스트 (Azure 실호출 없이 엔진 mock)."""
 from fastapi.testclient import TestClient
 
+from tests.service_auth_helper import SERVICE_HEADERS
+
 import main
 from dependencies import get_stt_service
 from models.stt import SttNBestItem, SttResult
@@ -23,7 +25,7 @@ class FakeEngine:
 
 def _client_with(service: SttService) -> TestClient:
     main.app.dependency_overrides[get_stt_service] = lambda: service
-    return TestClient(main.app)
+    return TestClient(main.app, headers=SERVICE_HEADERS)
 
 
 # ── SttService ────────────────────────────────────────────────

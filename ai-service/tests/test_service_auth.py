@@ -81,13 +81,27 @@ def test_token_comparison_is_not_prefix_based(client):
 
 
 @pytest.mark.parametrize("path", ["/tts", "/stt"])
-def test_browser_endpoints_stay_open(client, path):
-    """브라우저가 직접 부르는 경로는 토큰 없이도 401이 되지 않는다.
+def test_voice_endpoints_also_require_token(client, path):
+    """음성 경로도 토큰이 필요하다 — 열린 경로가 하나도 없어야 한다.
 
-    브라우저에 심은 토큰은 비밀이 아니라 의미가 없다. 이쪽은 레이트리밋으로
-    막고 있고, 근본 해결은 백엔드 프록시로 옮기는 것이다(별도 과제).
+    예전에는 브라우저가 /stt·/tts를 직접 불러서 인증을 걸 수 없었다(브라우저에
+    심은 토큰은 비밀이 아니다). 백엔드 프록시(/ai/stt, /ai/tts)로 옮기면서
+    이 서비스는 외부에 열린 경로가 없어졌다.
     """
     res = client.get(path) if path == "/tts" else client.post(path)
+
+    assert res.status_code == 401
+
+
+@pytest.mark.parametrize("path", ["/tts", "/stt"])
+def test_voice_endpoints_accept_valid_token(client, path):
+    """백엔드에서 오는 요청(토큰 있음)은 통과한다."""
+    headers = {"X-Service-Token": TOKEN}
+    res = (
+        client.get(path, headers=headers)
+        if path == "/tts"
+        else client.post(path, headers=headers)
+    )
 
     assert res.status_code != 401
     assert res.status_code != 503

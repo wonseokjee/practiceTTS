@@ -4,6 +4,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { DataSource } from 'typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AiProxyModule } from './ai-proxy/ai-proxy.module';
 import { AuthModule } from './auth/auth.module';
 import { DatabaseModule } from './database/database.module';
 import { MemoryModule } from './memory/memory.module';
@@ -21,6 +22,7 @@ import { TrainingModule } from './training/training.module';
     EventEmitterModule.forRoot(),
     DatabaseModule,
     AuthModule,
+    AiProxyModule,
     MemoryModule,
     TrainingModule,
     ProfileModule,
