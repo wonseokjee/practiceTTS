@@ -8,6 +8,7 @@ import { EntryDetailScreen } from './EntryDetailScreen.js';
 import { EntryListScreen } from './EntryListScreen.js';
 import { ProfileScreen } from './ProfileScreen.js';
 import { QabProgressCard } from './QabProgressCard.js';
+import { withHonorific } from '../../shared/honorific.js';
 
 /** 대시보드 화면 상태 */
 type DashboardView = 'list' | 'capture' | 'detail' | 'profile';
@@ -128,7 +129,7 @@ export function CaregiverDashboard() {
             {/* 환자 인사 */}
             <div className="mb-5">
               <h2 className="text-2xl font-bold text-[#1A1916]">
-                {user?.patientDisplayName ?? '환자'} 어르신
+                {withHonorific(user?.patientDisplayName, '어르신')}
               </h2>
               <p className="mt-1 text-sm text-[#6B6560]">오늘도 함께해요</p>
             </div>

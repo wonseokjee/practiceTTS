@@ -11,6 +11,7 @@ import { QuizScreen } from '../quiz/presentation/QuizScreen.js';
 import { extractErrorMessage } from '../../shared/extractErrorMessage.js';
 import { WARM_SCREEN_BG } from '../../shared/theme.js';
 import { resolveMediaUrl } from '../../shared/MemoryLinkApi.js';
+import { withHonorific } from '../../shared/honorific.js';
 
 /** 환자 학습 모드 (R9-a: localStorage에 마지막 모드 저장/복원) */
 type PatientMode = 'QUIZ' | 'CONVERSATION';
@@ -157,8 +158,12 @@ export function PatientDashboard() {
         <div>
           <h1 className="text-3xl font-bold text-[#1A1916]">안녕하세요</h1>
           <p className="text-xl text-[#6B6560] mt-1">
-            {user?.patientDisplayName ?? user?.displayName}님, 오늘도 함께
-            훈련해요!
+            {withHonorific(
+              user?.patientDisplayName ?? user?.displayName,
+              '님',
+              { separator: '' },
+            )}
+            , 오늘도 함께 훈련해요!
           </p>
         </div>
         {isCaregiverInPatientMode ? (
