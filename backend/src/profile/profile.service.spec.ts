@@ -4,7 +4,7 @@ import { MAX_FAMILY_MEMBERS } from './constants/profile.constants';
 import type { CryptoService } from '../memory/services/crypto.service';
 import type { FamilyMember } from './entities/family-member.entity';
 import type { PatientProfile } from './entities/patient-profile.entity';
-import { QueryFailedError, type Repository } from 'typeorm';
+import { QueryFailedError, type DataSource, type Repository } from 'typeorm';
 
 /**
  * ProfileService 단위 테스트.
@@ -29,6 +29,10 @@ describe('ProfileService', () => {
     findOne: jest.fn(),
     create: jest.fn(),
     save: jest.fn(),
+    // 원자적 채번 SQL이 여기로 나간다.
+    get manager() {
+      return managerMock;
+    },
   };
 
   const familyRepoMock = {
@@ -39,6 +43,35 @@ describe('ProfileService', () => {
     save: jest.fn(),
     delete: jest.fn(),
     createQueryBuilder: jest.fn(),
+  };
+
+  /**
+   * 서수 채번·수위 갱신은 이제 원자적 SQL 한 문장이다(JSONB GREATEST 병합).
+   * read-modify-write를 JS에서 하던 옛 방식은 동시 요청에서 키를 통째로
+   * 잃었다 — 실측으로 재현했다. 목도 같은 의미를 흉내 낸다.
+   */
+  const managerMock = {
+    query: jest.fn((sql: string, params: unknown[]) => {
+      const [, relation, value] = params as [string, string, number];
+      const current = Number(highWater[relation] ?? 0);
+      if (sql.includes('RETURNING')) {
+        const next = Math.max(current, Number(value)) + 1;
+        highWater[relation] = next;
+        // 실제 TypeORM은 UPDATE ... RETURNING에 [rows, affectedCount]를
+        // 돌려준다. 목이 행 배열만 주면 서비스의 파싱 버그를 숨긴다 —
+        // 실제로 그렇게 숨겨져서 실 DB에 붙이고서야 드러났다.
+        return Promise.resolve([[{ ordinal: next }], 1]);
+      }
+      highWater[relation] = Math.max(current, Number(value));
+      return Promise.resolve([]);
+    }),
+    getRepository: jest.fn(() => familyRepoMock),
+  };
+
+  const dataSourceMock = {
+    transaction: jest.fn(
+      (cb: (m: typeof managerMock) => Promise<unknown>) => cb(managerMock),
+    ),
   };
 
   const cryptoMock = {
@@ -53,6 +86,7 @@ describe('ProfileService', () => {
     familyCount = 0;
     highWater = {};
 
+    managerMock.query.mockClear();
     profileRepoMock.findOne.mockImplementation(() =>
       Promise.resolve({
         id: PROFILE_ID,
@@ -96,6 +130,7 @@ describe('ProfileService', () => {
       profileRepoMock as unknown as Repository<PatientProfile>,
       familyRepoMock as unknown as Repository<FamilyMember>,
       cryptoMock as unknown as CryptoService,
+      dataSourceMock as unknown as DataSource,
     );
   });
 
@@ -359,6 +394,69 @@ describe('ProfileService', () => {
       await expect(
         service.getProfile(unlinked, PATIENT_ID),
       ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+  });
+  describe('서수 재사용 방어 (외부 리뷰 2026-07-19)', () => {
+    it('수위 갱신이 다른 관계의 키를 지우지 않는다', async () => {
+      // 옛 방식은 JSONB를 통째로 덮어써서 아들·딸 동시 추가 시 나중 저장이
+      // 앞의 키를 지웠다. 실측(동시 10건)에서 son 키가 통째로 사라졌고,
+      // 그러면 아들 전원 삭제 후 재등록 시 [아들1]이 다시 발급된다.
+      highWater = { son: 3 };
+      maxOrdinal = null;
+
+      await service.addFamilyMember(caregiver, PATIENT_ID, {
+        relation: 'daughter',
+        name: '김영희',
+      });
+
+      expect(highWater.son).toBe(3); // 지워지지 않았다
+      expect(highWater.daughter).toBe(1);
+    });
+
+    it('구성원 전원 삭제 후 재등록해도 서수를 재사용하지 않는다', async () => {
+      // 재사용되면 토큰 상태로 캐시된 옛 기억이 **다른 가족의 이름으로**
+      // 환자에게 렌더링된다. 임상적으로 심각하다.
+      highWater = { son: 2 };
+      maxOrdinal = null; // 살아있는 아들 없음 (전원 삭제됨)
+
+      await service.addFamilyMember(caregiver, PATIENT_ID, {
+        relation: 'son',
+        name: '새로운아들',
+      });
+
+      expect(savedMember?.relationOrdinal).toBe(3);
+    });
+
+    it('채번이 원자적 SQL 한 문장으로 나간다 (read-modify-write 금지)', async () => {
+      maxOrdinal = null;
+
+      await service.addFamilyMember(caregiver, PATIENT_ID, {
+        relation: 'son',
+        name: '김철수',
+      });
+
+      const [sql] = managerMock.query.mock.calls[0] as [string, unknown[]];
+      // GREATEST 병합 + RETURNING 이어야 동시 요청에서 서수가 겹치지 않는다.
+      expect(sql).toContain('GREATEST');
+      expect(sql).toContain('RETURNING');
+      // 프로필 엔티티를 통째로 save하면 lost update가 되살아난다.
+      expect(profileRepoMock.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('가족 교체 원자성', () => {
+    it('삭제와 삽입이 한 트랜잭션 안에서 일어난다', async () => {
+      // 트랜잭션이 없으면 DELETE 직후 실패 시 가족 정보가 영구 소실된다.
+      // 이름은 AES 저장이라 백업 없이는 복구 불가다.
+      familyRepoMock.find.mockResolvedValue([]);
+
+      await service.upsert(CAREGIVER_ID, caregiver, PATIENT_ID, {
+        family: [{ relation: 'son', name: '김철수' }],
+      });
+
+      expect(dataSourceMock.transaction).toHaveBeenCalled();
+      // 트랜잭션 매니저의 저장소로만 쓰기가 나가야 한다.
+      expect(managerMock.getRepository).toHaveBeenCalled();
     });
   });
 });

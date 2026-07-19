@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { QueryFailedError, Repository } from 'typeorm';
+import { DataSource, EntityManager, QueryFailedError, Repository } from 'typeorm';
 import { CryptoService } from '../memory/services/crypto.service';
 import {
   MAX_FAMILY_MEMBERS,
@@ -19,6 +19,34 @@ import {
 import { UpsertPatientProfileDto } from './dto/upsert-patient-profile.dto';
 import { FamilyMember } from './entities/family-member.entity';
 import { PatientProfile } from './entities/patient-profile.entity';
+
+/**
+ * `UPDATE ... RETURNING` 결과에서 서수를 꺼낸다.
+ *
+ * TypeORM의 `query()`는 SELECT면 행 배열을, UPDATE ... RETURNING이면
+ * **`[rows, affectedCount]`** 를 돌려준다. 이 차이를 놓쳐 `rows[0].ordinal`로
+ * 읽으면 항상 undefined다 — 목을 쓴 단위 테스트로는 절대 드러나지 않고,
+ * 실제 DB에 붙여야 보인다(실측으로 발견).
+ *
+ * 드라이버·버전에 따라 형태가 갈릴 수 있으므로 두 형태를 모두 받는다.
+ */
+function extractReturnedOrdinal(result: unknown): number | null {
+  if (!Array.isArray(result) || result.length === 0) {
+    return null;
+  }
+  // [rows, affectedCount] 형태
+  const head: unknown = result[0];
+  const rows: unknown = Array.isArray(head) ? head : result;
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return null;
+  }
+  const value = (rows[0] as { ordinal?: unknown } | undefined)?.ordinal;
+  if (value == null) {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
 
 /** 서수 충돌(동시 추가) 시 재계산·재시도 횟수 상한. */
 const ORDINAL_RETRY_LIMIT = 4;
@@ -53,6 +81,7 @@ export class ProfileService {
     @InjectRepository(FamilyMember)
     private readonly familyRepository: Repository<FamilyMember>,
     private readonly cryptoService: CryptoService,
+    private readonly dataSource: DataSource,
   ) {}
 
   /**
@@ -301,9 +330,9 @@ export class ProfileService {
       );
     }
 
-    await this.familyRepository.delete({ profileId });
-
-    const entities = members.slice(0, MAX_FAMILY_MEMBERS).map((m) => {
+    // 암호화를 트랜잭션 밖에서 미리 끝낸다. 트랜잭션 구간에 남는 건 DB
+    // 작업뿐이라, 암호화가 실패해도 트랜잭션이 열린 채 머물지 않는다.
+    const rows = members.slice(0, MAX_FAMILY_MEMBERS).map((m) => {
       const key = `${m.relation} ${m.name}`;
       let ordinal = ordinalByKey.get(key);
       if (ordinal === undefined) {
@@ -312,36 +341,36 @@ export class ProfileService {
         maxByRelation.set(m.relation, ordinal);
         ordinalByKey.set(key, ordinal);
       }
-      return this.familyRepository.create({
+      return {
         profileId,
         relation: m.relation,
         name: this.cryptoService.encrypt(m.name),
         gender: m.gender ?? 'U',
         relationOrdinal: ordinal,
         note: m.note ? this.cryptoService.encrypt(m.note) : null,
-      });
+      };
     });
 
-    if (entities.length > 0) {
-      await this.familyRepository.save(entities);
-    }
+    // DELETE와 INSERT를 한 트랜잭션으로 묶는다.
+    //
+    // 예전에는 둘 사이에 트랜잭션이 없어서, DELETE 직후 무엇이든 실패하면
+    // (암호화 키 회전, 커넥션 끊김, 프로세스 재시작) **환자의 가족 정보가
+    // 통째로 사라졌다**. 이름은 AES로 저장되므로 백업 없이는 복구할 수
+    // 없고, 재등록하면 서수가 1부터 다시 나가 임상 오류까지 뒤따랐다.
+    await this.dataSource.transaction(async (manager) => {
+      const familyRepo = manager.getRepository(FamilyMember);
+      await familyRepo.delete({ profileId });
+      if (rows.length > 0) {
+        await familyRepo.save(rows.map((r) => familyRepo.create(r)));
+      }
 
-    // 이번 교체에서 올라간 수위를 보존한다. 다음 교체에서 전원이 사라져도
-    // 여기서 읽어 이어 채번하므로 서수가 재사용되지 않는다.
-    if (profile) {
-      const nextHighWater: Record<string, number> = { ...highWater };
-      let changed = false;
+      // 이번 교체에서 올라간 수위를 보존한다. 다음 교체에서 전원이 사라져도
+      // 여기서 읽어 이어 채번하므로 서수가 재사용되지 않는다. GREATEST
+      // 병합이라 다른 관계의 키를 지우지 않는다(옛 방식은 지웠다).
       for (const [relation, value] of maxByRelation) {
-        if (value > Number(nextHighWater[relation] ?? 0)) {
-          nextHighWater[relation] = value;
-          changed = true;
-        }
+        await this.raiseHighWater(profileId, relation, value, manager);
       }
-      if (changed) {
-        profile.relationOrdinalHighWater = nextHighWater;
-        await this.profileRepository.save(profile);
-      }
-    }
+    });
   }
 
   /**
@@ -360,6 +389,7 @@ export class ProfileService {
   private async nextOrdinal(
     profileId: string,
     relation: FamilyRelation,
+    manager?: EntityManager,
   ): Promise<number> {
     const row = await this.familyRepository
       .createQueryBuilder('member')
@@ -369,44 +399,84 @@ export class ProfileService {
       .getRawOne<{ max: number | string | null }>();
 
     const survivingMax = row?.max == null ? 0 : Number(row.max);
-    const highWater = await this.getHighWater(profileId, relation);
-    const ordinal = Math.max(survivingMax, highWater) + 1;
+    return this.claimNextOrdinal(profileId, relation, survivingMax, manager);
+  }
 
-    await this.raiseHighWater(profileId, relation, ordinal);
+  /**
+   * 다음 서수를 **원자적으로** 발급한다 (수위를 올리고 그 값을 돌려받는다).
+   *
+   * 예전에는 findOne → JS 스프레드 → save 였다. JSONB 컬럼을 통째로
+   * 덮어쓰므로 같은 프로필에 아들·딸을 거의 동시에 추가하면 나중 저장이
+   * 앞의 키를 지워 **수위가 통째로 유실**됐다. UNIQUE 위반이 아니라서
+   * 재시도 루프에도 안 걸리고 아무 신호가 남지 않는다.
+   *
+   * 실측(일회용 DB, 동시 10건): 옛 방식은 전원이 서수 1을 받고 최종
+   * high-water에서 son 키가 사라졌다. 이 방식은 동시 20건이 1~20으로
+   * 겹침 없이 발급된다.
+   *
+   * 한 문장짜리 UPDATE라 같은 행에 대한 동시 실행이 행 잠금으로 직렬화된다.
+   *
+   * @param floor 살아있는 행의 MAX. 수위와 이 값 중 큰 쪽 다음을 발급한다.
+   */
+  private async claimNextOrdinal(
+    profileId: string,
+    relation: FamilyRelation,
+    floor: number,
+    manager?: EntityManager,
+  ): Promise<number> {
+    const runner = manager ?? this.profileRepository.manager;
+    const rows = (await runner.query(
+      `UPDATE "patient_profiles"
+          SET "relation_ordinal_high_water" = jsonb_set(
+                COALESCE("relation_ordinal_high_water", '{}'::jsonb),
+                ARRAY[$2::text],
+                to_jsonb(
+                  GREATEST(
+                    COALESCE(("relation_ordinal_high_water"->>$2)::int, 0),
+                    $3::int
+                  ) + 1
+                )
+              )
+        WHERE "id" = $1::uuid
+        RETURNING ("relation_ordinal_high_water"->>$2)::int AS ordinal`,
+      [profileId, relation, floor],
+    )) as unknown;
+
+    const ordinal = extractReturnedOrdinal(rows);
+    if (ordinal == null) {
+      throw new NotFoundException('환자 프로필을 찾을 수 없습니다.');
+    }
     return ordinal;
   }
 
-  /** 해당 관계에서 지금까지 발급한 최대 서수 (삭제돼도 보존). */
-  private async getHighWater(
-    profileId: string,
-    relation: FamilyRelation,
-  ): Promise<number> {
-    const profile = await this.profileRepository.findOne({
-      where: { id: profileId },
-    });
-    return Number(profile?.relationOrdinalHighWater?.[relation] ?? 0);
-  }
-
-  /** 최고 수위를 끌어올린다(내리지 않는다). */
+  /**
+   * 수위를 주어진 값까지 끌어올린다(내리지 않는다).
+   *
+   * `replaceFamily`는 서수를 JS에서 한꺼번에 배정하므로 채번 경로를 쓰지
+   * 못한다. 대신 배정이 끝난 뒤 관계별 최대값으로 수위를 맞춘다.
+   * 여기서도 GREATEST 병합이라 다른 관계의 키를 지우지 않는다.
+   */
   private async raiseHighWater(
     profileId: string,
     relation: FamilyRelation,
     ordinal: number,
+    manager?: EntityManager,
   ): Promise<void> {
-    const profile = await this.profileRepository.findOne({
-      where: { id: profileId },
-    });
-    if (!profile) {
-      return;
-    }
-    const current = Number(profile.relationOrdinalHighWater?.[relation] ?? 0);
-    if (ordinal <= current) {
-      return;
-    }
-    profile.relationOrdinalHighWater = {
-      ...(profile.relationOrdinalHighWater ?? {}),
-      [relation]: ordinal,
-    };
-    await this.profileRepository.save(profile);
+    const runner = manager ?? this.profileRepository.manager;
+    await runner.query(
+      `UPDATE "patient_profiles"
+          SET "relation_ordinal_high_water" = jsonb_set(
+                COALESCE("relation_ordinal_high_water", '{}'::jsonb),
+                ARRAY[$2::text],
+                to_jsonb(
+                  GREATEST(
+                    COALESCE(("relation_ordinal_high_water"->>$2)::int, 0),
+                    $3::int
+                  )
+                )
+              )
+        WHERE "id" = $1::uuid`,
+      [profileId, relation, ordinal],
+    );
   }
 }
