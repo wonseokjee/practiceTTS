@@ -1,6 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
-  <rect width="300" height="300" fill="#ECEFF1" rx="16"/>
-  <text x="150" y="155" font-size="110" text-anchor="middle" dominant-baseline="middle" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif">🐘</text>
-  <text x="150" y="255" font-size="28" text-anchor="middle" fill="#37474F" font-family="Pretendard, Noto Sans KR, sans-serif" font-weight="600">코끼리</text>
-  <!-- PLACEHOLDER: 실제 일러스트로 교체 필요 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" role="img">
+  <rect width="300" height="300" fill="#FAF9F7" rx="16"/>
+  <g fill="none" stroke="#2A2724" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+
+    <ellipse cx="164" cy="164" rx="76" ry="64" fill="#B8B5AF"/>
+    <ellipse cx="96" cy="148" rx="44" ry="46" fill="#B8B5AF"/>
+    <path d="M96 190 c-14 22-6 50 14 58 c14 6 24-6 18-18" fill="#B8B5AF"/>
+    <circle cx="82" cy="136" r="7" fill="#2A2724" stroke="none"/>
+    <ellipse cx="140" cy="140" rx="30" ry="34" fill="#7A7671"/>
+    <path d="M120 222 v26"/><path d="M164 226 v22"/><path d="M212 216 v32"/>
+  </g>
 </svg>

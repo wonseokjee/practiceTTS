@@ -1,6 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
-  <rect width="300" height="300" fill="#FFF8E1" rx="16"/>
-  <text x="150" y="155" font-size="110" text-anchor="middle" dominant-baseline="middle" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif">🐯</text>
-  <text x="150" y="255" font-size="28" text-anchor="middle" fill="#37474F" font-family="Pretendard, Noto Sans KR, sans-serif" font-weight="600">호랑이</text>
-  <!-- PLACEHOLDER: 실제 일러스트로 교체 필요 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" role="img">
+  <rect width="300" height="300" fill="#FAF9F7" rx="16"/>
+  <g fill="none" stroke="#2A2724" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+
+    <path d="M96 108 a24 24 0 0 1 34 0 z" fill="#E07B54"/>
+    <path d="M204 108 a24 24 0 0 0-34 0 z" fill="#E07B54"/>
+    <ellipse cx="150" cy="166" rx="76" ry="70" fill="#E07B54"/>
+    <ellipse cx="150" cy="186" rx="42" ry="34" fill="#F5E7C6"/>
+    <g stroke-width="7">
+      <path d="M104 130 l16 14"/><path d="M196 130 l-16 14"/>
+      <path d="M86 168 h18"/><path d="M214 168 h-18"/>
+      <path d="M92 198 l18-8"/><path d="M208 198 l-18-8"/>
+    </g>
+    <circle cx="128" cy="154" r="8" fill="#2A2724" stroke="none"/>
+    <circle cx="172" cy="154" r="8" fill="#2A2724" stroke="none"/>
+    <path d="M150 178 l-11 10 h22 z" fill="#E9A0B4"/>
+    <path d="M150 188 v10"/>
+  </g>
 </svg>

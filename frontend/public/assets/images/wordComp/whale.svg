@@ -1,6 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
-  <rect width="300" height="300" fill="#E3F2FD" rx="16"/>
-  <text x="150" y="155" font-size="110" text-anchor="middle" dominant-baseline="middle" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif">🐋</text>
-  <text x="150" y="255" font-size="28" text-anchor="middle" fill="#37474F" font-family="Pretendard, Noto Sans KR, sans-serif" font-weight="600">고래</text>
-  <!-- PLACEHOLDER: 실제 일러스트로 교체 필요 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" role="img">
+  <rect width="300" height="300" fill="#FAF9F7" rx="16"/>
+  <g fill="none" stroke="#2A2724" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+
+    <path d="M56 168 c0-42 44-70 96-70 c56 0 92 30 92 66 c0 34-40 60-92 60 c-52 0-96-24-96-56 z" fill="#4A86C8"/>
+    <path d="M244 164 l40-34 v78 z" fill="#4A86C8"/>
+    <path d="M70 190 c40 20 130 20 168 0" stroke="#FFFFFF" stroke-width="8"/>
+    <circle cx="106" cy="150" r="7" fill="#2A2724" stroke="none"/>
+    <path d="M126 92 C120 70 136 58 150 66" stroke="#A8D0EE" stroke-width="9"/>
+    <path d="M150 66 C160 52 178 56 180 72" stroke="#A8D0EE" stroke-width="9"/>
+  </g>
 </svg>

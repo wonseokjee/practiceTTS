@@ -1,6 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
-  <rect width="300" height="300" fill="#E0F2F1" rx="16"/>
-  <text x="150" y="155" font-size="110" text-anchor="middle" dominant-baseline="middle" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif">🚲</text>
-  <text x="150" y="255" font-size="28" text-anchor="middle" fill="#37474F" font-family="Pretendard, Noto Sans KR, sans-serif" font-weight="600">자전거</text>
-  <!-- PLACEHOLDER: 실제 일러스트로 교체 필요 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" role="img">
+  <rect width="300" height="300" fill="#FAF9F7" rx="16"/>
+  <g fill="none" stroke="#2A2724" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+
+    <circle cx="78" cy="188" r="50" fill="none" stroke-width="7"/>
+    <circle cx="222" cy="188" r="50" fill="none" stroke-width="7"/>
+    <path d="M78 188 L128 188 L156 116 L186 188 L222 188"/>
+    <path d="M128 188 L156 116"/>
+    <path d="M156 116 h-34"/>
+    <path d="M186 188 L200 118 h-18"/>
+    <circle cx="150" cy="188" r="10" fill="#2A2724"/>
+  </g>
 </svg>

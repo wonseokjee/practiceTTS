@@ -1,6 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
-  <rect width="300" height="300" fill="#E8F5E9" rx="16"/>
-  <text x="150" y="155" font-size="110" text-anchor="middle" dominant-baseline="middle" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif">🏫</text>
-  <text x="150" y="255" font-size="28" text-anchor="middle" fill="#37474F" font-family="Pretendard, Noto Sans KR, sans-serif" font-weight="600">학교</text>
-  <!-- PLACEHOLDER: 실제 일러스트로 교체 필요 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" role="img">
+  <rect width="300" height="300" fill="#FAF9F7" rx="16"/>
+  <g fill="none" stroke="#2A2724" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+
+    <path d="M50 132 L150 66 l100 66 v112 H50 z" fill="#F5E7C6"/>
+    <path d="M50 132 L150 66 l100 66" fill="none"/>
+    <rect x="128" y="180" width="44" height="64" fill="#6E4A2E"/>
+    <rect x="76" y="164" width="34" height="34" rx="4" fill="#A8D0EE"/>
+    <rect x="190" y="164" width="34" height="34" rx="4" fill="#A8D0EE"/>
+    <path d="M150 66 V26"/>
+    <path d="M150 30 h40 v24 h-40 z" fill="#D64545"/>
+  </g>
 </svg>

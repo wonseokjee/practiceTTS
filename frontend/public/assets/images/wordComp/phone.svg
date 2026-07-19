@@ -1,6 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
-  <rect width="300" height="300" fill="#E3F2FD" rx="16"/>
-  <text x="150" y="155" font-size="110" text-anchor="middle" dominant-baseline="middle" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif">📱</text>
-  <text x="150" y="255" font-size="28" text-anchor="middle" fill="#37474F" font-family="Pretendard, Noto Sans KR, sans-serif" font-weight="600">전화기</text>
-  <!-- PLACEHOLDER: 실제 일러스트로 교체 필요 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" role="img">
+  <rect width="300" height="300" fill="#FAF9F7" rx="16"/>
+  <g fill="none" stroke="#2A2724" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+
+    <path d="M62 178 h176 a16 16 0 0 1 16 16 v40 a16 16 0 0 1-16 16 H62 a16 16 0 0 1-16-16 v-40 a16 16 0 0 1 16-16 z" fill="#F5E7C6"/>
+    <g fill="#7A7671" stroke="none">
+      <circle cx="96" cy="200" r="7"/><circle cx="124" cy="200" r="7"/><circle cx="152" cy="200" r="7"/>
+      <circle cx="96" cy="226" r="7"/><circle cx="124" cy="226" r="7"/><circle cx="152" cy="226" r="7"/>
+    </g>
+    <path d="M64 106 a20 20 0 0 1 40 0 v22 h92 v-22 a20 20 0 0 1 40 0 c0 16-10 26-24 26 H88 c-14 0-24-10-24-26 z" fill="#D64545"/>
+    <path d="M104 128 h92" stroke="#B23434" stroke-width="5"/>
+    <path d="M196 200 c22 0 30 12 30 26" stroke-width="5"/>
+  </g>
 </svg>

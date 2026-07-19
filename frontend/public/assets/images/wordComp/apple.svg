@@ -1,6 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
-  <rect width="300" height="300" fill="#FFEBEE" rx="16"/>
-  <text x="150" y="155" font-size="110" text-anchor="middle" dominant-baseline="middle" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif">🍎</text>
-  <text x="150" y="255" font-size="28" text-anchor="middle" fill="#37474F" font-family="Pretendard, Noto Sans KR, sans-serif" font-weight="600">사과</text>
-  <!-- PLACEHOLDER: 실제 일러스트로 교체 필요 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" role="img">
+  <rect width="300" height="300" fill="#FAF9F7" rx="16"/>
+  <g fill="none" stroke="#2A2724" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+
+    <path d="M150 90 C110 90 88 122 88 160 c0 46 28 82 62 82 s62-36 62-82 c0-38-22-70-62-70 z" fill="#D64545"/>
+    <path d="M150 92 C150 74 156 60 172 52" />
+    <path d="M152 78 C168 62 192 62 200 70 C192 88 168 92 152 78 z" fill="#4A9A6F"/>
+  </g>
 </svg>

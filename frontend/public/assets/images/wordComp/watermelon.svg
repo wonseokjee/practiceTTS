@@ -1,6 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
-  <rect width="300" height="300" fill="#E8F5E9" rx="16"/>
-  <text x="150" y="155" font-size="110" text-anchor="middle" dominant-baseline="middle" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif">🍉</text>
-  <text x="150" y="255" font-size="28" text-anchor="middle" fill="#37474F" font-family="Pretendard, Noto Sans KR, sans-serif" font-weight="600">수박</text>
-  <!-- PLACEHOLDER: 실제 일러스트로 교체 필요 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" role="img">
+  <rect width="300" height="300" fill="#FAF9F7" rx="16"/>
+  <g fill="none" stroke="#2A2724" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+
+    <path d="M46 208 A110 110 0 0 1 254 208 z" fill="#D64545"/>
+    <path d="M46 208 A110 110 0 0 1 254 208" fill="none"/>
+    <path d="M46 208 h208" />
+    <path d="M60 208 A96 96 0 0 1 240 208 z" fill="none" stroke="#FFFFFF" stroke-width="10"/>
+    <g fill="#3A3733" stroke="none">
+      <ellipse cx="120" cy="176" rx="6" ry="9"/><ellipse cx="180" cy="176" rx="6" ry="9"/>
+      <ellipse cx="150" cy="150" rx="6" ry="9"/><ellipse cx="150" cy="196" rx="6" ry="9"/>
+    </g>
+  </g>
 </svg>

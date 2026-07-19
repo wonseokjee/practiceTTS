@@ -1,6 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
-  <rect width="300" height="300" fill="#E3F2FD" rx="16"/>
-  <text x="150" y="155" font-size="110" text-anchor="middle" dominant-baseline="middle" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif">✈️</text>
-  <text x="150" y="255" font-size="28" text-anchor="middle" fill="#37474F" font-family="Pretendard, Noto Sans KR, sans-serif" font-weight="600">비행기</text>
-  <!-- PLACEHOLDER: 실제 일러스트로 교체 필요 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" role="img">
+  <rect width="300" height="300" fill="#FAF9F7" rx="16"/>
+  <g fill="none" stroke="#2A2724" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+
+    <path d="M46 158 c0-12 10-20 28-22 l120-8 l44 2 a14 14 0 0 1 0 28 l-44 2 l-120 -8 c-18-2-28 -10-28-20 z" fill="#FFFFFF"/>
+    <path d="M118 152 L88 78 h28 l52 74 z" fill="#A8D0EE"/>
+    <path d="M118 164 L88 238 h28 l52 -74 z" fill="#A8D0EE"/>
+    <path d="M56 152 L38 112 h20 l24 40 z" fill="#2F5F94"/>
+    <path d="M56 164 L38 204 h20 l24 -40 z" fill="#2F5F94"/>
+    <circle cx="206" cy="158" r="8" fill="#A8D0EE" stroke="none"/>
+    <circle cx="182" cy="158" r="8" fill="#A8D0EE" stroke="none"/>
+  </g>
 </svg>

@@ -1,6 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
-  <rect width="300" height="300" fill="#FFF8E1" rx="16"/>
-  <text x="150" y="155" font-size="110" text-anchor="middle" dominant-baseline="middle" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif">🧦</text>
-  <text x="150" y="255" font-size="28" text-anchor="middle" fill="#37474F" font-family="Pretendard, Noto Sans KR, sans-serif" font-weight="600">양말</text>
-  <!-- PLACEHOLDER: 실제 일러스트로 교체 필요 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" role="img">
+  <rect width="300" height="300" fill="#FAF9F7" rx="16"/>
+  <g fill="none" stroke="#2A2724" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+
+    <path d="M92 56 h56 v104 c0 26-16 40-38 40 s-38-16-38-38 c0-20 20-24 20-44 z" fill="#FFFFFF"/>
+    <path d="M92 88 h56" stroke="#D64545" stroke-width="9"/>
+    <path d="M162 56 h56 v66 c0 20 20 24 20 44 c0 22-16 38-38 38 s-38-14-38-40 z" fill="#FFFFFF"/>
+    <path d="M162 88 h56" stroke="#D64545" stroke-width="9"/>
+  </g>
 </svg>

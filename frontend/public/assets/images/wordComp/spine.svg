@@ -1,6 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
-  <rect width="300" height="300" fill="#FAFAFA" rx="16"/>
-  <text x="150" y="155" font-size="110" text-anchor="middle" dominant-baseline="middle" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif">🦴</text>
-  <text x="150" y="255" font-size="28" text-anchor="middle" fill="#37474F" font-family="Pretendard, Noto Sans KR, sans-serif" font-weight="600">척추</text>
-  <!-- PLACEHOLDER: 실제 일러스트로 교체 필요 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" role="img">
+  <rect width="300" height="300" fill="#FAF9F7" rx="16"/>
+  <g fill="none" stroke="#2A2724" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+
+    <g fill="#F5E7C6">
+      <rect x="120" y="46" width="60" height="26" rx="9"/>
+      <rect x="118" y="80" width="64" height="26" rx="9"/>
+      <rect x="116" y="114" width="68" height="26" rx="9"/>
+      <rect x="118" y="148" width="64" height="26" rx="9"/>
+      <rect x="120" y="182" width="60" height="26" rx="9"/>
+      <path d="M126 216 h48 l-12 44 h-24 z"/>
+    </g>
+    <g stroke-width="4">
+      <path d="M110 59 h-16"/><path d="M190 59 h16"/>
+      <path d="M108 127 h-18"/><path d="M192 127 h18"/>
+      <path d="M110 195 h-16"/><path d="M190 195 h16"/>
+    </g>
+  </g>
 </svg>

@@ -1,6 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
-  <rect width="300" height="300" fill="#E8F5E9" rx="16"/>
-  <text x="150" y="155" font-size="110" text-anchor="middle" dominant-baseline="middle" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif">🐢</text>
-  <text x="150" y="255" font-size="28" text-anchor="middle" fill="#37474F" font-family="Pretendard, Noto Sans KR, sans-serif" font-weight="600">거북이</text>
-  <!-- PLACEHOLDER: 실제 일러스트로 교체 필요 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" role="img">
+  <rect width="300" height="300" fill="#FAF9F7" rx="16"/>
+  <g fill="none" stroke="#2A2724" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+
+    <ellipse cx="150" cy="164" rx="86" ry="62" fill="#4A9A6F"/>
+    <ellipse cx="150" cy="164" rx="56" ry="38" fill="#2D6A56"/>
+    <path d="M150 126 v76"/><path d="M110 148 l80 32"/><path d="M110 180 l80-32"/>
+    <circle cx="238" cy="158" r="24" fill="#4A9A6F"/>
+    <circle cx="246" cy="152" r="6" fill="#2A2724" stroke="none"/>
+    <ellipse cx="96" cy="220" rx="22" ry="14" fill="#4A9A6F"/>
+    <ellipse cx="196" cy="222" rx="22" ry="14" fill="#4A9A6F"/>
+    <ellipse cx="62" cy="176" rx="18" ry="12" fill="#4A9A6F"/>
+  </g>
 </svg>

@@ -1,6 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
-  <rect width="300" height="300" fill="#FCE4EC" rx="16"/>
-  <text x="150" y="155" font-size="110" text-anchor="middle" dominant-baseline="middle" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif">🦋</text>
-  <text x="150" y="255" font-size="28" text-anchor="middle" fill="#37474F" font-family="Pretendard, Noto Sans KR, sans-serif" font-weight="600">나비</text>
-  <!-- PLACEHOLDER: 실제 일러스트로 교체 필요 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" role="img">
+  <rect width="300" height="300" fill="#FAF9F7" rx="16"/>
+  <g fill="none" stroke="#2A2724" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+
+    <path d="M148 150 C112 92 46 96 52 142 c4 34 60 44 96 20 z" fill="#E07B54"/>
+    <path d="M152 150 C188 92 254 96 248 142 c-4 34-60 44-96 20 z" fill="#E07B54"/>
+    <path d="M148 152 C116 200 62 214 68 240 c6 22 62 4 82-40 z" fill="#F0C246"/>
+    <path d="M152 152 C184 200 238 214 232 240 c-6 22-62 4-82-40 z" fill="#F0C246"/>
+    <ellipse cx="150" cy="164" rx="10" ry="50" fill="#2A2724"/>
+    <path d="M144 116 C134 92 122 84 112 82"/>
+    <path d="M156 116 C166 92 178 84 188 82"/>
+  </g>
 </svg>
