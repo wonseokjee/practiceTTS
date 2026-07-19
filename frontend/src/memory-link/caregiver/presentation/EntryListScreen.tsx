@@ -1,6 +1,7 @@
 import type { MemoryEntry } from '../domain/MemoryEntry.js';
 import { EMOTION_TAG_LABELS } from '../domain/MemoryEntry.js';
 import type { UseMemoryEntriesReturn } from '../application/useMemoryEntries.js';
+import { resolveMediaUrl } from '../../shared/MemoryLinkApi.js';
 
 interface EntryListScreenProps {
   memoryEntries: UseMemoryEntriesReturn;
@@ -109,7 +110,7 @@ function MemoryEntryCard({ entry, onClick }: MemoryEntryCardProps) {
       {/* 사진 영역 */}
       {entry.photoUrl ? (
         <img
-          src={entry.photoUrl}
+          src={resolveMediaUrl(entry.photoUrl)}
           alt={`${dateLabel} 기억 사진`}
           className="w-full h-40 object-cover"
           loading="lazy"

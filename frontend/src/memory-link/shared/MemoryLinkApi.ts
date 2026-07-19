@@ -10,6 +10,25 @@ import axios from 'axios';
 
 const BASE_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:3000';
 
+/**
+ * 백엔드가 내려주는 상대 경로 미디어 URL(예: /uploads/memory-images/a.jpg)을
+ * API 오리진 기준 절대 URL로 바꾼다.
+ *
+ * 상대 경로를 <img src>에 그대로 넣으면 브라우저가 **프론트 오리진**(:5173)
+ * 기준으로 해석해 SPA의 index.html을 받아오고, 사진이 깨진 채 아무 에러도
+ * 남지 않는다. axios 호출과 달리 baseURL이 적용되지 않기 때문이다.
+ *
+ * 이미 절대 URL(http…)이거나 data URI면 그대로 돌려준다.
+ */
+export function resolveMediaUrl(url: string): string;
+export function resolveMediaUrl(url: null | undefined): null;
+export function resolveMediaUrl(url: string | null | undefined): string | null;
+export function resolveMediaUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (/^(https?:)?\/\//i.test(url) || url.startsWith('data:')) return url;
+  return `${BASE_URL.replace(/\/$/, '')}/${url.replace(/^\//, '')}`;
+}
+
 /** localStorage에 저장되는 JWT 토큰 키 */
 export const ML_TOKEN_KEY = 'ml_token';
 
