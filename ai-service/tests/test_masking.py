@@ -8,6 +8,7 @@ import json
 
 import pytest
 
+from domain.errors import GeminiApiError
 from infra.in_memory_masking_store import InMemoryMaskingStore
 from services.masking_service import MaskingService
 
@@ -175,3 +176,31 @@ async def test_entity_map_not_exposed_in_result():
     result = await service.mask_text("홍길동과 갔다", ENTRY_ID)
 
     assert not hasattr(result, "entity_map")
+
+
+class TestDegradedSignal:
+    """Gemini 실패를 호출자에게 알리는지 (fail-open 회귀 방지).
+
+    예전에는 `except GeminiApiError: pass`로 조용히 넘어가, 실명이 남은
+    텍스트가 "마스킹 완료" 200으로 반환됐다. 잔존 검증은 entity_map에 있는
+    키만 보므로 감지 실패한 PII는 원리상 절대 잡지 못한다.
+    """
+
+    @pytest.mark.asyncio
+    async def test_gemini_failure_marks_result_degraded(self):
+        class FailingLlm:
+            async def complete(self, messages, model):  # noqa: ANN001
+                raise GeminiApiError("타임아웃")
+
+        service, _ = build_service([])
+        service._llm = FailingLlm()
+        result = await service.mask_text("남편 이름은 박정호예요", "entry-1")
+
+        assert result.degraded is True
+
+    @pytest.mark.asyncio
+    async def test_successful_masking_is_not_degraded(self):
+        service, _ = build_service([])
+        result = await service.mask_text("평범한 문장입니다", "entry-2")
+
+        assert result.degraded is False

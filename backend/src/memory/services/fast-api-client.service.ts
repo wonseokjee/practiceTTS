@@ -25,6 +25,14 @@ interface RawTagResponse {
 interface RawMaskResponse {
   masked_text: string;
   entity_map?: unknown; // 수신하더라도 절대 외부로 전달하지 않음
+  /**
+   * ai-service의 3계층(Gemini 이름 탐지)이 실패했는가.
+   *
+   * true면 masked_text에 실명이 남아 있을 수 있다. 이걸 무시하고 저장하면
+   * 미마스킹 텍스트가 "마스킹 완료"로 DB에 영구 기록되고, 이후 퀴즈·시나리오
+   * 생성이 그 텍스트를 다시 외부 LLM으로 보낸다.
+   */
+  degraded?: boolean;
 }
 
 /** FastAPI /scenario 응답 원시 타입 */
@@ -115,6 +123,17 @@ export class FastApiClientService implements IFastApiClient {
             `마스킹 일시 실패 — ${delayMs}ms 후 재시도 (${attempt}번째)`,
           ),
       );
+
+      // 열화된 결과는 성공으로 취급하지 않는다. 이 경로는 이미 fail-closed
+      // 정책이라(마스킹 실패 시 진행 중단), 부분 마스킹만 예외로 통과시키면
+      // 그 정책에 구멍이 난다.
+      if (response.data.degraded === true) {
+        throw new MemoryEntryError(
+          MemoryEntryErrorCode.AI_SERVICE_UNAVAILABLE,
+          'AI 마스킹이 부분적으로만 완료되었습니다(외부 이름 탐지 실패). ' +
+            '실명이 남아 있을 수 있어 저장하지 않습니다.',
+        );
+      }
 
       // entity_map은 여기서 즉시 무시하고 maskedText만 추출
       return {

@@ -32,6 +32,7 @@ async def mask_text(
             memory_entry_id=body.memory_entry_id,
             masked_text=result.masked_text,
             entity_count=result.entity_count,
+            degraded=result.degraded,
         )
 
     except TextTooLongError as exc:

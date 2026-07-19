@@ -53,8 +53,13 @@ _PATTERNS = {
         # ① 국번 접두가 있는 경우 — 구분자는 없어도 된다 (01012345678)
         r"0\d{1,2}[-.\s]?\d{3,4}[-.\s]?\d{4}"
         r"|"
-        # ② 국번이 없으면 구분자가 반드시 있어야 한다 (987-6543)
-        r"\d{3,4}[-.\s]\d{4}"
+        # ② 국번이 없으면 구분자가 반드시 있어야 한다 (987-6543).
+        #    공백은 구분자로 인정하지 않는다 — "버스 100 1234 번",
+        #    "1945 1950 사이에" 같은 나열이 전부 전화번호로 잡혔다.
+        #    국번이 있는 번호는 ①이 공백까지 처리하므로 손해가 없다.
+        #    연도 범위(1950-1953, 2020-2024)도 제외한다. 회상치료 노트에서
+        #    가장 흔한 정보라, 가려지면 퀴즈·시나리오가 의미불명이 된다.
+        r"(?!(?:19|20)\d{2}[-.](?:19|20)\d{2})\d{3,4}[-.]\d{4}"
         r")(?![0-9])"
     ),
     "ssn": re.compile(
@@ -62,8 +67,12 @@ _PATTERNS = {
     ),
     # 주민번호 뒷자리는 맨 7자리라 금액·날짜와 구별할 수 없다. 앞말이
     # 신분증임을 밝힐 때만 잡고, 숫자 부분(그룹 1)만 가린다.
+    # 앵커에 "뒤 N자리"·"민증"을 포함한다. 앵커와 숫자 사이에 숫자가 끼면
+    # ([^0-9] 갭이라) 전체가 실패해서 "뒤 7자리는 1234567"이 통째로 새어
+    # 나갔다. 앵커 자체가 그 숫자를 소비하도록 만들어 해결한다.
     "ssn_tail": re.compile(
-        r"(?:주민(?:등록)?번호|뒷자리)[^0-9]{0,10}(?<![0-9])(\d{6,7})(?![0-9])"
+        r"(?:주민(?:등록)?(?:번호|증)|민증|뒷번호|뒷자리|뒤\s*\d?\s*자리)"
+        r"[^0-9]{0,10}(?<![0-9])(\d{6,7})(?![0-9])"
     ),
     "email": re.compile(
         r"(?<![A-Za-z0-9._%+\-])[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}(?![A-Za-z0-9.\-])"
@@ -144,12 +153,18 @@ class MaskingService:
         )
 
         # 4. Gemini 3차 마스킹 (사전 필터가 못 잡은 나머지 이름·장소명)
+        degraded = False
         try:
             gemini_entities = await self._detect_pii_with_gemini(text_after_korean)
             self._assign_labels(gemini_entities, entity_map, persona_tokens)
         except GeminiApiError:
-            # Gemini API 실패 시 앞 단계 결과만으로 부분 마스킹 진행 (UC-2 예외 흐름)
-            pass
+            # 앞 단계 결과만으로 부분 마스킹 진행 (UC-2 예외 흐름).
+            #
+            # 다만 **호출자에게 반드시 알린다**. 예전에는 조용히 통과시켜서,
+            # Gemini 타임아웃·429가 나는 순간(운영에서 흔하다) 실명이 남은
+            # 텍스트가 "마스킹 완료" 200으로 반환돼 DB에 영구 저장됐고,
+            # 이후 quiz/scenario가 그 텍스트를 다시 Gemini로 보냈다.
+            degraded = True
 
         # 5. entity_map 기반 텍스트 치환
         masked_text = self._apply_entity_map(raw_text, entity_map)
@@ -163,6 +178,7 @@ class MaskingService:
         return MaskingResult(
             masked_text=masked_text,
             entity_count=len(entity_map),
+            degraded=degraded,
         )
 
     def _apply_regex_masking(
