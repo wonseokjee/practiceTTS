@@ -124,4 +124,14 @@ export class ConductLocTrialUseCase {
       );
     }
   }
+
+  /**
+   * 재생 중인 지시문을 즉시 중단한다.
+   *
+   * 탭 전환처럼 환자가 화면을 떠난 순간에 쓴다. 안내를 듣지 못한 채 흘러가면
+   * 반응 시간이 무의미해지므로, 소리를 끊고 시도를 중단시킨다.
+   */
+  cancelInstruction(): void {
+    this.ttsService.cancel();
+  }
 }

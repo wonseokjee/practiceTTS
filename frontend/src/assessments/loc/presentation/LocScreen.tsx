@@ -283,6 +283,28 @@ export function LocScreen({ onComplete, onProceed }: LocScreenProps) {
                 </div>
               )}
 
+              {/* 화면을 벗어나 시도가 중단됨 — 이 시도는 기록하지 않았다.
+                  자동 재생하지 않고 환자가 준비됐을 때 다시 듣게 한다. */}
+              {assessmentState === 'TRIAL_INTERRUPTED' && (
+                <div className="flex-1 flex flex-col items-center justify-center gap-5 text-center">
+                  <h2 className="text-2xl font-bold text-[#2D6A56]">
+                    잠시 멈췄어요
+                  </h2>
+                  <p className="text-lg text-[#6B6560]">
+                    화면을 벗어나서 이번 문제는 다시 들려드릴게요.
+                    <br />
+                    앞서 하신 것은 그대로 남아 있어요.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={actions.resumeInterruptedTrial}
+                    className="min-h-[56px] rounded-full bg-[#2D6A56] px-8 text-lg font-bold text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240]"
+                  >
+                    다시 듣기
+                  </button>
+                </div>
+              )}
+
               {isProcessing && (
                 <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center">
                   <div className="text-6xl" aria-hidden="true">✓</div>

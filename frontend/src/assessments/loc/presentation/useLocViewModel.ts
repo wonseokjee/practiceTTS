@@ -40,6 +40,14 @@ export type LocAssessmentState =
   | 'AWAITING_TOUCH'
   | 'TOUCH_DETECTED'
   | 'TRIAL_COMPLETE'
+  /**
+   * 화면을 벗어나 현재 시도가 중단됨 (탭 전환·앱 전환·화면 잠금).
+   *
+   * 안내를 못 들었거나 화면을 보고 있지 않은 채 10초 타이머가 흐르면
+   * 무응답(0점)으로 잘못 기록된다. 그래서 시도를 **기록하지 않고** 여기서
+   * 멈춘 뒤, 복귀하면 현재 시도만 다시 듣게 한다(앞선 시도는 보존).
+   */
+  | 'TRIAL_INTERRUPTED'
   | 'ASSESSMENT_COMPLETE';
 
 export interface LocViewState {
@@ -57,6 +65,8 @@ export interface LocViewModelActions {
   startAssessment: () => Promise<void>;
   handleButtonTouch: (event: React.PointerEvent<HTMLButtonElement>) => void;
   proceedToNextAssessment: () => void;
+  /** 중단된 시도를 다시 듣는다 (TRIAL_INTERRUPTED에서만 동작). */
+  resumeInterruptedTrial: () => void;
 }
 
 /** 터치 버튼의 화면 좌표를 계산한다 */
@@ -244,6 +254,40 @@ export function useLocViewModel(
     };
   }, [assessmentState, clearTouchTimeout, handleTimeout, startTimer]);
 
+  /**
+   * 화면 이탈 감지 — 진행 중인 시도를 기록하지 않고 중단한다.
+   *
+   * 탭을 옮기거나 화면이 꺼지면 안내를 못 듣고, 그동안에도 10초 타이머는
+   * 계속 흘러 **무응답(0점)으로 잘못 기록**된다. 실어증 환자가 실수로 다른
+   * 앱을 건드리는 상황은 충분히 흔하고, 0점 한 번이 임상 점수를 왜곡한다.
+   *
+   * 그래서 TTS를 끊고 타이머를 정지한 뒤 시도를 버린다. 앞서 끝낸 시도는
+   * 그대로 두고, 복귀하면 현재 시도만 다시 듣는다(자동 재생하지 않는다 —
+   * 환자가 화면으로 돌아오는 중에 소리가 먼저 나가면 또 놓친다).
+   */
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) return;
+
+      const state = assessmentStateRef.current;
+      if (state !== 'TTS_PLAYING' && state !== 'AWAITING_TOUCH') return;
+
+      // 지연된 타임아웃 콜백이 뒤늦게 시도를 제출하지 못하도록 먼저 막는다.
+      touchHandledRef.current = true;
+      clearTouchTimeout();
+      clearInterTrialTimeout();
+      stopTimer();
+      conductTrialUseCaseRef.current.cancelInstruction();
+
+      setAssessmentState('TRIAL_INTERRUPTED');
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [clearTouchTimeout, clearInterTrialTimeout, stopTimer]);
+
   /** TRIAL_COMPLETE 상태에서 다음 시도 또는 완료 처리 */
   useEffect(() => {
     if (assessmentState !== 'TRIAL_COMPLETE') return;
@@ -334,6 +378,21 @@ export function useLocViewModel(
     setAssessmentState('TTS_PLAYING');
   }, []);
 
+  /**
+   * 중단된 시도를 다시 듣는다.
+   *
+   * 시도 번호와 앞선 결과는 그대로 두고 TTS부터 재생한다 — 같은 시도를
+   * 처음부터 다시 하는 것이라 반응 시간이 오염되지 않는다.
+   */
+  const resumeInterruptedTrial = useCallback(() => {
+    if (assessmentStateRef.current !== 'TRIAL_INTERRUPTED') return;
+
+    touchHandledRef.current = false;
+    audioEndTimeRef.current = 0;
+    setErrorMessage(null);
+    setAssessmentState('TTS_PLAYING');
+  }, []);
+
   /** 버튼 터치 처리 */
   const handleButtonTouch = useCallback(
     (event: React.PointerEvent<HTMLButtonElement>) => {
@@ -409,8 +468,14 @@ export function useLocViewModel(
       startAssessment,
       handleButtonTouch,
       proceedToNextAssessment,
+      resumeInterruptedTrial,
     }),
-    [startAssessment, handleButtonTouch, proceedToNextAssessment],
+    [
+      startAssessment,
+      handleButtonTouch,
+      proceedToNextAssessment,
+      resumeInterruptedTrial,
+    ],
   );
 
   return { viewState, actions };

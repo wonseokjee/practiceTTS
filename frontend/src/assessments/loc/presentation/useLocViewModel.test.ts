@@ -79,9 +79,12 @@ const mockPlayInstruction = vi.fn<(...args: PlayParams) => PlayReturn>();
 const mockFinishExecute = vi.fn<(...args: FinishParams) => FinishReturn>();
 
 // ---- 모의 UseCase 인스턴스 ----
+const mockCancelInstruction = vi.fn<() => void>();
+
 const mockConductUseCase = {
   execute: mockExecute,
   playInstruction: mockPlayInstruction,
+  cancelInstruction: mockCancelInstruction,
 } as unknown as InstanceType<typeof import('../application/ConductLocTrialUseCase.js').ConductLocTrialUseCase>;
 
 const mockFinishUseCase = {
@@ -432,5 +435,127 @@ describe('useLocViewModel FSM 상태 전환 테스트', () => {
     expect(result.current.viewState.trialResults).toHaveLength(0);
     expect(result.current.viewState.finalScore).toBeNull();
     expect(result.current.viewState.errorMessage).toBeNull();
+  });
+});
+
+/**
+ * TODO-006: 탭 전환 시 TTS 중단 및 검사 일시정지.
+ *
+ * 화면을 벗어나면 안내를 못 듣는데 10초 타이머는 계속 흘러 무응답(0점)으로
+ * 잘못 기록됐다. 실어증 환자가 실수로 다른 앱을 건드리는 상황은 흔하고,
+ * 0점 한 번이 임상 점수를 왜곡한다.
+ */
+describe('화면 이탈(탭 전환) 처리', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockPlayInstruction.mockResolvedValue(1000);
+    mockExecute.mockResolvedValue({
+      trial: makeMockTrial(),
+      responseDTO: makeMockResponseDTO(),
+    });
+    mockFinishExecute.mockResolvedValue(makeMockResultDTO());
+    setDocumentHidden(false);
+  });
+
+  /** document.hidden을 바꾸고 visibilitychange를 발생시킨다 */
+  function setDocumentHidden(hidden: boolean) {
+    Object.defineProperty(document, 'hidden', {
+      configurable: true,
+      get: () => hidden,
+    });
+  }
+
+  function fireVisibilityChange(hidden: boolean) {
+    setDocumentHidden(hidden);
+    document.dispatchEvent(new Event('visibilitychange'));
+  }
+
+  it('터치 대기 중 화면을 벗어나면 시도를 기록하지 않고 중단한다', async () => {
+    const { result } = renderLocViewModel();
+    await reachAwaitingTouch(result);
+
+    await act(async () => {
+      fireVisibilityChange(true);
+    });
+
+    expect(result.current.viewState.assessmentState).toBe('TRIAL_INTERRUPTED');
+    // 핵심: 무응답(0점)으로 제출되지 않아야 한다
+    expect(mockExecute).not.toHaveBeenCalled();
+    expect(result.current.viewState.trialResults).toHaveLength(0);
+  });
+
+  it('중단 시 재생 중인 TTS를 끊는다', async () => {
+    const { result } = renderLocViewModel();
+    await reachAwaitingTouch(result);
+
+    await act(async () => {
+      fireVisibilityChange(true);
+    });
+
+    expect(mockCancelInstruction).toHaveBeenCalled();
+  });
+
+  it('복귀해도 자동 재생하지 않는다 (환자가 준비된 뒤 다시 듣는다)', async () => {
+    const { result } = renderLocViewModel();
+    await reachAwaitingTouch(result);
+    mockPlayInstruction.mockClear();
+
+    await act(async () => {
+      fireVisibilityChange(true);
+    });
+    await act(async () => {
+      fireVisibilityChange(false);
+    });
+
+    expect(result.current.viewState.assessmentState).toBe('TRIAL_INTERRUPTED');
+    expect(mockPlayInstruction).not.toHaveBeenCalled();
+  });
+
+  it('"다시 듣기"로 같은 시도를 처음부터 다시 한다', async () => {
+    const { result } = renderLocViewModel();
+    await reachAwaitingTouch(result);
+    const trialNumberBefore = result.current.viewState.currentTrialNumber;
+
+    await act(async () => {
+      fireVisibilityChange(true);
+    });
+    mockPlayInstruction.mockClear();
+
+    await act(async () => {
+      result.current.actions.resumeInterruptedTrial();
+    });
+
+    await waitFor(() => {
+      expect(result.current.viewState.assessmentState).toBe('AWAITING_TOUCH');
+    }, { timeout: 3000 });
+    expect(mockPlayInstruction).toHaveBeenCalled();
+    // 시도 번호가 넘어가지 않는다 — 같은 문제를 다시 듣는 것이다
+    expect(result.current.viewState.currentTrialNumber).toBe(trialNumberBefore);
+  });
+
+  it('중단 후 터치해도 시도가 제출되지 않는다', async () => {
+    const { result } = renderLocViewModel();
+    await reachAwaitingTouch(result);
+
+    await act(async () => {
+      fireVisibilityChange(true);
+    });
+    await act(async () => {
+      result.current.actions.handleButtonTouch(makePointerEvent());
+    });
+
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  it('검사 진행 중이 아니면(IDLE) 화면을 벗어나도 아무 일 없다', async () => {
+    const { result } = renderLocViewModel();
+    expect(result.current.viewState.assessmentState).toBe('IDLE');
+
+    await act(async () => {
+      fireVisibilityChange(true);
+    });
+
+    expect(result.current.viewState.assessmentState).toBe('IDLE');
+    expect(mockCancelInstruction).not.toHaveBeenCalled();
   });
 });
