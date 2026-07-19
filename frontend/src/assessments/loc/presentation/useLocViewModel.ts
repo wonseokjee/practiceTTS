@@ -270,7 +270,17 @@ export function useLocViewModel(
       if (!document.hidden) return;
 
       const state = assessmentStateRef.current;
-      if (state !== 'TTS_PLAYING' && state !== 'AWAITING_TOUCH') return;
+      // TRIAL_COMPLETE(시도 간 700ms 대기)도 포함해야 한다. 이 구간을 빼두면
+      // 대기 중에 화면을 벗어났을 때 타이머가 그대로 흘러 **숨은 채로**
+      // TTS_PLAYING → AWAITING_TOUCH로 진입하고, 안내를 못 들은 10초가 지나
+      // 결국 무응답(0점)이 기록된다. 막으려던 바로 그 증상이다.
+      if (
+        state !== 'TTS_PLAYING' &&
+        state !== 'AWAITING_TOUCH' &&
+        state !== 'TRIAL_COMPLETE'
+      ) {
+        return;
+      }
 
       // 지연된 타임아웃 콜백이 뒤늦게 시도를 제출하지 못하도록 먼저 막는다.
       touchHandledRef.current = true;

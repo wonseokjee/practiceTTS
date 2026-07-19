@@ -559,3 +559,50 @@ describe('화면 이탈(탭 전환) 처리', () => {
     expect(mockCancelInstruction).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * 리뷰 지적: 시도 간 700ms 대기(TRIAL_COMPLETE) 중에 이탈하면 핸들러가 무시해
+ * 타이머가 그대로 흘렀다. 숨은 채로 다음 시도가 시작되어 무응답 0점이 기록된다.
+ */
+describe('시도 간 대기 중 화면 이탈', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockPlayInstruction.mockResolvedValue(1000);
+    mockExecute.mockResolvedValue({
+      trial: makeMockTrial(),
+      responseDTO: makeMockResponseDTO(),
+    });
+    mockFinishExecute.mockResolvedValue(makeMockResultDTO());
+    Object.defineProperty(document, 'hidden', {
+      configurable: true,
+      get: () => false,
+    });
+  });
+
+  it('TRIAL_COMPLETE 대기 중 이탈해도 다음 시도가 몰래 시작되지 않는다', async () => {
+    const { result } = renderLocViewModel();
+    await reachAwaitingTouch(result);
+
+    // 1회차 응답 → TRIAL_COMPLETE 진입
+    await act(async () => {
+      result.current.actions.handleButtonTouch(makePointerEvent());
+    });
+    await waitFor(() => {
+      expect(result.current.viewState.assessmentState).toBe('TRIAL_COMPLETE');
+    }, { timeout: 3000 });
+
+    mockPlayInstruction.mockClear();
+    await act(async () => {
+      Object.defineProperty(document, 'hidden', {
+        configurable: true,
+        get: () => true,
+      });
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    expect(result.current.viewState.assessmentState).toBe('TRIAL_INTERRUPTED');
+    // 700ms 타이머가 살아 있었다면 여기서 TTS가 울렸을 것이다
+    await new Promise((r) => setTimeout(r, 1200));
+    expect(mockPlayInstruction).not.toHaveBeenCalled();
+  });
+});

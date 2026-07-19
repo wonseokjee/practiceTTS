@@ -42,16 +42,29 @@ _EXISTING_LABEL_PATTERN = re.compile(r"(?:Family_[MFX]|Place|PHONE|SSN|EMAIL)_\d
 # 없고, 그러면 백트래킹으로 "010-1234"까지만 매치돼 **뒤 네 자리가 그대로 외부로
 # 나간다.** "011-987-6543로"는 아예 매치되지 않았다. 숫자가 아님을 보는
 # lookaround로 경계를 잡아야 조사가 붙어도 온전히 잡힌다.
+# 전화번호로 보려면 **구조**가 있어야 한다. 경계만 느슨하게 풀었더니
+# "1500000원을 냈어요"의 금액까지 전화번호로 잡혀 노트 원문이 망가졌다
+# ("PHONE_1원을 냈어요"). 구분자도 국번 접두도 없는 맨 7~8자리는 전화번호로
+# 볼 근거가 없다. 둘 중 하나는 있어야 잡는다:
+#   ① 0으로 시작하는 국번(02/010/011/031…)  ② 자리 사이 구분자(- . 공백)
 _PATTERNS = {
     "phone": re.compile(
-        r"(?<![0-9])(?:0\d{1,2}[-.\s]?)?\d{3,4}[-.\s]?\d{4}(?![0-9])"
+        r"(?<![0-9])(?:"
+        # ① 국번 접두가 있는 경우 — 구분자는 없어도 된다 (01012345678)
+        r"0\d{1,2}[-.\s]?\d{3,4}[-.\s]?\d{4}"
+        r"|"
+        # ② 국번이 없으면 구분자가 반드시 있어야 한다 (987-6543)
+        r"\d{3,4}[-.\s]\d{4}"
+        r")(?![0-9])"
     ),
     "ssn": re.compile(
         r"(?<![0-9])\d{6}[-\s]?\d{7}(?![0-9])"
     ),
-    # 주민번호 뒷자리(7자리)는 위 phone 패턴이 이미 잡는다
-    # ("2031117" → \d{3} + \d{4}). 별도 패턴을 두면 앵커 단어까지 함께 가려
-    # 문장이 망가지므로 두지 않는다.
+    # 주민번호 뒷자리는 맨 7자리라 금액·날짜와 구별할 수 없다. 앞말이
+    # 신분증임을 밝힐 때만 잡고, 숫자 부분(그룹 1)만 가린다.
+    "ssn_tail": re.compile(
+        r"(?:주민(?:등록)?번호|뒷자리)[^0-9]{0,10}(?<![0-9])(\d{6,7})(?![0-9])"
+    ),
     "email": re.compile(
         r"(?<![A-Za-z0-9._%+\-])[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}(?![A-Za-z0-9.\-])"
     ),
@@ -163,13 +176,17 @@ class MaskingService:
         통해 외부 LLM으로 나간다(마스킹이 사후 라벨링에 그친다). 정규식으로 확실히
         잡을 수 있는 PII는 Gemini에 보내기 **전에** 실제로 치환해야 한다.
         """
-        counters: dict[str, int] = {"phone": 0, "ssn": 0, "email": 0}
+        counters: dict[str, int] = {name: 0 for name in _PATTERNS}
         masked = text
 
         for pattern_name, pattern in _PATTERNS.items():
             # 원문 기준으로 수집한 뒤 치환한다(치환 중 finditer가 흔들리지 않도록).
             for match in pattern.finditer(text):
-                original = match.group()
+                # 캡처 그룹이 있으면 그 부분만 가린다. 앵커까지 함께 가리면
+                # "주민번호 뒷자리 2031117" 전체가 라벨로 바뀌어 문장이 망가진다.
+                original = match.group(1) if match.groups() else match.group()
+                if not original:
+                    continue
                 if original not in entity_map:
                     counters[pattern_name] += 1
                     label = f"{pattern_name.upper()}_{counters[pattern_name]}"

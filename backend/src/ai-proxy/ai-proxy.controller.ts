@@ -6,6 +6,7 @@ import {
   Logger,
   Post,
   Query,
+  Req,
   Res,
   UploadedFile,
   UseGuards,
@@ -17,7 +18,14 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { firstValueFrom } from 'rxjs';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import type { User } from '../auth/entities/user.entity';
 import { aiServiceHeaders } from '../common/ai-service-auth';
+import { SlidingWindowRateLimiter } from '../common/sliding-window-rate-limiter';
+
+/** JwtAuthGuard가 주입한 사용자. 레이트리밋 키로 쓴다. */
+interface AuthenticatedRequest {
+  user: User;
+}
 
 /** 업로드 오디오 상한 (ai-service와 동일 기준). */
 const MAX_AUDIO_BYTES = 10 * 1024 * 1024;
@@ -25,6 +33,18 @@ const MAX_AUDIO_BYTES = 10 * 1024 * 1024;
 /** 음성 합성/인식 대기 상한. */
 const STT_TIMEOUT_MS = 20_000;
 const TTS_TIMEOUT_MS = 15_000;
+
+/**
+ * 사용자 1명당 분당 한도.
+ *
+ * ai-service에도 레이트리밋이 있지만, 프록시를 거치면서 그쪽이 보는 IP가
+ * 전부 백엔드 하나가 됐다 — 전 사용자 합산 전역 한도가 되어 한 사람이
+ * 소진하면 모두가 잠긴다. 여기서 사용자별로 나눠야 격리가 유지된다.
+ * ai-service 쪽 한도(tts 120, stt 60)보다 낮게 잡아 이쪽이 먼저 걸리게 한다.
+ */
+const TTS_PER_USER_PER_MIN = 60;
+const STT_PER_USER_PER_MIN = 30;
+const RATE_WINDOW_MS = 60_000;
 
 /**
  * ai-service 음성 기능 프록시.
@@ -48,6 +68,14 @@ const TTS_TIMEOUT_MS = 15_000;
 export class AiProxyController {
   private readonly logger = new Logger(AiProxyController.name);
   private readonly baseUrl: string;
+  private readonly ttsLimiter = new SlidingWindowRateLimiter(
+    TTS_PER_USER_PER_MIN,
+    RATE_WINDOW_MS,
+  );
+  private readonly sttLimiter = new SlidingWindowRateLimiter(
+    STT_PER_USER_PER_MIN,
+    RATE_WINDOW_MS,
+  );
 
   constructor(
     private readonly httpService: HttpService,
@@ -67,10 +95,17 @@ export class AiProxyController {
     FileInterceptor('audio', { limits: { fileSize: MAX_AUDIO_BYTES } }),
   )
   async stt(
+    @Req() req: AuthenticatedRequest,
     @UploadedFile() audio: Express.Multer.File | undefined,
     @Body() body: { lang?: string; candidates?: string | string[] },
     @Res() res: Response,
   ): Promise<void> {
+    if (!this.sttLimiter.allow(req.user.id)) {
+      res
+        .status(HttpStatus.TOO_MANY_REQUESTS)
+        .json({ message: '요청이 너무 잦습니다. 잠시 후 다시 시도해주세요.' });
+      return;
+    }
     if (!audio) {
       res
         .status(HttpStatus.BAD_REQUEST)
@@ -109,9 +144,13 @@ export class AiProxyController {
       res.status(HttpStatus.OK).json(upstream.data);
     } catch (error) {
       this.logger.warn(`STT 프록시 실패: ${this.describe(error)}`);
-      res
-        .status(HttpStatus.BAD_GATEWAY)
-        .json({ message: '음성 인식 서버에 연결하지 못했습니다.' });
+      const status = this.upstreamStatus(error);
+      res.status(status).json({
+        message:
+          status === HttpStatus.TOO_MANY_REQUESTS
+            ? '요청이 너무 잦습니다. 잠시 후 다시 시도해주세요.'
+            : '음성 인식 서버에 연결하지 못했습니다.',
+      });
     }
   }
 
@@ -122,10 +161,17 @@ export class AiProxyController {
    */
   @Get('tts')
   async tts(
+    @Req() req: AuthenticatedRequest,
     @Query('text') text: string | undefined,
     @Query('voice') voice: string | undefined,
     @Res() res: Response,
   ): Promise<void> {
+    if (!this.ttsLimiter.allow(req.user.id)) {
+      res
+        .status(HttpStatus.TOO_MANY_REQUESTS)
+        .json({ message: '요청이 너무 잦습니다. 잠시 후 다시 시도해주세요.' });
+      return;
+    }
     if (!text || text.trim().length === 0) {
       res
         .status(HttpStatus.BAD_REQUEST)
@@ -153,10 +199,29 @@ export class AiProxyController {
       res.status(HttpStatus.OK).send(Buffer.from(upstream.data));
     } catch (error) {
       this.logger.warn(`TTS 프록시 실패: ${this.describe(error)}`);
-      res
-        .status(HttpStatus.BAD_GATEWAY)
-        .json({ message: '음성 합성 서버에 연결하지 못했습니다.' });
+      const status = this.upstreamStatus(error);
+      res.status(status).json({
+        message:
+          status === HttpStatus.TOO_MANY_REQUESTS
+            ? '요청이 너무 잦습니다. 잠시 후 다시 시도해주세요.'
+            : '음성 합성 서버에 연결하지 못했습니다.',
+      });
     }
+  }
+
+  /**
+   * 업스트림 상태코드를 그대로 넘긴다.
+   *
+   * 전부 502로 뭉개면 클라이언트가 재시도 가능 여부를 판단할 수 없다.
+   * 429(레이트리밋)·413(용량 초과)은 원인이 분명해 그대로 전달하는 편이 낫다.
+   * 그 외(연결 실패·타임아웃)만 502로 본다.
+   */
+  private upstreamStatus(error: unknown): number {
+    const status = (error as { response?: { status?: number } })?.response
+      ?.status;
+    if (status === HttpStatus.TOO_MANY_REQUESTS) return status;
+    if (status === HttpStatus.PAYLOAD_TOO_LARGE) return status;
+    return HttpStatus.BAD_GATEWAY;
   }
 
   private describe(error: unknown): string {

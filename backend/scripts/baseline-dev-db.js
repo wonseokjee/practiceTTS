@@ -62,6 +62,24 @@ async function main() {
   await client.connect();
   console.log(`대상 DB: ${client.database}`);
 
+  // 운영 DB에서 돌면 되돌리기 어렵다. 마이그레이션 12건을 "적용됨"으로 거짓
+  // 기록하므로, 이후 migration:run이 실제로 필요한 마이그레이션을 건너뛴다.
+  // 개발 DB 베이스라인 전용이라는 걸 코드로 못박는다.
+  const looksProduction =
+    process.env.NODE_ENV === 'production' ||
+    /prod/i.test(client.database ?? '');
+  const confirmed = process.argv.includes('--i-know-this-is-not-production');
+  if (looksProduction && !confirmed) {
+    console.error(
+      `거부: 운영으로 보이는 대상이다 (NODE_ENV=${process.env.NODE_ENV ?? '미설정'}, DB=${client.database}).\n` +
+        '이 스크립트는 synchronize로 만들어진 개발 DB를 베이스라인하는 용도다.\n' +
+        '정말 의도한 것이라면 --i-know-this-is-not-production 플래그를 붙여라.',
+    );
+    await client.end();
+    process.exitCode = 1;
+    return;
+  }
+
   await client.query('BEGIN');
   try {
     // 1) 타임스탬프 → TIMESTAMPTZ (값 보존)
