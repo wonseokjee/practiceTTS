@@ -61,12 +61,29 @@ export function calculateFinalLocScore(
   return Math.max(...trials.map((t) => t.score));
 }
 
+export type LocScoreLabel =
+  | '정상'
+  | '경도 지연'
+  | '중도 지연'
+  | '무반응'
+  | '영역 외 터치';
+
 /**
  * 점수 값을 한국어 레이블로 변환한다.
+ *
+ * 0점은 성격이 다른 두 가지를 뭉친다 — **반응이 아예 없었던 것**과
+ * **반응은 했지만 버튼 밖을 짚은 것**이다. 점수만 보고 라벨을 붙이면 후자가
+ * '무반응'으로 기록돼, 환자가 즉각 반응했는데도 임상 기록은 정반대로 남는다.
+ * 그래서 라벨은 touchInBounds까지 함께 본다.
+ *
+ * @param score          시도 점수
+ * @param touchInBounds  버튼 영역 안을 짚었는지. 생략하면 영역 판정 없이
+ *                       기존처럼 0점을 '무반응'으로 본다.
  */
 export function getLocScoreLabel(
   score: LocScoreValue,
-): '정상' | '경도 지연' | '중도 지연' | '무반응' {
+  touchInBounds?: boolean,
+): LocScoreLabel {
   switch (score) {
     case 3:
       return '정상';
@@ -75,6 +92,6 @@ export function getLocScoreLabel(
     case 1:
       return '중도 지연';
     case 0:
-      return '무반응';
+      return touchInBounds === false ? '영역 외 터치' : '무반응';
   }
 }

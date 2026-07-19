@@ -77,7 +77,7 @@ export class FinishLocAssessmentUseCase {
         latencyMs: trial.latency,
         touchInBounds: trial.touchInBounds,
         score: trial.score,
-        scoreLabel: getLocScoreLabel(trial.score),
+        scoreLabel: getLocScoreLabel(trial.score, trial.touchInBounds),
         isComplete: index === result.trials.length - 1,
       }),
     );

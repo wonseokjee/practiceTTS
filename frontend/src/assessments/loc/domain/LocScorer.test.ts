@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { calculateLocScore, calculateFinalLocScore } from './LocScorer.js';
+import {
+  calculateLocScore,
+  calculateFinalLocScore,
+  getLocScoreLabel,
+} from './LocScorer.js';
 
 describe('calculateLocScore - 경계값 테스트', () => {
   // --- null / out-of-bounds ---
@@ -70,5 +74,30 @@ describe('calculateFinalLocScore - 최고 점수 채택', () => {
 
   it('시도 순서에 관계없이 최고 점수를 반환한다', () => {
     expect(calculateFinalLocScore([{ score: 3 }, { score: 0 }, { score: 1 }])).toBe(3);
+  });
+});
+
+/**
+ * TODO-002 재정의: 0점은 '반응 없음'과 '반응했으나 버튼 밖'을 뭉친다.
+ * 점수만 보고 라벨을 붙이면 후자가 '무반응'으로 기록돼, 환자가 즉각
+ * 반응했는데도 임상 기록이 정반대로 남는다.
+ */
+describe('getLocScoreLabel — 0점의 두 경우 구분', () => {
+  it('반응이 없으면 무반응', () => {
+    expect(getLocScoreLabel(0, true)).toBe('무반응');
+  });
+
+  it('반응했으나 버튼 밖이면 영역 외 터치', () => {
+    expect(getLocScoreLabel(0, false)).toBe('영역 외 터치');
+  });
+
+  it('touchInBounds를 생략하면 기존처럼 무반응', () => {
+    expect(getLocScoreLabel(0)).toBe('무반응');
+  });
+
+  it('0점이 아니면 영역 판정이 라벨을 바꾸지 않는다', () => {
+    expect(getLocScoreLabel(3, false)).toBe('정상');
+    expect(getLocScoreLabel(2, false)).toBe('경도 지연');
+    expect(getLocScoreLabel(1, false)).toBe('중도 지연');
   });
 });

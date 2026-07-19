@@ -98,7 +98,7 @@ export class ConductLocTrialUseCase {
       latencyMs: trial.latency,
       touchInBounds: trial.touchInBounds,
       score: trial.score,
-      scoreLabel: getLocScoreLabel(trial.score),
+      scoreLabel: getLocScoreLabel(trial.score, trial.touchInBounds),
       isComplete,
     };
 
