@@ -1,8 +1,11 @@
 """한국어 PII 사전 감지 테스트.
 
-설계 원칙이 '높은 정밀도, 낮은 재현율'이므로 두 방향을 다 본다:
-  - 잡아야 할 것(호칭 인명·기관명·광역지명)을 잡는가
-  - 잡으면 안 되는 것(정상 단어)을 안 잡는가 ← 사전 치환이라 과탐이 더 해롭다
+두 방향을 다 본다:
+  - 잡아야 할 것을 잡는가 ← **미탐이 곧 외부 LLM 유출이다**
+  - 잡으면 안 되는 것(정상 단어)을 안 잡는가 ← 과탐은 퀴즈 문장을 망친다
+
+과탐과 미탐 중에는 과탐이 낫지만(유출보다 품질 저하가 덜 나쁘다), 블록리스트로
+최대한 줄인다. 두 방향 모두 회귀를 막는 것이 이 파일의 목적이다.
 """
 from constants.korean_pii import detect_korean_pii
 
@@ -77,9 +80,23 @@ def test_admin_suffix_common_words_not_flagged():
         )
 
 
-def test_bare_name_not_flagged():
-    # 앵커 없는 맨이름은 못 잡는다(의도된 미탐 — Gemini가 2차로 잡음)
-    assert kinds("철수랑 바다에 갔어요") == {}
+def test_bare_name_in_lexicon_is_flagged():
+    """사전에 있는 맨이름 + 사람 조사는 잡는다.
+
+    예전에는 "앵커 없는 맨이름은 Gemini가 2차로 잡는다"며 일부러 놓쳤다.
+    그런데 Gemini가 잡으려면 **원문이 외부로 나가야** 해서, 그 미탐이 곧
+    유출이었다. 실측에서 맨이름이 가장 큰 유출원이라 사전으로 막는다.
+    """
+    assert kinds("철수랑 바다에 갔어요") == {"철수": "person"}
+
+
+def test_bare_name_outside_lexicon_still_missed():
+    """사전에 없는 이름은 여전히 놓친다 — 알려진 한계다.
+
+    사전 없이 2~3자를 이름으로 단정하면 일반명사를 마구 가린다. 이 구멍을
+    닫으려면 로컬 NER이 필요하다(별도 과제).
+    """
+    assert kinds("뫼별랑 바다에 갔어요") == {}
 
 
 def test_hospital_generic_phrase_needs_proper_noun():
@@ -94,3 +111,52 @@ def test_persona_token_not_detected_as_place():
     # [손자1] 안의 글자를 지명/인명으로 잡으면 안 된다
     d = detect_korean_pii("[손자1]이랑 갔어요")
     assert d == [] or all("손자" not in o for o, _ in d)
+
+
+# ── A1: 유출 축소를 위해 넓힌 규칙들 ──────────────────────────
+#
+# 실측(tests/measure_leak.py)에서 외부로 나가던 것들을 막는 규칙이다.
+# 미탐 = 유출이므로, 각 규칙이 살아 있는지 고정한다.
+
+
+def test_kinship_anchor_catches_name():
+    """관계어 뒤 이름은 사전에 없어도 잡는다."""
+    assert kinds("아들 원석이랑 산책했어요")["원석"] == "person"
+    assert kinds("손녀 지민이가 놀러 왔어요")["지민"] == "person"
+    assert kinds("며느리 지수한테 고맙다고 했어요")["지수"] == "person"
+
+
+def test_kinship_anchor_ignores_common_nouns():
+    """관계어 뒤라도 일반명사는 잡지 않는다 (퀴즈 문장이 망가진다)."""
+    assert kinds("아들 생일이라 케이크를 샀어요") == {}
+    assert kinds("딸 결혼식에 다녀왔어요") == {}
+
+
+def test_bare_name_with_honorific_without_surname():
+    """성씨 없이 이름 + 경칭도 잡는다 ("혜란씨")."""
+    assert kinds("혜란씨가 데려다줬어요")["혜란"] == "person"
+
+
+def test_honorific_rule_ignores_common_address_terms():
+    for text in ["아저씨가 왔어요", "아가씨가 안내했어요", "어머님이 편찮으세요"]:
+        assert kinds(text) == {}, text
+
+
+def test_place_suffix_rules():
+    assert kinds("역삼동 시장에서 과일을 샀어요")["역삼동"] == "place"
+    assert kinds("종로3가역에서 만났어요")["종로3가역"] == "place"
+    assert kinds("덕진공원에 갔어요")["덕진공원"] == "place"
+    assert kinds("올림픽대교를 건넜어요")["올림픽대교"] == "place"
+
+
+def test_place_suffix_rules_ignore_common_nouns():
+    """접미사만 보면 과탐이 심하다. 블록리스트가 살아 있는지 확인한다."""
+    for text in [
+        "오늘은 운동을 했어요",
+        "이 지역은 조용해요",
+        "우리 집에 왔어요",
+        "머리를 깎았어요",
+        "요리를 했어요",
+        "시장경제 뉴스를 봤어요",
+    ]:
+        assert kinds(text) == {}, text
