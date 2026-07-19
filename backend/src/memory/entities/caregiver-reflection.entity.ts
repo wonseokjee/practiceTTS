@@ -29,7 +29,7 @@ export class CaregiverReflection {
 
   // 연결된 메모리 엔트리
   @ManyToOne(() => MemoryEntry, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'memory_entry_id' })
+  @JoinColumn({ name: 'memory_entry_id', foreignKeyConstraintName: 'FK_caregiver_reflections_memory_entry' })
   memoryEntry: MemoryEntry;
 
   @Column({ name: 'memory_entry_id', type: 'uuid' })
@@ -37,7 +37,7 @@ export class CaregiverReflection {
 
   // 답변을 작성한 보호자
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'caregiver_id' })
+  @JoinColumn({ name: 'caregiver_id', foreignKeyConstraintName: 'FK_caregiver_reflections_caregiver' })
   caregiver: User;
 
   @Column({ name: 'caregiver_id', type: 'uuid' })
@@ -45,7 +45,7 @@ export class CaregiverReflection {
 
   // 답변이 향한 질문 (정적 풀)
   @ManyToOne(() => DiaryQuestion, { onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'question_id' })
+  @JoinColumn({ name: 'question_id', foreignKeyConstraintName: 'FK_caregiver_reflections_question' })
   question: DiaryQuestion;
 
   @Column({ name: 'question_id', type: 'uuid' })
@@ -59,6 +59,6 @@ export class CaregiverReflection {
   @Column({ name: 'is_private', type: 'boolean', default: true })
   isPrivate: boolean;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }

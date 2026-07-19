@@ -28,21 +28,21 @@ export class QuizAttempt {
   id: string;
 
   @ManyToOne(() => QuizSet, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'quiz_set_id' })
+  @JoinColumn({ name: 'quiz_set_id', foreignKeyConstraintName: 'FK_quiz_attempts_set' })
   quizSet: QuizSet;
 
   @Column({ name: 'quiz_set_id', type: 'uuid' })
   quizSetId: string;
 
   @ManyToOne(() => QuizQuestion, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'question_id' })
+  @JoinColumn({ name: 'question_id', foreignKeyConstraintName: 'FK_quiz_attempts_question' })
   question: QuizQuestion;
 
   @Column({ name: 'question_id', type: 'uuid' })
   questionId: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'patient_id' })
+  @JoinColumn({ name: 'patient_id', foreignKeyConstraintName: 'FK_quiz_attempts_patient' })
   patient: User;
 
   @Column({ name: 'patient_id', type: 'uuid' })
@@ -58,6 +58,6 @@ export class QuizAttempt {
   @Column({ name: 'is_correct', type: 'boolean' })
   isCorrect: boolean;
 
-  @CreateDateColumn({ name: 'answered_at' })
+  @CreateDateColumn({ name: 'answered_at', type: 'timestamptz' })
   answeredAt: Date;
 }

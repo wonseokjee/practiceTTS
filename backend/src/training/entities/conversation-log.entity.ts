@@ -20,7 +20,7 @@ export class ConversationLog {
   @ManyToOne(() => TrainingSession, (session) => session.conversationLogs, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'session_id' })
+  @JoinColumn({ name: 'session_id', foreignKeyConstraintName: 'FK_conversation_logs_session' })
   session: TrainingSession;
 
   @Column({ name: 'session_id', type: 'uuid' })
@@ -38,6 +38,6 @@ export class ConversationLog {
   @Column({ name: 'hint_triggered', default: false })
   hintTriggered: boolean;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }

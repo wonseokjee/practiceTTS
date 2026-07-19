@@ -18,7 +18,7 @@ export class MemoryEntry {
 
   // 라이프로그를 등록한 보호자
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'caregiver_id' })
+  @JoinColumn({ name: 'caregiver_id', foreignKeyConstraintName: 'FK_memory_entries_caregiver' })
   caregiver: User;
 
   @Column({ name: 'caregiver_id', type: 'uuid' })
@@ -26,7 +26,7 @@ export class MemoryEntry {
 
   // 훈련 대상 환자
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'patient_id' })
+  @JoinColumn({ name: 'patient_id', foreignKeyConstraintName: 'FK_memory_entries_patient' })
   patient: User;
 
   @Column({ name: 'patient_id', type: 'uuid' })
@@ -72,6 +72,6 @@ export class MemoryEntry {
   @Column({ name: 'is_active', default: true })
   isActive: boolean;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }

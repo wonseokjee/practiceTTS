@@ -24,7 +24,7 @@ export class QuizQuestion {
   id: string;
 
   @ManyToOne(() => QuizSet, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'quiz_set_id' })
+  @JoinColumn({ name: 'quiz_set_id', foreignKeyConstraintName: 'FK_quiz_questions_set' })
   quizSet: QuizSet;
 
   @Column({ name: 'quiz_set_id', type: 'uuid' })

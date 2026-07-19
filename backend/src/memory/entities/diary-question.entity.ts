@@ -43,6 +43,6 @@ export class DiaryQuestion {
   @Column({ name: 'order_hint', type: 'smallint', default: 0 })
   orderHint: number;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }

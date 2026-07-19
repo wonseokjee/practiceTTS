@@ -29,7 +29,7 @@ export class QuizSet {
 
   // 출처 라이프로그
   @ManyToOne(() => MemoryEntry, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'memory_entry_id' })
+  @JoinColumn({ name: 'memory_entry_id', foreignKeyConstraintName: 'FK_quiz_sets_memory_entry' })
   memoryEntry: MemoryEntry;
 
   @Column({ name: 'memory_entry_id', type: 'uuid' })
@@ -37,7 +37,7 @@ export class QuizSet {
 
   // 환자 (퀴즈를 풀 대상)
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'patient_id' })
+  @JoinColumn({ name: 'patient_id', foreignKeyConstraintName: 'FK_quiz_sets_patient' })
   patient: User;
 
   @Column({ name: 'patient_id', type: 'uuid' })
@@ -45,7 +45,7 @@ export class QuizSet {
 
   // 라이프로그를 등록한 보호자
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'caregiver_id' })
+  @JoinColumn({ name: 'caregiver_id', foreignKeyConstraintName: 'FK_quiz_sets_caregiver' })
   caregiver: User;
 
   @Column({ name: 'caregiver_id', type: 'uuid' })
@@ -70,7 +70,7 @@ export class QuizSet {
   @Column({ name: 'generation_error', type: 'text', nullable: true })
   generationError: string | null;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
   // generation_status='ready'로 전이된 시각

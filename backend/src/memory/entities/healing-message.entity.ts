@@ -31,6 +31,6 @@ export class HealingMessage {
   @Column({ name: 'order_index', type: 'smallint', default: 0 })
   orderIndex: number;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }

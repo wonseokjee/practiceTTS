@@ -33,7 +33,7 @@ export class QabResult {
   id: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'patient_id' })
+  @JoinColumn({ name: 'patient_id', foreignKeyConstraintName: 'FK_qab_results_patient' })
   patient: User;
 
   @Column({ name: 'patient_id', type: 'uuid' })
@@ -64,6 +64,6 @@ export class QabResult {
   @Column({ name: 'score', type: 'int', nullable: true })
   score: number | null;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }

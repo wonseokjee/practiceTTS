@@ -26,7 +26,7 @@ export class PatientMemoryNote {
 
   // 연결된 메모리 엔트리
   @ManyToOne(() => MemoryEntry, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'memory_entry_id' })
+  @JoinColumn({ name: 'memory_entry_id', foreignKeyConstraintName: 'FK_patient_memory_notes_memory_entry' })
   memoryEntry: MemoryEntry;
 
   @Column({ name: 'memory_entry_id', type: 'uuid' })
@@ -34,7 +34,7 @@ export class PatientMemoryNote {
 
   // 답변이 향한 질문 (정적 풀)
   @ManyToOne(() => DiaryQuestion, { onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'question_id' })
+  @JoinColumn({ name: 'question_id', foreignKeyConstraintName: 'FK_patient_memory_notes_question' })
   question: DiaryQuestion;
 
   @Column({ name: 'question_id', type: 'uuid' })
@@ -52,6 +52,6 @@ export class PatientMemoryNote {
   @Column({ name: 'answer_text', type: 'text' })
   answerText: string;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }
