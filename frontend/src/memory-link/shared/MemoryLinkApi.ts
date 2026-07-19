@@ -25,7 +25,14 @@ export function resolveMediaUrl(url: null | undefined): null;
 export function resolveMediaUrl(url: string | null | undefined): string | null;
 export function resolveMediaUrl(url: string | null | undefined): string | null {
   if (!url) return null;
-  if (/^(https?:)?\/\//i.test(url) || url.startsWith('data:')) return url;
+  // blob:·data:는 브라우저 로컬 URL(업로드 미리보기)이라 오리진을 붙이면 깨진다.
+  if (
+    /^(https?:)?\/\//i.test(url) ||
+    url.startsWith('data:') ||
+    url.startsWith('blob:')
+  ) {
+    return url;
+  }
   return `${BASE_URL.replace(/\/$/, '')}/${url.replace(/^\//, '')}`;
 }
 
