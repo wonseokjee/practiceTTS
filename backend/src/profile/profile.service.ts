@@ -304,12 +304,17 @@ export class ProfileService {
     const existing = await this.familyRepository.find({ where: { profileId } });
 
     // (relation, 복호화된 실명) → 기존 서수
+    //
+    // 키 구분자로 NUL( )을 쓴다. 이름에는 절대 들어갈 수 없어 공백이나
+    // 하이픈과 달리 충돌이 없다. 다만 **리터럴 NUL을 소스에 박으면 안 된다** —
+    // git이 파일을 바이너리로 취급해 줄 단위 diff가 사라지고 grep도 안 먹는다.
+    // 반드시 이스케이프로 쓸 것.
     const ordinalByKey = new Map<string, number>();
     // relation → 지금까지 쓰인 최대 서수 (새 구성원 채번의 출발점)
     const maxByRelation = new Map<FamilyRelation, number>();
     for (const member of existing) {
       const name = this.cryptoService.decrypt(member.name);
-      ordinalByKey.set(`${member.relation} ${name}`, member.relationOrdinal);
+      ordinalByKey.set(`${member.relation}\u0000${name}`, member.relationOrdinal);
       maxByRelation.set(
         member.relation,
         Math.max(maxByRelation.get(member.relation) ?? 0, member.relationOrdinal),
@@ -333,7 +338,7 @@ export class ProfileService {
     // 암호화를 트랜잭션 밖에서 미리 끝낸다. 트랜잭션 구간에 남는 건 DB
     // 작업뿐이라, 암호화가 실패해도 트랜잭션이 열린 채 머물지 않는다.
     const rows = members.slice(0, MAX_FAMILY_MEMBERS).map((m) => {
-      const key = `${m.relation} ${m.name}`;
+      const key = `${m.relation}\u0000${m.name}`;
       let ordinal = ordinalByKey.get(key);
       if (ordinal === undefined) {
         // 새 구성원 → 해당 관계에서 쓰인 적 없는 서수를 준다(재사용 금지)
