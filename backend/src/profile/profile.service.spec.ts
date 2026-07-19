@@ -4,7 +4,7 @@ import { MAX_FAMILY_MEMBERS } from './constants/profile.constants';
 import type { CryptoService } from '../memory/services/crypto.service';
 import type { FamilyMember } from './entities/family-member.entity';
 import type { PatientProfile } from './entities/patient-profile.entity';
-import type { Repository } from 'typeorm';
+import { QueryFailedError, type Repository } from 'typeorm';
 
 /**
  * ProfileService 단위 테스트.
@@ -148,6 +148,42 @@ describe('ProfileService', () => {
           name: '철수',
         }),
       ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('동시 추가로 서수가 충돌(23505)하면 재계산 후 재시도한다', async () => {
+      // 첫 save는 UNIQUE 위반(다른 요청이 같은 서수를 선점), 둘째는 성공.
+      maxOrdinal = 1;
+      const uniqueError = new QueryFailedError('q', [], {
+        code: '23505',
+      } as unknown as Error);
+      familyRepoMock.save
+        .mockRejectedValueOnce(uniqueError)
+        .mockImplementationOnce((input: Partial<FamilyMember>) => {
+          savedMember = input;
+          return Promise.resolve(input);
+        });
+
+      await service.addFamilyMember(caregiver, PATIENT_ID, {
+        relation: 'son',
+        name: '영수',
+      });
+
+      // 두 번 시도했고 결국 저장됐다(처리되지 않은 500 대신)
+      expect(familyRepoMock.save).toHaveBeenCalledTimes(2);
+      expect(savedMember?.name).toBe('enc:영수');
+    });
+
+    it('UNIQUE 위반이 아닌 오류는 재시도하지 않고 전파한다', async () => {
+      maxOrdinal = 1;
+      familyRepoMock.save.mockRejectedValue(new Error('DB down'));
+
+      await expect(
+        service.addFamilyMember(caregiver, PATIENT_ID, {
+          relation: 'son',
+          name: '영수',
+        }),
+      ).rejects.toThrow('DB down');
+      expect(familyRepoMock.save).toHaveBeenCalledTimes(1);
     });
   });
 

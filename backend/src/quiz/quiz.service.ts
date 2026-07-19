@@ -213,6 +213,13 @@ export class QuizService {
       return { quizSetId: quizSet.id };
     }
 
+    // 시도 횟수 기록(원자적). 방금 만든 set이라 경합은 없지만, 생성 도중 죽어도
+    // 카운트가 남아야 부팅 복구가 무한 재시도하지 않는다.
+    await this.quizSetRepository.increment(
+      { id: quizSet.id },
+      'generationAttempts',
+      1,
+    );
     await this.runGeneration(quizSet, entry, notes);
     return { quizSetId: quizSet.id };
   }
@@ -352,12 +359,8 @@ export class QuizService {
     entry: MemoryEntry,
     notes: PatientMemoryNote[],
   ): Promise<void> {
-    // 시도 횟수를 '시작' 시점에 기록한다. 생성 도중 프로세스가 죽어도 카운트가
-    // 남아야 부팅 복구가 같은 set을 영원히 재시도하지 않는다.
-    await this.quizSetRepository.update(quizSet.id, {
-      generationAttempts: (quizSet.generationAttempts ?? 0) + 1,
-    });
-
+    // 시도 횟수 증가는 호출자가 담당한다(신규는 increment, 복구는 claim의 조건부
+    // UPDATE). 여기서 read-modify-write하면 동시 실행 시 카운트가 유실된다.
     try {
       // 페르소나 토큰화: 가족 실명·지명이 외부 LLM(Gemini)에 그대로 나가지 않도록
       // [아들1]/[장소1] 토큰으로 치환한다. 프로필 미등록이면 빈 맵 → 원문 유지(무중단).
@@ -410,6 +413,9 @@ export class QuizService {
       await this.dataSource.transaction(async (manager) => {
         const questionRepo = manager.getRepository(QuizQuestion);
         const setRepo = manager.getRepository(QuizSet);
+        // 복구 재생성 시 이전 시도가 남긴 문항을 먼저 지운다. 안 지우면 5문항 set이
+        // 10문항이 되고, submitAttempts의 completed(totalQuestions 기준)가 깨진다.
+        await questionRepo.delete({ quizSetId: quizSet.id });
         const questions = diversified.map((q, index) =>
           questionRepo.create({
             quizSetId: quizSet.id,
@@ -1030,7 +1036,18 @@ export class QuizService {
 
     let recovered = 0;
     let failed = 0;
+    let skipped = 0;
     for (const set of stale) {
+      // 원자적 claim: 이 set을 나만 처리하도록 잠근다. 여러 워커가 동시에 부팅하거나
+      // 크래시루프로 겹쳐 돌면, claim 없이는 같은 set을 중복 생성해 문항이 쌓인다.
+      // 조건부 UPDATE(status·attempts가 방금 읽은 값 그대로일 때만)로 attempts를
+      // 올리며, affected===1인 워커만 소유권을 얻는다.
+      const claimed = await this.claimSetForRecovery(set);
+      if (!claimed) {
+        skipped += 1;
+        continue;
+      }
+
       const entry = await this.memoryEntryRepository.findOne({
         where: { id: set.memoryEntryId, isActive: true },
       });
@@ -1072,9 +1089,29 @@ export class QuizService {
     }
 
     this.logger.log(
-      `막힌 QuizSet 복구 완료 (recovered=${recovered}, failed=${failed}, scanned=${stale.length})`,
+      `막힌 QuizSet 복구 완료 (recovered=${recovered}, failed=${failed}, ` +
+        `skipped=${skipped}, scanned=${stale.length})`,
     );
-    return { recovered, failed, skipped: 0 };
+    return { recovered, failed, skipped };
+  }
+
+  /**
+   * 복구 대상 set을 원자적으로 claim한다.
+   *
+   * 방금 find로 읽은 status·attempts가 그대로일 때만 attempts를 1 올린다.
+   * 다른 워커가 먼저 claim하면 attempts가 바뀌어 조건 불일치 → affected 0 → false.
+   * 이 조건부 UPDATE가 claim(소유권)과 시도 카운트를 한 번에 원자적으로 처리한다.
+   */
+  private async claimSetForRecovery(set: QuizSet): Promise<boolean> {
+    const result = await this.quizSetRepository.update(
+      {
+        id: set.id,
+        generationStatus: set.generationStatus,
+        generationAttempts: set.generationAttempts,
+      },
+      { generationAttempts: () => '"generation_attempts" + 1' },
+    );
+    return result.affected === 1;
   }
 
   /**

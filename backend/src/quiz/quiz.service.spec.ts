@@ -70,6 +70,7 @@ describe('QuizService', () => {
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      increment: jest.fn(),
       createQueryBuilder: jest.fn(),
     };
   }
@@ -1365,6 +1366,7 @@ describe('QuizService', () => {
       quizSetRepo.find.mockResolvedValue([
         buildSet({ generationStatus: 'pending' }),
       ]);
+      quizSetRepo.update.mockResolvedValue({ affected: 1 }); // claim 성공
       memoryEntryRepo.findOne.mockResolvedValue(null); // 삭제됨
 
       const result = await service.recoverStuckSets();
@@ -1381,6 +1383,7 @@ describe('QuizService', () => {
       quizSetRepo.find.mockResolvedValue([
         buildSet({ generationStatus: 'pending' }),
       ]);
+      quizSetRepo.update.mockResolvedValue({ affected: 1 }); // claim 성공
       memoryEntryRepo.findOne.mockResolvedValue(buildEntry());
       patientMemoryNoteRepo.find.mockResolvedValue([]); // 노트 없음
 
@@ -1398,6 +1401,7 @@ describe('QuizService', () => {
       quizSetRepo.find.mockResolvedValue([
         buildSet({ generationStatus: 'pending' }),
       ]);
+      quizSetRepo.update.mockResolvedValue({ affected: 1 }); // claim 성공
       memoryEntryRepo.findOne.mockResolvedValue(null); // 원본 삭제됨
 
       await service.recoverStuckSets();
@@ -1407,6 +1411,23 @@ describe('QuizService', () => {
         QUIZ_SET_ID,
         expect.objectContaining({ generationAttempts: 3 }),
       );
+    });
+
+    it('다른 워커가 먼저 claim했으면(affected 0) 건너뛴다 (중복 생성 방지)', async () => {
+      quizSetRepo.find.mockResolvedValue([
+        buildSet({ generationStatus: 'pending' }),
+      ]);
+      quizSetRepo.update.mockResolvedValue({ affected: 0 }); // claim 실패
+      memoryEntryRepo.findOne.mockResolvedValue(buildEntry());
+      patientMemoryNoteRepo.find.mockResolvedValue([buildNote()]);
+
+      const result = await service.recoverStuckSets();
+
+      expect(result.skipped).toBe(1);
+      expect(result.recovered).toBe(0);
+      // claim 실패면 엔트리 조회도, 생성도 하지 않는다
+      expect(memoryEntryRepo.findOne).not.toHaveBeenCalled();
+      expect(generationClientMock.generate).not.toHaveBeenCalled();
     });
 
     it('failed set(업스트림 일시 오류)도 재시도해 ready로 복구한다', async () => {
@@ -1486,10 +1507,12 @@ describe('QuizService', () => {
 
       await service.generateForMemoryEntry(MEMORY_ENTRY_ID);
 
-      // LLM 호출 전에 attempts=2로 선반영
-      expect(quizSetRepo.update).toHaveBeenCalledWith(QUIZ_SET_ID, {
-        generationAttempts: 2,
-      });
+      // LLM 호출 전에 attempts를 원자적으로 increment한다(read-modify-write 아님)
+      expect(quizSetRepo.increment).toHaveBeenCalledWith(
+        { id: QUIZ_SET_ID },
+        'generationAttempts',
+        1,
+      );
     });
   });
 

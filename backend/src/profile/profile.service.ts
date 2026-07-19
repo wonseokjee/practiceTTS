@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 import { CryptoService } from '../memory/services/crypto.service';
 import {
   MAX_FAMILY_MEMBERS,
@@ -19,6 +19,9 @@ import {
 import { UpsertPatientProfileDto } from './dto/upsert-patient-profile.dto';
 import { FamilyMember } from './entities/family-member.entity';
 import { PatientProfile } from './entities/patient-profile.entity';
+
+/** 서수 충돌(동시 추가) 시 재계산·재시도 횟수 상한. */
+const ORDINAL_RETRY_LIMIT = 4;
 
 /** 복호화된 가족 구성원 (내부 페르소나 매핑 생성용) */
 export interface DecryptedFamilyMember {
@@ -141,19 +144,40 @@ export class ProfileService {
       );
     }
 
-    const ordinal = await this.nextOrdinal(profile.id, dto.relation);
-    await this.familyRepository.save(
-      this.familyRepository.create({
-        profileId: profile.id,
-        relation: dto.relation,
-        name: this.cryptoService.encrypt(dto.name),
-        gender: dto.gender ?? 'U',
-        relationOrdinal: ordinal,
-        note: dto.note ? this.cryptoService.encrypt(dto.note) : null,
-      }),
-    );
+    // nextOrdinal(MAX+1)과 save는 분리돼 있어, 같은 관계로 동시 추가가 들어오면
+    // 둘이 같은 서수를 계산해 UNIQUE 제약(profile,relation,ordinal)을 위반한다.
+    // 위반(23505)이면 서수를 다시 계산해 재시도한다(처리되지 않은 500 대신).
+    for (let attempt = 0; attempt < ORDINAL_RETRY_LIMIT; attempt += 1) {
+      const ordinal = await this.nextOrdinal(profile.id, dto.relation);
+      try {
+        await this.familyRepository.save(
+          this.familyRepository.create({
+            profileId: profile.id,
+            relation: dto.relation,
+            name: this.cryptoService.encrypt(dto.name),
+            gender: dto.gender ?? 'U',
+            relationOrdinal: ordinal,
+            note: dto.note ? this.cryptoService.encrypt(dto.note) : null,
+          }),
+        );
+        return this.getProfile(caregiver, patientId);
+      } catch (error) {
+        if (this.isUniqueViolation(error) && attempt < ORDINAL_RETRY_LIMIT - 1) {
+          continue; // 서수 충돌 → 재계산 후 재시도
+        }
+        throw error;
+      }
+    }
 
     return this.getProfile(caregiver, patientId);
+  }
+
+  /** Postgres UNIQUE 제약 위반(23505) 여부. */
+  private isUniqueViolation(error: unknown): boolean {
+    return (
+      error instanceof QueryFailedError &&
+      (error.driverError as { code?: string })?.code === '23505'
+    );
   }
 
   /**
