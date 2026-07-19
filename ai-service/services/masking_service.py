@@ -12,6 +12,7 @@ import re
 
 from domain.entities import MaskingResult
 from domain.errors import GeminiApiError, ResidualPiiError, TextTooLongError
+from constants.korean_pii import detect_korean_pii
 from interfaces.llm_client import ILlmClient
 from interfaces.masking_store import IMaskingStore
 from prompts.masking_prompt import MASKING_SYSTEM_PROMPT
@@ -28,6 +29,12 @@ _MASKING_MODEL = "gemini-2.5-flash"
 # 실명 대신 라벨이나 [Family_M1] 같은 찌꺼기가 노출된다.
 # 프롬프트로도 "무시하라"고 지시하지만, LLM 준수를 믿지 않고 코드로 강제한다.
 _PERSONA_TOKEN_PATTERN = re.compile(r"\[[^\[\]\n]{1,30}\]")
+
+# 이미 부여한 익명 라벨(Family_X1, Place_2, PHONE_1 …). 사전 치환으로 만든 라벨이
+# 섞인 텍스트를 Gemini에 보내면, Gemini가 라벨 주변을 통째로 한 entity로 반환할 수
+# 있다("서울시 Place_1 역삼동"). 그 값은 원문에 없어 최종 치환에 실패하고 잔존
+# 검사에 걸린다. 라벨을 포함한 감지 결과는 무시한다(이미 익명화된 값).
+_EXISTING_LABEL_PATTERN = re.compile(r"(?:Family_[MFX]|Place|PHONE|SSN|EMAIL)_\d+")
 
 # 정규식 패턴: 1차 마스킹 대상
 _PATTERNS = {
@@ -47,21 +54,24 @@ class MaskingService:
     """텍스트 PII 마스킹 서비스.
 
     1단계: 정규식으로 전화번호/주민번호/이메일을 **Gemini 호출 전에** 치환
-    2단계: Gemini로 이름/장소명 감지 후 익명 식별자로 치환
+    2단계: 한국어 사전으로 호칭 인명·기관명·광역지명을 **Gemini 호출 전에** 치환
+    3단계: Gemini로 나머지 이름/장소명 감지 후 익명 식별자로 치환
 
     ── 신뢰 경계에 대한 정직한 서술 (과대평가 금지) ───────────────
-    이 서비스는 "PII가 외부 LLM에 절대 닿지 않게" 만들지 못한다. 2단계는 이름·장소
-    **감지 자체를 Gemini에 의뢰**하므로, 정규식으로 잡지 못하는 PII(사람 이름,
-    기관명, 주소 등)는 감지되기 위해 Gemini를 한 번 거친다. 그 결과는 사후 치환이다.
+    이 서비스는 "PII가 외부 LLM에 절대 닿지 않게" 만들지 못한다. 3단계는 이름·장소
+    **감지 자체를 Gemini에 의뢰**하므로, 앞 두 단계가 못 잡은 PII는 감지되기 위해
+    Gemini를 한 번 거친다. 그 결과는 사후 치환이다.
 
-    실제 방어선은 두 겹이고, 각자 덮는 범위가 다르다:
-      1. 페르소나 토큰화(backend) — 프로필에 등록된 가족·장소를 LLM에 보내기 전에
-         [손자1]/[장소1]로 치환. 외부에 원문이 나가지 않는 유일한 층.
-      2. 정규식 마스킹(여기 1단계) — 전화·주민번호·이메일. 형태가 확실해 사전 치환 가능.
-      3. Gemini 감지(여기 2단계) — 나머지 이름·장소. **원문이 Gemini를 거친다.**
+    방어선은 네 겹이고, 각자 덮는 범위가 다르다:
+      1. 페르소나 토큰화(backend) — 프로필에 등록된 가족·장소. 외부에 원문 안 나감.
+      2. 정규식(1단계) — 전화·주민번호·이메일. 형태가 확실해 사전 치환.
+      3. 한국어 사전(2단계) — '앵커가 확실한' 인명(성+이름+직함)·기관명(○○병원)·
+         광역지명(강남구). 사전 치환. 높은 정밀도·낮은 재현율.
+      4. Gemini 감지(3단계) — 나머지(앵커 없는 맨이름, 세부 동/읍/면 등).
+         **원문이 Gemini를 거친다.**
 
-    즉 미등록 인물·기관명은 Gemini에 노출된다. 이를 없애려면 로컬 NER 등
-    외부 호출 없는 감지기가 필요하다(별도 과제).
+    즉 4층에 남는 PII는 여전히 Gemini에 노출된다. 완전 차단은 로컬 NER 등 외부
+    호출 없는 감지기가 필요하다(별도 과제: project_local-ner-pii-debt).
     """
 
     def __init__(
@@ -102,17 +112,22 @@ class MaskingService:
         # 2-1. 이미 익명화된 페르소나 토큰을 보호 대상으로 수집
         persona_tokens = set(_PERSONA_TOKEN_PATTERN.findall(raw_text))
 
-        # 3. 정규식 1차 마스킹 (전화번호, 주민번호, 이메일)
+        # 3. 정규식 1차 마스킹 (전화번호, 주민번호, 이메일) — Gemini 전에 치환
         text_after_regex = self._apply_regex_masking(raw_text, entity_map)
 
-        # 4. Gemini 2차 마스킹 (이름, 장소명)
+        # 3-1. 한국어 사전 마스킹 (호칭 인명·기관명·광역지명) — Gemini 전에 치환.
+        #      감지를 외부에 의뢰하지 않고 여기서 확실한 것부터 가려, 원문이
+        #      Gemini로 새는 양을 줄인다.
+        text_after_korean = self._apply_korean_pii_masking(
+            text_after_regex, entity_map, persona_tokens
+        )
+
+        # 4. Gemini 3차 마스킹 (사전 필터가 못 잡은 나머지 이름·장소명)
         try:
-            gemini_entities = await self._detect_pii_with_gemini(text_after_regex)
-            self._merge_gemini_entities(
-                gemini_entities, entity_map, persona_tokens
-            )
+            gemini_entities = await self._detect_pii_with_gemini(text_after_korean)
+            self._assign_labels(gemini_entities, entity_map, persona_tokens)
         except GeminiApiError:
-            # Gemini API 실패 시 정규식 결과만으로 부분 마스킹 진행 (UC-2 예외 흐름)
+            # Gemini API 실패 시 앞 단계 결과만으로 부분 마스킹 진행 (UC-2 예외 흐름)
             pass
 
         # 5. entity_map 기반 텍스트 치환
@@ -196,20 +211,63 @@ class MaskingService:
             original in token or token in original for token in persona_tokens
         )
 
-    def _merge_gemini_entities(
+    def _apply_korean_pii_masking(
+        self,
+        text: str,
+        entity_map: dict[str, str],
+        persona_tokens: set[str],
+    ) -> str:
+        """한국어 사전 PII(호칭 인명·기관명·광역지명)를 감지·치환한 텍스트를 반환한다.
+
+        Gemini에 넘기기 전에 확실한 것부터 라벨로 바꿔, 원문이 외부로 나가지 않게
+        한다. 라벨 카운터는 _assign_labels가 entity_map 기준으로 이어받으므로 이후
+        Gemini 결과와 충돌하지 않는다.
+        """
+        detected = detect_korean_pii(text)
+        if not detected:
+            return text
+
+        entities = [{"original": o, "type": t} for o, t in detected]
+        self._assign_labels(entities, entity_map, persona_tokens)
+
+        masked = text
+        # 긴 원본부터 치환(부분 문자열 오치환 방지)
+        for original, _kind in sorted(detected, key=lambda x: len(x[0]), reverse=True):
+            label = entity_map.get(original)
+            if label:
+                masked = masked.replace(original, label)
+        return masked
+
+    @staticmethod
+    def _max_label_index(entity_map: dict[str, str], prefix: str) -> int:
+        """entity_map에서 주어진 접두사(예: 'Place_', 'Family_M')의 최대 인덱스."""
+        max_idx = 0
+        for label in entity_map.values():
+            if label.startswith(prefix):
+                suffix = label[len(prefix):]
+                if suffix.isdigit():
+                    max_idx = max(max_idx, int(suffix))
+        return max_idx
+
+    def _assign_labels(
         self,
         entities: list[dict],
         entity_map: dict[str, str],
         persona_tokens: set[str] | None = None,
     ) -> None:
-        """Gemini 감지 결과를 entity_map에 병합.
+        """감지 결과(사전/Gemini 공통)를 entity_map에 라벨링한다.
 
-        페르소나 토큰과 겹치는 감지 결과는 무시한다 — 이미 익명화된 자리표시자를
-        다시 치환하면 backend의 역치환이 깨진다.
+        카운터를 entity_map의 기존 라벨에서 이어받아, 사전 치환과 Gemini 치환이
+        같은 라벨(Place_1 등)을 중복 부여하지 않게 한다.
+        페르소나 토큰과 겹치는 결과는 무시한다(이미 익명화된 자리표시자).
         """
-        person_counters: dict[str, int] = {"M": 0, "F": 0, "U": 0}
-        place_counter = 0
         tokens = persona_tokens or set()
+        person_counters: dict[str, int] = {
+            "M": self._max_label_index(entity_map, "Family_M"),
+            "F": self._max_label_index(entity_map, "Family_F"),
+            "U": self._max_label_index(entity_map, "Family_X"),
+        }
+        place_counter = self._max_label_index(entity_map, "Place_")
 
         for entity in entities:
             original = entity.get("original", "").strip()
@@ -217,6 +275,9 @@ class MaskingService:
             if not original or original in entity_map:
                 continue
             if self._overlaps_persona_token(original, tokens):
+                continue
+            # 이미 부여한 라벨이 섞인 감지 결과는 무시(잔존 검사 오류·중복 라벨 방지)
+            if _EXISTING_LABEL_PATTERN.search(original):
                 continue
 
             if entity_type == "person":
