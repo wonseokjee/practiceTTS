@@ -7,6 +7,7 @@ import type {
   IWishConversionClient,
   WishConversionResult,
 } from '../interfaces/IWishConversionClient';
+import { aiServiceHeaders } from '../../common/ai-service-auth';
 
 /** FastAPI `/wish/to-practice` 응답 원시 타입 (snake_case) */
 interface RawWishResponse {
@@ -51,7 +52,10 @@ export class WishConversionClient implements IWishConversionClient {
         this.httpService.post<RawWishResponse>(
           `${this.baseUrl}/wish/to-practice`,
           { wish_message: wishMessage },
-          { timeout: WishConversionClient.TIMEOUT_MS },
+          {
+            timeout: WishConversionClient.TIMEOUT_MS,
+            headers: aiServiceHeaders(this.configService),
+          },
         ),
       );
       const data = response.data;

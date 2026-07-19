@@ -11,6 +11,7 @@ import type {
   QuizGenerationResult,
 } from '../interfaces/IQuizGenerationClient';
 import type { IQuizGenerationPayload } from '../interfaces/IQuizGenerationPayload';
+import { aiServiceHeaders } from '../../common/ai-service-auth';
 
 /** FastAPI `/quiz/generate` 응답의 단일 문제 (snake_case 원시 타입) */
 interface RawQuizQuestion {
@@ -87,7 +88,10 @@ export class QuizGenerationClient implements IQuizGenerationClient {
             this.httpService.post<RawQuizGenerateResponse>(
               `${this.baseUrl}/quiz/generate`,
               body,
-              { timeout: QuizGenerationClient.GENERATE_TIMEOUT_MS },
+              {
+                timeout: QuizGenerationClient.GENERATE_TIMEOUT_MS,
+                headers: aiServiceHeaders(this.configService),
+              },
             ),
           ),
         {},

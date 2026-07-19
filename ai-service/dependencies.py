@@ -6,8 +6,9 @@
 구현체 교체 시 이 파일의 팩토리 함수만 수정하면 된다.
 """
 import os
+import secrets
 
-from fastapi import HTTPException, Request, status
+from fastapi import Header, HTTPException, Request, status
 
 from infra.azure_stt import AzureSttEngine
 from infra.azure_tts import AzureTtsEngine
@@ -68,6 +69,37 @@ def _get_masking_store() -> InMemoryMaskingStore:
     if _masking_store is None:
         _masking_store = InMemoryMaskingStore()
     return _masking_store
+
+
+# ─── 서비스 간 인증 ────────────────────────────────────────────
+
+
+def require_service_token(x_service_token: str = Header(default="")) -> None:
+    """백엔드만 호출할 수 있는 엔드포인트를 지키는 공유 토큰 검사.
+
+    이 서비스는 외부 LLM(Gemini)과 Azure를 호출한다. 인증이 없으면 포트에
+    닿는 누구나 남의 API 할당량을 태우고, /mask에 임의 텍스트를 넣어
+    외부 LLM으로 흘려보낼 수 있다. 의료 성격 데이터라 후자가 특히 문제다.
+
+    브라우저가 직접 부르는 /stt·/tts에는 걸지 않는다 — 브라우저에 심은
+    토큰은 비밀이 아니기 때문이다. 그쪽은 레이트리밋으로 막고 있고,
+    근본 해결은 백엔드 프록시로 옮기는 것이다(별도 과제).
+
+    토큰이 설정돼 있지 않으면 **막는다**. 설정을 잊었을 때 조용히 열린
+    상태로 남는 편이 훨씬 위험하다.
+    """
+    expected = os.getenv("AI_SERVICE_TOKEN", "")
+    if not expected:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI_SERVICE_TOKEN이 설정되지 않아 요청을 처리할 수 없습니다.",
+        )
+    # 타이밍 공격 방지를 위해 상수 시간 비교를 쓴다.
+    if not secrets.compare_digest(x_service_token, expected):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="서비스 토큰이 올바르지 않습니다.",
+        )
 
 
 # FastAPI Depends() 주입 함수들

@@ -13,6 +13,7 @@ import type {
   AiTagResult,
   ScenarioCacheData,
 } from '../types/memory-entry.types';
+import { aiServiceHeaders } from '../../common/ai-service-auth';
 
 /** FastAPI /tag 응답 원시 타입 */
 interface RawTagResponse {
@@ -68,7 +69,10 @@ export class FastApiClientService implements IFastApiClient {
         this.httpService.post<RawTagResponse>(
           `${this.baseUrl}/tag`,
           { image_base64: imageBase64, memory_entry_id: memoryEntryId },
-          { timeout: FastApiClientService.DEFAULT_TIMEOUT_MS },
+          {
+            timeout: FastApiClientService.DEFAULT_TIMEOUT_MS,
+            headers: aiServiceHeaders(this.configService),
+          },
         ),
       );
 
@@ -99,7 +103,10 @@ export class FastApiClientService implements IFastApiClient {
             this.httpService.post<RawMaskResponse>(
               `${this.baseUrl}/mask`,
               { raw_text: rawText, memory_entry_id: memoryEntryId },
-              { timeout: FastApiClientService.DEFAULT_TIMEOUT_MS },
+              {
+            timeout: FastApiClientService.DEFAULT_TIMEOUT_MS,
+            headers: aiServiceHeaders(this.configService),
+          },
             ),
           ),
         {},
@@ -142,7 +149,10 @@ export class FastApiClientService implements IFastApiClient {
             emotion_tag: emotionTag,
             memory_entry_id: memoryEntryId,
           },
-          { timeout: FastApiClientService.SCENARIO_TIMEOUT_MS },
+          {
+            timeout: FastApiClientService.SCENARIO_TIMEOUT_MS,
+            headers: aiServiceHeaders(this.configService),
+          },
         ),
       );
 
