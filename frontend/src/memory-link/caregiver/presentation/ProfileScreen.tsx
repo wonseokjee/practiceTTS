@@ -128,6 +128,7 @@ export function ProfileScreen({ onBack }: ProfileScreenProps) {
           items={hobbies}
           onChange={setHobbies}
           placeholder="예: 등산 (입력 후 추가)"
+          label="취미 추가"
         />
       </section>
 
@@ -140,6 +141,7 @@ export function ProfileScreen({ onBack }: ProfileScreenProps) {
           items={places}
           onChange={setPlaces}
           placeholder="예: ○○공원 (입력 후 추가)"
+          label="의미 있는 장소 추가"
         />
       </section>
 
@@ -176,9 +178,11 @@ interface ChipEditorProps {
   items: string[];
   onChange: (items: string[]) => void;
   placeholder: string;
+  /** 스크린리더용 입력 이름. placeholder는 접근 가능한 이름이 아니다. */
+  label: string;
 }
 
-function ChipEditor({ items, onChange, placeholder }: ChipEditorProps) {
+function ChipEditor({ items, onChange, placeholder, label }: ChipEditorProps) {
   const [draft, setDraft] = useState('');
 
   const add = () => {
@@ -203,6 +207,7 @@ function ChipEditor({ items, onChange, placeholder }: ChipEditorProps) {
             }
           }}
           placeholder={placeholder}
+          aria-label={label}
           className="flex-1 rounded-xl border border-[#D4D8D4] bg-[#FBFBFA] p-3 text-sm text-[#1F2A26] focus:border-[#2D6A56] focus:outline-none focus:ring-1 focus:ring-[#2D6A56]"
         />
         <button
@@ -283,6 +288,7 @@ function FamilyEditor({ family, onChange }: FamilyEditorProps) {
             }
           }}
           placeholder="이름 (예: 민준)"
+          aria-label="가족 이름"
           className="min-w-[120px] flex-1 rounded-xl border border-[#D4D8D4] bg-[#FBFBFA] p-3 text-sm text-[#1F2A26] focus:border-[#2D6A56] focus:outline-none focus:ring-1 focus:ring-[#2D6A56]"
         />
         <select
