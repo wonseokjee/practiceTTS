@@ -23,6 +23,7 @@ describe('ProfileService', () => {
   let savedMember: Partial<FamilyMember> | null;
   let maxOrdinal: number | null; // nextOrdinal의 MAX 쿼리가 돌려줄 값
   let familyCount: number;
+  let highWater: Record<string, number>; // 프로필에 보존된 관계별 최고 서수
 
   const profileRepoMock = {
     findOne: jest.fn(),
@@ -50,6 +51,7 @@ describe('ProfileService', () => {
     savedMember = null;
     maxOrdinal = null;
     familyCount = 0;
+    highWater = {};
 
     profileRepoMock.findOne.mockImplementation(() =>
       Promise.resolve({
@@ -61,6 +63,13 @@ describe('ProfileService', () => {
         hobbies: [],
         significantPlaces: [],
         notes: null,
+        // 서비스가 수위를 갱신하면 그대로 테스트 상태에 반영된다
+        get relationOrdinalHighWater() {
+          return highWater;
+        },
+        set relationOrdinalHighWater(next: Record<string, number>) {
+          highWater = next;
+        },
         updatedAt: new Date('2026-07-13T00:00:00.000Z'),
       } as unknown as PatientProfile),
     );
@@ -137,6 +146,51 @@ describe('ProfileService', () => {
 
       expect(savedMember?.name).toBe('enc:민준');
       expect(savedMember?.name).not.toBe('민준');
+    });
+
+    // Regression: ISSUE-003 — 해당 관계의 구성원을 전원 삭제하면 살아있는 행의
+    // MAX가 NULL이 되어 서수가 1로 되돌아갔다. 옛 시나리오·퀴즈는 [아들1] 토큰
+    // 상태로 저장돼 표시 시점에 역치환되므로, 새로 등록한 사람이 [아들1]을
+    // 물려받아 옛 기억이 **그 사람 이름으로** 복원된다.
+    // Found by /qa on 2026-07-19
+    // Report: .gstack/qa-reports/qa-report-localhost-2026-07-19.md
+    it('전원 삭제 후 재등록해도 서수를 재사용하지 않는다 (보존된 수위에서 이어감)', async () => {
+      maxOrdinal = null; // 아들 전원 삭제 → 살아있는 행 없음
+      highWater = { son: 2 }; // 과거에 아들2까지 발급했던 기록
+
+      await service.addFamilyMember(caregiver, PATIENT_ID, {
+        relation: 'son',
+        name: '민수',
+      });
+
+      // 1이면 옛 [아들1]이 민수로 복원된다 → 반드시 3이어야 한다
+      expect(savedMember?.relationOrdinal).toBe(3);
+    });
+
+    it('채번한 서수를 최고 수위로 보존한다 (다음 전원 삭제에 대비)', async () => {
+      maxOrdinal = 4;
+      highWater = {};
+
+      await service.addFamilyMember(caregiver, PATIENT_ID, {
+        relation: 'son',
+        name: '민수',
+      });
+
+      expect(savedMember?.relationOrdinal).toBe(5);
+      expect(highWater['son']).toBe(5);
+    });
+
+    it('수위는 내려가지 않는다 (살아있는 MAX가 더 낮아도 유지)', async () => {
+      maxOrdinal = 1; // 아들2·아들3이 삭제돼 살아있는 MAX는 1
+      highWater = { son: 3 };
+
+      await service.addFamilyMember(caregiver, PATIENT_ID, {
+        relation: 'son',
+        name: '민수',
+      });
+
+      expect(savedMember?.relationOrdinal).toBe(4);
+      expect(highWater['son']).toBe(4);
     });
 
     it('가족 상한을 넘으면 BadRequestException', async () => {
@@ -260,6 +314,30 @@ describe('ProfileService', () => {
       );
       expect(byName.get('enc:철수')).toBe(2); // 유지
       expect(byName.get('enc:민수')).toBe(3); // MAX+1, 1을 재사용하지 않는다
+    });
+
+    // Regression: ISSUE-003 — upsert 경로도 같은 구멍을 갖고 있었다.
+    it('교체로 전원이 사라졌던 관계도 보존된 수위에서 이어 채번한다', async () => {
+      familyRepoMock.find.mockResolvedValue([]); // 아들이 하나도 없는 상태
+      highWater = { son: 2 };
+
+      const savedEntities: Array<Partial<FamilyMember>> = [];
+      familyRepoMock.save.mockImplementation(
+        (input: Array<Partial<FamilyMember>>) => {
+          savedEntities.push(...input);
+          return Promise.resolve(input);
+        },
+      );
+      profileRepoMock.save.mockImplementation((p: unknown) =>
+        Promise.resolve({ ...(p as object), id: PROFILE_ID }),
+      );
+
+      await service.upsert(CAREGIVER_ID, caregiver, PATIENT_ID, {
+        family: [{ relation: 'son', name: '민수' }],
+      });
+
+      expect(savedEntities).toHaveLength(1);
+      expect(savedEntities[0].relationOrdinal).toBe(3); // 1이면 회귀
     });
   });
 

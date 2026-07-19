@@ -287,6 +287,20 @@ export class ProfileService {
       );
     }
 
+    // 살아있는 행이 없는 관계도 보존된 최고 수위에서 이어 채번해야 한다.
+    // (전원 삭제 후 재등록 시 서수가 1로 되돌아가는 것을 막는다)
+    const profile = await this.profileRepository.findOne({
+      where: { id: profileId },
+    });
+    const highWater = profile?.relationOrdinalHighWater ?? {};
+    for (const [relation, value] of Object.entries(highWater)) {
+      const key = relation as FamilyRelation;
+      maxByRelation.set(
+        key,
+        Math.max(maxByRelation.get(key) ?? 0, Number(value) || 0),
+      );
+    }
+
     await this.familyRepository.delete({ profileId });
 
     const entities = members.slice(0, MAX_FAMILY_MEMBERS).map((m) => {
@@ -311,6 +325,23 @@ export class ProfileService {
     if (entities.length > 0) {
       await this.familyRepository.save(entities);
     }
+
+    // 이번 교체에서 올라간 수위를 보존한다. 다음 교체에서 전원이 사라져도
+    // 여기서 읽어 이어 채번하므로 서수가 재사용되지 않는다.
+    if (profile) {
+      const nextHighWater: Record<string, number> = { ...highWater };
+      let changed = false;
+      for (const [relation, value] of maxByRelation) {
+        if (value > Number(nextHighWater[relation] ?? 0)) {
+          nextHighWater[relation] = value;
+          changed = true;
+        }
+      }
+      if (changed) {
+        profile.relationOrdinalHighWater = nextHighWater;
+        await this.profileRepository.save(profile);
+      }
+    }
   }
 
   /**
@@ -319,7 +350,12 @@ export class ProfileService {
    * count+1은 삭제로 생긴 구멍을 무시해 충돌한다(아들1·아들2 중 아들1 삭제 시
    * count=1 → 다음도 2 → 아들2와 중복). 중복 서수는 두 사람이 같은 토큰
    * ([아들2])을 갖게 해 페르소나 역치환의 결정성을 깨뜨리므로, 서수를 재사용하지
-   * 않도록 MAX+1로 채번한다.
+   * 않도록 채번한다.
+   *
+   * 살아있는 행의 MAX만으로는 부족하다. 해당 관계의 구성원을 **전원 삭제**하면
+   * MAX가 NULL이 되어 카운터가 1로 되돌아가고, 새로 등록한 사람이 [아들1]을
+   * 물려받아 옛 기억이 그 사람 이름으로 복원된다. 프로필에 보존한 최고 수위를
+   * 함께 봐서 이 구멍을 막는다.
    */
   private async nextOrdinal(
     profileId: string,
@@ -332,7 +368,45 @@ export class ProfileService {
       .andWhere('member.relation = :relation', { relation })
       .getRawOne<{ max: number | string | null }>();
 
-    const max = row?.max == null ? 0 : Number(row.max);
-    return max + 1;
+    const survivingMax = row?.max == null ? 0 : Number(row.max);
+    const highWater = await this.getHighWater(profileId, relation);
+    const ordinal = Math.max(survivingMax, highWater) + 1;
+
+    await this.raiseHighWater(profileId, relation, ordinal);
+    return ordinal;
+  }
+
+  /** 해당 관계에서 지금까지 발급한 최대 서수 (삭제돼도 보존). */
+  private async getHighWater(
+    profileId: string,
+    relation: FamilyRelation,
+  ): Promise<number> {
+    const profile = await this.profileRepository.findOne({
+      where: { id: profileId },
+    });
+    return Number(profile?.relationOrdinalHighWater?.[relation] ?? 0);
+  }
+
+  /** 최고 수위를 끌어올린다(내리지 않는다). */
+  private async raiseHighWater(
+    profileId: string,
+    relation: FamilyRelation,
+    ordinal: number,
+  ): Promise<void> {
+    const profile = await this.profileRepository.findOne({
+      where: { id: profileId },
+    });
+    if (!profile) {
+      return;
+    }
+    const current = Number(profile.relationOrdinalHighWater?.[relation] ?? 0);
+    if (ordinal <= current) {
+      return;
+    }
+    profile.relationOrdinalHighWater = {
+      ...(profile.relationOrdinalHighWater ?? {}),
+      [relation]: ordinal,
+    };
+    await this.profileRepository.save(profile);
   }
 }
