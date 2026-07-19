@@ -2,6 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { promises as fs } from 'fs';
 import { join } from 'path';
+import {
+  DEFAULT_UPLOAD_DIR,
+  resolveUploadDir,
+} from '../../common/upload-path';
 
 /**
  * 파일 저장 경로 및 공개 URL 관리 서비스
@@ -16,9 +20,10 @@ export class FileStorageService {
   readonly uploadDir: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.uploadDir = this.configService.get<string>(
-      'UPLOAD_DIR',
-      'tts-cache/memory-images',
+    // 저장(multer)·정적 서빙(main.ts)과 같은 절대 경로로 해석해야 한다.
+    // 상대 경로로 두면 프로세스 cwd에 따라 세 곳이 갈라져 사진이 404가 된다.
+    this.uploadDir = resolveUploadDir(
+      this.configService.get<string>('UPLOAD_DIR', DEFAULT_UPLOAD_DIR),
     );
   }
 

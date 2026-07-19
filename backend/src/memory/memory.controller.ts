@@ -22,6 +22,7 @@ import { mkdirSync } from 'fs';
 import { extname } from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { resolveUploadDir } from '../common/upload-path';
 import type { User } from '../auth/entities/user.entity';
 import { MAX_PHOTO_SIZE_BYTES } from './constants/memory-entry.constants';
 import { CreateMemoryEntryDto } from './dto/create-memory-entry.dto';
@@ -68,8 +69,9 @@ export class MemoryController {
     FileInterceptor('photo', {
       storage: diskStorage({
         destination: (req, file, cb) => {
-          const uploadDir =
-            process.env['UPLOAD_DIR'] ?? 'tts-cache/memory-images';
+          // 정적 서빙(main.ts)·읽기(FileStorageService)와 같은 디렉토리를 써야
+          // 업로드한 사진이 실제로 표시된다 → resolveUploadDir 공유.
+          const uploadDir = resolveUploadDir();
           // multer diskStorage는 destination 디렉토리를 자동 생성하지 않는다.
           // 디렉토리가 없으면 파일 쓰기가 ENOENT로 실패해 500이 되므로, 업로드
           // 시점에 재귀적으로 보장한다(이미 있으면 no-op).

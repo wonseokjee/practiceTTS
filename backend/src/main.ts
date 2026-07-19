@@ -1,8 +1,8 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { join } from 'path';
 import { AppModule } from './app.module';
+import { resolveUploadDir } from './common/upload-path';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -23,7 +23,8 @@ async function bootstrap() {
   );
 
   // 메모리 이미지 정적 파일 서빙 (인증 없이 공개 접근 허용 - UUID 파일명으로 보안 확보)
-  app.useStaticAssets(join(process.cwd(), '..', 'tts-cache', 'memory-images'), {
+  // 업로드 경로와 반드시 같은 디렉토리를 가리켜야 한다 → resolveUploadDir 공유.
+  app.useStaticAssets(resolveUploadDir(), {
     prefix: '/uploads/memory-images',
   });
 
