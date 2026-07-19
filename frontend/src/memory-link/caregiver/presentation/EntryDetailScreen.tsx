@@ -4,7 +4,7 @@ import type { MemoryEntry } from '../domain/MemoryEntry.js';
 import { EMOTION_TAG_LABELS } from '../domain/MemoryEntry.js';
 import type { ScenarioStatus } from '../application/useMemoryEntries.js';
 import { extractErrorMessage } from '../../shared/extractErrorMessage.js';
-import { resolveMediaUrl } from '../../shared/MemoryLinkApi.js';
+import { AuthedImage } from '../../shared/AuthedImage.js';
 
 interface EntryDetailScreenProps {
   entryId: string;
@@ -160,8 +160,8 @@ export function EntryDetailScreen({
 
       {/* 사진 */}
       {entry.photoUrl ? (
-        <img
-          src={resolveMediaUrl(entry.photoUrl)}
+        <AuthedImage
+          src={entry.photoUrl}
           alt={`${dateLabel} 기억 사진`}
           className="w-full rounded-2xl mb-4 max-h-80 object-cover"
         />

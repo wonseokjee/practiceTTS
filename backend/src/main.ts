@@ -2,7 +2,6 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
-import { resolveUploadDir } from './common/upload-path';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -22,11 +21,17 @@ async function bootstrap() {
     }),
   );
 
-  // 메모리 이미지 정적 파일 서빙 (인증 없이 공개 접근 허용 - UUID 파일명으로 보안 확보)
-  // 업로드 경로와 반드시 같은 디렉토리를 가리켜야 한다 → resolveUploadDir 공유.
-  app.useStaticAssets(resolveUploadDir(), {
-    prefix: '/uploads/memory-images',
-  });
+  // 메모리 이미지는 정적 서빙하지 않는다.
+  //
+  // 예전에는 여기서 `app.useStaticAssets`로 /uploads/memory-images 전체를
+  // 인증 없이 열어두고 "UUID 파일명으로 보안 확보"라고 적어두었다. UUID는
+  // 추측 방어일 뿐 접근 통제가 아니다 — URL이 Referer, 프록시 캐시, 액세스
+  // 로그, 공유된 스크린샷 중 어디로든 새면 무효화할 수단이 없다. 환자와
+  // 가족의 얼굴 사진이라 영향이 크다.
+  //
+  // 같은 경로를 MemoryPhotoController가 JWT + 소유권 확인 후 서빙한다.
+  // 여기에 useStaticAssets를 되살리면 컨트롤러보다 먼저 매칭되어 접근
+  // 통제가 통째로 무력화된다 — 되살리지 말 것.
 
   await app.listen(process.env.PORT ?? 3000);
 }

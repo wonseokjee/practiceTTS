@@ -8,7 +8,7 @@ import { useQuizList } from '../application/useQuizList.js';
 import type { UseQuizListDeps } from '../application/useQuizList.js';
 import type { QuizSetSummary } from '../domain/Quiz.js';
 import { formatScore } from '../domain/QuizScoring.js';
-import { resolveMediaUrl } from '../../../shared/MemoryLinkApi.js';
+import { AuthedImage } from '../../../shared/AuthedImage.js';
 
 interface QuizListScreenProps {
   onSelectQuiz: (quizSetId: string) => void;
@@ -102,8 +102,8 @@ function QuizSetCard({ item, onSelect }: QuizSetCardProps) {
         className="flex w-full items-center gap-4 rounded-3xl border border-[#E8E4DC] bg-white p-4 text-left shadow-[0_6px_18px_rgba(0,0,0,0.05)] transition-colors duration-[180ms] ease-out hover:border-[#2D6A56]"
       >
         {item.photoUrl !== null && (
-          <img
-            src={resolveMediaUrl(item.photoUrl)}
+          <AuthedImage
+            src={item.photoUrl}
             alt="기억 사진"
             className="h-20 w-20 flex-shrink-0 rounded-2xl object-cover"
           />

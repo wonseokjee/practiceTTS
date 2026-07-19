@@ -3,7 +3,7 @@ import { WebSpeechSttService } from '../infrastructure/SttService.js';
 import { useSilenceDetector } from '../application/useSilenceDetector.js';
 import { useTrainingSession } from '../application/useTrainingSession.js';
 import { WARM_SCREEN_BG } from '../../shared/theme.js';
-import { resolveMediaUrl } from '../../shared/MemoryLinkApi.js';
+import { AuthedImage } from '../../shared/AuthedImage.js';
 
 interface TrainingScreenProps {
   memoryEntryId: string;
@@ -219,8 +219,8 @@ export function TrainingScreen({
         {/* 회상 단서 사진 */}
         <div className="mt-2">
           {photoUrl !== null ? (
-            <img
-              src={resolveMediaUrl(photoUrl)}
+            <AuthedImage
+              src={photoUrl}
               alt={locationTag !== null ? `${locationTag} 사진` : '기억 사진'}
               className="w-full h-44 object-cover rounded-3xl shadow-[0_8px_22px_rgba(45,106,86,0.10)]"
             />

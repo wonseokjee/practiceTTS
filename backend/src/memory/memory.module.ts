@@ -10,6 +10,8 @@ import { MemoryEntry } from './entities/memory-entry.entity';
 import { MoodEntry } from './entities/mood-entry.entity';
 import { PatientMemoryNote } from './entities/patient-memory-note.entity';
 import { MemoryController } from './memory.controller';
+import { MemoryPhotoController } from './memory-photo.controller';
+import { MemoryPhotoService } from './services/memory-photo.service';
 import { MemoryEntryService } from './memory.service';
 import { CryptoService } from './services/crypto.service';
 import { DiaryQuestionService } from './services/diary-question.service';
@@ -39,7 +41,7 @@ import { HealingMessageService } from './services/healing-message.service';
     AuthModule,
     ProfileModule,
   ],
-  controllers: [MemoryController],
+  controllers: [MemoryController, MemoryPhotoController],
   providers: [
     MemoryEntryService,
     FastApiClientService,
@@ -47,6 +49,7 @@ import { HealingMessageService } from './services/healing-message.service';
     FileStorageService,
     DiaryQuestionService,
     HealingMessageService,
+    MemoryPhotoService,
   ],
   exports: [MemoryEntryService, DiaryQuestionService, HealingMessageService],
 })

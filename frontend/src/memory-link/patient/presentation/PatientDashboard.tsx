@@ -10,7 +10,7 @@ import { QuizListScreen } from '../quiz/presentation/QuizListScreen.js';
 import { QuizScreen } from '../quiz/presentation/QuizScreen.js';
 import { extractErrorMessage } from '../../shared/extractErrorMessage.js';
 import { WARM_SCREEN_BG } from '../../shared/theme.js';
-import { resolveMediaUrl } from '../../shared/MemoryLinkApi.js';
+import { AuthedImage } from '../../shared/AuthedImage.js';
 import { withHonorific } from '../../shared/honorific.js';
 
 /** 환자 학습 모드 (R9-a: localStorage에 마지막 모드 저장/복원) */
@@ -376,8 +376,8 @@ function EntryCard({ entry, onStartTraining }: EntryCardProps) {
       <div className="flex gap-4 p-4">
         {/* 사진 썸네일 */}
         {entry.photoUrl !== null && (
-          <img
-            src={resolveMediaUrl(entry.photoUrl)}
+          <AuthedImage
+            src={entry.photoUrl}
             alt="기억 사진"
             className="w-24 h-24 object-cover rounded-2xl flex-shrink-0"
           />

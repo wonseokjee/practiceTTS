@@ -1,4 +1,4 @@
-import { resolveMediaUrl } from '../../../shared/MemoryLinkApi.js';
+import { AuthedImage } from '../../../shared/AuthedImage.js';
 // 사진 힌트 카드
 //
 // 상세 응답의 memoryEntry.photoUrl이 있을 때만 렌더되는 작은 힌트 카드.
@@ -13,8 +13,8 @@ interface QuizPhotoHintProps {
 export function QuizPhotoHint({ photoUrl }: QuizPhotoHintProps) {
   return (
     <figure className="font-pretendard mb-5 overflow-hidden rounded-xl bg-[#F7F6F3]">
-      <img
-        src={resolveMediaUrl(photoUrl)}
+      <AuthedImage
+        src={photoUrl}
         alt="기억 사진 힌트"
         className="max-h-56 w-full object-cover"
       />

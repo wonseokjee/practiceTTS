@@ -7,7 +7,7 @@ import { DEFAULT_UPLOAD_DIR, resolveUploadDir } from './upload-path';
  * Found by /qa on 2026-07-19
  * Report: .gstack/qa-reports/qa-report-localhost-2026-07-19.md
  *
- * 저장(multer destination)·읽기(FileStorageService)·정적 서빙(main.ts)이
+ * 저장(multer destination)·읽기(FileStorageService)·서빙(MemoryPhotoController)이
  * 반드시 같은 디렉토리를 가리켜야 한다. 셋 다 이 함수를 쓰므로, 이 함수가
  * 같은 입력에 같은 절대 경로를 준다는 것이 곧 세 경로의 일치를 보장한다.
  */
