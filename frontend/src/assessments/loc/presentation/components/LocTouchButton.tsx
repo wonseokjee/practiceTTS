@@ -2,21 +2,36 @@
  * LOC 검사 터치 버튼 컴포넌트
  *
  * - 70vh 높이의 대형 터치 영역 제공 (실어증 환자 접근성 고려)
- * - onPointerDown 이벤트로 최초 접촉 시점을 정밀하게 측정
  * - isSelectable=false일 때 시각적으로 비활성화 상태 표시
- * - 비즈니스 로직 없음 (모든 처리는 onTouch 콜백에 위임)
+ * - 비즈니스 로직 없음 (모든 처리는 콜백에 위임)
+ *
+ * 포인터 입력은 여기서 받지 않는다. 리스너가 버튼에 달려 있으면 버튼 밖을
+ * 짚은 반응이 잡히지 않아 '무반응'으로 잘못 기록되므로, pointerdown은 상위
+ * 검사 영역이 받는다(useLocViewModel.handleAreaPointerDown).
+ *
+ * 이 버튼이 직접 받는 것은 **키보드·보조기기 활성화**뿐이다. 예전에는
+ * onPointerDown만 있어서 Enter/Space가 아무 일도 하지 않았고, 키보드
+ * 사용자는 10초 뒤 무반응 0점(='각성 저하' 소견)을 받았다.
  */
 
 import type React from 'react';
 
 interface LocTouchButtonProps {
   isSelectable: boolean;
-  onTouch: (event: React.PointerEvent<HTMLButtonElement>) => void;
+  /** 키보드·보조기기로 버튼을 활성화했을 때 */
+  onActivate: () => void;
+  /** 영역 판정의 기준 사각형을 재기 위해 상위에서 연결한다 */
+  buttonRef?: React.Ref<HTMLButtonElement>;
 }
 
-export function LocTouchButton({ isSelectable, onTouch }: LocTouchButtonProps) {
+export function LocTouchButton({
+  isSelectable,
+  onActivate,
+  buttonRef,
+}: LocTouchButtonProps) {
   return (
     <button
+      ref={buttonRef}
       type="button"
       className={[
         'w-full flex-1 min-h-[160px] rounded-3xl',
@@ -36,7 +51,10 @@ export function LocTouchButton({ isSelectable, onTouch }: LocTouchButtonProps) {
             ].join(' '),
       ].join(' ')}
       disabled={!isSelectable}
-      onPointerDown={isSelectable ? onTouch : undefined}
+      // 키보드 Enter/Space는 click만 합성한다(pointerdown 없음). 마우스
+      // 클릭으로도 여기가 불리지만, 그때는 이미 영역 핸들러가 처리한 뒤라
+      // 뷰모델의 중복 가드가 두 번째를 걸러낸다.
+      onClick={isSelectable ? onActivate : undefined}
       aria-label={isSelectable ? '여기를 터치하세요' : '음성 안내를 기다리세요'}
       aria-disabled={!isSelectable}
     >

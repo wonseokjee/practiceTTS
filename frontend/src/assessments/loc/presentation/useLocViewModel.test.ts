@@ -108,14 +108,13 @@ function renderLocViewModel() {
 }
 
 // ---- 포인터 이벤트 모의 객체 ----
+// 검사 영역의 pointerdown. 버튼 사각형은 touchButtonRef에서 재므로
+// 이벤트에는 좌표만 있으면 된다(ref 미연결 시 영역 안으로 간주).
 function makePointerEvent(x = 100, y = 100) {
   return {
-    currentTarget: {
-      getBoundingClientRect: () => ({ left: 0, top: 0, width: 200, height: 200 }),
-    },
     clientX: x,
     clientY: y,
-  } as unknown as React.PointerEvent<HTMLButtonElement>;
+  } as unknown as React.PointerEvent<HTMLElement>;
 }
 
 // ---- AWAITING_TOUCH 상태까지 도달하는 헬퍼 ----
@@ -182,13 +181,13 @@ describe('useLocViewModel FSM 상태 전환 테스트', () => {
     expect(mockPlayInstruction).toHaveBeenCalledWith(1);
   });
 
-  it('3. handleButtonTouch() 호출 시 AWAITING_TOUCH → TOUCH_DETECTED로 전환된다', async () => {
+  it('3. 반응 입력 시 AWAITING_TOUCH → TOUCH_DETECTED로 전환된다', async () => {
     const { result } = renderLocViewModel();
 
     await reachAwaitingTouch(result);
 
     act(() => {
-      result.current.actions.handleButtonTouch(makePointerEvent());
+      result.current.actions.handleAreaPointerDown(makePointerEvent());
     });
 
     expect(result.current.viewState.assessmentState).toBe('TOUCH_DETECTED');
@@ -254,7 +253,7 @@ describe('useLocViewModel FSM 상태 전환 테스트', () => {
       await waitFor(() => expect(result.current.viewState.assessmentState).toBe('AWAITING_TOUCH'), { timeout: 3000 });
 
       await act(async () => {
-        result.current.actions.handleButtonTouch(makePointerEvent());
+        result.current.actions.handleAreaPointerDown(makePointerEvent());
       });
       await waitFor(() => expect(result.current.viewState.assessmentState).toBe('TRIAL_COMPLETE'), { timeout: 3000 });
 
@@ -267,7 +266,7 @@ describe('useLocViewModel FSM 상태 전환 테스트', () => {
 
       // 2번째 시도 (3점으로 조기 종료 발동)
       await act(async () => {
-        result.current.actions.handleButtonTouch(makePointerEvent());
+        result.current.actions.handleAreaPointerDown(makePointerEvent());
       });
       // TRIAL_COMPLETE를 거쳐 바로 ASSESSMENT_COMPLETE로 전환될 수 있으므로
       // 최종 완료 상태만 확인한다
@@ -309,19 +308,19 @@ describe('useLocViewModel FSM 상태 전환 테스트', () => {
       // 1번째 시도
       await act(async () => { await result.current.actions.startAssessment(); });
       await waitFor(() => expect(result.current.viewState.assessmentState).toBe('AWAITING_TOUCH'), { timeout: 3000 });
-      await act(async () => { result.current.actions.handleButtonTouch(makePointerEvent()); });
+      await act(async () => { result.current.actions.handleAreaPointerDown(makePointerEvent()); });
       await waitFor(() => expect(result.current.viewState.assessmentState).toBe('TRIAL_COMPLETE'), { timeout: 3000 });
 
       // 700ms 딜레이 후 2번째 시도
       await act(async () => { vi.advanceTimersByTime(700); await Promise.resolve(); });
       await waitFor(() => expect(result.current.viewState.assessmentState).toBe('AWAITING_TOUCH'), { timeout: 3000 });
-      await act(async () => { result.current.actions.handleButtonTouch(makePointerEvent()); });
+      await act(async () => { result.current.actions.handleAreaPointerDown(makePointerEvent()); });
       await waitFor(() => expect(result.current.viewState.assessmentState).toBe('TRIAL_COMPLETE'), { timeout: 3000 });
 
       // 700ms 딜레이 후 3번째 시도
       await act(async () => { vi.advanceTimersByTime(700); await Promise.resolve(); });
       await waitFor(() => expect(result.current.viewState.assessmentState).toBe('AWAITING_TOUCH'), { timeout: 3000 });
-      await act(async () => { result.current.actions.handleButtonTouch(makePointerEvent()); });
+      await act(async () => { result.current.actions.handleAreaPointerDown(makePointerEvent()); });
       // 3번째 시도 완료 후 TRIAL_COMPLETE를 거쳐 바로 ASSESSMENT_COMPLETE로 전환될 수 있으므로
       // 최종 완료 상태만 확인한다
       await act(async () => { await Promise.resolve(); });
@@ -344,8 +343,8 @@ describe('useLocViewModel FSM 상태 전환 테스트', () => {
 
     // 연속 두 번 탭
     act(() => {
-      result.current.actions.handleButtonTouch(makePointerEvent());
-      result.current.actions.handleButtonTouch(makePointerEvent());
+      result.current.actions.handleAreaPointerDown(makePointerEvent());
+      result.current.actions.handleAreaPointerDown(makePointerEvent());
     });
 
     // 상태가 변경되어야 한다
@@ -379,7 +378,7 @@ describe('useLocViewModel FSM 상태 전환 테스트', () => {
 
     // TTS_PLAYING 상태에서 탭 시도
     act(() => {
-      result.current.actions.handleButtonTouch(makePointerEvent());
+      result.current.actions.handleAreaPointerDown(makePointerEvent());
     });
 
     // 상태가 변하지 않아야 한다
@@ -424,7 +423,7 @@ describe('useLocViewModel FSM 상태 전환 테스트', () => {
     // 검사 완료 상태까지 진행
     await act(async () => { await result.current.actions.startAssessment(); });
     await waitFor(() => expect(result.current.viewState.assessmentState).toBe('AWAITING_TOUCH'), { timeout: 3000 });
-    await act(async () => { result.current.actions.handleButtonTouch(makePointerEvent()); });
+    await act(async () => { result.current.actions.handleAreaPointerDown(makePointerEvent()); });
     await waitFor(() => expect(result.current.viewState.assessmentState).toBe('ASSESSMENT_COMPLETE'), { timeout: 3000 });
 
     // proceedToNextAssessment 호출 후 상태 리셋 확인
@@ -541,7 +540,7 @@ describe('화면 이탈(탭 전환) 처리', () => {
       fireVisibilityChange(true);
     });
     await act(async () => {
-      result.current.actions.handleButtonTouch(makePointerEvent());
+      result.current.actions.handleAreaPointerDown(makePointerEvent());
     });
 
     expect(mockExecute).not.toHaveBeenCalled();
@@ -585,7 +584,7 @@ describe('시도 간 대기 중 화면 이탈', () => {
 
     // 1회차 응답 → TRIAL_COMPLETE 진입
     await act(async () => {
-      result.current.actions.handleButtonTouch(makePointerEvent());
+      result.current.actions.handleAreaPointerDown(makePointerEvent());
     });
     await waitFor(() => {
       expect(result.current.viewState.assessmentState).toBe('TRIAL_COMPLETE');
@@ -604,5 +603,221 @@ describe('시도 간 대기 중 화면 이탈', () => {
     // 700ms 타이머가 살아 있었다면 여기서 TTS가 울렸을 것이다
     await new Promise((r) => setTimeout(r, 1200));
     expect(mockPlayInstruction).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * 임상 정확성 회귀 — 외부 엔지니어링 리뷰(2026-07-19)에서 나온 3건.
+ *
+ * 셋 다 "반응은 있었는데 기록은 반대로 남는다" 또는 "끝낸 시도가 사라진다"는
+ * 유형이라, 점수가 아니라 **진단**이 틀어진다.
+ */
+describe('임상 정확성 회귀', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockPlayInstruction.mockResolvedValue(1000);
+    mockExecute.mockResolvedValue({
+      trial: makeMockTrial(),
+      responseDTO: makeMockResponseDTO(),
+    });
+    mockFinishExecute.mockResolvedValue(makeMockResultDTO());
+  });
+
+  /** 검사 영역 pointerdown 이벤트 (버튼 좌표와 무관하게 임의 지점) */
+  function makeAreaPointerEvent(x: number, y: number) {
+    return { clientX: x, clientY: y } as unknown as React.PointerEvent<HTMLElement>;
+  }
+
+  /** touchButtonRef에 지정한 사각형을 가진 가짜 버튼을 연결한다 */
+  function attachButton(
+    ref: { current: HTMLButtonElement | null },
+    rect: { left: number; top: number; width: number; height: number },
+  ) {
+    ref.current = {
+      getBoundingClientRect: () => rect,
+    } as unknown as HTMLButtonElement;
+  }
+
+  it('버튼 밖을 짚어도 반응으로 기록한다 (무반응으로 오기록 금지)', async () => {
+    // 예전에는 리스너가 버튼에 달려 있어 여백 터치가 아예 안 잡혔고,
+    // 10초 뒤 '무반응'(각성 저하 소견)으로 기록됐다. 실제로는 환자가
+    // 즉시 반응했으나 표적을 빗맞힌 것이다 — 감별진단이 다르다.
+    const { result } = renderLocViewModel();
+    await reachAwaitingTouch(result);
+    attachButton(result.current.touchButtonRef, {
+      left: 0,
+      top: 0,
+      width: 100,
+      height: 100,
+    });
+
+    act(() => {
+      // 버튼(0,0,100,100) 바깥 지점
+      result.current.actions.handleAreaPointerDown(makeAreaPointerEvent(500, 500));
+    });
+
+    expect(result.current.viewState.assessmentState).toBe('TOUCH_DETECTED');
+    await waitFor(() => expect(mockExecute).toHaveBeenCalled());
+    const [dto] = mockExecute.mock.calls[0];
+    // touchTime이 null이 아니어야 '무반응'이 아니다.
+    expect(dto.touchTime).not.toBeNull();
+    // 좌표가 그대로 전달되어야 유스케이스가 영역 밖으로 판정할 수 있다.
+    expect(dto.touchX).toBe(500);
+    expect(dto.touchY).toBe(500);
+    expect(dto.buttonBounds).toEqual({ x: 0, y: 0, width: 100, height: 100 });
+  });
+
+  it('버튼 안을 짚으면 영역 안 좌표가 전달된다', async () => {
+    const { result } = renderLocViewModel();
+    await reachAwaitingTouch(result);
+    attachButton(result.current.touchButtonRef, {
+      left: 0,
+      top: 0,
+      width: 100,
+      height: 100,
+    });
+
+    act(() => {
+      result.current.actions.handleAreaPointerDown(makeAreaPointerEvent(50, 50));
+    });
+
+    await waitFor(() => expect(mockExecute).toHaveBeenCalled());
+    const [dto] = mockExecute.mock.calls[0];
+    expect(dto.touchX).toBe(50);
+    expect(dto.touchY).toBe(50);
+  });
+
+  it('키보드로 버튼을 활성화해도 반응으로 기록한다 (0점 오기록 금지)', async () => {
+    // 예전에는 버튼에 onPointerDown만 있었다. Enter/Space는 click만
+    // 합성하므로 아무 일도 없었고, 스위치 액세스·키보드 사용자는 반응
+    // 능력과 무관하게 전원 무반응 0점을 받았다.
+    const { result } = renderLocViewModel();
+    await reachAwaitingTouch(result);
+
+    act(() => {
+      result.current.actions.handleButtonActivate();
+    });
+
+    expect(result.current.viewState.assessmentState).toBe('TOUCH_DETECTED');
+    await waitFor(() => expect(mockExecute).toHaveBeenCalled());
+    const [dto] = mockExecute.mock.calls[0];
+    expect(dto.touchTime).not.toBeNull();
+    // 표적을 직접 활성화했으므로 영역 안으로 판정되어야 한다.
+    const inBounds =
+      dto.touchX >= dto.buttonBounds.x &&
+      dto.touchX <= dto.buttonBounds.x + dto.buttonBounds.width &&
+      dto.touchY >= dto.buttonBounds.y &&
+      dto.touchY <= dto.buttonBounds.y + dto.buttonBounds.height;
+    expect(inBounds).toBe(true);
+  });
+
+  it('키보드 활성화도 중복 처리되지 않는다', async () => {
+    const { result } = renderLocViewModel();
+    await reachAwaitingTouch(result);
+
+    act(() => {
+      result.current.actions.handleButtonActivate();
+      result.current.actions.handleButtonActivate();
+    });
+
+    await waitFor(() => expect(mockExecute).toHaveBeenCalledTimes(1));
+  });
+
+  it('포인터 반응 뒤 따라오는 click은 중복 기록되지 않는다', async () => {
+    // 마우스 클릭은 pointerdown → click 순으로 둘 다 발생한다.
+    const { result } = renderLocViewModel();
+    await reachAwaitingTouch(result);
+    attachButton(result.current.touchButtonRef, {
+      left: 0,
+      top: 0,
+      width: 100,
+      height: 100,
+    });
+
+    act(() => {
+      result.current.actions.handleAreaPointerDown(makeAreaPointerEvent(50, 50));
+      result.current.actions.handleButtonActivate();
+    });
+
+    await waitFor(() => expect(mockExecute).toHaveBeenCalledTimes(1));
+  });
+
+  it('취소된 TTS가 뒤늦게 실패해도 진행 중인 상태를 덮어쓰지 않는다', async () => {
+    // 핵심 회귀: cancel()은 오디오를 pause할 뿐 play() 프로미스를 settle하지
+    // 않는다. 나중에 settle되면 죽은 경로의 결과가 현재 상태 위에 덮어써져
+    // IDLE로 돌아갔고, 검사자가 다시 시작하면 끝낸 시도가 사라졌다.
+    let rejectFirst!: (e: unknown) => void;
+    mockPlayInstruction.mockReturnValueOnce(
+      new Promise<number>((_res, rej) => {
+        rejectFirst = rej;
+      }),
+    );
+
+    const { result } = renderLocViewModel();
+    act(() => {
+      void result.current.actions.startAssessment();
+    });
+    await waitFor(() =>
+      expect(result.current.viewState.assessmentState).toBe('TTS_PLAYING'),
+    );
+
+    // 화면 이탈 → 중단
+    Object.defineProperty(document, 'hidden', {
+      configurable: true,
+      get: () => true,
+    });
+    await act(async () => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    expect(result.current.viewState.assessmentState).toBe('TRIAL_INTERRUPTED');
+
+    // 다시 듣기 → 새 세대의 재생 시작
+    mockPlayInstruction.mockResolvedValue(1000);
+    await act(async () => {
+      result.current.actions.resumeInterruptedTrial();
+    });
+    await waitFor(() =>
+      expect(result.current.viewState.assessmentState).toBe('AWAITING_TOUCH'),
+    );
+
+    // 이제서야 옛 프로미스가 reject된다 (취소된 오디오가 error를 낸 상황)
+    await act(async () => {
+      rejectFirst(new Error('stale playback'));
+      await Promise.resolve();
+    });
+
+    // 죽은 경로가 현재 상태를 건드리면 안 된다.
+    expect(result.current.viewState.assessmentState).toBe('AWAITING_TOUCH');
+    expect(result.current.viewState.errorMessage).toBeNull();
+  });
+
+  it('저장에 실패해도 끝낸 시도와 점수를 잃지 않는다', async () => {
+    // 예전에는 IDLE로 돌아가면서 "계속 진행합니다"라고 안내했다. 검사자가
+    // 안내대로 시작을 누르면 누적 시도가 초기화돼 3회 결과가 통째로
+    // 사라졌다. 재검사는 학습효과로 점수를 실제보다 좋게 만든다.
+    mockExecute.mockResolvedValue({
+      trial: makeMockTrial({ score: 3 }),
+      responseDTO: makeMockResponseDTO({ score: 3, isComplete: true }),
+    });
+    mockFinishExecute.mockRejectedValue(
+      new LocAssessmentError(LocAssessmentErrorCode.STORAGE_FAILED, '저장 실패'),
+    );
+
+    const { result } = renderLocViewModel();
+    await reachAwaitingTouch(result);
+
+    act(() => {
+      result.current.actions.handleButtonActivate();
+    });
+
+    await waitFor(() =>
+      expect(result.current.viewState.assessmentState).toBe(
+        'ASSESSMENT_COMPLETE',
+      ),
+    );
+    // IDLE로 되돌아가지 않았고, 점수가 화면에 남아 수기 기록이 가능하다.
+    expect(result.current.viewState.finalScore).not.toBeNull();
+    expect(result.current.viewState.trialResults.length).toBeGreaterThan(0);
+    expect(result.current.viewState.errorMessage).toContain('기록');
   });
 });

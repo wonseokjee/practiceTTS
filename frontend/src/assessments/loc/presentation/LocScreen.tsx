@@ -125,7 +125,7 @@ export function LocScreen({ onComplete, onProceed }: LocScreenProps) {
   );
 
   // === ViewModel ===
-  const { viewState, actions } = useLocViewModel(
+  const { viewState, actions, touchButtonRef } = useLocViewModel(
     conductTrialUseCase,
     finishAssessmentUseCase,
     handleComplete,
@@ -267,13 +267,20 @@ export function LocScreen({ onComplete, onProceed }: LocScreenProps) {
               )}
 
               {assessmentState === 'AWAITING_TOUCH' && (
-                <div className="flex-1 flex flex-col gap-4 min-h-0">
+                // 버튼이 아니라 이 영역이 pointerdown을 받는다. 환자가 버튼을
+                // 빗맞혀 여백을 짚어도 반응으로 잡아야 '영역 외 터치'와
+                // '무반응'이 구분된다 — 둘은 감별진단이 다르다.
+                <div
+                  className="flex-1 flex flex-col gap-4 min-h-0"
+                  onPointerDown={actions.handleAreaPointerDown}
+                >
                   <p className="text-center text-lg font-semibold text-[#2D6A56]">
                     지금 화면을 터치하세요
                   </p>
                   <LocTouchButton
                     isSelectable={isButtonEnabled}
-                    onTouch={actions.handleButtonTouch}
+                    onActivate={actions.handleButtonActivate}
+                    buttonRef={touchButtonRef}
                   />
                   <LocProgressBar
                     isActive

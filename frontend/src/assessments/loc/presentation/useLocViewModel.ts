@@ -7,7 +7,7 @@
  *
  * 핵심 규칙:
  * - TTS_PLAYING 상태에서만 AWAITING_TOUCH로 전이
- * - AWAITING_TOUCH 상태에서만 handleButtonTouch() 유효 처리
+ * - AWAITING_TOUCH 상태에서만 반응(터치·키보드) 유효 처리
  * - touchHandledRef 플래그로 첫 번째 pointerdown만 처리 (중복 터치 방지)
  * - AWAITING_TOUCH에서 10초 타임아웃 → touchTime=null 처리
  *
@@ -32,6 +32,7 @@ import {
 import type { LocTrialResponseDTO } from '../application/dto/LocTrialDTO.js';
 import type { LocTrial } from '../domain/LocTrial.js';
 import { useTimer } from '../../../shared/hooks/useTimer.js';
+import { calculateFinalLocScore } from '../domain/LocScorer.js';
 
 /** FSM 상태 */
 export type LocAssessmentState =
@@ -63,7 +64,13 @@ export interface LocViewState {
 
 export interface LocViewModelActions {
   startAssessment: () => Promise<void>;
-  handleButtonTouch: (event: React.PointerEvent<HTMLButtonElement>) => void;
+  /**
+   * 검사 영역 전체의 pointerdown. 버튼 밖을 짚어도 반응으로 잡아
+   * '영역 외 터치'와 '무반응'을 구분한다.
+   */
+  handleAreaPointerDown: (event: React.PointerEvent<HTMLElement>) => void;
+  /** 키보드·보조기기로 터치 버튼을 활성화했을 때. */
+  handleButtonActivate: () => void;
   proceedToNextAssessment: () => void;
   /** 중단된 시도를 다시 듣는다 (TRIAL_INTERRUPTED에서만 동작). */
   resumeInterruptedTrial: () => void;
@@ -112,7 +119,12 @@ export function useLocViewModel(
   onComplete: (resultId: string) => void,
   sessionId: string,
   patientId: string,
-): { viewState: LocViewState; actions: LocViewModelActions } {
+): {
+  viewState: LocViewState;
+  actions: LocViewModelActions;
+  /** 터치 버튼 엘리먼트. 영역 판정을 위해 화면 쪽에서 연결한다. */
+  touchButtonRef: React.RefObject<HTMLButtonElement | null>;
+} {
   const [assessmentState, setAssessmentState] =
     useState<LocAssessmentState>('IDLE');
   const [currentTrialNumber, setCurrentTrialNumber] = useState<1 | 2 | 3>(1);
@@ -128,6 +140,11 @@ export function useLocViewModel(
   const audioEndTimeRef = useRef<number>(0);
   // 터치 중복 처리 방지 플래그
   const touchHandledRef = useRef(false);
+  // TTS 재생 세대 — 취소된 재생의 뒤늦은 결과를 무시하는 데 쓴다.
+  const ttsGenerationRef = useRef(0);
+  // 터치 버튼 엘리먼트 — 영역 판정의 기준 사각형을 여기서 잰다.
+  // 리스너가 버튼이 아니라 검사 영역 전체에 달리므로 좌표 비교 대상이 필요하다.
+  const touchButtonRef = useRef<HTMLButtonElement | null>(null);
   // 타임아웃 ID
   const timeoutIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // inter-trial 전환 타임아웃 ID
@@ -323,8 +340,18 @@ export function useLocViewModel(
           onCompleteRef.current(resultDTO.id);
         } catch (err) {
           console.error('[LOC] 결과 저장 실패', { error: err });
-          setErrorMessage(mapErrorToMessage(err));
-          setAssessmentState('IDLE');
+          // IDLE로 돌리면 안 된다. 화면은 "검사를 시작할까요?"가 되고,
+          // 검사자가 안내대로 시작을 누르면 startAssessment가
+          // accumulatedTrialsRef를 비워 **끝낸 시도가 전부 사라진다**.
+          // 재검사는 학습효과로 반응시간을 낮춰 점수를 실제보다 좋게 만든다.
+          //
+          // 점수는 저장과 무관하게 도메인에서 계산할 수 있으므로, 화면에
+          // 남겨 검사자가 수기로 옮겨적을 수 있게 한다.
+          setFinalScore(calculateFinalLocScore(allTrials));
+          setErrorMessage(
+            '결과를 저장하지 못했습니다. 아래 점수를 기록해 주세요.',
+          );
+          setAssessmentState('ASSESSMENT_COMPLETE');
         }
       })();
     } else {
@@ -342,25 +369,52 @@ export function useLocViewModel(
     };
   }, [assessmentState, clearInterTrialTimeout]);
 
-  /** TTS_PLAYING 상태 진입 시 TTS 재생 */
+  /**
+   * TTS_PLAYING 상태 진입 시 TTS 재생.
+   *
+   * 세대(generation) 토큰으로 **죽은 실행 경로의 결과를 무시**한다.
+   *
+   * 예전에는 가드도 cleanup도 없었다. `cancel()`은 오디오를 pause할 뿐이라
+   * `play()` 프로미스가 settle되지 않고 매달려 있는데, 나중에 어떤 이유로든
+   * settle되면 그 결과가 **현재 상태 위에 덮어써졌다**. 화면 이탈 후 "다시
+   * 듣기"를 누르면 옛 프로미스가 reject되며 catch가 IDLE로 되돌렸고,
+   * 검사자가 다시 시작을 누르는 순간 앞선 시도가 조용히 사라졌다.
+   */
   useEffect(() => {
     if (assessmentState !== 'TTS_PLAYING') return;
 
     const trialNumber = currentTrialNumberRef.current;
+    const generation = (ttsGenerationRef.current += 1);
+    const isStale = () => ttsGenerationRef.current !== generation;
 
     void (async () => {
       try {
         // audioEndTime: TTS onend 내부에서 performance.now()로 기록된 값
         const audioEndTime =
           await conductTrialUseCaseRef.current.playInstruction(trialNumber);
+        if (isStale()) return;
         audioEndTimeRef.current = audioEndTime;
         setAssessmentState('AWAITING_TOUCH');
       } catch (err) {
+        if (isStale()) return;
         console.error('[LOC] TTS 재생 실패', { trialNumber, error: err });
         setErrorMessage(mapErrorToMessage(err));
-        setAssessmentState('IDLE');
+        // 이미 끝낸 시도가 있으면 IDLE로 돌리지 않는다 — IDLE에서 다시
+        // 시작하면 누적 시도가 초기화된다. 중단 화면에서 이어 듣게 한다.
+        setAssessmentState(
+          accumulatedTrialsRef.current.length > 0
+            ? 'TRIAL_INTERRUPTED'
+            : 'IDLE',
+        );
       }
     })();
+
+    return () => {
+      // 이 이펙트를 떠나는 순간 진행 중인 재생을 실제로 끊는다. 안 그러면
+      // 안내 음성이 다음 상태까지 이어져 반응시간 기준점이 어긋난다.
+      ttsGenerationRef.current += 1;
+      conductTrialUseCaseRef.current.cancelInstruction();
+    };
     // assessmentState가 TTS_PLAYING으로 바뀔 때만 실행
     // currentTrialNumber는 ref를 통해 최신값을 읽으므로 의존성에서 제외
   }, [assessmentState]);
@@ -403,32 +457,85 @@ export function useLocViewModel(
     setAssessmentState('TTS_PLAYING');
   }, []);
 
-  /** 버튼 터치 처리 */
-  const handleButtonTouch = useCallback(
-    (event: React.PointerEvent<HTMLButtonElement>) => {
-      // AWAITING_TOUCH 상태 가드 (ref로 최신 상태 확인)
-      if (assessmentStateRef.current !== 'AWAITING_TOUCH') return;
-      // 중복 터치 방지
-      if (touchHandledRef.current) return;
-
-      // touchTime: onPointerDown 핸들러 첫 줄에서 즉시 캡처
-      const touchTime = performance.now();
+  /**
+   * 반응 하나를 확정한다 (터치·키보드 공통).
+   *
+   * @param touchX/touchY 화면 좌표. 버튼 영역 판정에 쓰인다.
+   * @param bounds        버튼의 화면 사각형. null이면 판정을 포기하고
+   *                      영역 안으로 간주한다 — 우리 측정 실패를 환자의
+   *                      오조준으로 기록하는 편이 훨씬 나쁘다.
+   */
+  const registerResponse = useCallback(
+    (
+      touchTime: number,
+      touchX: number,
+      touchY: number,
+      bounds: { x: number; y: number; width: number; height: number } | null,
+    ) => {
       touchHandledRef.current = true;
-
       clearTouchTimeout();
       stopTimer();
-
-      const button = event.currentTarget;
-      const buttonBounds = getButtonBounds(button);
-      const touchX = event.clientX;
-      const touchY = event.clientY;
-
       setAssessmentState('TOUCH_DETECTED');
 
-      void processTrial(touchTime, touchX, touchY, buttonBounds);
+      // 측정 불가 시 판정을 통과시키는 사각형을 넘긴다.
+      const effectiveBounds = bounds ?? {
+        x: touchX,
+        y: touchY,
+        width: 0,
+        height: 0,
+      };
+      void processTrial(touchTime, touchX, touchY, effectiveBounds);
     },
     [clearTouchTimeout, processTrial, stopTimer],
   );
+
+  /**
+   * 검사 영역 어디를 눌러도 반응으로 잡는다.
+   *
+   * 예전에는 이 핸들러가 **버튼 자신**에 달려 있었다. 그러면 pointerdown이
+   * 버튼에서 났다는 것 자체가 좌표가 버튼 안이라는 뜻이라, 영역 판정이
+   * 항상 참이 되어 '영역 외 터치'는 만들어질 수 없는 값이었다. 실제로는
+   * 정반대 일이 벌어졌다 — 환자가 버튼을 빗맞혀 여백을 짚으면 이벤트가
+   * 아예 안 잡혀 10초 뒤 **'무반응'** 으로 기록됐다.
+   *
+   * 무반응(각성 저하)과 표적 오조준(시공간·실행 문제)은 감별진단이 다르다.
+   * 그래서 리스너를 검사 영역 전체로 올리고 좌표로 판정한다.
+   */
+  const handleAreaPointerDown = useCallback(
+    (event: React.PointerEvent<HTMLElement>) => {
+      if (assessmentStateRef.current !== 'AWAITING_TOUCH') return;
+      if (touchHandledRef.current) return;
+
+      // 반응시간 측정이므로 핸들러 첫 줄에서 시각을 잡는다.
+      const touchTime = performance.now();
+      const button = touchButtonRef.current;
+      registerResponse(
+        touchTime,
+        event.clientX,
+        event.clientY,
+        button ? getButtonBounds(button) : null,
+      );
+    },
+    [registerResponse],
+  );
+
+  /**
+   * 키보드·보조기기로 버튼을 활성화했을 때의 반응.
+   *
+   * 예전에는 버튼에 `onPointerDown`만 있었다. 키보드 Enter/Space는 `click`만
+   * 합성하고 `pointerdown`을 만들지 않으므로 아무 일도 일어나지 않았고,
+   * 10초 뒤 무반응 0점이 기록됐다. LOC에서 0점은 '각성 저하' 소견이라,
+   * 스위치 액세스·키보드 사용자가 반응 능력과 무관하게 전원 최저점을 받았다.
+   *
+   * 표적을 직접 활성화한 것이므로 영역 안으로 기록한다.
+   */
+  const handleButtonActivate = useCallback(() => {
+    if (assessmentStateRef.current !== 'AWAITING_TOUCH') return;
+    if (touchHandledRef.current) return;
+
+    const touchTime = performance.now();
+    registerResponse(touchTime, 0, 0, null);
+  }, [registerResponse]);
 
   /** 다음 검사로 진행 (ASSESSMENT_COMPLETE 상태에서 호출) */
   const proceedToNextAssessment = useCallback(() => {
@@ -476,17 +583,19 @@ export function useLocViewModel(
   const actions: LocViewModelActions = useMemo(
     () => ({
       startAssessment,
-      handleButtonTouch,
+      handleAreaPointerDown,
+      handleButtonActivate,
       proceedToNextAssessment,
       resumeInterruptedTrial,
     }),
     [
       startAssessment,
-      handleButtonTouch,
+      handleAreaPointerDown,
+      handleButtonActivate,
       proceedToNextAssessment,
       resumeInterruptedTrial,
     ],
   );
 
-  return { viewState, actions };
+  return { viewState, actions, touchButtonRef };
 }

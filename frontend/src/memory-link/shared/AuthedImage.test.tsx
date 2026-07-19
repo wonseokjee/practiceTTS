@@ -57,7 +57,10 @@ describe('AuthedImage', () => {
     render(<AuthedImage src="/uploads/memory-images/a.jpg" alt="사진" />);
 
     await waitFor(() => expect(fetchSpy).toHaveBeenCalled());
-    const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    const [url, init] = fetchSpy.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ];
     expect(init.headers).toEqual({ Authorization: 'Bearer test-token' });
     // 토큰이 URL로 새면 액세스 로그·Referer에 남는다.
     expect(url).not.toContain('test-token');
