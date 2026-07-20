@@ -9,6 +9,7 @@
 import type { SttResult } from '../../domain/TrainingSession.js';
 import type { ISttService } from '../../infrastructure/SttService.js';
 import { WavRecorder } from './WavRecorder.js';
+import { QUIZ_RECORDING_LIMIT_MS } from './recordingLimits.js';
 import { API_BASE_URL, ML_TOKEN_KEY } from '../../../shared/MemoryLinkApi.js';
 
 // ai-service를 브라우저가 직접 부르지 않는다. 그러면 그 경로만 인증을 걸 수 없어
@@ -22,7 +23,17 @@ export class ServerSttService implements ISttService {
   onResult: ((result: SttResult) => void) | null = null;
   onError: ((error: string) => void) | null = null;
 
-  private readonly recorder = new WavRecorder();
+  // 퀴즈 답변용이라 30초에서 스스로 끊는다. 상한에 닿으면 그때까지 녹음된
+  // 발화를 그대로 인식으로 넘긴다 — 서버가 크기로 거부해 답변이 통째로
+  // 사라지는 것보다 훨씬 낫다.
+  private readonly recorder = new WavRecorder({
+    maxDurationMs: QUIZ_RECORDING_LIMIT_MS,
+    onLimitReached: () => {
+      // 이미 stop()이 진행 중이면 중복 인식하지 않는다.
+      if (!this.isRecording) return;
+      this.stop();
+    },
+  });
   private readonly lang: string;
   private candidates: string[] = [];
   private isRecording = false;

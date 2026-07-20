@@ -9,6 +9,20 @@
 
 const TARGET_SAMPLE_RATE = 16000;
 
+export interface WavRecorderOptions {
+  /**
+   * 녹음 길이 상한(ms). 넘으면 스스로 멈춘다.
+   *
+   * 상한이 없으면 무음 감지가 실패하는 환경(TV 소리가 계속되는 거실·요양시설)
+   * 에서 녹음이 끝나지 않고 메모리에 계속 쌓인다. 그리고 서버 크기 상한에
+   * 걸리는 건 업로드 시점이라, 환자가 길게 말한 뒤에야 거부돼 답변이 통째로
+   * 사라진다. 여기서 끊으면 그때까지의 발화는 정상 인식된다.
+   */
+  maxDurationMs?: number;
+  /** 상한에 닿아 자동 종료됐을 때. UI가 "다 들었어요"로 넘어가는 데 쓴다. */
+  onLimitReached?: () => void;
+}
+
 /** 브라우저 마이크를 WAV(16kHz mono)로 녹음한다. */
 export class WavRecorder {
   private ctx: AudioContext | null = null;
@@ -17,6 +31,16 @@ export class WavRecorder {
   private source: MediaStreamAudioSourceNode | null = null;
   private chunks: Float32Array[] = [];
   private sourceSampleRate = 48000;
+  private readonly maxDurationMs: number | null;
+  private readonly onLimitReached: (() => void) | null;
+  private limitTimerId: ReturnType<typeof setTimeout> | null = null;
+  /** 상한에 닿아 이미 멈춘 뒤인가 (중복 콜백 방지). */
+  private stoppedByLimit = false;
+
+  constructor(options: WavRecorderOptions = {}) {
+    this.maxDurationMs = options.maxDurationMs ?? null;
+    this.onLimitReached = options.onLimitReached ?? null;
+  }
 
   /** 마이크 권한을 얻고 녹음을 시작한다. */
   async start(): Promise<void> {
@@ -41,7 +65,21 @@ export class WavRecorder {
       };
       this.source.connect(this.processor);
       this.processor.connect(this.ctx.destination);
+
+      this.stoppedByLimit = false;
+      if (this.maxDurationMs !== null) {
+        this.limitTimerId = setTimeout(() => {
+          this.limitTimerId = null;
+          // 여기서 stop()을 부르지 않는다. Blob 반환을 소비할 주체가 없어
+          // 결과가 버려지기 때문이다. 입력만 끊어 더 쌓이지 않게 하고,
+          // 실제 종료·전송은 UI가 콜백을 받아 자기 흐름으로 진행한다.
+          this.detachInput();
+          this.stoppedByLimit = true;
+          this.onLimitReached?.();
+        }, this.maxDurationMs);
+      }
     } catch (err) {
+      this.clearLimitTimer();
       this.stream?.getTracks().forEach((track) => track.stop());
       if (this.ctx) void this.ctx.close();
       this.ctx = null;
@@ -52,11 +90,29 @@ export class WavRecorder {
     }
   }
 
-  /** 녹음을 종료하고 16kHz mono WAV Blob을 반환한다. */
-  async stop(): Promise<Blob> {
+  /** 상한에 닿아 자동으로 멈췄는가. */
+  get didHitLimit(): boolean {
+    return this.stoppedByLimit;
+  }
+
+  /** 오디오 입력만 끊는다(수집된 chunks는 유지). */
+  private detachInput(): void {
     this.processor?.disconnect();
     this.source?.disconnect();
     this.stream?.getTracks().forEach((track) => track.stop());
+  }
+
+  private clearLimitTimer(): void {
+    if (this.limitTimerId !== null) {
+      clearTimeout(this.limitTimerId);
+      this.limitTimerId = null;
+    }
+  }
+
+  /** 녹음을 종료하고 16kHz mono WAV Blob을 반환한다. */
+  async stop(): Promise<Blob> {
+    this.clearLimitTimer();
+    this.detachInput();
 
     const merged = mergeChunks(this.chunks);
     const resampled = downsample(

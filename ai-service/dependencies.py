@@ -273,23 +273,35 @@ def _trust_proxy_header() -> bool:
     }
 
 
+# 이 서비스의 레이트리밋은 **더 이상 사용자별이 아니다**.
+#
+# /stt·/tts를 백엔드 프록시 뒤로 옮기면서 여기서 보이는 IP가 전부 백엔드
+# 하나가 됐다. 즉 IP 기준 버킷이 전 사용자 합산 **전역 한도**로 바뀌었다.
+#
+# 사용자별 격리는 백엔드가 인증된 사용자 ID로 한다(tts 30, stt 12 /분).
+# 여기 값은 그 위에 놓인 전역 회로차단기다. 그래서 프록시 한도보다 낮으면
+# 안 된다 — 예전 값(120/60)은 동시 4~5명이면 포화돼, 정상 사용자들이 서로를
+# 밀어내는 병목이 됐을 것이다.
+#
+# 기본값은 동시 20명이 프록시 상한을 꽉 채워도 견디는 수준으로 잡는다.
+# 배포 규모에 맞춰 환경변수로 조정할 것.
 def get_tts_rate_limiter() -> SlidingWindowRateLimiter:
-    """/tts 레이트리밋 싱글턴 (기본 120회/분/IP)."""
+    """/tts 전역 회로차단기 (기본 600회/분, 사용자별 아님)."""
     global _tts_rate_limiter
     if _tts_rate_limiter is None:
         _tts_rate_limiter = SlidingWindowRateLimiter(
-            max_requests=_int_env("TTS_RATE_LIMIT_PER_MIN", 120),
+            max_requests=_int_env("TTS_RATE_LIMIT_PER_MIN", 600),
             window_seconds=60.0,
         )
     return _tts_rate_limiter
 
 
 def get_stt_rate_limiter() -> SlidingWindowRateLimiter:
-    """/stt 레이트리밋 싱글턴 (기본 60회/분/IP)."""
+    """/stt 전역 회로차단기 (기본 240회/분, 사용자별 아님)."""
     global _stt_rate_limiter
     if _stt_rate_limiter is None:
         _stt_rate_limiter = SlidingWindowRateLimiter(
-            max_requests=_int_env("STT_RATE_LIMIT_PER_MIN", 60),
+            max_requests=_int_env("STT_RATE_LIMIT_PER_MIN", 240),
             window_seconds=60.0,
         )
     return _stt_rate_limiter

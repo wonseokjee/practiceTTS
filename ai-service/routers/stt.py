@@ -22,7 +22,11 @@ from services.stt_service import SttService
 router = APIRouter(prefix="/stt", tags=["stt"])
 
 # 재활 발화는 짧다(수 초). 과대 업로드 방지 상한.
-MAX_AUDIO_BYTES = 5 * 1024 * 1024  # 5MB
+# 백엔드 프록시(ai-proxy.controller.ts)와 **같은 값**이어야 한다. 어긋나면
+# 그 사이 구간이 "받아주지만 반드시 실패하는" 죽은 구간이 된다.
+# 4MB = 16kHz mono 16bit PCM 약 128초. 정상 요청은 퀴즈 30초 상한 때문에
+# 1MB를 넘지 않으므로, 이 값은 안전망이다.
+MAX_AUDIO_BYTES = 4 * 1024 * 1024  # 4MB
 
 
 @router.post("", response_model=SttResponse, status_code=status.HTTP_200_OK)
