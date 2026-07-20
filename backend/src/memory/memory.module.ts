@@ -13,7 +13,7 @@ import { MemoryController } from './memory.controller';
 import { MemoryPhotoController } from './memory-photo.controller';
 import { MemoryPhotoService } from './services/memory-photo.service';
 import { MemoryEntryService } from './memory.service';
-import { CryptoService } from './services/crypto.service';
+import { CryptoModule } from '../common/crypto.module';
 import { DiaryQuestionService } from './services/diary-question.service';
 import { FastApiClientService } from './services/fast-api-client.service';
 import { FileStorageService } from './services/file-storage.service';
@@ -40,12 +40,12 @@ import { HealingMessageService } from './services/healing-message.service';
     HttpModule,
     AuthModule,
     ProfileModule,
+    CryptoModule,
   ],
   controllers: [MemoryController, MemoryPhotoController],
   providers: [
     MemoryEntryService,
     FastApiClientService,
-    CryptoService,
     FileStorageService,
     DiaryQuestionService,
     HealingMessageService,
