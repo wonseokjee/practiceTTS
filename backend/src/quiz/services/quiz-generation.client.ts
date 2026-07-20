@@ -51,7 +51,7 @@ export class QuizGenerationClient implements IQuizGenerationClient {
     private readonly configService: ConfigService,
   ) {
     this.baseUrl = this.configService.get<string>(
-      'FASTAPI_URL',
+      'AI_SERVICE_URL',
       'http://localhost:8000',
     );
   }

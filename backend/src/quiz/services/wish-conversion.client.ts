@@ -41,7 +41,7 @@ export class WishConversionClient implements IWishConversionClient {
     private readonly configService: ConfigService,
   ) {
     this.baseUrl = this.configService.get<string>(
-      'FASTAPI_URL',
+      'AI_SERVICE_URL',
       'http://localhost:8000',
     );
   }
