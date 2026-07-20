@@ -83,21 +83,39 @@ describe('calculateFinalLocScore - 최고 점수 채택', () => {
  * 반응했는데도 임상 기록이 정반대로 남는다.
  */
 describe('getLocScoreLabel — 0점의 두 경우 구분', () => {
-  it('반응이 없으면 무반응', () => {
-    expect(getLocScoreLabel(0, true)).toBe('무반응');
+  it('10초 무반응은 무반응으로 기록된다 (영역 외 터치 아님)', () => {
+    // QA 실측 회귀: 3회 연속 아무것도 누르지 않았는데 세 시도 모두
+    // '영역 외 터치'로 남았다. 유스케이스가 무반응일 때 touchInBounds를
+    // false로 채우는데, 라벨이 그 false만 보고 판정했기 때문이다.
+    // 무반응(각성 저하)과 영역 외 터치(시공간·실행 문제)는 감별진단이 다르다.
+    // Found by /qa on 2026-07-20
+    expect(getLocScoreLabel(0, { latency: null, touchInBounds: false })).toBe(
+      '무반응',
+    );
   });
 
   it('반응했으나 버튼 밖이면 영역 외 터치', () => {
-    expect(getLocScoreLabel(0, false)).toBe('영역 외 터치');
+    expect(getLocScoreLabel(0, { latency: 4200, touchInBounds: false })).toBe(
+      '영역 외 터치',
+    );
   });
 
-  it('touchInBounds를 생략하면 기존처럼 무반응', () => {
+  it('반응했고 버튼 안인데 0점이면 무반응으로 두지 않는다', () => {
+    // 영역 안을 짚었는데 0점인 경우는 현재 채점 규칙상 생기지 않지만,
+    // 규칙이 바뀌어도 '영역 외 터치'로 잘못 붙지는 않아야 한다.
+    expect(getLocScoreLabel(0, { latency: 9000, touchInBounds: true })).toBe(
+      '무반응',
+    );
+  });
+
+  it('반응 정보를 생략하면 무반응', () => {
     expect(getLocScoreLabel(0)).toBe('무반응');
   });
 
   it('0점이 아니면 영역 판정이 라벨을 바꾸지 않는다', () => {
-    expect(getLocScoreLabel(3, false)).toBe('정상');
-    expect(getLocScoreLabel(2, false)).toBe('경도 지연');
-    expect(getLocScoreLabel(1, false)).toBe('중도 지연');
+    const outOfBounds = { latency: 1000, touchInBounds: false };
+    expect(getLocScoreLabel(3, outOfBounds)).toBe('정상');
+    expect(getLocScoreLabel(2, outOfBounds)).toBe('경도 지연');
+    expect(getLocScoreLabel(1, outOfBounds)).toBe('중도 지연');
   });
 });
