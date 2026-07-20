@@ -34,6 +34,23 @@ export class SlidingWindowRateLimiter {
   }
 
   /**
+   * 다시 시도 가능해질 때까지 남은 초(올림). 한도에 걸리지 않았으면 0.
+   *
+   * 429에 Retry-After를 실어주지 않으면 클라이언트가 즉시 재시도 루프에
+   * 빠지기 쉽다 — 막으려던 부하를 오히려 키운다.
+   */
+  retryAfterSeconds(key: string, now: number = Date.now()): number {
+    const cutoff = now - this.windowMs;
+    const timestamps = (this.hits.get(key) ?? []).filter((t) => t > cutoff);
+    if (timestamps.length < this.maxRequests) {
+      return 0;
+    }
+    // 가장 오래된 기록이 창을 벗어나는 순간 한 자리가 난다.
+    const oldest = Math.min(...timestamps);
+    return Math.max(1, Math.ceil((oldest + this.windowMs - now) / 1000));
+  }
+
+  /**
    * 창을 벗어난 키를 걷어낸다.
    *
    * 안 하면 서로 다른 키가 들어올 때마다 맵이 무한히 자란다 — 보호장치가

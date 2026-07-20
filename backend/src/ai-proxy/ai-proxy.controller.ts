@@ -20,7 +20,7 @@ import { firstValueFrom } from 'rxjs';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import type { User } from '../auth/entities/user.entity';
 import { aiServiceHeaders } from '../common/ai-service-auth';
-import { SlidingWindowRateLimiter } from '../common/sliding-window-rate-limiter';
+import { RateLimit, RateLimitGuard } from '../common/rate-limit.guard';
 
 /** JwtAuthGuard가 주입한 사용자. 레이트리밋 키로 쓴다. */
 interface AuthenticatedRequest {
@@ -82,18 +82,12 @@ const RATE_WINDOW_MS = 60_000;
  * 남는다. 프론트가 fetch로 받아 Blob URL을 만들어 재생하므로 헤더로 충분하다.
  */
 @Controller('ai')
-@UseGuards(JwtAuthGuard)
+// 순서가 중요하다. JwtAuthGuard가 먼저 돌아야 RateLimitGuard가 req.user.id로
+// 버킷을 나눌 수 있다.
+@UseGuards(JwtAuthGuard, RateLimitGuard)
 export class AiProxyController {
   private readonly logger = new Logger(AiProxyController.name);
   private readonly baseUrl: string;
-  private readonly ttsLimiter = new SlidingWindowRateLimiter(
-    TTS_PER_USER_PER_MIN,
-    RATE_WINDOW_MS,
-  );
-  private readonly sttLimiter = new SlidingWindowRateLimiter(
-    STT_PER_USER_PER_MIN,
-    RATE_WINDOW_MS,
-  );
 
   constructor(
     private readonly httpService: HttpService,
@@ -109,6 +103,14 @@ export class AiProxyController {
    * POST /ai/stt — 녹음 WAV를 ai-service로 넘겨 인식 결과를 돌려준다.
    */
   @Post('stt')
+  // 반드시 인터셉터보다 먼저 잘라야 한다. 실행 순서가
+  // 가드 -> 인터셉터라, 여기서 막지 않으면 한도를 넘긴 요청도 multer가
+  // 본문을 메모리에 다 올린 뒤에야 429를 받는다.
+  @RateLimit({
+    name: 'stt',
+    limit: STT_PER_USER_PER_MIN,
+    windowMs: RATE_WINDOW_MS,
+  })
   @UseInterceptors(
     FileInterceptor('audio', { limits: { fileSize: MAX_AUDIO_BYTES } }),
   )
@@ -118,12 +120,6 @@ export class AiProxyController {
     @Body() body: { lang?: string; candidates?: string | string[] },
     @Res() res: Response,
   ): Promise<void> {
-    if (!this.sttLimiter.allow(req.user.id)) {
-      res
-        .status(HttpStatus.TOO_MANY_REQUESTS)
-        .json({ message: '요청이 너무 잦습니다. 잠시 후 다시 시도해주세요.' });
-      return;
-    }
     if (!audio) {
       res
         .status(HttpStatus.BAD_REQUEST)
@@ -178,18 +174,17 @@ export class AiProxyController {
    * 프론트는 fetch로 받아 Blob URL로 재생한다(헤더를 붙이기 위해).
    */
   @Get('tts')
+  @RateLimit({
+    name: 'tts',
+    limit: TTS_PER_USER_PER_MIN,
+    windowMs: RATE_WINDOW_MS,
+  })
   async tts(
     @Req() req: AuthenticatedRequest,
     @Query('text') text: string | undefined,
     @Query('voice') voice: string | undefined,
     @Res() res: Response,
   ): Promise<void> {
-    if (!this.ttsLimiter.allow(req.user.id)) {
-      res
-        .status(HttpStatus.TOO_MANY_REQUESTS)
-        .json({ message: '요청이 너무 잦습니다. 잠시 후 다시 시도해주세요.' });
-      return;
-    }
     if (!text || text.trim().length === 0) {
       res
         .status(HttpStatus.BAD_REQUEST)
