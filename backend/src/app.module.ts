@@ -13,6 +13,7 @@ import { seedHealingMessagesIfMissing } from './memory/seeds/healing-messages.se
 import { ProfileModule } from './profile/profile.module';
 import { QuizModule } from './quiz/quiz.module';
 import { TrainingModule } from './training/training.module';
+import { SingleInstanceGuard } from './common/single-instance.guard';
 
 @Module({
   imports: [
@@ -30,7 +31,7 @@ import { TrainingModule } from './training/training.module';
     QuizModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, SingleInstanceGuard],
 })
 export class AppModule implements OnModuleInit {
   private readonly logger = new Logger(AppModule.name);
