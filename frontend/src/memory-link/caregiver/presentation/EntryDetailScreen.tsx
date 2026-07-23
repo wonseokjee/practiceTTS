@@ -258,6 +258,11 @@ export function EntryDetailScreen({
                 }
               }}
               placeholder="예: 바다 (입력 후 추가)"
+              // placeholder는 이름이 될 수 없다. 입력을 시작하면 사라져서,
+              // 스크린리더 사용자가 중간에 포커스를 잃으면 이 필드가 무엇인지
+              // 알 방법이 없다. 실제로 접근성 트리에 "예: 바다 (입력 후 추가)"로
+              // 노출되고 있었다.
+              aria-label="훈련 목표 단어"
               className="flex-1 rounded-full border border-[#E8E4DC] bg-[#F7F6F3] px-4 py-2 text-sm focus:border-[#2D6A56] focus:outline-none focus:ring-1 focus:ring-[#2D6A56]"
             />
             <button
