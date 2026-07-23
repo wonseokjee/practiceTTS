@@ -54,11 +54,21 @@ export function CaregiverDashboard() {
   const handleBackToList = () => {
     setSelectedEntryId(null);
     setView('list');
+    // 상세에서 목표 단어를 저장하거나 시나리오를 만들고 나왔을 수 있다.
+    // 다시 불러오지 않으면 목록이 옛 상태를 그대로 보여준다 — 방금 단어를
+    // 등록했는데도 "목표 단어를 등록해 주세요"가 남아 있어, 보호자가 저장이
+    // 안 됐다고 오해한다(실제로 그렇게 보였다).
+    void memoryEntries.refresh();
   };
 
   // 상단 요약 통계 — 실제 데이터만 사용(오늘 훈련 횟수·회복 추세 화살표는 API 부재).
   const entries = memoryEntries.entries;
   const readyCount = entries.filter((entry) => entry.hasScenario).length;
+  // 보호자가 손대야 진행되는 기억. 분석은 끝났는데 시나리오가 없는 것들이다.
+  // (분석 중인 건 기다리면 되므로 세지 않는다 — 재촉할 대상이 아니다.)
+  const needsSetupCount = entries.filter(
+    (entry) => !entry.hasScenario && entry.hasMaskedContext,
+  ).length;
 
   // patientId 미연결 안내
   if (!patientId) {
@@ -143,6 +153,25 @@ export function CaregiverDashboard() {
                 unit={`/ ${entries.length}`}
               />
             </div>
+
+            {/* 대화가 막혀 있으면 무엇을 해야 하는지 알린다.
+                환자 화면은 '보호자가 준비 중이에요'만 보여주므로, 여기서
+                말하지 않으면 양쪽이 서로를 기다리는 교착이 된다. */}
+            {needsSetupCount > 0 && (
+              <div
+                className="mb-4 rounded-2xl border border-[#E07B54]/30 bg-[#E07B54]/8 p-3"
+                role="status"
+              >
+                <p className="text-sm font-medium text-[#7A2E15]">
+                  대화를 시작하려면 준비가 조금 더 필요해요
+                </p>
+                <p className="mt-1 text-xs text-[#6B6560]">
+                  기억 {needsSetupCount}개가 목표 단어 등록과 시나리오 생성을
+                  기다리고 있어요. 아래 목록에서 기억을 눌러 이어서 준비해
+                  주세요.
+                </p>
+              </div>
+            )}
 
             {/* 오늘의 기억 추가 (히어로 액션) */}
             <button

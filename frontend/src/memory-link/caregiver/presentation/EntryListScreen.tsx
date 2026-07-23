@@ -154,20 +154,59 @@ function MemoryEntryCard({ entry, onClick }: MemoryEntryCardProps) {
           </div>
         )}
 
-        {/* 상태 배지 */}
-        <div className="mt-2 flex gap-1">
-          {entry.hasMaskedContext && (
-            <span className="px-1.5 py-0.5 bg-[#EBF4F0] text-[#2D6A56] rounded-full text-xs">
-              분석 완료
-            </span>
-          )}
-          {entry.hasScenario && (
-            <span className="px-1.5 py-0.5 bg-[#E07B54]/15 text-[#b5602f] rounded-full text-xs">
-              시나리오 준비
-            </span>
-          )}
+        {/* 진행 상태 — 환자가 대화를 시작할 수 있는지를 기준으로 표시한다.
+            예전에는 '분석 완료'(초록)만 떠서 보호자가 다 끝났다고 판단했는데,
+            환자 화면은 '보호자가 준비 중이에요'를 보여줬다. 양쪽이 서로를
+            기다리며 아무도 다음 단계를 밟지 않는 교착이 생겼다. */}
+        <div className="mt-2">
+          <TrainingReadiness entry={entry} />
         </div>
       </div>
     </button>
+  );
+}
+
+/**
+ * 이 기억으로 환자가 대화를 시작할 수 있는지 한 줄로 알린다.
+ *
+ * 대화(훈련)가 열리려면 보호자가 두 단계를 더 밟아야 한다:
+ *   1. 훈련 목표 단어 등록 (1~3개)
+ *   2. 훈련 시나리오 생성
+ *
+ * 이걸 안내하지 않아서 실제로 교착이 생겼다. 보호자는 '분석 완료' 배지를 보고
+ * 끝났다고 판단했고, 환자 화면은 '보호자가 준비 중이에요'를 띄웠다. 서로를
+ * 기다리며 아무도 다음 단계를 밟지 않았다.
+ *
+ * 그래서 완료 표시가 아니라 **다음에 할 일**을 보여준다.
+ */
+function TrainingReadiness({ entry }: { entry: MemoryEntry }) {
+  // 준비 완료 — 환자가 지금 바로 대화를 시작할 수 있다.
+  if (entry.hasScenario) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#EBF4F0] text-[#2D6A56] rounded-full text-xs font-medium">
+        대화 준비 완료
+      </span>
+    );
+  }
+
+  // 사진·기록 분석이 아직이면 보호자가 할 수 있는 일이 없다. 기다리면 된다.
+  if (!entry.hasMaskedContext) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#F2F1EC] text-[#6B6560] rounded-full text-xs">
+        분석 중
+      </span>
+    );
+  }
+
+  // 여기서부터가 보호자의 차례다. 무엇을 해야 하는지 구체적으로 말한다.
+  const nextStep =
+    entry.targetWords.length === 0
+      ? '목표 단어를 등록해 주세요'
+      : '시나리오를 생성해 주세요';
+
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#E07B54]/15 text-[#b5602f] rounded-full text-xs font-medium">
+      대화하려면 {nextStep}
+    </span>
   );
 }
