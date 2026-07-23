@@ -12,6 +12,7 @@ import { extractErrorMessage } from '../../shared/extractErrorMessage.js';
 import { WARM_SCREEN_BG } from '../../shared/theme.js';
 import { AuthedImage } from '../../shared/AuthedImage.js';
 import { withHonorific } from '../../shared/honorific.js';
+import { isConversationModeEnabled } from '../../shared/featureFlags.js';
 
 /** 환자 학습 모드 (R9-a: localStorage에 마지막 모드 저장/복원) */
 type PatientMode = 'QUIZ' | 'CONVERSATION';
@@ -32,8 +33,16 @@ interface SelectedTraining {
   locationTag: string | null;
 }
 
-/** localStorage에서 마지막 모드를 복원 (기본: 퀴즈 모드) */
+/**
+ * localStorage에서 마지막 모드를 복원 (기본: 퀴즈 모드)
+ *
+ * 대화 모드를 쓰던 사용자가 플래그가 꺼진 빌드를 받으면, 저장된 값 때문에
+ * 선택할 수도 없는 모드에 갇힌다. 플래그가 꺼져 있으면 무조건 퀴즈로 돌린다.
+ */
 function loadLastMode(): PatientMode {
+  if (!isConversationModeEnabled()) {
+    return 'QUIZ';
+  }
   return localStorage.getItem(LAST_MODE_KEY) === 'CONVERSATION'
     ? 'CONVERSATION'
     : 'QUIZ';
@@ -212,8 +221,8 @@ export function PatientDashboard() {
           <QuizListScreen onSelectQuiz={handleSelectQuiz} />
         )}
 
-        {/* 대화 모드: 기존 훈련 목록 */}
-        {mode === 'CONVERSATION' && (
+        {/* 대화 모드: 기존 훈련 목록 (플래그 꺼짐이면 도달 불가) */}
+        {mode === 'CONVERSATION' && isConversationModeEnabled() && (
           <ConversationList
             isLoading={isLoading}
             error={error}
@@ -242,9 +251,13 @@ interface ModeToggleProps {
  * - 기본 검사는 개인 맞춤 없이 표준 문항으로 언어·인지를 점검하는 검사 화면으로 이동
  */
 function ModeToggle({ mode, onSelectMode, onOpenAssessment }: ModeToggleProps) {
+  // 대화는 플래그로 감춘다. 비활성 탭으로 남겨두면 환자가 눌러보고
+  // 반응이 없어 혼란스러우므로, 아예 렌더하지 않는다.
   const options: Array<{ value: PatientMode; label: string }> = [
     { value: 'QUIZ', label: '퀴즈' },
-    { value: 'CONVERSATION', label: '대화' },
+    ...(isConversationModeEnabled()
+      ? [{ value: 'CONVERSATION' as const, label: '대화' }]
+      : []),
   ];
 
   return (

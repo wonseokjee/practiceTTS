@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EntryListScreen } from './EntryListScreen.js';
 import type { MemoryEntry } from '../domain/MemoryEntry.js';
 import type { UseMemoryEntriesReturn } from '../application/useMemoryEntries.js';
@@ -17,6 +17,15 @@ import type { UseMemoryEntriesReturn } from '../application/useMemoryEntries.js'
  * 이 테스트가 고정하는 것: 카드는 **완료 표시가 아니라 다음에 할 일**을 보여준다.
  */
 describe('EntryListScreen — 대화 준비 상태', () => {
+  // 이 안내는 대화 기능이 켜져 있을 때만 의미가 있다.
+  beforeEach(() => {
+    vi.stubEnv('VITE_ENABLE_CONVERSATION', 'true');
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   function makeEntry(overrides: Partial<MemoryEntry> = {}): MemoryEntry {
     return {
       id: 'entry-1',
@@ -75,6 +84,18 @@ describe('EntryListScreen — 대화 준비 상태', () => {
 
     expect(screen.getByText('분석 중')).toBeTruthy();
     expect(screen.queryByText(/등록해 주세요/)).toBeNull();
+  });
+
+  it('대화 기능이 꺼져 있으면 준비 안내를 하지 않는다', () => {
+    // 시나리오는 대화 전용이다. 환자가 쓸 수 없는 기능을 두고
+    // "대화하려면 …해 주세요"라고 하면 보호자에게 헛수고를 시킨다.
+    vi.stubEnv('VITE_ENABLE_CONVERSATION', '');
+
+    renderWith([makeEntry({ targetWords: [], hasMaskedContext: true })]);
+
+    expect(screen.queryByText(/대화하려면/)).toBeNull();
+    expect(screen.queryByText('분석 중')).toBeNull();
+    expect(screen.queryByText('대화 준비 완료')).toBeNull();
   });
 
   it('준비가 안 끝났는데 완료처럼 보이는 표시를 쓰지 않는다', () => {

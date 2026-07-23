@@ -9,6 +9,7 @@ import { EntryListScreen } from './EntryListScreen.js';
 import { ProfileScreen } from './ProfileScreen.js';
 import { QabProgressCard } from './QabProgressCard.js';
 import { withHonorific } from '../../shared/honorific.js';
+import { isConversationModeEnabled } from '../../shared/featureFlags.js';
 
 /** 대시보드 화면 상태 */
 type DashboardView = 'list' | 'capture' | 'detail' | 'profile';
@@ -66,9 +67,11 @@ export function CaregiverDashboard() {
   const readyCount = entries.filter((entry) => entry.hasScenario).length;
   // 보호자가 손대야 진행되는 기억. 분석은 끝났는데 시나리오가 없는 것들이다.
   // (분석 중인 건 기다리면 되므로 세지 않는다 — 재촉할 대상이 아니다.)
-  const needsSetupCount = entries.filter(
-    (entry) => !entry.hasScenario && entry.hasMaskedContext,
-  ).length;
+  // 대화를 감췄으면 재촉할 이유가 없다(시나리오는 대화 전용이다).
+  const needsSetupCount = isConversationModeEnabled()
+    ? entries.filter((entry) => !entry.hasScenario && entry.hasMaskedContext)
+        .length
+    : 0;
 
   // patientId 미연결 안내
   if (!patientId) {
@@ -147,11 +150,13 @@ export function CaregiverDashboard() {
             {/* 요약 통계 카드 */}
             <div className="mb-4 flex gap-3">
               <StatCard label="등록한 기억" value={`${entries.length}`} unit="개" />
-              <StatCard
-                label="훈련 준비"
-                value={`${readyCount}`}
-                unit={`/ ${entries.length}`}
-              />
+              {isConversationModeEnabled() && (
+                <StatCard
+                  label="훈련 준비"
+                  value={`${readyCount}`}
+                  unit={`/ ${entries.length}`}
+                />
+              )}
             </div>
 
             {/* 대화가 막혀 있으면 무엇을 해야 하는지 알린다.

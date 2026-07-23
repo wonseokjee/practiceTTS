@@ -2,6 +2,7 @@ import type { MemoryEntry } from '../domain/MemoryEntry.js';
 import { EMOTION_TAG_LABELS } from '../domain/MemoryEntry.js';
 import type { UseMemoryEntriesReturn } from '../application/useMemoryEntries.js';
 import { AuthedImage } from '../../shared/AuthedImage.js';
+import { isConversationModeEnabled } from '../../shared/featureFlags.js';
 
 interface EntryListScreenProps {
   memoryEntries: UseMemoryEntriesReturn;
@@ -180,6 +181,12 @@ function MemoryEntryCard({ entry, onClick }: MemoryEntryCardProps) {
  * 그래서 완료 표시가 아니라 **다음에 할 일**을 보여준다.
  */
 function TrainingReadiness({ entry }: { entry: MemoryEntry }) {
+  // 대화를 감춘 상태라면 준비 안내 자체가 의미 없다. 환자가 쓸 수 없는
+  // 기능을 두고 "대화하려면 …해 주세요"라고 하면 헛수고를 시킨다.
+  if (!isConversationModeEnabled()) {
+    return null;
+  }
+
   // 준비 완료 — 환자가 지금 바로 대화를 시작할 수 있다.
   if (entry.hasScenario) {
     return (

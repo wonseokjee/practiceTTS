@@ -5,6 +5,7 @@ import { EMOTION_TAG_LABELS } from '../domain/MemoryEntry.js';
 import type { ScenarioStatus } from '../application/useMemoryEntries.js';
 import { extractErrorMessage } from '../../shared/extractErrorMessage.js';
 import { AuthedImage } from '../../shared/AuthedImage.js';
+import { isConversationModeEnabled } from '../../shared/featureFlags.js';
 
 interface EntryDetailScreenProps {
   entryId: string;
@@ -220,8 +221,10 @@ export function EntryDetailScreen({
           훈련 목표 단어
         </h3>
         <p className="text-xs text-[#9AA09B] mb-3">
-          환자분이 스스로 떠올릴 단어예요. 1~3개를 등록해야 시나리오를 생성할 수
-          있어요.
+          환자분이 스스로 떠올릴 단어예요. 퀴즈 문항을 만들 때 함께 쓰입니다.
+          {isConversationModeEnabled()
+            ? ' 1~3개를 등록해야 시나리오를 생성할 수 있어요.'
+            : ''}
         </p>
 
         {localWords.length > 0 && (
@@ -302,18 +305,21 @@ export function EntryDetailScreen({
             isDone={entry.hasMaskedContext}
             pendingText="AI 분석 대기 중"
           />
-          <StatusBadge
-            label="시나리오 생성"
-            isDone={entry.hasScenario}
-            pendingText={
-              !entry.hasMaskedContext ? '기억 분석 후 가능' : '시나리오 미생성'
-            }
-          />
+          {isConversationModeEnabled() && (
+            <StatusBadge
+              label="시나리오 생성"
+              isDone={entry.hasScenario}
+              pendingText={
+                !entry.hasMaskedContext ? '기억 분석 후 가능' : '시나리오 미생성'
+              }
+            />
+          )}
         </div>
       </div>
 
-      {/* 시나리오 생성 버튼 */}
-      {scenarioStatus === 'error' && (
+      {/* 시나리오 생성 — 대화(회상 훈련) 전용이다. 대화를 감춘 상태에서
+          이걸 남겨두면 보호자가 아무도 쓰지 않는 작업을 하게 된다. */}
+      {isConversationModeEnabled() && scenarioStatus === 'error' && (
         <div
           role="alert"
           className="mb-3 p-3 bg-[#C94040]/10 border border-[#C94040]/30 rounded-2xl text-[#7A2E15] text-sm"
@@ -322,7 +328,7 @@ export function EntryDetailScreen({
         </div>
       )}
 
-      {!entry.hasScenario && (
+      {isConversationModeEnabled() && !entry.hasScenario && (
         <button
           type="button"
           onClick={() => void onTriggerScenario(entry.id)}
@@ -337,14 +343,14 @@ export function EntryDetailScreen({
         </button>
       )}
 
-      {entry.hasScenario && (
+      {isConversationModeEnabled() && entry.hasScenario && (
         <div className="w-full py-3 bg-[#EBF4F0] text-[#2D6A56] rounded-full font-medium text-center border border-[#2D6A56]/25">
           훈련 시나리오 준비 완료
         </div>
       )}
 
       {/* 컨텍스트 분석 미완료 안내 (사진 또는 기록 분석 후 시나리오 가능) */}
-      {!entry.hasMaskedContext && (
+      {isConversationModeEnabled() && !entry.hasMaskedContext && (
         <p className="mt-2 text-xs text-[#9AA09B] text-center">
           AI가 기록하신 내용{entry.photoUrl ? '과 사진' : ''}을 분석하면 시나리오를
           생성할 수 있습니다
