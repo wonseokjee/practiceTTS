@@ -1,6 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
-  <rect width="300" height="300" fill="#FFEBEE" rx="16"/>
-  <text x="150" y="155" font-size="110" text-anchor="middle" dominant-baseline="middle" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif">🍓</text>
-  <text x="150" y="255" font-size="28" text-anchor="middle" fill="#37474F" font-family="Pretendard, Noto Sans KR, sans-serif" font-weight="600">딸기</text>
-  <!-- PLACEHOLDER: 실제 일러스트로 교체 필요 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" role="img">
+  <rect width="300" height="300" fill="#FAF9F7" rx="16"/>
+  <g fill="none" stroke="#2A2724" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+
+    <path d="M150 108 c-42 0-66 26-66 58 c0 40 40 74 66 74 s66-34 66-74 c0-32-24-58-66-58 z" fill="#D64545"/>
+    <path d="M112 96 h76 l-14 18 h-48 z" fill="#4A9A6F"/>
+    <path d="M150 96 V72"/>
+    <g fill="#F0C246" stroke="none">
+      <ellipse cx="130" cy="150" rx="5" ry="7"/><ellipse cx="170" cy="150" rx="5" ry="7"/>
+      <ellipse cx="150" cy="176" rx="5" ry="7"/><ellipse cx="118" cy="184" rx="5" ry="7"/>
+      <ellipse cx="182" cy="184" rx="5" ry="7"/><ellipse cx="150" cy="212" rx="5" ry="7"/>
+    </g>
+  </g>
 </svg>

@@ -1,6 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
-  <rect width="300" height="300" fill="#F3E5F5" rx="16"/>
-  <text x="150" y="155" font-size="110" text-anchor="middle" dominant-baseline="middle" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif">🪑</text>
-  <text x="150" y="255" font-size="28" text-anchor="middle" fill="#37474F" font-family="Pretendard, Noto Sans KR, sans-serif" font-weight="600">의자</text>
-  <!-- PLACEHOLDER: 실제 일러스트로 교체 필요 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" role="img">
+  <rect width="300" height="300" fill="#FAF9F7" rx="16"/>
+  <g fill="none" stroke="#2A2724" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+
+    <path d="M96 46 h96 a12 12 0 0 1 12 12 v96 h-120 V58 a12 12 0 0 1 12-12 z" fill="#9A6B45"/>
+    <g stroke="#6E4A2E" stroke-width="6">
+      <path d="M120 78 h48"/><path d="M120 110 h48"/>
+    </g>
+    <path d="M66 154 h156 a10 10 0 0 1 10 10 v18 a10 10 0 0 1-10 10 H66 a10 10 0 0 1-10-10 v-18 a10 10 0 0 1 10-10 z" fill="#6E4A2E"/>
+    <path d="M78 192 v58"/><path d="M210 192 v58"/>
+    <path d="M96 154 v-108"/><path d="M192 154 v-108"/>
+  </g>
 </svg>

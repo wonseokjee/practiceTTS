@@ -1,6 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
-  <rect width="300" height="300" fill="#FFF8E1" rx="16"/>
-  <text x="150" y="155" font-size="110" text-anchor="middle" dominant-baseline="middle" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif">🐶</text>
-  <text x="150" y="255" font-size="28" text-anchor="middle" fill="#37474F" font-family="Pretendard, Noto Sans KR, sans-serif" font-weight="600">강아지</text>
-  <!-- PLACEHOLDER: 실제 일러스트로 교체 필요 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" role="img">
+  <rect width="300" height="300" fill="#FAF9F7" rx="16"/>
+  <g fill="none" stroke="#2A2724" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+
+    <path d="M84 122 c-16 24-14 66 8 82 l30-30 z" fill="#9A6B45"/>
+    <path d="M216 122 c16 24 14 66-8 82 l-30-30 z" fill="#9A6B45"/>
+    <ellipse cx="150" cy="160" rx="70" ry="62" fill="#F5E7C6"/>
+    <ellipse cx="150" cy="196" rx="38" ry="30" fill="#FFFFFF"/>
+    <circle cx="126" cy="150" r="8" fill="#2A2724" stroke="none"/>
+    <circle cx="174" cy="150" r="8" fill="#2A2724" stroke="none"/>
+    <ellipse cx="150" cy="184" rx="12" ry="9" fill="#2A2724" stroke="none"/>
+    <path d="M150 193 v12"/>
+    <path d="M150 205 c-10 10-24 4-24-6"/>
+    <path d="M150 205 c10 10 24 4 24-6"/>
+  </g>
 </svg>

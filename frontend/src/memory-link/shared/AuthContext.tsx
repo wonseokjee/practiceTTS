@@ -16,7 +16,11 @@ import {
   useCallback,
 } from 'react';
 import type { ReactNode } from 'react';
-import { memoryLinkApi, ML_TOKEN_KEY } from './MemoryLinkApi.js';
+import {
+  memoryLinkApi,
+  ML_PATIENT_MODE_KEY,
+  ML_TOKEN_KEY,
+} from './MemoryLinkApi.js';
 
 // ─── 도메인 타입 ─────────────────────────────────────────────
 
@@ -27,19 +31,25 @@ export interface AuthUser {
   displayName: string;
   /** 보호자(caregiver)인 경우 연결된 환자 ID, 없으면 null */
   patientId: string | null;
+  /** 보호자가 돌보는 환자(어르신) 성함 — 환자 모드 인사말 등에 사용. 없으면 null */
+  patientDisplayName: string | null;
 }
 
 export interface RegisterData {
   email: string;
   password: string;
+  /** 보호자 본인 이름 */
   displayName: string;
-  role: 'caregiver' | 'patient';
+  /** 돌보는 환자(어르신) 성함 — 회원가입 시 환자 레코드 생성에 사용 */
+  patientDisplayName: string;
+  /** 환자 모드 → 보호자 복귀 시 사용하는 4자리 PIN */
+  patientModePin: string;
 }
 
 // ─── API 응답 타입 ────────────────────────────────────────────
 
 interface LoginResponseRaw {
-  access_token: string;
+  accessToken: string;
 }
 
 interface MeResponseRaw {
@@ -48,6 +58,7 @@ interface MeResponseRaw {
   role: string;
   displayName: string;
   patientId: string | null;
+  patientDisplayName?: string | null;
 }
 
 // ─── 런타임 타입 검증 ─────────────────────────────────────────
@@ -56,8 +67,8 @@ function isLoginResponse(value: unknown): value is LoginResponseRaw {
   return (
     typeof value === 'object' &&
     value !== null &&
-    'access_token' in value &&
-    typeof (value as Record<string, unknown>).access_token === 'string'
+    'accessToken' in value &&
+    typeof (value as Record<string, unknown>).accessToken === 'string'
   );
 }
 
@@ -83,6 +94,7 @@ function toAuthUser(raw: MeResponseRaw): AuthUser {
     role,
     displayName: raw.displayName,
     patientId: raw.patientId ?? null,
+    patientDisplayName: raw.patientDisplayName ?? null,
   };
 }
 
@@ -95,18 +107,112 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
   logout: () => void;
+  /** 보호자 세션 내 화면 모드 — true면 환자 화면(/patient) 노출 */
+  isPatientMode: boolean;
+  /** 환자 모드 진입 (보호자가 기기를 환자에게 건넴) */
+  enterPatientMode: () => void;
+  /** 환자 모드 해제 — PIN 검증 성공 시에만 true 반환 */
+  exitPatientMode: (pin: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+// ─── 개발용 자동 로그인 토글 ──────────────────────────────────
+//
+// VITE_DEV_AUTH (개발 빌드에서만 적용):
+//   'patient' (기본) — 가짜 환자 계정으로 자동 로그인
+//   'caregiver'      — 가짜 보호자 계정 (patientId는 VITE_DEV_PATIENT_ID)
+//   'off'            — 바이패스 해제, 실제 로그인 화면 + 백엔드 인증 사용
+//
+// 'patient'/'caregiver'는 가짜 토큰('fake-local-token')을 사용하므로 실제 백엔드
+// 인증이 필요한 화면(보호자 캡처 등)을 테스트하려면 'off'로 실제 로그인해야 한다.
+type DevAuthMode = 'patient' | 'caregiver' | 'off';
+
+const DEV_FAKE_TOKEN = 'fake-local-token';
+
+// ─── 개발용 실제-자동로그인 ───────────────────────────────────
+//
+// VITE_DEV_AUTH=off 이면서 아래 값이 설정되면, 개발 빌드에서 앱 시작 시
+// 해당 계정으로 실제 /auth/login 을 자동 호출한다(계정이 없으면 자동 가입).
+// 가짜 토큰 바이패스와 달리 실제 JWT를 발급받으므로 백엔드 인증이 필요한
+// 화면(프로필·메모리·시나리오)까지 로그인 없이 테스트할 수 있다.
+const DEV_AUTOLOGIN_EMAIL = import.meta.env.VITE_DEV_AUTOLOGIN_EMAIL as
+  | string
+  | undefined;
+const DEV_AUTOLOGIN_PASSWORD = import.meta.env.VITE_DEV_AUTOLOGIN_PASSWORD as
+  | string
+  | undefined;
+
+function isDevAutoLoginEnabled(): boolean {
+  return (
+    import.meta.env.DEV &&
+    !!DEV_AUTOLOGIN_EMAIL &&
+    !!DEV_AUTOLOGIN_PASSWORD &&
+    localStorage.getItem(ML_TOKEN_KEY) === null
+  );
+}
+
+function resolveDevAuthMode(): DevAuthMode {
+  if (!import.meta.env.DEV) return 'off';
+  const raw = (
+    (import.meta.env.VITE_DEV_AUTH as string | undefined) ?? 'patient'
+  ).toLowerCase();
+  if (raw === 'off' || raw === 'caregiver' || raw === 'patient') {
+    return raw;
+  }
+  return 'patient';
+}
+
+function buildDevUser(mode: DevAuthMode): AuthUser | null {
+  if (mode === 'patient') {
+    return {
+      id: 'test-patient-uuid',
+      email: 'test@patient.com',
+      role: 'patient',
+      displayName: '로컬 테스트 환자',
+      patientId: null,
+      patientDisplayName: null,
+    };
+  }
+  if (mode === 'caregiver') {
+    return {
+      id: 'test-caregiver-uuid',
+      email: 'test@caregiver.com',
+      role: 'caregiver',
+      displayName: '로컬 테스트 보호자',
+      patientId:
+        (import.meta.env.VITE_DEV_PATIENT_ID as string | undefined) ?? null,
+      patientDisplayName: '로컬 테스트 어르신',
+    };
+  }
+  return null;
+}
+
 // ─── Provider ─────────────────────────────────────────────────
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [token, setToken] = useState<string | null>(
-    () => localStorage.getItem(ML_TOKEN_KEY),
+  // 개발 빌드일 때 VITE_DEV_AUTH에 따라 가짜 계정으로 자동 로그인 상태를 모방한다.
+  const devAuthMode = resolveDevAuthMode();
+  const isDevBypass = devAuthMode !== 'off';
+
+  const [user, setUser] = useState<AuthUser | null>(() =>
+    buildDevUser(devAuthMode),
   );
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [token, setToken] = useState<string | null>(
+    isDevBypass ? DEV_FAKE_TOKEN : () => localStorage.getItem(ML_TOKEN_KEY),
+  );
+  // 저장된 토큰이 있으면 /auth/me로 검증이 끝날 때까지 로딩으로 시작한다.
+  // (검증 전 user=null로 라우트 가드가 /login을 잠깐 렌더해 깜빡이는 문제 방지)
+  const [isLoading, setIsLoading] = useState<boolean>(
+    () =>
+      !isDevBypass &&
+      (localStorage.getItem(ML_TOKEN_KEY) !== null || isDevAutoLoginEnabled()),
+  );
+  // 환자 모드 플래그 — localStorage 영속(환자가 새로고침해도 잠금 유지).
+  // 보안 경계가 아니라 UX 잠금이며, 실제 환자 식별은 백엔드 토큰 기준.
+  const [isPatientMode, setIsPatientMode] = useState<boolean>(
+    () => localStorage.getItem(ML_PATIENT_MODE_KEY) === 'true',
+  );
 
   /** 토큰 저장 및 상태 동기화 */
   const saveToken = useCallback((newToken: string) => {
@@ -123,9 +229,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   /** 앱 시작 시 저장된 토큰으로 사용자 정보 복원 */
   useEffect(() => {
+    if (isDevBypass) return; // 가짜 계정 바이패스 모드에서는 API 호출을 생략한다.
+
     const storedToken = localStorage.getItem(ML_TOKEN_KEY);
     if (!storedToken) {
-      setIsLoading(false);
+      // 개발용 자동 로그인이 활성화된 경우 별도 useEffect가 처리하므로 로딩 유지
+      if (!isDevAutoLoginEnabled()) {
+        setIsLoading(false);
+      }
       return;
     }
 
@@ -157,7 +268,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [clearAuth]);
+  }, [clearAuth, isDevBypass]);
+
+  /** 개발용 실제-자동로그인: 토큰이 없으면 테스트 계정으로 로그인(없으면 가입) */
+  useEffect(() => {
+    if (isDevBypass) return;
+    if (!isDevAutoLoginEnabled()) return;
+
+    let cancelled = false;
+    const email = DEV_AUTOLOGIN_EMAIL as string;
+    const password = DEV_AUTOLOGIN_PASSWORD as string;
+
+    (async () => {
+      setIsLoading(true);
+      try {
+        await login(email, password);
+      } catch {
+        // 계정이 없으면 가입 후 자동 로그인
+        try {
+          await register({
+            email,
+            password,
+            displayName: '개발 보호자',
+            patientDisplayName: '개발 어르신',
+            patientModePin: '0000',
+          });
+        } catch (err) {
+          if (!cancelled) {
+            console.warn('[dev-autologin] 자동 로그인 실패:', err);
+          }
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // login/register는 mount 시 1회만 실행하면 되므로 의존성에서 제외
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /** 로그인 */
   const login = useCallback(
@@ -170,7 +323,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!isLoginResponse(raw)) {
         throw new Error('서버 응답 형식이 올바르지 않습니다.');
       }
-      saveToken(raw.access_token);
+      saveToken(raw.accessToken);
 
       // 사용자 정보 조회
       const meResponse = await memoryLinkApi.get<unknown>('/auth/me');
@@ -190,13 +343,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: data.email,
         password: data.password,
         displayName: data.displayName,
-        role: data.role,
+        patientDisplayName: data.patientDisplayName,
+        patientModePin: data.patientModePin,
       });
       const raw = response.data;
       if (!isLoginResponse(raw)) {
         throw new Error('서버 응답 형식이 올바르지 않습니다.');
       }
-      saveToken(raw.access_token);
+      saveToken(raw.accessToken);
 
       // 사용자 정보 조회
       const meResponse = await memoryLinkApi.get<unknown>('/auth/me');
@@ -211,11 +365,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   /** 로그아웃 */
   const logout = useCallback(() => {
+    localStorage.removeItem(ML_PATIENT_MODE_KEY);
+    setIsPatientMode(false);
     clearAuth();
   }, [clearAuth]);
 
+  /** 환자 모드 진입 (보호자가 기기를 환자에게 건넴) */
+  const enterPatientMode = useCallback(() => {
+    localStorage.setItem(ML_PATIENT_MODE_KEY, 'true');
+    setIsPatientMode(true);
+  }, []);
+
+  /** 환자 모드 해제 — PIN 검증 성공 시에만 true */
+  const exitPatientMode = useCallback(
+    async (pin: string): Promise<boolean> => {
+      try {
+        await memoryLinkApi.post('/auth/patient-mode/verify-pin', { pin });
+        localStorage.removeItem(ML_PATIENT_MODE_KEY);
+        setIsPatientMode(false);
+        return true;
+      } catch {
+        // 401(PIN 불일치)/429(디레이) 등 — 모드 유지, 호출측이 에러 표시
+        return false;
+      }
+    },
+    [],
+  );
+
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        isLoading,
+        login,
+        register,
+        logout,
+        isPatientMode,
+        enterPatientMode,
+        exitPatientMode,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

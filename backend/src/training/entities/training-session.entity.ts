@@ -21,7 +21,7 @@ export class TrainingSession {
 
   // 훈련 대상 환자
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'patient_id' })
+  @JoinColumn({ name: 'patient_id', foreignKeyConstraintName: 'FK_training_sessions_patient' })
   patient: User;
 
   @Column({ name: 'patient_id', type: 'uuid' })
@@ -29,7 +29,7 @@ export class TrainingSession {
 
   // 훈련에 사용된 메모리 엔트리
   @ManyToOne(() => MemoryEntry, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'memory_entry_id' })
+  @JoinColumn({ name: 'memory_entry_id', foreignKeyConstraintName: 'FK_training_sessions_memory_entry' })
   memoryEntry: MemoryEntry;
 
   @Column({ name: 'memory_entry_id', type: 'uuid' })
@@ -48,11 +48,11 @@ export class TrainingSession {
   hintLevel: number;
 
   // 훈련에 사용된 목표 단어 (nullable: 세션 생성 시점에 선택)
-  @Column({ name: 'target_word_used', nullable: true })
+  @Column({ name: 'target_word_used', type: 'varchar', nullable: true })
   targetWordUsed: string | null;
 
   // 훈련 성공 여부 (completed 상태일 때만 의미 있음)
-  @Column({ nullable: true })
+  @Column({ type: 'boolean', nullable: true })
   success: boolean | null;
 
   // 훈련 소요 시간 (밀리초), 완료 시 계산
@@ -63,6 +63,6 @@ export class TrainingSession {
   @OneToMany(() => ConversationLog, (log) => log.session)
   conversationLogs: ConversationLog[];
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }

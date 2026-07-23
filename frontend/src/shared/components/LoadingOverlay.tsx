@@ -24,12 +24,12 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
     >
       {/* 회전 스피너 */}
       <div
-        className="w-12 h-12 border-4 border-gray-200 border-t-blue-500 rounded-full animate-spin"
+        className="w-12 h-12 border-4 border-[#E8E4DC] border-t-[#2D6A56] rounded-full animate-spin"
         aria-hidden="true"
       />
 
       {/* 로딩 텍스트 */}
-      <p className="text-gray-500 text-base">{message}</p>
+      <p className="text-[#6B6560] text-base">{message}</p>
     </div>
   );
 };

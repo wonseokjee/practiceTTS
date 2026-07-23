@@ -1,6 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
-  <rect width="300" height="300" fill="#FAFAFA" rx="16"/>
-  <text x="150" y="155" font-size="110" text-anchor="middle" dominant-baseline="middle" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif">🔪</text>
-  <text x="150" y="255" font-size="28" text-anchor="middle" fill="#37474F" font-family="Pretendard, Noto Sans KR, sans-serif" font-weight="600">칼</text>
-  <!-- PLACEHOLDER: 실제 일러스트로 교체 필요 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" role="img">
+  <rect width="300" height="300" fill="#FAF9F7" rx="16"/>
+  <g fill="none" stroke="#2A2724" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+
+    <path d="M40 176 L196 106 v56 c-52 20-108 26-156 14 z" fill="#B8B5AF"/>
+    <path d="M40 176 L196 106"/>
+    <path d="M196 108 h58 a14 14 0 0 1 14 14 v28 a14 14 0 0 1-14 14 h-58 z" fill="#6E4A2E"/>
+    <g fill="#F5E7C6" stroke="none">
+      <circle cx="216" cy="136" r="5"/><circle cx="240" cy="136" r="5"/>
+    </g>
+  </g>
 </svg>

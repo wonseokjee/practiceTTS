@@ -1,6 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
-  <rect width="300" height="300" fill="#E3F2FD" rx="16"/>
-  <text x="150" y="155" font-size="110" text-anchor="middle" dominant-baseline="middle" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif">☂️</text>
-  <text x="150" y="255" font-size="28" text-anchor="middle" fill="#37474F" font-family="Pretendard, Noto Sans KR, sans-serif" font-weight="600">우산</text>
-  <!-- PLACEHOLDER: 실제 일러스트로 교체 필요 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" role="img">
+  <rect width="300" height="300" fill="#FAF9F7" rx="16"/>
+  <g fill="none" stroke="#2A2724" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+
+    <path d="M36 160 a114 114 0 0 1 228 0 z" fill="#D64545"/>
+    <path d="M36 160 c22-22 36 22 57 0 c22-22 36 22 57 0 c22-22 36 22 57 0 c22-22 36 22 57 0" fill="none"/>
+    <path d="M150 46 v186"/>
+    <path d="M150 232 a24 24 0 0 1-46 8" fill="none" stroke-width="9"/>
+    <path d="M150 46 v-14"/>
+  </g>
 </svg>

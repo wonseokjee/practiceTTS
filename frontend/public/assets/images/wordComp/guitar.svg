@@ -1,6 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
-  <rect width="300" height="300" fill="#FFF8E1" rx="16"/>
-  <text x="150" y="155" font-size="110" text-anchor="middle" dominant-baseline="middle" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif">🎸</text>
-  <text x="150" y="255" font-size="28" text-anchor="middle" fill="#37474F" font-family="Pretendard, Noto Sans KR, sans-serif" font-weight="600">기타</text>
-  <!-- PLACEHOLDER: 실제 일러스트로 교체 필요 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" role="img">
+  <rect width="300" height="300" fill="#FAF9F7" rx="16"/>
+  <g fill="none" stroke="#2A2724" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+
+    <path d="M150 108 c40 0 58 22 58 48 c0 18-14 28-14 44 c0 34-20 56-44 56 s-44-22-44-56 c0-16-14-26-14-44 c0-26 18-48 58-48 z" fill="#9A6B45"/>
+    <ellipse cx="150" cy="176" rx="26" ry="26" fill="#2A2724"/>
+    <rect x="136" y="44" width="28" height="66" fill="#6E4A2E"/>
+    <path d="M124 24 h52 a8 8 0 0 1 8 8 v22 h-68 V32 a8 8 0 0 1 8-8 z" fill="#6E4A2E"/>
+    <g stroke="#F5E7C6" stroke-width="3">
+      <path d="M140 54 V232"/><path d="M150 54 V236"/><path d="M160 54 V232"/>
+    </g>
+    <rect x="126" y="228" width="48" height="14" rx="4" fill="#6E4A2E"/>
+  </g>
 </svg>

@@ -29,7 +29,6 @@ import { JsonWordComprehensionItemRepository } from '../../infrastructure/reposi
 import { LocalStorageWordComprehensionRepository } from '../../infrastructure/repositories/LocalStorageWordComprehensionRepository.js';
 import { StartWordComprehensionSessionUseCase } from '../../application/useCases/StartWordComprehensionSessionUseCase.js';
 import { SubmitItemAnswerUseCase } from '../../application/useCases/SubmitItemAnswerUseCase.js';
-import { ReplayAudioUseCase } from '../../application/useCases/ReplayAudioUseCase.js';
 import { CalculateSessionSummaryUseCase } from '../../application/useCases/CalculateSessionSummaryUseCase.js';
 import { WordComprehensionAppError, WcAppErrorCode } from '../../application/errors/WordComprehensionAppError.js';
 import wordCompItemsData from '../../infrastructure/data/wordComprehensionItems.json';
@@ -150,11 +149,8 @@ export function useWordComprehensionViewModel(
     [sessionRepository, itemRepository],
   );
 
-  const replayUseCase = useMemo(
-    () => new ReplayAudioUseCase(audioPlayer),
-    [audioPlayer],
-  );
-
+  // 재청취는 onReplayRequested에서 audioPlayer를 직접 사용한다
+  // (ReplayAudioUseCase 미사용 — 도메인 use case 경유 없이 load/play 직접 제어)
   const summaryUseCase = useMemo(
     () => new CalculateSessionSummaryUseCase(sessionRepository),
     [sessionRepository],

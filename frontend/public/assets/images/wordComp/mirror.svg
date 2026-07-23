@@ -1,6 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
-  <rect width="300" height="300" fill="#E3F2FD" rx="16"/>
-  <text x="150" y="155" font-size="110" text-anchor="middle" dominant-baseline="middle" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif">🪞</text>
-  <text x="150" y="255" font-size="28" text-anchor="middle" fill="#37474F" font-family="Pretendard, Noto Sans KR, sans-serif" font-weight="600">거울</text>
-  <!-- PLACEHOLDER: 실제 일러스트로 교체 필요 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" role="img">
+  <rect width="300" height="300" fill="#FAF9F7" rx="16"/>
+  <g fill="none" stroke="#2A2724" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+
+    <ellipse cx="150" cy="132" rx="72" ry="88" fill="#A8D0EE"/>
+    <ellipse cx="150" cy="132" rx="72" ry="88" fill="none" stroke-width="8"/>
+    <path d="M112 92 L136 172" stroke="#FFFFFF" stroke-width="8"/>
+    <path d="M146 92 L170 172" stroke="#FFFFFF" stroke-width="7"/>
+    <path d="M136 220 h28 v48 h-28 z" fill="#9A6B45"/>
+  </g>
 </svg>

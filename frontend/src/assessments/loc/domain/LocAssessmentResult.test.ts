@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { createLocAssessmentResult } from './LocAssessmentResult.js';
 import { createLocTrial } from './LocTrial.js';
 import type { LocTrial } from './LocTrial.js';

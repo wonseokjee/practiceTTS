@@ -1,6 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
-  <rect width="300" height="300" fill="#FFF8E1" rx="16"/>
-  <text x="150" y="155" font-size="110" text-anchor="middle" dominant-baseline="middle" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif">👟</text>
-  <text x="150" y="255" font-size="28" text-anchor="middle" fill="#37474F" font-family="Pretendard, Noto Sans KR, sans-serif" font-weight="600">신발</text>
-  <!-- PLACEHOLDER: 실제 일러스트로 교체 필요 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" role="img">
+  <rect width="300" height="300" fill="#FAF9F7" rx="16"/>
+  <g fill="none" stroke="#2A2724" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+
+    <path d="M40 186 C40 166 58 158 88 152 C134 142 182 128 206 108 C218 98 242 102 248 118 C256 140 254 168 250 186 Z" fill="#4A86C8"/>
+    <path d="M96 150 C104 166 106 176 106 186" stroke-width="5"/>
+    <g stroke-width="5">
+      <path d="M126 144 l14 42"/><path d="M156 134 l14 52"/><path d="M186 122 l12 64"/>
+    </g>
+    <path d="M212 110 C224 128 226 158 224 186" stroke-width="5"/>
+    <path d="M32 186 h236 a14 14 0 0 1 14 14 v10 a14 14 0 0 1-14 14 H32 a14 14 0 0 1-14-14 v-10 a14 14 0 0 1 14-14 z" fill="#FFFFFF"/>
+  </g>
 </svg>

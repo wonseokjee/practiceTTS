@@ -2,15 +2,13 @@ import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
-import {
-  TrainingError,
-  TrainingErrorCode,
-} from '../errors/training.errors';
+import { TrainingError, TrainingErrorCode } from '../errors/training.errors';
 import type {
   ChatRequest,
   ChatResponse,
   IFastApiChatClient,
 } from '../interfaces/IFastApiChatClient';
+import { aiServiceHeaders } from '../../common/ai-service-auth';
 
 /** FastAPI /chat 응답 원시 타입 */
 interface RawChatResponse {
@@ -37,7 +35,7 @@ export class FastApiChatClientService implements IFastApiChatClient {
     private readonly configService: ConfigService,
   ) {
     this.baseUrl = this.configService.get<string>(
-      'FASTAPI_URL',
+      'AI_SERVICE_URL',
       'http://localhost:8000',
     );
   }
@@ -57,7 +55,10 @@ export class FastApiChatClientService implements IFastApiChatClient {
             hint_level: request.hint_level,
             memory_entry_id: request.memory_entry_id,
           },
-          { timeout: FastApiChatClientService.CHAT_TIMEOUT_MS },
+          {
+            timeout: FastApiChatClientService.CHAT_TIMEOUT_MS,
+            headers: aiServiceHeaders(this.configService),
+          },
         ),
       );
 

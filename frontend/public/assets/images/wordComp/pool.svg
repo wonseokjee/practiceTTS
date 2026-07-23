@@ -1,6 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
-  <rect width="300" height="300" fill="#E3F2FD" rx="16"/>
-  <text x="150" y="155" font-size="110" text-anchor="middle" dominant-baseline="middle" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif">🏊</text>
-  <text x="150" y="255" font-size="28" text-anchor="middle" fill="#37474F" font-family="Pretendard, Noto Sans KR, sans-serif" font-weight="600">수영장</text>
-  <!-- PLACEHOLDER: 실제 일러스트로 교체 필요 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" role="img">
+  <rect width="300" height="300" fill="#FAF9F7" rx="16"/>
+  <g fill="none" stroke="#2A2724" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+
+    <rect x="40" y="96" width="220" height="140" rx="14" fill="#A8D0EE"/>
+    <rect x="40" y="96" width="220" height="140" rx="14" fill="none" stroke-width="8"/>
+    <g stroke="#FFFFFF" stroke-width="7">
+      <path d="M56 138 c22-12 44 12 66 0 c22-12 44 12 66 0 c22-12 34 8 56 0"/>
+      <path d="M56 178 c22-12 44 12 66 0 c22-12 44 12 66 0 c22-12 34 8 56 0"/>
+      <path d="M56 216 c22-12 44 12 66 0 c22-12 44 12 66 0 c22-12 34 8 56 0"/>
+    </g>
+    <path d="M212 96 v-38"/><path d="M244 96 v-38"/>
+    <path d="M212 68 h32"/><path d="M212 84 h32"/>
+  </g>
 </svg>

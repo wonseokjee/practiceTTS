@@ -21,10 +21,10 @@ export function LocProgressBar({
   // 남은 시간에 따른 색상 전환
   const barColorClass =
     remainingSeconds > 5
-      ? 'bg-green-500'
+      ? 'bg-[#2D6A56]'
       : remainingSeconds > 2
-        ? 'bg-yellow-500'
-        : 'bg-red-500';
+        ? 'bg-[#E8A23C]'
+        : 'bg-[#C94040]';
 
   return (
     <div
@@ -34,13 +34,13 @@ export function LocProgressBar({
       aria-live="polite"
     >
       {/* 남은 시간 텍스트 */}
-      <p className="text-2xl font-bold text-gray-700">
+      <p className="text-2xl font-bold text-[#1A1916]">
         {remainingSeconds}
-        <span className="text-base font-normal text-gray-500 ml-1">초</span>
+        <span className="text-base font-normal text-[#6B6560] ml-1">초</span>
       </p>
 
       {/* 진행 바 */}
-      <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden">
+      <div className="w-full h-4 bg-[#E8E4DC] rounded-full overflow-hidden">
         <div
           className={`h-full ${barColorClass} rounded-full transition-all duration-1000 ease-linear`}
           style={{ width: `${Math.max(0, progress)}%` }}

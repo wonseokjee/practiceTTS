@@ -1,3 +1,4 @@
+import type { LocScoreLabel } from '../../domain/LocScorer.js';
 /**
  * LOC 검사 DTO (Data Transfer Object)
  *
@@ -30,7 +31,14 @@ export interface LocTrialResponseDTO {
   latencyMs: number | null;
   touchInBounds: boolean;
   score: 0 | 1 | 2 | 3;
-  scoreLabel: '정상' | '경도 지연' | '중도 지연' | '무반응';
+  /**
+   * 사람이 읽는 결과 라벨.
+   *
+   * 0점은 '무반응'(반응 없음)과 '영역 외 터치'(반응했으나 버튼 밖)를 뭉치므로
+   * 라벨은 둘을 구분한다. 원자료로 구분하려면 latencyMs(무반응이면 null)와
+   * touchInBounds를 보면 된다.
+   */
+  scoreLabel: LocScoreLabel;
   /** 3회 시도가 모두 완료되었는지 여부 */
   isComplete: boolean;
 }

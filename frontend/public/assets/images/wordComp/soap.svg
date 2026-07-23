@@ -1,6 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
-  <rect width="300" height="300" fill="#E3F2FD" rx="16"/>
-  <text x="150" y="155" font-size="110" text-anchor="middle" dominant-baseline="middle" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif">🧼</text>
-  <text x="150" y="255" font-size="28" text-anchor="middle" fill="#37474F" font-family="Pretendard, Noto Sans KR, sans-serif" font-weight="600">비누</text>
-  <!-- PLACEHOLDER: 실제 일러스트로 교체 필요 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" role="img">
+  <rect width="300" height="300" fill="#FAF9F7" rx="16"/>
+  <g fill="none" stroke="#2A2724" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+
+    <path d="M70 158 h160 v52 a14 14 0 0 1-14 14 H84 a14 14 0 0 1-14-14 z" fill="#E9A0B4"/>
+    <path d="M70 158 a80 26 0 0 1 160 0 z" fill="#E9A0B4"/>
+    <path d="M70 158 h160"/>
+    <circle cx="106" cy="102" r="18" fill="#FFFFFF"/>
+    <circle cx="146" cy="76" r="12" fill="#FFFFFF"/>
+    <circle cx="180" cy="102" r="9" fill="#FFFFFF"/>
+  </g>
 </svg>

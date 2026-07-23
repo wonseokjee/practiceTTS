@@ -18,3 +18,6 @@ class MaskResponse(BaseModel):
     memory_entry_id: str
     masked_text: str
     entity_count: int
+    # True면 3계층(Gemini 이름 탐지)이 실패해 **실명이 남아 있을 수 있다**.
+    # 호출자는 이 결과를 "마스킹 완료"로 저장하면 안 된다.
+    degraded: bool = False

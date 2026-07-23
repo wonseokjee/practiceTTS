@@ -18,7 +18,7 @@ export class MemoryEntry {
 
   // 라이프로그를 등록한 보호자
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'caregiver_id' })
+  @JoinColumn({ name: 'caregiver_id', foreignKeyConstraintName: 'FK_memory_entries_caregiver' })
   caregiver: User;
 
   @Column({ name: 'caregiver_id', type: 'uuid' })
@@ -26,7 +26,7 @@ export class MemoryEntry {
 
   // 훈련 대상 환자
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'patient_id' })
+  @JoinColumn({ name: 'patient_id', foreignKeyConstraintName: 'FK_memory_entries_patient' })
   patient: User;
 
   @Column({ name: 'patient_id', type: 'uuid' })
@@ -45,12 +45,20 @@ export class MemoryEntry {
   objectTags: string[];
 
   // 감정 태그 (happy | calm | nostalgic | excited)
+  // @deprecated Phase 4 보호자 화면 재설계 이후 단계적으로 제거 예정 (P1-N9=(a) 호환 유지)
   @Column({ name: 'emotion_tag', nullable: true })
   emotionTag: EmotionTag;
 
   // 훈련에 사용할 목표 단어 (최대 3개)
+  // @deprecated Phase 4 보호자 화면 재설계 이후 단계적으로 제거 예정 (P1-N9=(a) 호환 유지)
   @Column({ name: 'target_words', type: 'simple-array', nullable: true })
   targetWords: string[];
+
+  // 보호자가 환자에게 전하는 한 마디 (Phase 6 양방향 치유 v1 사전 준비)
+  // - Phase 1에서는 저장만 수행하며 UI 노출 없음
+  // - DTO 레벨에서 1~120자 검증
+  @Column({ name: 'caregiver_wish_message', type: 'text', nullable: true })
+  caregiverWishMessage: string | null;
 
   // AI 마스킹 처리 후 저장되는 컨텍스트 텍스트
   @Column({ name: 'masked_context', type: 'text', nullable: true })
@@ -64,6 +72,6 @@ export class MemoryEntry {
   @Column({ name: 'is_active', default: true })
   isActive: boolean;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }

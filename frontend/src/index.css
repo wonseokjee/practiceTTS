@@ -7,6 +7,8 @@
    ──────────────────────────────────────────────────────────── */
 @theme {
   --font-sans: 'Pretendard', system-ui, -apple-system, sans-serif;
+  /* `font-pretendard` 유틸 활성화 — 컴포넌트가 명시적으로 사용. */
+  --font-pretendard: 'Pretendard', system-ui, -apple-system, sans-serif;
 
   --color-blue-50:  #EBF4F0;
   --color-blue-100: #EBF4F0;
@@ -49,4 +51,19 @@ body {
 
 #root {
   height: 100%;
+  /* 콘텐츠가 뷰포트보다 길면(예: 캡처 3단계) #root 내부에서 스크롤되도록 한다.
+     body는 overflow:hidden이라 페이지 자체는 스크롤되지 않으므로, 스크롤 컨테이너를
+     #root로 일원화한다. 풀스크린(h-screen) 레이아웃은 100% 이내라 영향이 없다. */
+  overflow-y: auto;
+}
+
+/* Tailwind v4 Preflight는 <button> 기본 커서를 v3의 pointer에서 default로 바꿨다.
+   그 결과 데스크톱에서 버튼/카드가 클릭 가능해 보이지 않는다(화살표 커서).
+   활성 버튼·role=button에 pointer를 복원한다. disabled:cursor-* 유틸리티는
+   유틸리티 레이어라 우선순위가 높아 비활성 상태와 충돌하지 않는다. */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']) {
+    cursor: pointer;
+  }
 }

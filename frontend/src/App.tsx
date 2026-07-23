@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   BrowserRouter,
   Routes,
   Route,
   Navigate,
+  useNavigate,
 } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { SessionProvider, useSessionContext } from './shared/session/SessionContext.js';
@@ -30,7 +31,26 @@ interface CompletedAssessments {
 }
 
 function AssessmentContent() {
-  const { session } = useSessionContext();
+  const { session, startSession } = useSessionContext();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  // 로그인 사용자용 세션을 최초 1회만 자동 생성했는지 추적.
+  // (종료 후 자동 재생성되어 '세션 종료'가 안 먹던 문제 방지)
+  const hasAutoStartedRef = useRef(false);
+
+  // 로그인 사용자의 환자 ID를 검사 세션에 자동 사용 (보호자=연결 환자, 환자=본인).
+  // 회원 로그인을 하므로 환자 ID 수동 입력은 불필요하다.
+  const effectivePatientId = user
+    ? user.role === 'caregiver'
+      ? user.patientId
+      : user.id
+    : null;
+  // 화면 표시용 환자 이름 (보호자=돌보는 어르신 성함, 환자=본인 이름)
+  const effectivePatientName = user
+    ? user.role === 'caregiver'
+      ? (user.patientDisplayName ?? undefined)
+      : user.displayName
+    : undefined;
 
   const [appPhase, setAppPhase] = useState<AppPhase>('LOC');
   const [completedAssessments, setCompletedAssessments] =
@@ -59,7 +79,42 @@ function AssessmentContent() {
     setAppPhase('HUB');
   };
 
-  if (session === null) {
+  // 로그인 사용자의 환자 ID/이름과 세션이 일치하지 않으면(미생성 · 옛 수동입력값 ·
+  // 이름 미반영) 동기화한다.
+  const needsSync =
+    effectivePatientId !== null &&
+    (session?.patientId !== effectivePatientId ||
+      (effectivePatientName !== undefined &&
+        session?.patientName !== effectivePatientName));
+
+  // 최초 진입 시 1회만 자동 세션 생성. 이후 세션 종료(session=null)는 재생성하지
+  // 않고 아래 effect가 대시보드로 복귀시킨다.
+  useEffect(() => {
+    if (needsSync && effectivePatientId && !hasAutoStartedRef.current) {
+      startSession(effectivePatientId, effectivePatientName);
+      hasAutoStartedRef.current = true;
+    }
+  }, [needsSync, effectivePatientId, effectivePatientName, startSession]);
+
+  // 세션 종료 시 로그인 사용자는 원래 화면(역할별 대시보드)으로 복귀.
+  useEffect(() => {
+    if (hasAutoStartedRef.current && session === null && user) {
+      navigate(user.role === 'caregiver' ? '/caregiver' : '/patient', {
+        replace: true,
+      });
+    }
+  }, [session, user, navigate]);
+
+  if (session === null || needsSync) {
+    // 로그인되어 환자 ID가 있으면 위 effect가 곧 세션을 만든다(짧은 대기).
+    // 비로그인 등으로 환자 ID가 없을 때만 수동 입력 폴백을 보여준다.
+    if (effectivePatientId) {
+      return (
+        <div className="h-full bg-[#F7F6F3] flex items-center justify-center p-6">
+          <p className="text-[#6B6560]">검사를 준비하고 있어요...</p>
+        </div>
+      );
+    }
     return <PatientSetupScreen />;
   }
 
@@ -94,12 +149,12 @@ function AssessmentContent() {
  * 보호자 전용 라우트: role이 caregiver가 아니면 접근 거부
  */
 function CaregiverRoute({ children }: { children: ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isPatientMode } = useAuth();
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <span className="text-gray-500">로딩 중...</span>
+        <span className="text-[#6B6560]">로딩 중...</span>
       </div>
     );
   }
@@ -111,24 +166,29 @@ function CaregiverRoute({ children }: { children: ReactNode }) {
   if (user.role !== 'caregiver') {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-red-600">보호자 계정으로만 접근할 수 있습니다.</p>
+        <p className="text-[#C94040]">보호자 계정으로만 접근할 수 있습니다.</p>
       </div>
     );
+  }
+
+  // 환자 모드 중에는 보호자 화면 직접 접근 차단(PIN으로만 복귀) → /patient로 유지
+  if (isPatientMode) {
+    return <Navigate to="/patient" replace />;
   }
 
   return <>{children}</>;
 }
 
 /**
- * 환자 전용 라우트: role이 patient가 아니면 접근 거부
+ * 환자 전용 라우트: 환자 본인(하위호환) 또는 환자 모드의 보호자만 허용
  */
 function PatientRoute({ children }: { children: ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isPatientMode } = useAuth();
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <span className="text-gray-500">로딩 중...</span>
+        <span className="text-[#6B6560]">로딩 중...</span>
       </div>
     );
   }
@@ -137,15 +197,20 @@ function PatientRoute({ children }: { children: ReactNode }) {
     return <Navigate to="/login" replace />;
   }
 
-  if (user.role !== 'patient') {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-red-600">환자 계정으로만 접근할 수 있습니다.</p>
-      </div>
-    );
+  // 하위호환: 환자 직접 로그인
+  if (user.role === 'patient') {
+    return <>{children}</>;
   }
 
-  return <>{children}</>;
+  // 보호자 단일 계정 모델: 환자 모드 + 연결된 환자가 있을 때만 허용
+  if (user.role === 'caregiver') {
+    if (isPatientMode && user.patientId !== null) {
+      return <>{children}</>;
+    }
+    return <Navigate to="/caregiver" replace />;
+  }
+
+  return <Navigate to="/login" replace />;
 }
 
 // ─── 루트 리다이렉트 ──────────────────────────────────────────
@@ -154,12 +219,12 @@ function PatientRoute({ children }: { children: ReactNode }) {
  * "/" 경로: 로그인 상태와 역할에 따라 적절한 경로로 리다이렉트
  */
 function RootRedirect() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isPatientMode } = useAuth();
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <span className="text-gray-500">로딩 중...</span>
+        <span className="text-[#6B6560]">로딩 중...</span>
       </div>
     );
   }
@@ -169,7 +234,8 @@ function RootRedirect() {
   }
 
   if (user.role === 'caregiver') {
-    return <Navigate to="/caregiver" replace />;
+    // 환자 모드 잠금 중에는 "/" 접근도 환자 화면 유지
+    return <Navigate to={isPatientMode ? '/patient' : '/caregiver'} replace />;
   }
 
   if (user.role === 'patient') {
@@ -186,18 +252,20 @@ function RootRedirect() {
  * 이미 로그인된 상태로 /login 접근 시 역할에 따라 리다이렉트
  */
 function LoginRoute() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isPatientMode } = useAuth();
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <span className="text-gray-500">로딩 중...</span>
+        <span className="text-[#6B6560]">로딩 중...</span>
       </div>
     );
   }
 
   if (user !== null) {
-    if (user.role === 'caregiver') return <Navigate to="/caregiver" replace />;
+    if (user.role === 'caregiver') {
+      return <Navigate to={isPatientMode ? '/patient' : '/caregiver'} replace />;
+    }
     if (user.role === 'patient') return <Navigate to="/patient" replace />;
   }
 

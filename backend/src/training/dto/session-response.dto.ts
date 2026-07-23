@@ -1,4 +1,7 @@
-import type { TrainingSession, TrainingSessionStatus } from '../entities/training-session.entity';
+import type {
+  TrainingSession,
+  TrainingSessionStatus,
+} from '../entities/training-session.entity';
 
 /** 훈련 세션 응답 DTO */
 export class SessionResponseDto {

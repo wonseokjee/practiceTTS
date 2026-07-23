@@ -45,6 +45,14 @@ class MaskingResult(BaseModel):
 
     masked_text: str
     entity_count: int
+    # 3계층(Gemini 이름 탐지)이 실패해 앞 계층 결과만으로 만든 결과인가.
+    #
+    # 이 값이 True면 masked_text에 **실명이 남아 있을 수 있다**. 예전에는
+    # 이 사실을 알릴 방법이 없어서, Gemini가 타임아웃·429를 내는 순간
+    # 미마스킹 원문이 "마스킹 완료"로 200 반환돼 DB에 영구 저장됐다.
+    # 잔존 검증(_verify_no_residual_pii)은 entity_map에 있는 키만 보므로
+    # 애초에 감지 못 한 PII는 원리상 절대 잡지 못한다.
+    degraded: bool = False
 
     @field_validator("masked_text")
     @classmethod

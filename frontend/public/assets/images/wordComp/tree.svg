@@ -1,6 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
-  <rect width="300" height="300" fill="#E8F5E9" rx="16"/>
-  <text x="150" y="155" font-size="110" text-anchor="middle" dominant-baseline="middle" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif">🌳</text>
-  <text x="150" y="255" font-size="28" text-anchor="middle" fill="#37474F" font-family="Pretendard, Noto Sans KR, sans-serif" font-weight="600">나무</text>
-  <!-- PLACEHOLDER: 실제 일러스트로 교체 필요 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" role="img">
+  <rect width="300" height="300" fill="#FAF9F7" rx="16"/>
+  <g fill="none" stroke="#2A2724" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+
+    <circle cx="150" cy="126" r="76" fill="#4A9A6F"/>
+    <circle cx="102" cy="152" r="40" fill="#4A9A6F"/>
+    <circle cx="198" cy="152" r="40" fill="#4A9A6F"/>
+    <path d="M132 190 h36 v66 h-36 z" fill="#6E4A2E"/>
+    <path d="M150 220 l-24-20" stroke-width="7"/>
+    <path d="M150 236 l24-20" stroke-width="7"/>
+  </g>
 </svg>

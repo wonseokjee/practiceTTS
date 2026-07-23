@@ -18,7 +18,7 @@ const STORAGE_KEY = 'practiv_session';
 
 interface SessionContextValue {
   session: Session | null;
-  startSession: (patientId: string) => void;
+  startSession: (patientId: string, patientName?: string) => void;
   endSession: () => void;
 }
 
@@ -56,10 +56,12 @@ function clearPersistedSession(): void {
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(loadPersistedSession);
 
-  const startSession = useCallback((patientId: string) => {
+  const startSession = useCallback((patientId: string, patientName?: string) => {
+    const trimmedName = patientName?.trim();
     const newSession: Session = {
       sessionId: generateSessionId(),
       patientId: patientId.trim(),
+      ...(trimmedName ? { patientName: trimmedName } : {}),
     };
     persistSession(newSession);
     setSession(newSession);

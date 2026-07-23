@@ -43,8 +43,16 @@ npm-debug.log*
 # Local tool settings
 .claude/settings.local.json
 
+# Local skill tooling (gstack / cavecrew 등 — 로컬 설치 산출물)
+.claude/skills/
+.agents/skills/
+skills-lock.json
+
 # Temp files
 tmp/
 extracted_pdf.txt
 *.pdf
 extract_pdf.py
+
+# Generated TTS / runtime cache
+backend/tts-cache/

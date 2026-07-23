@@ -9,6 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MemoryEntry } from '../memory/entities/memory-entry.entity';
 import { CryptoService } from '../memory/services/crypto.service';
+import { PersonaContextService } from '../profile/services/persona-context.service';
 import { CreateSessionDto } from './dto/create-session.dto';
 import { MessageResponseDto } from './dto/message-response.dto';
 import { SendMessageDto } from './dto/send-message.dto';
@@ -19,7 +20,10 @@ import {
 import { ConversationLog } from './entities/conversation-log.entity';
 import { TrainingSession } from './entities/training-session.entity';
 import { TrainingError, TrainingErrorCode } from './errors/training.errors';
-import type { AvailableEntryDto, ITrainingService } from './interfaces/ITrainingService';
+import type {
+  AvailableEntryDto,
+  ITrainingService,
+} from './interfaces/ITrainingService';
 import { FastApiChatClientService } from './services/fast-api-chat-client.service';
 
 /** scenarioCache에 저장된 시나리오 데이터 구조 */
@@ -53,6 +57,7 @@ export class TrainingService implements ITrainingService {
     private readonly memoryEntryRepository: Repository<MemoryEntry>,
     private readonly fastApiChatClient: FastApiChatClientService,
     private readonly cryptoService: CryptoService,
+    private readonly personaContext: PersonaContextService,
   ) {}
 
   /**
@@ -83,8 +88,14 @@ export class TrainingService implements ITrainingService {
       );
     }
 
-    // scenarioCache 복호화 → openingQuestion 추출
-    const openingQuestion = this.extractOpeningQuestion(entry.scenarioCache);
+    // scenarioCache 복호화 → openingQuestion 추출 (토큰 상태)
+    const tokenizedOpening = this.extractOpeningQuestion(entry.scenarioCache);
+    // 페르소나 역치환: 관계/장소 토큰을 환자 실명으로 복원 (표시 직전)
+    const tokenMap = await this.personaContext.buildTokenMap(patientId);
+    const openingQuestion = this.personaContext.restorePersonaText(
+      tokenizedOpening,
+      tokenMap,
+    );
 
     // 훈련 세션 생성
     const session = this.sessionRepository.create({
@@ -174,8 +185,18 @@ export class TrainingService implements ITrainingService {
       throw new BadGatewayException('AI 서비스 호출에 실패했습니다.');
     }
 
-    // AI 응답을 암호화하여 저장
-    const encryptedAiMessage = this.encryptContent(chatResult.ai_message);
+    // 페르소나 역치환: /chat은 토큰화된 masked_context로 답을 만들므로 응답에
+    // [손자1] 같은 토큰이 그대로 섞여 나온다. 환자에게 보여주기 전에 실명으로
+    // 되돌린다. (createSession의 openingQuestion만 되돌리고 이후 대화 턴을
+    // 빠뜨리면, 첫 질문 뒤 모든 대화에서 환자가 토큰을 보게 된다.)
+    const tokenMap = await this.personaContext.buildTokenMap(patientId);
+    const aiMessage = this.personaContext.restorePersonaText(
+      chatResult.ai_message,
+      tokenMap,
+    );
+
+    // AI 응답을 암호화하여 저장 (환자가 실제로 본 문장을 남긴다)
+    const encryptedAiMessage = this.encryptContent(aiMessage);
     const aiLog = this.logRepository.create({
       sessionId,
       role: 'ai',
@@ -185,7 +206,7 @@ export class TrainingService implements ITrainingService {
     await this.logRepository.save(aiLog);
 
     return {
-      aiMessage: chatResult.ai_message,
+      aiMessage,
       hintTriggered: chatResult.hint_triggered,
       hintLevel: chatResult.hint_level,
     };
@@ -298,7 +319,9 @@ export class TrainingService implements ITrainingService {
     }
 
     if (session.patientId !== patientId) {
-      throw new ForbiddenException('해당 훈련 세션에 대한 접근 권한이 없습니다.');
+      throw new ForbiddenException(
+        '해당 훈련 세션에 대한 접근 권한이 없습니다.',
+      );
     }
 
     return session;

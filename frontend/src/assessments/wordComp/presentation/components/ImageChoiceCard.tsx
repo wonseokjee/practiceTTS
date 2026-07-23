@@ -32,8 +32,8 @@ export const ImageChoiceCard: React.FC<ImageChoiceCardProps> = ({
       className={`
         relative w-full aspect-square rounded-2xl overflow-hidden border-4 transition-all duration-150
         ${isSelectable
-          ? 'border-gray-200 hover:border-blue-300 active:scale-[0.97] cursor-pointer'
-          : 'border-gray-100 cursor-not-allowed opacity-60'
+          ? 'border-[#E8E4DC] hover:border-[#2D6A56] active:scale-[0.97] cursor-pointer'
+          : 'border-[#E8E4DC] cursor-not-allowed opacity-60'
         }
       `}
       onPointerDown={handlePointerDown}
@@ -43,7 +43,7 @@ export const ImageChoiceCard: React.FC<ImageChoiceCardProps> = ({
     >
       {/* 이미지 로드 실패 폴백 (z-index 0, img 아래) */}
       <div
-        className="absolute inset-0 flex flex-col items-center justify-center bg-gray-100 text-gray-500 text-sm font-medium"
+        className="absolute inset-0 flex flex-col items-center justify-center bg-[#F2F1EC] text-[#6B6560] text-sm font-medium"
         aria-hidden="true"
         style={{ zIndex: 0 }}
       >

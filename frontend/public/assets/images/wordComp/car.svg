@@ -1,6 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
-  <rect width="300" height="300" fill="#E3F2FD" rx="16"/>
-  <text x="150" y="155" font-size="110" text-anchor="middle" dominant-baseline="middle" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif">🚗</text>
-  <text x="150" y="255" font-size="28" text-anchor="middle" fill="#37474F" font-family="Pretendard, Noto Sans KR, sans-serif" font-weight="600">자동차</text>
-  <!-- PLACEHOLDER: 실제 일러스트로 교체 필요 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" role="img">
+  <rect width="300" height="300" fill="#FAF9F7" rx="16"/>
+  <g fill="none" stroke="#2A2724" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+
+    <path d="M46 200 v-30 c0-10 8-16 18-18 l26-40 c4-8 12-12 22-12 h76 c10 0 18 4 22 12 l26 40 c10 2 18 8 18 18 v30 z" fill="#D64545"/>
+    <path d="M104 112 h40 v40 h-66 z" fill="#A8D0EE"/>
+    <path d="M156 112 h34 l22 40 h-56 z" fill="#A8D0EE"/>
+    <circle cx="96" cy="204" r="26" fill="#7A7671"/>
+    <circle cx="204" cy="204" r="26" fill="#7A7671"/>
+    <circle cx="96" cy="204" r="9" fill="#FFFFFF" stroke="none"/>
+    <circle cx="204" cy="204" r="9" fill="#FFFFFF" stroke="none"/>
+  </g>
 </svg>

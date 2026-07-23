@@ -39,8 +39,8 @@ export const ChoiceImageCard: React.FC<ChoiceImageCardProps> = ({
       type="button"
       className={`
         relative w-full aspect-square rounded-2xl overflow-hidden border-4 transition-all duration-200
-        ${isSelected ? 'border-blue-500 shadow-lg scale-[1.02]' : 'border-gray-200'}
-        ${isSelectable ? 'cursor-pointer hover:border-blue-300 active:scale-[0.98]' : 'cursor-not-allowed opacity-70'}
+        ${isSelected ? 'border-[#2D6A56] shadow-lg scale-[1.02]' : 'border-[#E8E4DC]'}
+        ${isSelectable ? 'cursor-pointer hover:border-[#2D6A56] active:scale-[0.98]' : 'cursor-not-allowed opacity-70'}
       `}
       onClick={handleClick}
       disabled={!isSelectable}
@@ -65,7 +65,7 @@ export const ChoiceImageCard: React.FC<ChoiceImageCardProps> = ({
 
       {/* 이미지 로드 실패 폴백: alt 텍스트 표시 */}
       <div
-        className="absolute inset-0 flex items-center justify-center p-4 text-center text-sm text-gray-500 bg-gray-100"
+        className="absolute inset-0 flex items-center justify-center p-4 text-center text-sm text-[#6B6560] bg-[#F2F1EC]"
         aria-hidden="true"
         style={{ display: 'none' }}
       >
@@ -75,10 +75,10 @@ export const ChoiceImageCard: React.FC<ChoiceImageCardProps> = ({
       {/* 선택됨 표시 오버레이 */}
       {isSelected && (
         <div
-          className="absolute inset-0 bg-blue-500 bg-opacity-10 flex items-center justify-center"
+          className="absolute inset-0 bg-[#2D6A56] bg-opacity-10 flex items-center justify-center"
           aria-hidden="true"
         >
-          <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full bg-[#2D6A56] flex items-center justify-center">
             <svg
               className="w-5 h-5 text-white"
               fill="currentColor"
