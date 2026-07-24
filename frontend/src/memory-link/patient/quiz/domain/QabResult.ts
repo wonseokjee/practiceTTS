@@ -10,7 +10,9 @@ export type QabSubtest =
   | 'naming'
   | 'repeat'
   | 'reading'
-  | 'ddk';
+  | 'ddk'
+  /** 의식 수준. 문항 정오답이 아니라 반응시간으로 0~3점을 매긴다. */
+  | 'loc';
 
 /** 제출용 단일 결과 (세션 완료 시 일괄 전송) */
 export interface QabResultInput {
@@ -22,7 +24,12 @@ export interface QabResultInput {
   assisted?: boolean;
   /** 수치 지표(ddk 감지 횟수 등). 없으면 생략 */
   metric?: number;
-  /** 발음 정확도 점수(0~100). 발화 항목(따라말하기/읽기)만. 없으면 생략 */
+  /**
+   * 점수. 두 가지 용도로 쓴다(subtest가 구분한다).
+   *  - repeat/reading: 발음 정확도 0~100
+   *  - loc: 그 시도의 의식 수준 점수 0~3
+   * 집계가 GROUP BY subtest라 서로 섞이지 않는다.
+   */
   score?: number;
 }
 

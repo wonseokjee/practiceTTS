@@ -1,0 +1,118 @@
+import { describe, expect, it, vi } from 'vitest';
+import {
+  ServerAssessmentResultSubmitter,
+  createAssessmentSessionToken,
+  toQabResults,
+} from './AssessmentResultSubmitter.js';
+import { quizApi } from '../../../memory-link/patient/quiz/infrastructure/QuizApi.js';
+
+/**
+ * 검사 결과 서버 저장 회귀 테스트.
+ *
+ * 배경: 독립 검사(LOC·단어이해·문장이해)는 결과를 localStorage에만 남겼다.
+ * 브라우저 캐시를 지우면 사라지고, 기기를 바꾸면 이력이 없어지고, 보호자가
+ * 회복 추이를 볼 수 없었다. 임상 기록으로 쓸 수 없는 상태였다.
+ */
+describe('ServerAssessmentResultSubmitter', () => {
+  it('서버에 결과를 보낸다', async () => {
+    const spy = vi
+      .spyOn(quizApi, 'submitQabResults')
+      .mockResolvedValue({ saved: 3 });
+
+    await new ServerAssessmentResultSubmitter().submit({
+      sessionToken: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+      results: [
+        { subtest: 'loc', itemRef: 'trial-1', isCorrect: true, score: 3 },
+      ],
+    });
+
+    expect(spy).toHaveBeenCalledWith(
+      'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+      expect.arrayContaining([expect.objectContaining({ subtest: 'loc' })]),
+    );
+    spy.mockRestore();
+  });
+
+  it('저장에 실패해도 예외를 올리지 않는다', async () => {
+    // 검사는 이미 끝났다. 여기서 던지면 환자가 검사를 마친 뒤 오류 화면을
+    // 본다 — 고령 환자에게 그게 훨씬 나쁘고, 로컬 저장은 이미 되어 있다.
+    const spy = vi
+      .spyOn(quizApi, 'submitQabResults')
+      .mockRejectedValue(new Error('network'));
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await expect(
+      new ServerAssessmentResultSubmitter().submit({
+        sessionToken: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+        results: [
+          { subtest: 'loc', itemRef: 'trial-1', isCorrect: true, score: 3 },
+        ],
+      }),
+    ).resolves.toBeUndefined();
+
+    // 조용히 삼키지는 않는다 — 운영자가 알 수 있어야 한다.
+    expect(errorLog).toHaveBeenCalled();
+    spy.mockRestore();
+    errorLog.mockRestore();
+  });
+
+  it('결과가 없으면 요청하지 않는다', async () => {
+    const spy = vi.spyOn(quizApi, 'submitQabResults');
+
+    await new ServerAssessmentResultSubmitter().submit({
+      sessionToken: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+      results: [],
+    });
+
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
+});
+
+describe('createAssessmentSessionToken', () => {
+  it('백엔드가 요구하는 UUID v4 형식을 만든다', () => {
+    // 형식이 어긋나면 400으로 거부되고 검사 결과가 통째로 유실된다.
+    const token = createAssessmentSessionToken();
+
+    expect(token).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
+  });
+
+  it('crypto.randomUUID가 없어도 유효한 토큰을 만든다', () => {
+    // 보안 컨텍스트가 아니면 randomUUID가 없다. 그때 검사 결과를 통째로
+    // 잃는 것보다 폴백이 낫다.
+    const original = globalThis.crypto;
+    vi.stubGlobal('crypto', {});
+
+    const token = createAssessmentSessionToken();
+
+    expect(token).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
+    vi.stubGlobal('crypto', original);
+  });
+});
+
+describe('toQabResults', () => {
+  it('선택 필드는 값이 있을 때만 넣는다', () => {
+    // undefined를 그대로 실어 보내면 백엔드 검증이 거부할 수 있다.
+    const results = toQabResults('loc', [
+      { itemRef: 'trial-1', isCorrect: true, score: 3 },
+      { itemRef: 'trial-2', isCorrect: false },
+    ]);
+
+    expect(results[0]).toEqual({
+      subtest: 'loc',
+      itemRef: 'trial-1',
+      isCorrect: true,
+      score: 3,
+    });
+    expect(results[1]).toEqual({
+      subtest: 'loc',
+      itemRef: 'trial-2',
+      isCorrect: false,
+    });
+    expect('score' in results[1]).toBe(false);
+  });
+});

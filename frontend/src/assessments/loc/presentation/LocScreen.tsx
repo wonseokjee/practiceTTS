@@ -20,6 +20,7 @@ import { useMemo, useCallback } from 'react';
 import { ConductLocTrialUseCase } from '../application/ConductLocTrialUseCase.js';
 import { FinishLocAssessmentUseCase } from '../application/FinishLocAssessmentUseCase.js';
 import { LocalStorageLocResultRepository } from '../infrastructure/LocalStorageLocResultRepository.js';
+import { ServerAssessmentResultSubmitter } from '../../shared/infrastructure/AssessmentResultSubmitter.js';
 import { StaticFileTtsService } from '../../../shared/infrastructure/StaticFileTtsService.js';
 import { HtmlAudioPlayer } from '../../../shared/infrastructure/HtmlAudioPlayer.js';
 import { WebSpeechTtsService } from '../../../shared/infrastructure/WebSpeechTtsService.js';
@@ -112,9 +113,16 @@ export function LocScreen({ onComplete, onProceed }: LocScreenProps) {
     () => new ConductLocTrialUseCase(ttsService),
     [ttsService],
   );
+  const resultSubmitter = useMemo(
+    () => new ServerAssessmentResultSubmitter(),
+    [],
+  );
+
   const finishAssessmentUseCase = useMemo(
-    () => new FinishLocAssessmentUseCase(resultRepository),
-    [resultRepository],
+    // 로컬 저장 + 서버 저장. 로컬만 두면 캐시를 지우는 순간 임상 기록이
+    // 사라지고, 보호자가 회복 추이를 볼 수 없다.
+    () => new FinishLocAssessmentUseCase(resultRepository, resultSubmitter),
+    [resultRepository, resultSubmitter],
   );
 
   const handleComplete = useCallback(

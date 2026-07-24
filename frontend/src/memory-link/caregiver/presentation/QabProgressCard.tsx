@@ -21,8 +21,26 @@ const SUBTEST_LABELS: Record<string, string> = {
   repeat: '따라 말하기',
   reading: '소리 내어 읽기',
   ddk: '말운동(퍼터커)',
+  loc: '의식 수준',
 };
-const SUBTEST_ORDER = ['word', 'sentence', 'naming', 'repeat', 'reading', 'ddk'];
+const SUBTEST_ORDER = [
+  'loc',
+  'word',
+  'sentence',
+  'naming',
+  'repeat',
+  'reading',
+  'ddk',
+];
+
+/**
+ * loc는 다른 검사와 지표의 의미가 다르다.
+ *  - accuracy: 정답률이 아니라 **반응률**(무반응이 아닌 시도 비율)
+ *  - avgScore: 발음 점수가 아니라 **의식 수준 점수**(0~3)
+ * 같은 말로 표기하면 보호자가 오해한다 — 발음 검사가 아닌데 "발음 0점"이
+ * 뜨는 식이다.
+ */
+const IS_REACTION_BASED = (subtest: string): boolean => subtest === 'loc';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
@@ -81,17 +99,20 @@ export function QabProgressCard({ fetchSummary }: QabProgressCardProps) {
                   ) : null}
                   {it.total > 0 ? (
                     <>
-                      정답률{' '}
+                      {IS_REACTION_BASED(it.subtest) ? '반응률' : '정답률'}{' '}
                       <span className="font-bold text-[#2D6A56]">
                         {it.accuracy}%
                       </span>{' '}
                       ({it.correct}/{it.total}){assistedSuffix}
-                      {/* 발화 항목(따라말하기/읽기) 발음 정확도 평균 — 보호자용 숫자 */}
+                      {/* 발화 항목은 발음 정확도(0~100), loc는 의식 수준 점수(0~3) */}
                       {it.avgScore !== null && (
                         <>
-                          {' · 발음 '}
+                          {IS_REACTION_BASED(it.subtest)
+                            ? ' · 평균 '
+                            : ' · 발음 '}
                           <span className="font-bold text-[#2D6A56]">
                             {it.avgScore}점
+                            {IS_REACTION_BASED(it.subtest) ? ' / 3' : ''}
                           </span>
                         </>
                       )}
@@ -110,7 +131,7 @@ export function QabProgressCard({ fetchSummary }: QabProgressCardProps) {
                   aria-valuenow={it.accuracy}
                   aria-valuemin={0}
                   aria-valuemax={100}
-                  aria-label={`${label} 정답률 ${it.accuracy}%`}
+                  aria-label={`${label} ${IS_REACTION_BASED(it.subtest) ? "반응률" : "정답률"} ${it.accuracy}%`}
                 >
                   <div
                     className="h-full rounded-full bg-[#2D6A56] transition-[width] duration-[250ms] ease-in-out"
