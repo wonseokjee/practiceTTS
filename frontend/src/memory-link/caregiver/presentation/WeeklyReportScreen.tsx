@@ -1,15 +1,16 @@
 /**
- * 진료용 주간 리포트.
+ * 검사 기록 상세 — 검사별 주차 추이를 표로 본다.
  *
- * 왜 만드는가: 치매 진료는 "지난 몇 달 어떠셨어요?"로 시작하는데 보호자는
- * 대개 기억으로 답한다. 객관적 기록을 내밀 수 있으면 그 자체로 가치가 있다.
+ * 왜 만드는가: 대시보드 카드는 요약과 스파크라인만 보여준다. 주차별 실제
+ * 숫자(정답/문항)를 보려면 들어올 곳이 필요하다.
  *
- * 왜 인쇄인가: 병원에 종이로 들고 가거나 화면을 그대로 보여주는 게 가장
- * 현실적이다. PDF 생성은 라이브러리가 필요하고 무거운 데 비해 얻는 게 없다.
- * 브라우저 인쇄(@media print)로 충분하다.
+ * **인쇄 기능은 의도적으로 없다.** 이 기록은 가정 자가 측정이라 진료 문서로
+ * 내밀 만한 공신력이 없다. 인쇄 버튼을 두면 종이에 찍힌 표가 검사 결과지처럼
+ * 보이고, 그건 이 데이터가 실제로 가진 신뢰도보다 과하게 읽힌다.
+ * 화면으로 참고하는 선에서 멈춘다.
  *
- * 한계 고지를 반드시 함께 싣는다. 의료진이 "정답률 50%"만 보고 문항 수가
- * 10개인 줄 모르면 오독한다. 이건 자가 측정이고 진단이 아니다.
+ * 그래도 한계 고지는 싣는다. 화면으로 보더라도 "정답률 50%"만 보고 문항 수가
+ * 10개인 줄 모르면 똑같이 오독하기 때문이다.
  */
 
 import { useEffect, useState } from 'react';
@@ -18,7 +19,7 @@ import { quizApi } from '../../patient/quiz/infrastructure/QuizApi.js';
 import type { QabTrendSeries } from '../../patient/quiz/domain/QabResult.js';
 import { withHonorific } from '../../shared/honorific.js';
 
-/** 진료 주기를 고려해 약 3개월. */
+/** 약 3개월. 주간 변동이 커서 이 정도는 봐야 흐름이 보인다. */
 const REPORT_WEEKS = 12;
 
 const SUBTEST_LABELS: Record<string, string> = {
@@ -73,7 +74,7 @@ export function WeeklyReportScreen({ onBack }: WeeklyReportScreenProps) {
     };
   }, []);
 
-  const printedAt = new Date().toLocaleDateString('ko-KR', {
+  const viewedAt = new Date().toLocaleDateString('ko-KR', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -101,8 +102,7 @@ export function WeeklyReportScreen({ onBack }: WeeklyReportScreenProps) {
 
   return (
     <div className="mx-auto max-w-3xl">
-      {/* 화면 전용 조작 영역 — 인쇄물에는 나오면 안 된다 */}
-      <div className="no-print mb-4 flex items-center justify-between">
+      <div className="mb-4">
         <button
           type="button"
           onClick={onBack}
@@ -110,16 +110,9 @@ export function WeeklyReportScreen({ onBack }: WeeklyReportScreenProps) {
         >
           ← 목록으로
         </button>
-        <button
-          type="button"
-          onClick={() => window.print()}
-          className="min-h-[44px] rounded-full bg-[#2D6A56] px-5 py-2 text-sm font-medium text-white hover:bg-[#1F5240]"
-        >
-          인쇄하기
-        </button>
       </div>
 
-      <article className="report-sheet rounded-2xl border border-[#E8E4DC] bg-white p-6">
+      <article className="rounded-2xl border border-[#E8E4DC] bg-white p-6">
         <header className="mb-5 border-b border-[#E8E4DC] pb-4">
           <h1 className="text-xl font-bold text-[#1A1916]">
             언어·인지 검사 기록
@@ -136,8 +129,8 @@ export function WeeklyReportScreen({ onBack }: WeeklyReportScreenProps) {
               <dd className="font-medium text-[#1A1916]">{periodLabel}</dd>
             </div>
             <div className="flex gap-2">
-              <dt>출력일</dt>
-              <dd className="font-medium text-[#1A1916]">{printedAt}</dd>
+              <dt>조회일</dt>
+              <dd className="font-medium text-[#1A1916]">{viewedAt}</dd>
             </div>
           </dl>
         </header>
@@ -229,7 +222,7 @@ export function WeeklyReportScreen({ onBack }: WeeklyReportScreenProps) {
             </div>
 
             {/* 한계 고지 — 이게 없으면 의료진이 오독한다 */}
-            <section className="report-note mt-6 rounded-xl bg-[#F7F6F3] p-4">
+            <section className="mt-6 rounded-xl bg-[#F7F6F3] p-4">
               <h2 className="mb-1.5 text-sm font-semibold text-[#1A1916]">
                 이 기록을 읽으실 때
               </h2>

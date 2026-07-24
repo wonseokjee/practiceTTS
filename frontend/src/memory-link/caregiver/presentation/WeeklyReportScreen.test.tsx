@@ -9,11 +9,14 @@ vi.mock('../../shared/AuthContext.js', () => ({
 }));
 
 /**
- * 진료용 리포트 회귀 테스트.
+ * 검사 기록 상세 회귀 테스트.
  *
- * 이 화면은 병원에 들고 가는 물건이다. 두 가지가 반드시 지켜져야 한다:
- *  1. 문항 수가 함께 보일 것 — "정답률 50%"만 보면 의료진이 오독한다(n=10일 수 있다)
- *  2. 한계 고지가 실릴 것 — 자가 측정이고 진단이 아니다
+ * 두 가지가 반드시 지켜져야 한다:
+ *  1. 문항 수가 함께 보일 것 — "정답률 50%"만 보면 n=10인지 알 수 없다
+ *  2. 한계 고지가 실릴 것 — 가정 자가 측정이고 진단이 아니다
+ *
+ * 인쇄 기능은 의도적으로 없다. 종이에 찍힌 표는 검사 결과지처럼 보여서,
+ * 이 데이터가 실제로 가진 신뢰도보다 과하게 읽힌다.
  */
 describe('WeeklyReportScreen', () => {
   function makeTrend(): QabTrendSeries[] {
@@ -70,15 +73,15 @@ describe('WeeklyReportScreen', () => {
     expect(screen.getByText('정답률')).toBeTruthy();
   });
 
-  it('조작 버튼에 인쇄 제외 표시가 붙어 있다', async () => {
-    // 종이에 "인쇄하기" 버튼이 찍히면 안 된다.
+  it('인쇄 기능을 노출하지 않는다', async () => {
+    // 의도적인 부재다. 가정 자가 측정 기록이라 진료 문서로 내밀 만한
+    // 공신력이 없고, 종이에 찍히면 검사 결과지처럼 과하게 읽힌다.
     vi.spyOn(quizApi, 'getQabTrend').mockResolvedValue(makeTrend());
 
-    const { container } = render(<WeeklyReportScreen onBack={vi.fn()} />);
+    render(<WeeklyReportScreen onBack={vi.fn()} />);
 
-    const controls = container.querySelector('.no-print');
-    expect(controls).toBeTruthy();
-    expect(controls?.textContent).toContain('인쇄하기');
+    await waitFor(() => expect(screen.getByText('70%')).toBeTruthy());
+    expect(screen.queryByText(/인쇄/)).toBeNull();
   });
 
   it('기록이 없으면 무엇을 하면 되는지 알려준다', async () => {

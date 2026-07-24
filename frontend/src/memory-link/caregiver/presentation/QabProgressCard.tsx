@@ -15,7 +15,7 @@ import type {
 interface QabProgressCardProps {
   /** 요약 조회 함수 (테스트 주입용) */
   fetchSummary?: () => Promise<QabSubtestSummary[]>;
-  /** 진료용 리포트 열기. 없으면 링크를 감춘다(테스트·독립 사용 대비). */
+  /** 주차별 기록 상세 열기. 없으면 링크를 감춘다(테스트·독립 사용 대비). */
   onOpenReport?: () => void;
 }
 
@@ -109,7 +109,7 @@ export function QabProgressCard({
           onClick={onOpenReport}
           className="mb-4 min-h-[44px] text-sm font-medium text-[#2D6A56] hover:underline"
         >
-          진료용 기록 보기 →
+          주차별 기록 보기 →
         </button>
       )}
 
