@@ -28,6 +28,7 @@ import { QuizError, QuizErrorCode } from './errors/quiz.errors';
 import {
   BestScoreResult,
   QabSummaryResult,
+  QabTrendResult,
   QuizSetDetail,
   RequestGenerationResult,
   SaveQabResultsResult,
@@ -162,6 +163,22 @@ export class QuizController {
     const effectivePatientId = resolveEffectivePatientId(req.user);
     try {
       return await this.quizService.saveQabResults(effectivePatientId, dto);
+    } catch (error) {
+      throw this.mapError(error);
+    }
+  }
+
+  /**
+   * GET /quiz/qab-trend
+   * 검사별 주차 추이. 보호자가 회복 방향(나아지는지)을 본다.
+   */
+  @Get('quiz/qab-trend')
+  async getQabTrend(
+    @Req() req: AuthenticatedRequest,
+  ): Promise<QabTrendResult> {
+    const effectivePatientId = resolveEffectivePatientId(req.user);
+    try {
+      return await this.quizService.getQabTrend(effectivePatientId);
     } catch (error) {
       throw this.mapError(error);
     }

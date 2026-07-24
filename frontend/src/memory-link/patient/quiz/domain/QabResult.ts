@@ -49,3 +49,23 @@ export interface QabSubtestSummary {
   avgScore: number | null;
   lastAt: string | null;
 }
+
+/** 한 검사의 특정 주차 성적 (백엔드 QabWeeklyPoint 미러) */
+export interface QabWeeklyPoint {
+  /** 그 주 월요일 (YYYY-MM-DD) */
+  weekStart: string;
+  total: number;
+  correct: number;
+  /** 0~100. loc는 정답률이 아니라 반응률이다. */
+  accuracy: number;
+  avgScore: number | null;
+}
+
+/** 검사별 주차 추이 */
+export interface QabTrendSeries {
+  subtest: string;
+  /** 오래된 주부터 */
+  points: QabWeeklyPoint[];
+  /** 직전 검사 주 대비 정답률 변화(%p). 주가 2개 미만이면 null. */
+  deltaFromPrevious: number | null;
+}

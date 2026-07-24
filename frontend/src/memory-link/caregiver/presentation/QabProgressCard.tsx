@@ -5,8 +5,12 @@
 // 데이터가 없으면(아직 검사 전) 카드를 숨긴다 — 대시보드를 비우지 않게.
 
 import { useEffect, useState } from 'react';
+import { QabSparkline } from './components/QabSparkline.js';
 import { quizApi } from '../../patient/quiz/infrastructure/QuizApi.js';
-import type { QabSubtestSummary } from '../../patient/quiz/domain/QabResult.js';
+import type {
+  QabSubtestSummary,
+  QabTrendSeries,
+} from '../../patient/quiz/domain/QabResult.js';
 
 interface QabProgressCardProps {
   /** 요약 조회 함수 (테스트 주입용) */
@@ -47,6 +51,8 @@ type LoadState = 'loading' | 'ready' | 'error';
 export function QabProgressCard({ fetchSummary }: QabProgressCardProps) {
   const [state, setState] = useState<LoadState>('loading');
   const [items, setItems] = useState<QabSubtestSummary[]>([]);
+  // 주차 추이. 실패해도 카드 전체를 죽이지 않는다 — 요약만으로도 쓸모가 있다.
+  const [trend, setTrend] = useState<Map<string, QabTrendSeries>>(new Map());
 
   useEffect(() => {
     let alive = true;
@@ -60,6 +66,16 @@ export function QabProgressCard({ fetchSummary }: QabProgressCardProps) {
       .catch(() => {
         if (alive) setState('error');
       });
+    void quizApi
+      .getQabTrend()
+      .then((series) => {
+        if (!alive) return;
+        setTrend(new Map(series.map((x) => [x.subtest, x])));
+      })
+      .catch(() => {
+        // 추이는 부가 정보다. 없으면 요약만 보여준다.
+      });
+
     return () => {
       alive = false;
     };
@@ -90,8 +106,9 @@ export function QabProgressCard({ fetchSummary }: QabProgressCardProps) {
           return (
             <li key={it.subtest} className="flex flex-col gap-1">
               <div className="flex items-baseline justify-between">
-                <span className="text-sm font-medium text-[#1F2A26]">
+                <span className="flex items-center gap-2 text-sm font-medium text-[#1F2A26]">
                   {label}
+                  <WeeklyTrend series={trend.get(it.subtest)} label={label} />
                 </span>
                 <span className="text-sm tabular-nums text-[#5C6661]">
                   {it.subtest === 'ddk' && it.maxMetric !== null ? (
@@ -144,5 +161,49 @@ export function QabProgressCard({ fetchSummary }: QabProgressCardProps) {
         })}
       </ul>
     </section>
+  );
+}
+
+// ─── 주차 추이 ──────────────────────────────────────────────────
+
+/**
+ * 검사 하나의 주차 추이 — 스파크라인 + 직전 검사 주 대비 변화.
+ *
+ * 델타를 상태색(빨강/초록)으로 칠하지 않는다. 의도적인 선택이다.
+ *
+ * 이 수치는 주당 문항 10~20개에서 나온 값이라 주간 변동이 크다. 2문항 차이가
+ * "-20%p"로 보인다. 치매는 진행성이라 등락도 정상이다. 그걸 빨간색으로
+ * 칠하면 (a) 노이즈에 보호자가 놀라고 (b) 진짜 하락과 구분이 안 된다.
+ *
+ * 대신 방향과 숫자를 담담히 보여주고, 옆의 스파크라인이 "한 번 튄 건지
+ * 추세인지"를 판단하게 한다. 판단은 보호자와 임상의의 몫이다.
+ */
+function WeeklyTrend({
+  series,
+  label,
+}: {
+  series: QabTrendSeries | undefined;
+  label: string;
+}) {
+  if (series === undefined || series.points.length < 2) {
+    return null;
+  }
+
+  const values = series.points.map((p) => p.accuracy);
+  const delta = series.deltaFromPrevious;
+
+  return (
+    <span className="flex items-center gap-1.5">
+      <QabSparkline
+        values={values}
+        label={`${label} 최근 ${values.length}주 추이: ${values.join(', ')}%`}
+      />
+      {delta !== null && delta !== 0 && (
+        <span className="text-xs tabular-nums text-[#5C6661]">
+          {delta > 0 ? '▲' : '▼'}
+          {Math.abs(delta)}%p
+        </span>
+      )}
+    </span>
   );
 }
