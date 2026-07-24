@@ -8,11 +8,12 @@ import { EntryDetailScreen } from './EntryDetailScreen.js';
 import { EntryListScreen } from './EntryListScreen.js';
 import { ProfileScreen } from './ProfileScreen.js';
 import { QabProgressCard } from './QabProgressCard.js';
+import { WeeklyReportScreen } from './WeeklyReportScreen.js';
 import { withHonorific } from '../../shared/honorific.js';
 import { isConversationModeEnabled } from '../../shared/featureFlags.js';
 
 /** 대시보드 화면 상태 */
-type DashboardView = 'list' | 'capture' | 'detail' | 'profile';
+type DashboardView = 'list' | 'capture' | 'detail' | 'profile' | 'report';
 
 /**
  * 보호자 대시보드
@@ -192,7 +193,7 @@ export function CaregiverDashboard() {
             <DailyHealingBanner />
 
             {/* 발화 검사 회복 추세 (데이터 있을 때만 표시) */}
-            <QabProgressCard />
+            <QabProgressCard onOpenReport={() => setView('report')} />
 
             {/* 기억 목록 그리드 */}
             <EntryListScreen
@@ -214,6 +215,9 @@ export function CaregiverDashboard() {
             />
           </div>
         )}
+
+        {/* 진료용 리포트 */}
+        {view === 'report' && <WeeklyReportScreen onBack={handleBackToList} />}
 
         {/* 환자 정보(프로필) 화면 */}
         {view === 'profile' && (

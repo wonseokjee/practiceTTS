@@ -67,3 +67,47 @@ body {
     cursor: pointer;
   }
 }
+
+/* ── 인쇄 ─────────────────────────────────────────────────────────
+   진료용 리포트는 병원에 종이로 들고 가거나 화면을 보여주는 용도다.
+   조작 버튼("목록으로", "인쇄하기")이 종이에 찍히면 안 된다.
+
+   Tailwind v4의 print: 변형만 믿지 않는다 — 실측해보니 print:hidden 클래스는
+   붙었는데 @media print 규칙이 생성되지 않아 인쇄물에 버튼이 그대로 나왔다.
+   여기서 명시적으로 못박는다.
+
+   body가 overflow:hidden이고 #root가 스크롤 컨테이너라, 그대로 인쇄하면
+   첫 화면 분량만 나온다. 인쇄에서는 높이 제한을 풀어 전체가 나오게 한다. */
+@media print {
+  /* 이스케이프가 필요한 print:hidden 대신 평범한 클래스명을 쓴다.
+     Tailwind 변형에 의존하지 않아 빌드 설정과 무관하게 동작한다. */
+  .no-print {
+    display: none !important;
+  }
+
+  html,
+  body,
+  #root {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  /* 종이에서는 카드 테두리·배경이 잉크만 먹는다. */
+  .report-sheet {
+    border: 0 !important;
+    padding: 0 !important;
+  }
+  .report-note {
+    background: transparent !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* 표가 페이지 경계에서 잘리면 읽기 어렵다. */
+  section,
+  table,
+  tr {
+    break-inside: avoid;
+  }
+}

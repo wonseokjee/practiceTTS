@@ -175,10 +175,17 @@ export class QuizController {
   @Get('quiz/qab-trend')
   async getQabTrend(
     @Req() req: AuthenticatedRequest,
+    @Query('weeks') weeks?: string,
   ): Promise<QabTrendResult> {
     const effectivePatientId = resolveEffectivePatientId(req.user);
+    // 진료 리포트는 12주(약 3개월)를 보고 싶어 한다. 대시보드 카드는 8주면
+    // 충분하다. 범위를 벗어난 값은 기본값으로 떨어뜨린다 — 사용자 입력으로
+    // 무제한 기간을 스캔하게 두지 않는다.
+    const parsed = Number(weeks);
+    const safeWeeks =
+      Number.isInteger(parsed) && parsed >= 1 && parsed <= 52 ? parsed : 8;
     try {
-      return await this.quizService.getQabTrend(effectivePatientId);
+      return await this.quizService.getQabTrend(effectivePatientId, safeWeeks);
     } catch (error) {
       throw this.mapError(error);
     }

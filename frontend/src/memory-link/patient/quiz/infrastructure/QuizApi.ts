@@ -63,7 +63,7 @@ export interface IQuizApi {
   /** GET /quiz/qab-summary — QAB 검사별 회복 추세 (보호자용) */
   getQabSummary(): Promise<QabSubtestSummary[]>;
   /** GET /quiz/qab-trend — 검사별 주차 추이 (보호자용) */
-  getQabTrend(): Promise<QabTrendSeries[]>;
+  getQabTrend(weeks?: number): Promise<QabTrendSeries[]>;
 }
 
 // ─── 런타임 타입가드 ──────────────────────────────────────────────
@@ -312,8 +312,10 @@ export const quizApi: IQuizApi = {
     return items;
   },
 
-  async getQabTrend(): Promise<QabTrendSeries[]> {
-    const res = await memoryLinkApi.get<unknown>('/quiz/qab-trend');
+  async getQabTrend(weeks?: number): Promise<QabTrendSeries[]> {
+    const res = await memoryLinkApi.get<unknown>('/quiz/qab-trend', {
+      params: weeks === undefined ? undefined : { weeks },
+    });
     const obj = asRecord(res.data);
     const series = obj?.series;
     if (!Array.isArray(series)) {

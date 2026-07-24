@@ -15,6 +15,8 @@ import type {
 interface QabProgressCardProps {
   /** 요약 조회 함수 (테스트 주입용) */
   fetchSummary?: () => Promise<QabSubtestSummary[]>;
+  /** 진료용 리포트 열기. 없으면 링크를 감춘다(테스트·독립 사용 대비). */
+  onOpenReport?: () => void;
 }
 
 /** 검사 종류 → 한글 라벨 + 표시 순서 */
@@ -48,7 +50,10 @@ const IS_REACTION_BASED = (subtest: string): boolean => subtest === 'loc';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
-export function QabProgressCard({ fetchSummary }: QabProgressCardProps) {
+export function QabProgressCard({
+  fetchSummary,
+  onOpenReport,
+}: QabProgressCardProps) {
   const [state, setState] = useState<LoadState>('loading');
   const [items, setItems] = useState<QabSubtestSummary[]>([]);
   // 주차 추이. 실패해도 카드 전체를 죽이지 않는다 — 요약만으로도 쓸모가 있다.
@@ -97,6 +102,16 @@ export function QabProgressCard({ fetchSummary }: QabProgressCardProps) {
       <p className="mb-4 text-sm text-[#5C6661]">
         환자분이 푼 검사별 정답률이에요. 꾸준히 오르는지 지켜봐 주세요.
       </p>
+
+      {onOpenReport !== undefined && (
+        <button
+          type="button"
+          onClick={onOpenReport}
+          className="mb-4 min-h-[44px] text-sm font-medium text-[#2D6A56] hover:underline"
+        >
+          진료용 기록 보기 →
+        </button>
+      )}
 
       <ul className="flex flex-col gap-3">
         {sorted.map((it) => {
