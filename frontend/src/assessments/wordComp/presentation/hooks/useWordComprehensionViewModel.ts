@@ -32,6 +32,11 @@ import { SubmitItemAnswerUseCase } from '../../application/useCases/SubmitItemAn
 import { CalculateSessionSummaryUseCase } from '../../application/useCases/CalculateSessionSummaryUseCase.js';
 import { WordComprehensionAppError, WcAppErrorCode } from '../../application/errors/WordComprehensionAppError.js';
 import wordCompItemsData from '../../infrastructure/data/wordComprehensionItems.json';
+import {
+  ServerAssessmentResultSubmitter,
+  createAssessmentSessionToken,
+  toQabResults,
+} from '../../../shared/infrastructure/AssessmentResultSubmitter.js';
 
 const TRANSITION_DURATION_MS = 500;
 
@@ -151,6 +156,11 @@ export function useWordComprehensionViewModel(
 
   // 재청취는 onReplayRequested에서 audioPlayer를 직접 사용한다
   // (ReplayAudioUseCase 미사용 — 도메인 use case 경유 없이 load/play 직접 제어)
+  const resultSubmitter = useMemo(
+    () => new ServerAssessmentResultSubmitter(),
+    [],
+  );
+
   const summaryUseCase = useMemo(
     () => new CalculateSessionSummaryUseCase(sessionRepository),
     [sessionRepository],
@@ -261,6 +271,26 @@ export function useWordComprehensionViewModel(
       try {
         const result = await summaryUseCase.execute(sessionIdRef.current!);
         setSummary(result);
+
+        // 서버 저장 — 보호자의 회복 추이에 반영된다. 로컬에만 두면 캐시를
+        // 지우는 순간 임상 기록이 사라지고 보호자가 볼 수 없다.
+        // 실패해도 던지지 않는다(검사는 이미 끝났다).
+        const session = await sessionRepository.loadSession(
+          sessionIdRef.current!,
+        );
+        if (session !== null) {
+          await resultSubmitter.submit({
+            sessionToken: createAssessmentSessionToken(),
+            results: toQabResults(
+              'word',
+              session.itemResults.map((item) => ({
+                itemRef: item.itemId,
+                isCorrect: item.score.isCorrect,
+              })),
+            ),
+          });
+        }
+
         onCompleteRef.current?.(result);
       } catch (err) {
         console.error('[WordComp] 요약 계산 실패:', err);
