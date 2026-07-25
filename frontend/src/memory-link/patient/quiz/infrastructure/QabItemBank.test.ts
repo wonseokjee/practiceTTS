@@ -54,6 +54,32 @@ describe('QabItemBank', () => {
     }
   });
 
+  it('pickNamingItems: 사진이 준비된 단어는 실물 사진을 쓴다', () => {
+    // 고령·치매 환자는 선화보다 실물 사진에 더 잘 반응한다(산출 과제).
+    // namingPhotos.json에 등록된 단어는 /naming/<slug>.png를 써야 한다.
+    // 전체를 뽑아 사과가 반드시 포함되게 한다(무작위 추출이라 일부만 뽑으면 빠질 수 있다).
+    const items = pickNamingItems(100);
+    const apple = items.find((i) => i.targetWord === '사과');
+
+    // 사과 사진이 등록돼 있으므로 png 경로여야 한다.
+    expect(apple?.imageUrl).toBe('/assets/images/naming/apple.png');
+  });
+
+  it('pickNamingItems: 사진이 없는 단어는 SVG로 폴백한다', () => {
+    // 사진을 20개 다 갖추기 전에도 검사가 깨지면 안 된다.
+    // 사진 없는 단어는 단어이해 SVG를 그대로 쓴다.
+    const items = pickNamingItems(100);
+    const withoutPhoto = items.filter(
+      (i) => i.imageUrl.includes('/wordComp/'),
+    );
+
+    // 아직 대부분은 SVG 폴백이다.
+    expect(withoutPhoto.length).toBeGreaterThan(0);
+    for (const item of withoutPhoto) {
+      expect(item.imageUrl).toMatch(/\.svg$/);
+    }
+  });
+
   it('pickNamingItems: 0개 요청 시 빈 배열', () => {
     expect(pickNamingItems(0)).toEqual([]);
   });

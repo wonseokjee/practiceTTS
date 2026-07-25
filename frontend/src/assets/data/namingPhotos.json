@@ -1,0 +1,4 @@
+{
+  "comment": "그림 이름대기용 실물 사진이 준비된 단어 slug 목록. 여기 있으면 /assets/images/naming/<slug>.png를, 없으면 단어이해 SVG를 쓴다. save-server가 저장 시 자동으로 추가한다.",
+  "slugs": ["apple"]
+}

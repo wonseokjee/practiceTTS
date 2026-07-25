@@ -9,6 +9,7 @@
 // 단어이해 풀: 기존 wordComp 이미지(74종)로 자동 생성한 확장 뱅크.
 // (표준 wordComp 검사 JSON은 그대로 두고, 혼합 퀴즈용 풀만 별도로 확장한다.)
 import wordPoolData from '../../../../assets/data/qabWordPool.json';
+import namingPhotos from '../../../../assets/data/namingPhotos.json';
 import sentCompData from '../../../../assets/data/sentCompItems.json';
 // 거울 문항(정답/오답 반전)으로 문장이해 풀을 새 이미지 없이 2배로 확장한다.
 import sentMirrorData from '../../../../assets/data/qabSentMirror.json';
@@ -95,16 +96,36 @@ function toSentItem(it: RawSentItem): QabImageItem {
   };
 }
 
+/** 실물 사진이 준비된 단어 slug 집합. */
+const NAMING_PHOTO_SLUGS = new Set<string>(namingPhotos.slugs);
+
+/** 이미지 URL에서 파일명 slug를 뽑는다. "/a/b/apple.svg" → "apple". */
+function slugFromUrl(url: string): string {
+  return url.split('/').pop()!.replace(/\.[^.]+$/, '');
+}
+
 /**
- * 그림 이름대기(검사5) 문항으로 변환 — 단어이해 정답 그림을 대상 그림으로 재사용한다.
+ * 그림 이름대기(검사5) 문항으로 변환.
+ *
+ * 고령·치매 환자는 도식적 선화보다 실물 사진에 더 잘 반응한다(특히 산출
+ * 과제). 그래서 사진이 준비된 단어는 /assets/images/naming/<slug>.png를,
+ * 아직 없는 단어는 단어이해 SVG를 그대로 쓴다.
+ *
+ * 사진은 이름대기에만 쓴다. 단어이해(4지선다)에서 정답만 사진이면 단어를
+ * 몰라도 사진만 골라 다 맞으므로 검사가 무효가 된다.
+ *
  * 정답 선택지가 없으면(데이터 이상) null.
  */
 function toNamingItem(it: RawWordItem): QabNamingItem | null {
   const correct = it.choices.find((c) => c.isCorrect);
   if (!correct) return null;
+  const slug = slugFromUrl(correct.imageUrl);
+  const imageUrl = NAMING_PHOTO_SLUGS.has(slug)
+    ? `/assets/images/naming/${slug}.png`
+    : correct.imageUrl;
   return {
     itemId: `naming_${it.itemId}`,
-    imageUrl: correct.imageUrl,
+    imageUrl,
     targetWord: it.targetWord,
     instruction: NAMING_INSTRUCTION,
   };
