@@ -1,6 +1,6 @@
 {
  "version": 1,
- "totalItems": 74,
+ "totalItems": 72,
  "items": [
   {
    "itemId": "qw_001",
@@ -884,8 +884,8 @@
     },
     {
      "choiceId": "qw_030_c2",
-     "label": "치약",
-     "imageUrl": "/assets/images/wordComp/toothpaste.svg",
+     "label": "비행기",
+     "imageUrl": "/assets/images/wordComp/airplane.svg",
      "isCorrect": false
     },
     {
@@ -1040,8 +1040,8 @@
     },
     {
      "choiceId": "qw_035_c3",
-     "label": "치약",
-     "imageUrl": "/assets/images/wordComp/toothpaste.svg",
+     "label": "비행기",
+     "imageUrl": "/assets/images/wordComp/airplane.svg",
      "isCorrect": false
     },
     {
@@ -1676,8 +1676,8 @@
     },
     {
      "choiceId": "qw_056_c4",
-     "label": "척추",
-     "imageUrl": "/assets/images/wordComp/spine.svg",
+     "label": "비행기",
+     "imageUrl": "/assets/images/wordComp/airplane.svg",
      "isCorrect": false
     }
    ]
@@ -1708,36 +1708,6 @@
      "choiceId": "qw_057_c4",
      "label": "고양이",
      "imageUrl": "/assets/images/wordComp/cat.svg",
-     "isCorrect": false
-    }
-   ]
-  },
-  {
-   "itemId": "qw_058",
-   "targetWord": "척추",
-   "choices": [
-    {
-     "choiceId": "qw_058_c1",
-     "label": "척추",
-     "imageUrl": "/assets/images/wordComp/spine.svg",
-     "isCorrect": true
-    },
-    {
-     "choiceId": "qw_058_c2",
-     "label": "칼",
-     "imageUrl": "/assets/images/wordComp/knife.svg",
-     "isCorrect": false
-    },
-    {
-     "choiceId": "qw_058_c3",
-     "label": "모자",
-     "imageUrl": "/assets/images/wordComp/hat.svg",
-     "isCorrect": false
-    },
-    {
-     "choiceId": "qw_058_c4",
-     "label": "이불",
-     "imageUrl": "/assets/images/wordComp/blanket.svg",
      "isCorrect": false
     }
    ]
@@ -1918,36 +1888,6 @@
      "choiceId": "qw_064_c4",
      "label": "망치",
      "imageUrl": "/assets/images/wordComp/hammer.svg",
-     "isCorrect": false
-    }
-   ]
-  },
-  {
-   "itemId": "qw_065",
-   "targetWord": "치약",
-   "choices": [
-    {
-     "choiceId": "qw_065_c1",
-     "label": "치약",
-     "imageUrl": "/assets/images/wordComp/toothpaste.svg",
-     "isCorrect": true
-    },
-    {
-     "choiceId": "qw_065_c2",
-     "label": "우산",
-     "imageUrl": "/assets/images/wordComp/umbrella.svg",
-     "isCorrect": false
-    },
-    {
-     "choiceId": "qw_065_c3",
-     "label": "의자",
-     "imageUrl": "/assets/images/wordComp/chair.svg",
-     "isCorrect": false
-    },
-    {
-     "choiceId": "qw_065_c4",
-     "label": "고구마",
-     "imageUrl": "/assets/images/wordComp/sweet_potato.svg",
      "isCorrect": false
     }
    ]
@@ -2156,8 +2096,8 @@
     },
     {
      "choiceId": "qw_072_c4",
-     "label": "척추",
-     "imageUrl": "/assets/images/wordComp/spine.svg",
+     "label": "비행기",
+     "imageUrl": "/assets/images/wordComp/airplane.svg",
      "isCorrect": false
     }
    ]

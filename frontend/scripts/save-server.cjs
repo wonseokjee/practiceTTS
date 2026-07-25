@@ -41,7 +41,7 @@ const server = http.createServer((req, res) => {
   req.on('data', (c) => (body += c));
   req.on('end', () => {
     try {
-      const { dir, slug, dataUrl } = JSON.parse(body);
+      const { dir, slug, dataUrl, meta } = JSON.parse(body);
       if (!ALLOWED_DIRS.has(dir)) throw new Error(`허용되지 않은 디렉토리: ${dir}`);
       if (!/^[a-z0-9_]+$/.test(slug)) throw new Error(`잘못된 slug: ${slug}`);
       const m = /^data:image\/png;base64,(.+)$/.exec(dataUrl ?? '');
@@ -51,6 +51,28 @@ const server = http.createServer((req, res) => {
       fs.mkdirSync(outDir, { recursive: true });
       const outPath = path.join(outDir, `${slug}.png`);
       fs.writeFileSync(outPath, Buffer.from(m[1], 'base64'));
+
+      // 라이선스·출처를 함께 기록한다. 나중에 근거를 물으면 답할 수 있어야 한다.
+      if (meta) {
+        const creditsPath = path.join(outDir, '_credits.json');
+        let credits = [];
+        try {
+          credits = JSON.parse(fs.readFileSync(creditsPath, 'utf-8'));
+        } catch {
+          /* 첫 저장 */
+        }
+        credits = credits.filter((x) => x.slug !== slug);
+        credits.push({
+          slug,
+          ko: meta.ko ?? '',
+          title: meta.title ?? '',
+          license: meta.license ?? '',
+          source: meta.source ?? '',
+          savedAt: new Date().toISOString().slice(0, 10),
+        });
+        credits.sort((a, b) => a.slug.localeCompare(b.slug));
+        fs.writeFileSync(creditsPath, JSON.stringify(credits, null, 2) + '\n');
+      }
 
       // 이름대기 사진은 보유 목록에도 등록한다. toNamingItem이 이 목록을
       // 보고 사진/SVG를 고르므로, 저장과 등록을 한 번에 끝내야 빠뜨리지 않는다.
