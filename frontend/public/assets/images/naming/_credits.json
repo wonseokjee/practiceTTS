@@ -72,6 +72,14 @@
     "savedAt": "2026-07-25"
   },
   {
+    "slug": "bread",
+    "ko": "식빵",
+    "title": "Bread Loaf",
+    "license": "by 2.0",
+    "source": "https://www.flickr.com/photos/13261823@N05/2104039823",
+    "savedAt": "2026-07-25"
+  },
+  {
     "slug": "bus",
     "ko": "버스",
     "title": "New CT Bus",
@@ -85,6 +93,14 @@
     "title": "Blue butterfly",
     "license": "by-nd 2.0",
     "source": "https://www.flickr.com/photos/43212985@N08/4022324313",
+    "savedAt": "2026-07-25"
+  },
+  {
+    "slug": "candy",
+    "ko": "사탕",
+    "title": "Rainbow sweets & lollipop",
+    "license": "cc0 1.0",
+    "source": "https://www.rawpixel.com/image/6035497/photo-image-public-domain-free",
     "savedAt": "2026-07-25"
   },
   {
@@ -128,6 +144,30 @@
     "savedAt": "2026-07-25"
   },
   {
+    "slug": "computer",
+    "ko": "컴퓨터",
+    "title": "Seo Ppc",
+    "license": "cc0 1.0",
+    "source": "https://stocksnap.io/photo/seo-ppc-9699Y6WKLD",
+    "savedAt": "2026-07-25"
+  },
+  {
+    "slug": "desk",
+    "ko": "책상",
+    "title": "Empty desk",
+    "license": "by-sa 2.0",
+    "source": "https://www.flickr.com/photos/52952793@N00/149699609",
+    "savedAt": "2026-07-25"
+  },
+  {
+    "slug": "dog",
+    "ko": "개",
+    "title": "dog",
+    "license": "by-sa 2.0",
+    "source": "https://www.flickr.com/photos/68776313@N00/5164287",
+    "savedAt": "2026-07-25"
+  },
+  {
     "slug": "elephant",
     "ko": "코끼리",
     "title": "Elephant Africa",
@@ -141,6 +181,14 @@
     "title": "Macro Flower",
     "license": "cc0 1.0",
     "source": "https://stocksnap.io/photo/macro-flower-MLEZOMCWOW",
+    "savedAt": "2026-07-25"
+  },
+  {
+    "slug": "glasses",
+    "ko": "안경",
+    "title": "Eyeglasses drawing, object illustration",
+    "license": "cc0 1.0",
+    "source": "https://www.rawpixel.com/image/6526205/image-public-domain-black-illustrations",
     "savedAt": "2026-07-25"
   },
   {
@@ -312,6 +360,14 @@
     "savedAt": "2026-07-25"
   },
   {
+    "slug": "refrigerator",
+    "ko": "냉장고",
+    "title": "Samsung RF4287HARS French Door Refrigera",
+    "license": "by 2.0",
+    "source": "https://www.flickr.com/photos/78234592@N06/12640052475",
+    "savedAt": "2026-07-25"
+  },
+  {
     "slug": "sand",
     "ko": "모래",
     "title": "Free desert dunes sand fabric",
@@ -336,6 +392,14 @@
     "savedAt": "2026-07-25"
   },
   {
+    "slug": "shoes",
+    "ko": "신발",
+    "title": "My hideous running shoes",
+    "license": "by 2.0",
+    "source": "https://www.flickr.com/photos/63051956@N00/3769610224",
+    "savedAt": "2026-07-25"
+  },
+  {
     "slug": "socks",
     "ko": "양말",
     "title": "Socks",
@@ -349,6 +413,14 @@
     "title": "Red Strawberries",
     "license": "cc0 1.0",
     "source": "https://stocksnap.io/photo/red-strawberries-NAJN9P6LHG",
+    "savedAt": "2026-07-25"
+  },
+  {
+    "slug": "student",
+    "ko": "학생",
+    "title": "NASA Interns meet Columba College",
+    "license": "cc0 1.0",
+    "source": "https://www.rawpixel.com/image/8733930/photo-image-public-domain-people-kid",
     "savedAt": "2026-07-25"
   },
   {

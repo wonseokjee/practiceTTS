@@ -1,6 +1,6 @@
 {
  "version": 1,
- "totalItems": 72,
+ "totalItems": 68,
  "items": [
   {
    "itemId": "qw_001",
@@ -104,8 +104,8 @@
     },
     {
      "choiceId": "qw_004_c2",
-     "label": "비누",
-     "imageUrl": "/assets/images/wordComp/soap.svg",
+     "label": "비행기",
+     "imageUrl": "/assets/images/wordComp/airplane.svg",
      "isCorrect": false
     },
     {
@@ -243,36 +243,6 @@
    ]
   },
   {
-   "itemId": "qw_009",
-   "targetWord": "이불",
-   "choices": [
-    {
-     "choiceId": "qw_009_c1",
-     "label": "이불",
-     "imageUrl": "/assets/images/wordComp/blanket.svg",
-     "isCorrect": true
-    },
-    {
-     "choiceId": "qw_009_c2",
-     "label": "비행기",
-     "imageUrl": "/assets/images/wordComp/airplane.svg",
-     "isCorrect": false
-    },
-    {
-     "choiceId": "qw_009_c3",
-     "label": "강아지",
-     "imageUrl": "/assets/images/wordComp/dog.svg",
-     "isCorrect": false
-    },
-    {
-     "choiceId": "qw_009_c4",
-     "label": "비누",
-     "imageUrl": "/assets/images/wordComp/soap.svg",
-     "isCorrect": false
-    }
-   ]
-  },
-  {
    "itemId": "qw_010",
    "targetWord": "책",
    "choices": [
@@ -350,8 +320,8 @@
     },
     {
      "choiceId": "qw_012_c3",
-     "label": "전기밥솥",
-     "imageUrl": "/assets/images/wordComp/rice_cooker.svg",
+     "label": "비행기",
+     "imageUrl": "/assets/images/wordComp/airplane.svg",
      "isCorrect": false
     },
     {
@@ -440,8 +410,8 @@
     },
     {
      "choiceId": "qw_015_c3",
-     "label": "전기밥솥",
-     "imageUrl": "/assets/images/wordComp/rice_cooker.svg",
+     "label": "비행기",
+     "imageUrl": "/assets/images/wordComp/airplane.svg",
      "isCorrect": false
     },
     {
@@ -500,8 +470,8 @@
     },
     {
      "choiceId": "qw_017_c3",
-     "label": "이불",
-     "imageUrl": "/assets/images/wordComp/blanket.svg",
+     "label": "비행기",
+     "imageUrl": "/assets/images/wordComp/airplane.svg",
      "isCorrect": false
     },
     {
@@ -566,8 +536,8 @@
     },
     {
      "choiceId": "qw_019_c4",
-     "label": "전기밥솥",
-     "imageUrl": "/assets/images/wordComp/rice_cooker.svg",
+     "label": "비행기",
+     "imageUrl": "/assets/images/wordComp/airplane.svg",
      "isCorrect": false
     }
    ]
@@ -716,8 +686,8 @@
     },
     {
      "choiceId": "qw_024_c4",
-     "label": "전기밥솥",
-     "imageUrl": "/assets/images/wordComp/rice_cooker.svg",
+     "label": "비행기",
+     "imageUrl": "/assets/images/wordComp/airplane.svg",
      "isCorrect": false
     }
    ]
@@ -830,8 +800,8 @@
     },
     {
      "choiceId": "qw_028_c3",
-     "label": "이불",
-     "imageUrl": "/assets/images/wordComp/blanket.svg",
+     "label": "비행기",
+     "imageUrl": "/assets/images/wordComp/airplane.svg",
      "isCorrect": false
     },
     {
@@ -890,8 +860,8 @@
     },
     {
      "choiceId": "qw_030_c3",
-     "label": "학교",
-     "imageUrl": "/assets/images/wordComp/school.svg",
+     "label": "사과",
+     "imageUrl": "/assets/images/wordComp/apple.svg",
      "isCorrect": false
     },
     {
@@ -980,8 +950,8 @@
     },
     {
      "choiceId": "qw_033_c3",
-     "label": "비누",
-     "imageUrl": "/assets/images/wordComp/soap.svg",
+     "label": "비행기",
+     "imageUrl": "/assets/images/wordComp/airplane.svg",
      "isCorrect": false
     },
     {
@@ -1100,14 +1070,14 @@
     },
     {
      "choiceId": "qw_037_c3",
-     "label": "비누",
-     "imageUrl": "/assets/images/wordComp/soap.svg",
+     "label": "사과",
+     "imageUrl": "/assets/images/wordComp/apple.svg",
      "isCorrect": false
     },
     {
      "choiceId": "qw_037_c4",
-     "label": "이불",
-     "imageUrl": "/assets/images/wordComp/blanket.svg",
+     "label": "비행기",
+     "imageUrl": "/assets/images/wordComp/airplane.svg",
      "isCorrect": false
     }
    ]
@@ -1130,8 +1100,8 @@
     },
     {
      "choiceId": "qw_038_c3",
-     "label": "전기밥솥",
-     "imageUrl": "/assets/images/wordComp/rice_cooker.svg",
+     "label": "비행기",
+     "imageUrl": "/assets/images/wordComp/airplane.svg",
      "isCorrect": false
     },
     {
@@ -1293,36 +1263,6 @@
    ]
   },
   {
-   "itemId": "qw_044",
-   "targetWord": "약국",
-   "choices": [
-    {
-     "choiceId": "qw_044_c1",
-     "label": "약국",
-     "imageUrl": "/assets/images/wordComp/pharmacy.svg",
-     "isCorrect": true
-    },
-    {
-     "choiceId": "qw_044_c2",
-     "label": "수건",
-     "imageUrl": "/assets/images/wordComp/towel.svg",
-     "isCorrect": false
-    },
-    {
-     "choiceId": "qw_044_c3",
-     "label": "코끼리",
-     "imageUrl": "/assets/images/wordComp/elephant.svg",
-     "isCorrect": false
-    },
-    {
-     "choiceId": "qw_044_c4",
-     "label": "사탕",
-     "imageUrl": "/assets/images/wordComp/candy.svg",
-     "isCorrect": false
-    }
-   ]
-  },
-  {
    "itemId": "qw_045",
    "targetWord": "전화기",
    "choices": [
@@ -1473,36 +1413,6 @@
    ]
   },
   {
-   "itemId": "qw_050",
-   "targetWord": "전기밥솥",
-   "choices": [
-    {
-     "choiceId": "qw_050_c1",
-     "label": "전기밥솥",
-     "imageUrl": "/assets/images/wordComp/rice_cooker.svg",
-     "isCorrect": true
-    },
-    {
-     "choiceId": "qw_050_c2",
-     "label": "주스",
-     "imageUrl": "/assets/images/wordComp/juice.svg",
-     "isCorrect": false
-    },
-    {
-     "choiceId": "qw_050_c3",
-     "label": "자전거",
-     "imageUrl": "/assets/images/wordComp/bicycle.svg",
-     "isCorrect": false
-    },
-    {
-     "choiceId": "qw_050_c4",
-     "label": "고래",
-     "imageUrl": "/assets/images/wordComp/whale.svg",
-     "isCorrect": false
-    }
-   ]
-  },
-  {
    "itemId": "qw_051",
    "targetWord": "모래",
    "choices": [
@@ -1526,38 +1436,8 @@
     },
     {
      "choiceId": "qw_051_c4",
-     "label": "이불",
-     "imageUrl": "/assets/images/wordComp/blanket.svg",
-     "isCorrect": false
-    }
-   ]
-  },
-  {
-   "itemId": "qw_052",
-   "targetWord": "학교",
-   "choices": [
-    {
-     "choiceId": "qw_052_c1",
-     "label": "학교",
-     "imageUrl": "/assets/images/wordComp/school.svg",
-     "isCorrect": true
-    },
-    {
-     "choiceId": "qw_052_c2",
-     "label": "거북이",
-     "imageUrl": "/assets/images/wordComp/turtle.svg",
-     "isCorrect": false
-    },
-    {
-     "choiceId": "qw_052_c3",
-     "label": "의자",
-     "imageUrl": "/assets/images/wordComp/chair.svg",
-     "isCorrect": false
-    },
-    {
-     "choiceId": "qw_052_c4",
-     "label": "호랑이",
-     "imageUrl": "/assets/images/wordComp/tiger.svg",
+     "label": "비행기",
+     "imageUrl": "/assets/images/wordComp/airplane.svg",
      "isCorrect": false
     }
    ]
@@ -1610,8 +1490,8 @@
     },
     {
      "choiceId": "qw_054_c3",
-     "label": "비누",
-     "imageUrl": "/assets/images/wordComp/soap.svg",
+     "label": "비행기",
+     "imageUrl": "/assets/images/wordComp/airplane.svg",
      "isCorrect": false
     },
     {
@@ -1648,36 +1528,6 @@
      "choiceId": "qw_055_c4",
      "label": "거울",
      "imageUrl": "/assets/images/wordComp/mirror.svg",
-     "isCorrect": false
-    }
-   ]
-  },
-  {
-   "itemId": "qw_056",
-   "targetWord": "비누",
-   "choices": [
-    {
-     "choiceId": "qw_056_c1",
-     "label": "비누",
-     "imageUrl": "/assets/images/wordComp/soap.svg",
-     "isCorrect": true
-    },
-    {
-     "choiceId": "qw_056_c2",
-     "label": "학교",
-     "imageUrl": "/assets/images/wordComp/school.svg",
-     "isCorrect": false
-    },
-    {
-     "choiceId": "qw_056_c3",
-     "label": "냄비",
-     "imageUrl": "/assets/images/wordComp/pot.svg",
-     "isCorrect": false
-    },
-    {
-     "choiceId": "qw_056_c4",
-     "label": "비행기",
-     "imageUrl": "/assets/images/wordComp/airplane.svg",
      "isCorrect": false
     }
    ]
@@ -1724,8 +1574,8 @@
     },
     {
      "choiceId": "qw_059_c2",
-     "label": "약국",
-     "imageUrl": "/assets/images/wordComp/pharmacy.svg",
+     "label": "비행기",
+     "imageUrl": "/assets/images/wordComp/airplane.svg",
      "isCorrect": false
     },
     {
@@ -1814,8 +1664,8 @@
     },
     {
      "choiceId": "qw_062_c2",
-     "label": "이불",
-     "imageUrl": "/assets/images/wordComp/blanket.svg",
+     "label": "비행기",
+     "imageUrl": "/assets/images/wordComp/airplane.svg",
      "isCorrect": false
     },
     {
@@ -1946,8 +1796,8 @@
     },
     {
      "choiceId": "qw_067_c4",
-     "label": "비누",
-     "imageUrl": "/assets/images/wordComp/soap.svg",
+     "label": "비행기",
+     "imageUrl": "/assets/images/wordComp/airplane.svg",
      "isCorrect": false
     }
    ]
@@ -2030,14 +1880,14 @@
     },
     {
      "choiceId": "qw_070_c3",
-     "label": "학교",
-     "imageUrl": "/assets/images/wordComp/school.svg",
+     "label": "사과",
+     "imageUrl": "/assets/images/wordComp/apple.svg",
      "isCorrect": false
     },
     {
      "choiceId": "qw_070_c4",
-     "label": "약국",
-     "imageUrl": "/assets/images/wordComp/pharmacy.svg",
+     "label": "비행기",
+     "imageUrl": "/assets/images/wordComp/airplane.svg",
      "isCorrect": false
     }
    ]
@@ -2156,6 +2006,36 @@
     },
     {
      "choiceId": "qw_074_c4",
+     "label": "칼",
+     "imageUrl": "/assets/images/wordComp/knife.svg",
+     "isCorrect": false
+    }
+   ]
+  },
+  {
+   "itemId": "qw_075",
+   "targetWord": "안경",
+   "choices": [
+    {
+     "choiceId": "qw_075_c1",
+     "label": "안경",
+     "imageUrl": "/assets/images/wordComp/glasses.svg",
+     "isCorrect": true
+    },
+    {
+     "choiceId": "qw_075_c2",
+     "label": "우산",
+     "imageUrl": "/assets/images/wordComp/umbrella.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_075_c3",
+     "label": "빗",
+     "imageUrl": "/assets/images/wordComp/comb.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_075_c4",
      "label": "칼",
      "imageUrl": "/assets/images/wordComp/knife.svg",
      "isCorrect": false
