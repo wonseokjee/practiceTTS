@@ -770,8 +770,8 @@
     },
     {
      "choiceId": "qw_027_c3",
-     "label": "배",
-     "imageUrl": "/assets/images/wordComp/pear.svg",
+     "label": "비행기",
+     "imageUrl": "/assets/images/wordComp/airplane.svg",
      "isCorrect": false
     },
     {
@@ -830,8 +830,8 @@
     },
     {
      "choiceId": "qw_029_c3",
-     "label": "배",
-     "imageUrl": "/assets/images/wordComp/pear.svg",
+     "label": "비행기",
+     "imageUrl": "/assets/images/wordComp/airplane.svg",
      "isCorrect": false
     },
     {
@@ -1203,36 +1203,6 @@
    ]
   },
   {
-   "itemId": "qw_042",
-   "targetWord": "배",
-   "choices": [
-    {
-     "choiceId": "qw_042_c1",
-     "label": "배",
-     "imageUrl": "/assets/images/wordComp/pear.svg",
-     "isCorrect": true
-    },
-    {
-     "choiceId": "qw_042_c2",
-     "label": "멜론",
-     "imageUrl": "/assets/images/wordComp/melon.svg",
-     "isCorrect": false
-    },
-    {
-     "choiceId": "qw_042_c3",
-     "label": "양말",
-     "imageUrl": "/assets/images/wordComp/socks.svg",
-     "isCorrect": false
-    },
-    {
-     "choiceId": "qw_042_c4",
-     "label": "책상",
-     "imageUrl": "/assets/images/wordComp/desk.svg",
-     "isCorrect": false
-    }
-   ]
-  },
-  {
    "itemId": "qw_043",
    "targetWord": "연필",
    "choices": [
@@ -1364,8 +1334,8 @@
     },
     {
      "choiceId": "qw_048_c2",
-     "label": "배",
-     "imageUrl": "/assets/images/wordComp/pear.svg",
+     "label": "비행기",
+     "imageUrl": "/assets/images/wordComp/airplane.svg",
      "isCorrect": false
     },
     {
@@ -2038,6 +2008,36 @@
      "choiceId": "qw_075_c4",
      "label": "칼",
      "imageUrl": "/assets/images/wordComp/knife.svg",
+     "isCorrect": false
+    }
+   ]
+  },
+  {
+   "itemId": "qw_076",
+   "targetWord": "오렌지",
+   "choices": [
+    {
+     "choiceId": "qw_076_c1",
+     "label": "오렌지",
+     "imageUrl": "/assets/images/wordComp/orange.svg",
+     "isCorrect": true
+    },
+    {
+     "choiceId": "qw_076_c2",
+     "label": "바나나",
+     "imageUrl": "/assets/images/wordComp/banana.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_076_c3",
+     "label": "기타",
+     "imageUrl": "/assets/images/wordComp/guitar.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_076_c4",
+     "label": "가위",
+     "imageUrl": "/assets/images/wordComp/scissors.svg",
      "isCorrect": false
     }
    ]
