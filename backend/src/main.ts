@@ -1,10 +1,14 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import * as cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // 소셜 로그인 CSRF state 검증에 httpOnly 쿠키를 쓴다(oauth-state.ts).
+  app.use(cookieParser());
 
   // React 개발 서버에서의 CORS 요청 허용
   app.enableCors({

@@ -14,13 +14,14 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { AuthGuard } from '@nestjs/passport';
 import { IsString, Matches } from 'class-validator';
-import type { Response } from 'express';
+import type { Request as ExpressRequest, Response } from 'express';
 import { AuthService, UserResponse } from './auth.service';
 import { CompleteOnboardingDto } from './dto/complete-onboarding.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { User } from './entities/user.entity';
+import { SocialInitiateGuard, verifyOAuthState } from './oauth-state';
 import type { SocialProfile } from './social-profile';
 
 /** 환자 모드 복귀 PIN 검증 요청 DTO */
@@ -92,23 +93,23 @@ export class AuthController {
 
   // ─── 소셜 로그인(카카오) ────────────────────────────────────────
 
-  // GET /auth/kakao - 카카오 인가 페이지로 리다이렉트(가드가 처리). 본문 없음.
-  // TODO(보안): CSRF 방어용 state 파라미터. passport-oauth2의 state는 세션
-  //   저장소가 필요해, 세션 미들웨어 도입과 함께 후속으로 추가한다(plan §10).
+  // GET /auth/kakao - 카카오 인가 페이지로 리다이렉트. 가드가 CSRF state를
+  // 발급(쿠키+URL)한다. 본문 없음.
   @Get('kakao')
-  @UseGuards(AuthGuard('kakao'))
+  @UseGuards(SocialInitiateGuard('kakao'))
   kakaoAuth(): void {
     // 가드가 302 리다이렉트를 수행하므로 여기 도달하지 않는다.
   }
 
-  // GET /auth/kakao/callback - 카카오 콜백. 유저 조회·생성 후 일회용 코드로
-  // 프론트에 리다이렉트한다(JWT를 URL에 직접 노출하지 않음).
+  // GET /auth/kakao/callback - 카카오 콜백. state 대조(CSRF) 후 유저 조회·생성,
+  // 일회용 코드로 프론트에 리다이렉트한다(JWT를 URL에 직접 노출하지 않음).
   @Get('kakao/callback')
   @UseGuards(AuthGuard('kakao'))
   async kakaoCallback(
-    @Req() req: SocialRequest,
+    @Req() req: ExpressRequest & SocialRequest,
     @Res() res: Response,
   ): Promise<void> {
+    verifyOAuthState(req, res, 'kakao');
     const code = await this.authService.socialLoginToCode(req.user);
     const frontend =
       this.configService.get<string>('FRONTEND_URL') ??
@@ -120,17 +121,18 @@ export class AuthController {
   // 카카오와 동일 구조. 콜백은 공통 socialLoginToCode/일회용 코드를 재사용한다.
 
   @Get('google')
-  @UseGuards(AuthGuard('google'))
+  @UseGuards(SocialInitiateGuard('google'))
   googleAuth(): void {
-    // 가드가 구글 인가 페이지로 302 리다이렉트.
+    // 가드가 구글 인가 페이지로 302 리다이렉트(+ CSRF state 발급).
   }
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   async googleCallback(
-    @Req() req: SocialRequest,
+    @Req() req: ExpressRequest & SocialRequest,
     @Res() res: Response,
   ): Promise<void> {
+    verifyOAuthState(req, res, 'google');
     const code = await this.authService.socialLoginToCode(req.user);
     const frontend =
       this.configService.get<string>('FRONTEND_URL') ??
