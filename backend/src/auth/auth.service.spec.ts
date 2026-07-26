@@ -293,7 +293,8 @@ describe('AuthService', () => {
             return e;
           },
           save: async (e: Partial<User>) => e,
-          update: jest.fn(async () => undefined),
+          // 조건부 갱신이 1행 잡혔다(경합 없음).
+          update: jest.fn(async () => ({ affected: 1 })),
           findOne: async () =>
             ({
               id: 'u1',
@@ -318,6 +319,31 @@ describe('AuthService', () => {
       expect(result.patientId).toBe('p-new');
       // needsOnboarding이 false로 뒤집힌다
       expect(result.needsOnboarding).toBe(false);
+    });
+
+    it('동시 온보딩 경합(조건부 갱신 0행)은 409로 롤백된다', async () => {
+      // 사전 체크는 통과(patient_id=null)했지만, 트랜잭션 안 조건부 UPDATE가
+      // 0행 → 다른 요청이 먼저 연결함 → 409(트랜잭션 롤백으로 고아 patient 없음).
+      const social = { id: 'u1', patientId: null } as User;
+      userRepository.findOne.mockResolvedValueOnce(social);
+      const fakeManager = {
+        getRepository: () => ({
+          create: (e: Partial<User>) => e,
+          save: async (e: Partial<User>) => e,
+          update: jest.fn(async () => ({ affected: 0 })), // 경합 패배
+          findOne: async () => null,
+        }),
+      };
+      dataSource.transaction.mockImplementation(
+        async (cb: (m: unknown) => Promise<unknown>) => cb(fakeManager),
+      );
+
+      await expect(
+        service.completeOnboarding('u1', {
+          patientDisplayName: '박순자',
+          patientModePin: '1234',
+        }),
+      ).rejects.toBeInstanceOf(ConflictException);
     });
 
     it('이미 온보딩된 계정(patient_id 있음)은 409', async () => {

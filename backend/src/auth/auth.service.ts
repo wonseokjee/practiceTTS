@@ -13,6 +13,7 @@ import * as bcrypt from 'bcryptjs';
 import {
   DataSource,
   EntityManager,
+  IsNull,
   QueryFailedError,
   Repository,
 } from 'typeorm';
@@ -40,7 +41,7 @@ export interface JwtPayload {
 // 아니면 null. 환자 모드 화면 인사말 등에 사용한다.
 export type UserResponse = Omit<
   User,
-  'passwordHash' | 'patient' | 'patientModePinHash'
+  'passwordHash' | 'patient' | 'patientModePinHash' | 'providerUserId'
 > & {
   patientDisplayName: string | null;
   // 소셜 최초 로그인 후 어르신 성함·PIN 미입력 상태. 프론트가 온보딩으로 라우팅.
@@ -376,12 +377,21 @@ export class AuthService {
 
     const patientModePinHash = await bcrypt.hash(dto.patientModePin, 10);
     const updated = await this.dataSource.transaction(async (manager) => {
+      const repo = manager.getRepository(User);
       const patientId = await this.createPatientRecord(
         manager,
         dto.patientDisplayName,
       );
-      const repo = manager.getRepository(User);
-      await repo.update(userId, { patientId, patientModePinHash });
+      // patient_id가 여전히 NULL일 때만 연결한다. 동시 온보딩(더블클릭·재시도)에서
+      // 뒤늦은 요청은 0행 갱신 → 409로 롤백되어, 방금 만든 patient 행도 함께
+      // 폐기된다(고아 행 방지). 트랜잭션 밖 사전 체크(위)는 흔한 경우의 빠른 거절용.
+      const res = await repo.update(
+        { id: userId, patientId: IsNull() },
+        { patientId, patientModePinHash },
+      );
+      if (res.affected !== 1) {
+        throw new ConflictException('이미 온보딩이 완료되었습니다.');
+      }
       return repo.findOne({
         where: { id: userId },
         relations: { patient: true },
@@ -446,6 +456,8 @@ export class AuthService {
       passwordHash: _pw,
       patient: _patient,
       patientModePinHash: _pin,
+      // 소셜 제공자 내부 식별자(카카오 회원번호 등)는 클라이언트에 노출하지 않는다.
+      providerUserId: _providerUserId,
       ...response
     } = user;
     // 환자 관계가 로드된 경우(getMe)에만 환자 성함을 노출, 아니면 null.

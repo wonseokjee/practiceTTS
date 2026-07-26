@@ -22,6 +22,9 @@ export function OnboardingScreen() {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
+    // 더블클릭/엔터 연타로 두 번 제출되면 환자 레코드가 중복 생성될 수 있다.
+    // 버튼 disable은 리렌더 뒤에나 걸리므로, 핸들러 진입에서 먼저 막는다.
+    if (isSubmitting) return;
     setError(null);
 
     if (patientDisplayName.trim().length === 0) {

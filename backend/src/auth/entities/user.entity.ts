@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -13,6 +14,13 @@ export type UserRole = 'caregiver' | 'patient' | 'therapist';
 // 로그인 제공자. 'local'=이메일/비밀번호, 그 외=소셜.
 export type AuthProvider = 'local' | 'kakao' | 'google';
 
+// (provider, provider_user_id) 부분 고유 인덱스. 마이그레이션(M13)과 동일하게
+// 엔티티에도 선언해야 dev synchronize와 prod 마이그레이션이 어긋나지 않는다.
+// 이 인덱스가 findOrCreateSocialUser의 동시 최초 로그인 경합 방어를 받친다.
+@Index('UQ_users_provider_account', ['authProvider', 'providerUserId'], {
+  unique: true,
+  where: '"provider_user_id" IS NOT NULL',
+})
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
