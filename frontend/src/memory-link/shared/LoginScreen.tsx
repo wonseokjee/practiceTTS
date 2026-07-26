@@ -12,9 +12,36 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useAuth } from './AuthContext.js';
 import type { RegisterData } from './AuthContext.js';
+import { API_BASE_URL } from './MemoryLinkApi.js';
 import { extractErrorMessage } from './extractErrorMessage.js';
 
 type Tab = 'login' | 'register';
+
+/**
+ * 카카오로 시작하기. 백엔드 /auth/kakao로 전체 페이지 이동(리다이렉트 OAuth).
+ * SPA 라우팅이 아니라 window.location으로 백엔드가 카카오 인가 페이지로 302한다.
+ */
+function SocialLoginButtons() {
+  return (
+    <div className="mt-6">
+      <div className="flex items-center gap-3 text-xs text-[#9AA09B]">
+        <span className="h-px flex-1 bg-[#E8E4DC]" />
+        간편 로그인
+        <span className="h-px flex-1 bg-[#E8E4DC]" />
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          window.location.href = `${API_BASE_URL}/auth/kakao`;
+        }}
+        className="mt-4 flex w-full min-h-[48px] items-center justify-center gap-2 rounded-full bg-[#FEE500] font-medium text-[#191600] transition-opacity hover:opacity-90"
+      >
+        <span aria-hidden="true" className="text-lg">💬</span>
+        카카오로 시작하기
+      </button>
+    </div>
+  );
+}
 
 // ─── 로그인 폼 ────────────────────────────────────────────────
 
@@ -298,6 +325,7 @@ export function LoginScreen() {
         {/* 폼 */}
         <div className="px-6 py-6">
           {activeTab === 'login' ? <LoginForm /> : <RegisterForm />}
+          <SocialLoginButtons />
         </div>
       </div>
     </div>

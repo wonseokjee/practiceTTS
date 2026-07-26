@@ -22,7 +22,7 @@ function fakeQueryBuilder(result: User | null) {
 describe('AuthService', () => {
   let service: AuthService;
   let userRepository: jest.Mocked<
-    Pick<Repository<User>, 'createQueryBuilder' | 'findOne'>
+    Pick<Repository<User>, 'createQueryBuilder' | 'findOne' | 'create' | 'save'>
   >;
   let dataSource: { transaction: jest.Mock };
   let jwtService: { sign: jest.Mock };
@@ -31,6 +31,8 @@ describe('AuthService', () => {
     userRepository = {
       createQueryBuilder: jest.fn(),
       findOne: jest.fn(),
+      create: jest.fn((e: Partial<User>) => e as User),
+      save: jest.fn(async (e: Partial<User>) => e as User),
     } as never;
     dataSource = { transaction: jest.fn() };
     jwtService = { sign: jest.fn(() => 'signed-token') };
@@ -134,7 +136,7 @@ describe('AuthService', () => {
       const compareSpy = jest.spyOn(bcrypt, 'compare');
 
       await expect(
-        service.login({ email: patient.email, password: 'whatever' }),
+        service.login({ email: patient.email!, password: 'whatever' }),
       ).rejects.toBeInstanceOf(UnauthorizedException);
       expect(compareSpy).not.toHaveBeenCalled();
       compareSpy.mockRestore();
@@ -212,6 +214,155 @@ describe('AuthService', () => {
       await expect(
         service.verifyPatientModePin('cg3', '1234'),
       ).rejects.toBeInstanceOf(HttpException);
+    });
+  });
+
+  describe('findOrCreateSocialUser', () => {
+    const profile = {
+      provider: 'kakao' as const,
+      providerUserId: '12345',
+      email: 'kko@test.com',
+      displayName: '카카오사용자',
+    };
+
+    it('기존 소셜 유저가 있으면 그대로 반환한다(중복 생성 없음)', async () => {
+      const existing = { id: 'u1', authProvider: 'kakao' } as User;
+      userRepository.findOne.mockResolvedValueOnce(existing);
+
+      const result = await service.findOrCreateSocialUser(profile);
+
+      expect(result).toBe(existing);
+      expect(userRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('신규면 patient_id=null 미완성 보호자를 만든다(온보딩 필요)', async () => {
+      userRepository.findOne
+        .mockResolvedValueOnce(null) // (provider,id) 없음
+        .mockResolvedValueOnce(null); // 이메일 미사용
+
+      const result = await service.findOrCreateSocialUser(profile);
+
+      expect(result.role).toBe('caregiver');
+      expect(result.authProvider).toBe('kakao');
+      expect(result.providerUserId).toBe('12345');
+      expect(result.patientId).toBeNull();
+      expect(result.passwordHash).toBeNull();
+      expect(result.email).toBe('kko@test.com');
+    });
+
+    it('이메일이 이미 다른 계정에 있으면 병합하지 않고 email=null로 만든다', async () => {
+      userRepository.findOne
+        .mockResolvedValueOnce(null) // (provider,id) 없음
+        .mockResolvedValueOnce({ id: 'other' } as User); // 이메일 이미 사용중
+
+      const result = await service.findOrCreateSocialUser(profile);
+
+      expect(result.email).toBeNull();
+      expect(result.authProvider).toBe('kakao');
+    });
+  });
+
+  describe('completeOnboarding', () => {
+    it('어르신 성함·PIN으로 환자 레코드를 만들고 연결한다', async () => {
+      const social = { id: 'u1', patientId: null } as User;
+      // 1) 초기 조회(미완성) 2) 트랜잭션 후 재조회
+      userRepository.findOne.mockResolvedValueOnce(social);
+
+      const created: Partial<User>[] = [];
+      const fakeManager = {
+        getRepository: () => ({
+          create: (e: Partial<User>) => {
+            created.push(e);
+            return e;
+          },
+          save: async (e: Partial<User>) => e,
+          update: jest.fn(async () => undefined),
+          findOne: async () =>
+            ({
+              id: 'u1',
+              patientId: 'p-new',
+              role: 'caregiver',
+            }) as User,
+        }),
+      };
+      dataSource.transaction.mockImplementation(
+        async (cb: (m: unknown) => Promise<unknown>) => cb(fakeManager),
+      );
+
+      const result = await service.completeOnboarding('u1', {
+        patientDisplayName: '박순자',
+        patientModePin: '1234',
+      });
+
+      const patient = created.find((e) => e.role === 'patient');
+      expect(patient).toBeDefined();
+      expect(patient!.displayName).toBe('박순자');
+      expect(patient!.passwordHash).toBe(UNUSABLE_PASSWORD_HASH);
+      expect(result.patientId).toBe('p-new');
+      // needsOnboarding이 false로 뒤집힌다
+      expect(result.needsOnboarding).toBe(false);
+    });
+
+    it('이미 온보딩된 계정(patient_id 있음)은 409', async () => {
+      userRepository.findOne.mockResolvedValueOnce({
+        id: 'u1',
+        patientId: 'already',
+      } as User);
+
+      await expect(
+        service.completeOnboarding('u1', {
+          patientDisplayName: '박순자',
+          patientModePin: '1234',
+        }),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+  });
+
+  describe('일회용 코드 교환', () => {
+    it('발급된 코드를 실제 JWT+user로 교환하고 1회만 유효하다', async () => {
+      // 신규 소셜 유저 생성(코드 발급). email=null이라 이메일 충돌 조회는 생략되어
+      // findOne은 (provider,id) 조회 1번만 호출된다.
+      userRepository.findOne.mockResolvedValueOnce(null);
+      userRepository.create.mockReturnValueOnce({
+        id: 'u9',
+        role: 'caregiver',
+        patientId: null,
+      } as User);
+      userRepository.save.mockResolvedValueOnce({
+        id: 'u9',
+        role: 'caregiver',
+        patientId: null,
+      } as User);
+
+      const code = await service.socialLoginToCode({
+        provider: 'kakao',
+        providerUserId: '999',
+        email: null,
+        displayName: '카카오',
+      });
+      expect(typeof code).toBe('string');
+
+      // 교환 시 user 재조회
+      userRepository.findOne.mockResolvedValueOnce({
+        id: 'u9',
+        role: 'caregiver',
+        patientId: null,
+      } as User);
+
+      const redeemed = await service.redeemOneTimeCode(code);
+      expect(redeemed.accessToken).toBe('signed-token');
+      expect(redeemed.user.id).toBe('u9');
+
+      // 재사용 불가(1회 소비)
+      await expect(service.redeemOneTimeCode(code)).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
+    });
+
+    it('유효하지 않은 코드는 401', async () => {
+      await expect(
+        service.redeemOneTimeCode('nope'),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
     });
   });
 });

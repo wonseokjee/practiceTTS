@@ -10,21 +10,29 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
 import * as bcrypt from 'bcryptjs';
-import { DataSource, QueryFailedError, Repository } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  QueryFailedError,
+  Repository,
+} from 'typeorm';
 import {
   buildPatientPlaceholderEmail,
   PATIENT_MODE_PIN_MAX_DELAY_MS,
   PATIENT_MODE_PIN_RETRY_DELAYS_MS,
   UNUSABLE_PASSWORD_HASH,
 } from './auth.constants';
+import { CompleteOnboardingDto } from './dto/complete-onboarding.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { User } from './entities/user.entity';
+import type { SocialProfile } from './social-profile';
 
 // JWT payload 타입 정의
 export interface JwtPayload {
   sub: string; // userId
-  email: string;
+  // 소셜 유저는 이메일이 없을 수 있다. 검증은 sub만 쓰므로 정보용.
+  email: string | null;
 }
 
 // 비밀번호/PIN 해시 및 자기참조 관계 제외 응답 타입
@@ -33,7 +41,11 @@ export interface JwtPayload {
 export type UserResponse = Omit<
   User,
   'passwordHash' | 'patient' | 'patientModePinHash'
-> & { patientDisplayName: string | null };
+> & {
+  patientDisplayName: string | null;
+  // 소셜 최초 로그인 후 어르신 성함·PIN 미입력 상태. 프론트가 온보딩으로 라우팅.
+  needsOnboarding: boolean;
+};
 
 /** PIN 검증 시도 추적 (in-memory, 점증 디레이용) */
 interface PinAttemptState {
@@ -48,6 +60,17 @@ export class AuthService {
    * userId → 누적 실패 횟수 + 다음 시도 허용 시각.
    */
   private readonly pinAttempts = new Map<string, PinAttemptState>();
+
+  /**
+   * 소셜 콜백 → 프론트 전달용 일회용 코드 저장소.
+   * JWT를 리다이렉트 URL에 직접 노출하지 않으려고, 콜백은 단명 코드만 넘기고
+   * 프론트가 POST /auth/token으로 교환한다(단일 인스턴스 가정 — pinAttempts와 동일).
+   */
+  private readonly oneTimeCodes = new Map<
+    string,
+    { userId: string; expiresAt: number }
+  >();
+  private static readonly ONE_TIME_CODE_TTL_MS = 60_000;
 
   constructor(
     @InjectRepository(User)
@@ -72,25 +95,14 @@ export class AuthService {
     let savedCaregiver: User;
     try {
       savedCaregiver = await this.dataSource.transaction(async (manager) => {
-        const repo = manager.getRepository(User);
-
-        // 1) 환자 레코드 (로그인 불가: placeholder email + sentinel passwordHash).
-        //    id를 앱에서 미리 생성해 placeholder email을 단일 save로 확정한다
-        //    (빈 email 선저장 시 동시 가입 UNIQUE('') 충돌 방지).
-        const patientId = randomUUID();
-        const patient = repo.create({
-          id: patientId,
-          email: buildPatientPlaceholderEmail(patientId),
-          passwordHash: UNUSABLE_PASSWORD_HASH,
-          role: 'patient',
-          displayName: dto.patientDisplayName,
-          patientId: null,
-          patientModePinHash: null,
-        });
-        await repo.save(patient);
+        // 1) 환자 레코드 (로그인 불가). 온보딩과 공유하는 헬퍼.
+        const patientId = await this.createPatientRecord(
+          manager,
+          dto.patientDisplayName,
+        );
 
         // 2) 보호자 레코드 (환자 연결 + PIN 해시)
-        const caregiver = repo.create({
+        const caregiver = manager.getRepository(User).create({
           email: dto.email,
           passwordHash,
           role: 'caregiver',
@@ -98,7 +110,7 @@ export class AuthService {
           patientId,
           patientModePinHash,
         });
-        return repo.save(caregiver);
+        return manager.getRepository(User).save(caregiver);
       });
     } catch (err) {
       if (this.isUniqueViolation(err)) {
@@ -139,6 +151,12 @@ export class AuthService {
       );
     }
 
+    // canLogin이 null·sentinel을 이미 거른다. 타입 좁히기용 방어.
+    if (!user.passwordHash) {
+      throw new UnauthorizedException(
+        '이메일 또는 비밀번호가 올바르지 않습니다.',
+      );
+    }
     const isPasswordValid = await bcrypt.compare(
       dto.password,
       user.passwordHash,
@@ -236,9 +254,161 @@ export class AuthService {
     this.pinAttempts.set(userId, { fails, nextAllowedAt: now + delay });
   }
 
-  /** 로그인 가능한 계정인가 (환자/무비번 sentinel 차단) */
+  // ─── 소셜 로그인 ───────────────────────────────────────────────
+
+  /**
+   * 소셜 콜백 진입점: 프로필로 유저를 조회·생성하고, 프론트에 넘길 일회용 코드를 발급.
+   * 컨트롤러는 이 코드를 FRONTEND_URL/auth/callback?code=... 로 리다이렉트한다.
+   */
+  async socialLoginToCode(profile: SocialProfile): Promise<string> {
+    const user = await this.findOrCreateSocialUser(profile);
+    return this.issueOneTimeCode(user.id);
+  }
+
+  /**
+   * (provider, providerUserId)로 유저를 찾고, 없으면 미완성 소셜 유저를 만든다.
+   *  - 신규 유저는 patient_id=null → needsOnboarding=true(어르신 성함·PIN 미입력).
+   *  - 이메일이 이미 다른 계정에 있으면 자동 병합하지 않고 email=null로 생성.
+   */
+  async findOrCreateSocialUser(profile: SocialProfile): Promise<User> {
+    const existing = await this.userRepository.findOne({
+      where: {
+        authProvider: profile.provider,
+        providerUserId: profile.providerUserId,
+      },
+    });
+    if (existing) return existing;
+
+    // 이메일 충돌: 기존 계정이 이 이메일을 쓰면 병합하지 않고 email 없이 만든다.
+    let email = profile.email;
+    if (email) {
+      const taken = await this.userRepository.findOne({ where: { email } });
+      if (taken) email = null;
+    }
+
+    const user = this.userRepository.create({
+      email,
+      passwordHash: null,
+      role: 'caregiver',
+      displayName: profile.displayName,
+      patientId: null, // 온보딩 필요
+      patientModePinHash: null,
+      authProvider: profile.provider,
+      providerUserId: profile.providerUserId,
+    });
+
+    try {
+      return await this.userRepository.save(user);
+    } catch (err) {
+      // 동시 최초 로그인 경합: 부분 고유 인덱스 위반 → 방금 만들어진 행을 재조회.
+      if (this.isUniqueViolation(err)) {
+        const again = await this.userRepository.findOne({
+          where: {
+            authProvider: profile.provider,
+            providerUserId: profile.providerUserId,
+          },
+        });
+        if (again) return again;
+      }
+      throw err;
+    }
+  }
+
+  /** 일회용 코드 발급(단명). userId를 매핑해 둔다. */
+  private issueOneTimeCode(userId: string): string {
+    const code = randomUUID();
+    this.oneTimeCodes.set(code, {
+      userId,
+      expiresAt: Date.now() + AuthService.ONE_TIME_CODE_TTL_MS,
+    });
+    return code;
+  }
+
+  /** 일회용 코드 → 실제 JWT + user 교환(1회 소비). 만료/무효면 401. */
+  async redeemOneTimeCode(
+    code: string,
+  ): Promise<{ accessToken: string; user: UserResponse }> {
+    const entry = this.oneTimeCodes.get(code);
+    this.oneTimeCodes.delete(code); // 1회용: 조회 즉시 폐기
+    if (!entry || Date.now() > entry.expiresAt) {
+      throw new UnauthorizedException('만료되었거나 유효하지 않은 코드입니다.');
+    }
+    const user = await this.userRepository.findOne({
+      where: { id: entry.userId },
+      relations: { patient: true },
+    });
+    if (!user) {
+      throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
+    }
+    return {
+      accessToken: this.issueToken(user),
+      user: this.toUserResponse(user),
+    };
+  }
+
+  /**
+   * 소셜 온보딩 완료: 어르신 성함 + PIN을 받아 환자 레코드를 만들고 연결한다.
+   * 이미 연결된 환자가 있으면 409(중복 온보딩 방지).
+   */
+  async completeOnboarding(
+    userId: string,
+    dto: CompleteOnboardingDto,
+  ): Promise<UserResponse> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('사용자를 찾을 수 없습니다.');
+    }
+    if (user.patientId !== null) {
+      throw new ConflictException('이미 온보딩이 완료되었습니다.');
+    }
+
+    const patientModePinHash = await bcrypt.hash(dto.patientModePin, 10);
+    const updated = await this.dataSource.transaction(async (manager) => {
+      const patientId = await this.createPatientRecord(
+        manager,
+        dto.patientDisplayName,
+      );
+      const repo = manager.getRepository(User);
+      await repo.update(userId, { patientId, patientModePinHash });
+      return repo.findOne({
+        where: { id: userId },
+        relations: { patient: true },
+      });
+    });
+
+    return this.toUserResponse(updated!);
+  }
+
+  /**
+   * 로그인 불가 환자 레코드 생성(placeholder email + sentinel password).
+   * register와 온보딩이 공유. id를 미리 만들어 placeholder email을 단일 save로 확정.
+   */
+  private async createPatientRecord(
+    manager: EntityManager,
+    patientDisplayName: string,
+  ): Promise<string> {
+    const repo = manager.getRepository(User);
+    const patientId = randomUUID();
+    const patient = repo.create({
+      id: patientId,
+      email: buildPatientPlaceholderEmail(patientId),
+      passwordHash: UNUSABLE_PASSWORD_HASH,
+      role: 'patient',
+      displayName: patientDisplayName,
+      patientId: null,
+      patientModePinHash: null,
+      authProvider: 'local',
+      providerUserId: null,
+    });
+    await repo.save(patient);
+    return patientId;
+  }
+
+  /** 비밀번호 로그인 가능한 계정인가 (환자/무비번 sentinel/소셜 차단) */
   private canLogin(user: User): boolean {
     if (user.role === 'patient') return false;
+    // 소셜 유저는 비밀번호가 없다(NULL). 비번 로그인 대상 아님.
+    if (!user.passwordHash) return false;
     if (user.passwordHash === UNUSABLE_PASSWORD_HASH) return false;
     return true;
   }
@@ -267,6 +437,11 @@ export class AuthService {
       ...response
     } = user;
     // 환자 관계가 로드된 경우(getMe)에만 환자 성함을 노출, 아니면 null.
-    return { ...response, patientDisplayName: _patient?.displayName ?? null };
+    return {
+      ...response,
+      patientDisplayName: _patient?.displayName ?? null,
+      // 보호자인데 아직 연결된 환자가 없으면 온보딩 필요(소셜 최초 로그인).
+      needsOnboarding: user.role === 'caregiver' && user.patientId === null,
+    };
   }
 }

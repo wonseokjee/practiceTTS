@@ -8,6 +8,7 @@ import { AuthService } from './auth.service';
 import { User } from './entities/user.entity';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { JwtStrategy } from './jwt.strategy';
+import { KakaoStrategy } from './kakao.strategy';
 
 @Module({
   imports: [
@@ -32,7 +33,7 @@ import { JwtStrategy } from './jwt.strategy';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, JwtAuthGuard],
+  providers: [AuthService, JwtStrategy, KakaoStrategy, JwtAuthGuard],
   // 다른 모듈에서 가드와 서비스를 사용할 수 있도록 export
   exports: [JwtAuthGuard, AuthService],
 })

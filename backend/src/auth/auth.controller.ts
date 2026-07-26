@@ -5,15 +5,23 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Query,
+  Req,
   Request,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { AuthGuard } from '@nestjs/passport';
 import { IsString, Matches } from 'class-validator';
+import type { Response } from 'express';
 import { AuthService, UserResponse } from './auth.service';
+import { CompleteOnboardingDto } from './dto/complete-onboarding.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { User } from './entities/user.entity';
+import type { SocialProfile } from './social-profile';
 
 /** 환자 모드 복귀 PIN 검증 요청 DTO */
 class VerifyPinDto {
@@ -22,14 +30,28 @@ class VerifyPinDto {
   pin: string;
 }
 
+/** 소셜 콜백 일회용 코드 → JWT 교환 DTO */
+class TokenExchangeDto {
+  @IsString()
+  code: string;
+}
+
 // JWT 인증 후 Request에 주입되는 사용자 타입
 interface AuthenticatedRequest {
   user: User;
 }
 
+// 소셜 전략(KakaoStrategy.validate)이 주입한 프로필
+interface SocialRequest {
+  user: SocialProfile;
+}
+
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService,
+  ) {}
 
   // POST /auth/register - 회원가입
   @Post('register')
@@ -66,5 +88,51 @@ export class AuthController {
   ): Promise<{ ok: true }> {
     await this.authService.verifyPatientModePin(req.user.id, dto.pin);
     return { ok: true };
+  }
+
+  // ─── 소셜 로그인(카카오) ────────────────────────────────────────
+
+  // GET /auth/kakao - 카카오 인가 페이지로 리다이렉트(가드가 처리). 본문 없음.
+  // TODO(보안): CSRF 방어용 state 파라미터. passport-oauth2의 state는 세션
+  //   저장소가 필요해, 세션 미들웨어 도입과 함께 후속으로 추가한다(plan §10).
+  @Get('kakao')
+  @UseGuards(AuthGuard('kakao'))
+  kakaoAuth(): void {
+    // 가드가 302 리다이렉트를 수행하므로 여기 도달하지 않는다.
+  }
+
+  // GET /auth/kakao/callback - 카카오 콜백. 유저 조회·생성 후 일회용 코드로
+  // 프론트에 리다이렉트한다(JWT를 URL에 직접 노출하지 않음).
+  @Get('kakao/callback')
+  @UseGuards(AuthGuard('kakao'))
+  async kakaoCallback(
+    @Req() req: SocialRequest,
+    @Res() res: Response,
+  ): Promise<void> {
+    const code = await this.authService.socialLoginToCode(req.user);
+    const frontend =
+      this.configService.get<string>('FRONTEND_URL') ??
+      'http://localhost:5173';
+    res.redirect(`${frontend}/auth/callback?code=${encodeURIComponent(code)}`);
+  }
+
+  // POST /auth/token - 일회용 코드를 실제 JWT + user로 교환(1회 소비).
+  @Post('token')
+  @HttpCode(HttpStatus.OK)
+  async exchangeToken(
+    @Body() dto: TokenExchangeDto,
+  ): Promise<{ accessToken: string; user: UserResponse }> {
+    return this.authService.redeemOneTimeCode(dto.code);
+  }
+
+  // POST /auth/complete-onboarding - 소셜 최초 로그인 후 어르신 성함·PIN 입력.
+  @Post('complete-onboarding')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async completeOnboarding(
+    @Request() req: AuthenticatedRequest,
+    @Body() dto: CompleteOnboardingDto,
+  ): Promise<UserResponse> {
+    return this.authService.completeOnboarding(req.user.id, dto);
   }
 }
