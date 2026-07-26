@@ -39,6 +39,16 @@ function SocialLoginButtons() {
         <span aria-hidden="true" className="text-lg">💬</span>
         카카오로 시작하기
       </button>
+      <button
+        type="button"
+        onClick={() => {
+          window.location.href = `${API_BASE_URL}/auth/google`;
+        }}
+        className="mt-3 flex w-full min-h-[48px] items-center justify-center gap-2 rounded-full border border-[#DADCE0] bg-white font-medium text-[#3C4043] transition-colors hover:bg-[#F7F8F8]"
+      >
+        <span aria-hidden="true" className="text-lg">🟦</span>
+        Google로 시작하기
+      </button>
     </div>
   );
 }

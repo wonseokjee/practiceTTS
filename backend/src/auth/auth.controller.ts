@@ -116,6 +116,28 @@ export class AuthController {
     res.redirect(`${frontend}/auth/callback?code=${encodeURIComponent(code)}`);
   }
 
+  // ─── 소셜 로그인(구글) ─────────────────────────────────────────
+  // 카카오와 동일 구조. 콜백은 공통 socialLoginToCode/일회용 코드를 재사용한다.
+
+  @Get('google')
+  @UseGuards(AuthGuard('google'))
+  googleAuth(): void {
+    // 가드가 구글 인가 페이지로 302 리다이렉트.
+  }
+
+  @Get('google/callback')
+  @UseGuards(AuthGuard('google'))
+  async googleCallback(
+    @Req() req: SocialRequest,
+    @Res() res: Response,
+  ): Promise<void> {
+    const code = await this.authService.socialLoginToCode(req.user);
+    const frontend =
+      this.configService.get<string>('FRONTEND_URL') ??
+      'http://localhost:5173';
+    res.redirect(`${frontend}/auth/callback?code=${encodeURIComponent(code)}`);
+  }
+
   // POST /auth/token - 일회용 코드를 실제 JWT + user로 교환(1회 소비).
   @Post('token')
   @HttpCode(HttpStatus.OK)
