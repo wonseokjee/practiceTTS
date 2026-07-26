@@ -58,7 +58,10 @@ export interface QabWeeklyPoint {
   correct: number;
   /** 0~100. loc는 정답률이 아니라 반응률이다. */
   accuracy: number;
+  /** loc 의식 점수(0~3) 또는 발화 발음 점수(0~100). 없으면 null. */
   avgScore: number | null;
+  /** ddk 평균 감지 횟수. 이해·발화 검사는 null. */
+  avgMetric: number | null;
 }
 
 /** 검사별 주차 추이 */

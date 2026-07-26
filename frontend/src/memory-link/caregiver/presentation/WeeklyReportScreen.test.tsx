@@ -24,15 +24,29 @@ describe('WeeklyReportScreen', () => {
       {
         subtest: 'sentence',
         points: [
-          { weekStart: '2026-07-06', total: 10, correct: 4, accuracy: 40, avgScore: null },
-          { weekStart: '2026-07-13', total: 10, correct: 7, accuracy: 70, avgScore: null },
+          { weekStart: '2026-07-06', total: 10, correct: 4, accuracy: 40, avgScore: null, avgMetric: null },
+          { weekStart: '2026-07-13', total: 10, correct: 7, accuracy: 70, avgScore: null, avgMetric: null },
         ],
         deltaFromPrevious: 30,
       },
       {
         subtest: 'loc',
         points: [
-          { weekStart: '2026-07-13', total: 3, correct: 1, accuracy: 33, avgScore: 1 },
+          { weekStart: '2026-07-13', total: 3, correct: 1, accuracy: 33, avgScore: 1, avgMetric: null },
+        ],
+        deltaFromPrevious: null,
+      },
+      {
+        subtest: 'repeat',
+        points: [
+          { weekStart: '2026-07-13', total: 8, correct: 5, accuracy: 63, avgScore: 82, avgMetric: null },
+        ],
+        deltaFromPrevious: null,
+      },
+      {
+        subtest: 'ddk',
+        points: [
+          { weekStart: '2026-07-13', total: 4, correct: 3, accuracy: 75, avgScore: null, avgMetric: 18.5 },
         ],
         deltaFromPrevious: null,
       },
@@ -70,7 +84,25 @@ describe('WeeklyReportScreen', () => {
     render(<WeeklyReportScreen onBack={vi.fn()} />);
 
     await waitFor(() => expect(screen.getByText('반응률')).toBeTruthy());
-    expect(screen.getByText('정답률')).toBeTruthy();
+    // 정답률 검사가 여럿(문장·따라말하기)이라 복수로 존재한다.
+    expect(screen.getAllByText('정답률').length).toBeGreaterThan(0);
+  });
+
+  it('ddk는 정답률이 아니라 감지 횟수를, 발화는 발음 점수를 보여준다', async () => {
+    // ddk의 핵심 지표는 감지 횟수(metric)다. 정답률만 보면 말 움직임의
+    // 빠르기를 알 수 없다. 발화(따라말하기·읽기)는 발음 점수가 핵심이다.
+    vi.spyOn(quizApi, 'getQabTrend').mockResolvedValue(makeTrend());
+
+    render(<WeeklyReportScreen onBack={vi.fn()} />);
+
+    // ddk: 평균 감지 열과 그 값(18.5)
+    await waitFor(() => expect(screen.getByText('평균 감지(회)')).toBeTruthy());
+    expect(screen.getByText('18.5')).toBeTruthy();
+    // ddk는 '통과율'로 표기(정답률이 아님)
+    expect(screen.getByText('통과율')).toBeTruthy();
+    // 발화: 발음 열과 그 값(82)
+    expect(screen.getByText('발음(0~100)')).toBeTruthy();
+    expect(screen.getByText('82')).toBeTruthy();
   });
 
   it('인쇄 기능을 노출하지 않는다', async () => {

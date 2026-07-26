@@ -1691,4 +1691,66 @@ describe('QuizService', () => {
       expect(res.items).toEqual([]);
     });
   });
+
+  describe('getQabTrend', () => {
+    function trendQb(rows: unknown[]) {
+      return {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        addGroupBy: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue(rows),
+      };
+    }
+
+    it('ddk 주차에 평균 감지 횟수(avgMetric)를 소수 1자리로 담는다', async () => {
+      // 회귀: ddk의 핵심 지표는 감지 횟수다. 추이 쿼리가 이걸 빠뜨리면
+      // 리포트가 정답률만 보여주고 말 움직임의 빠르기를 못 본다.
+      const qb = trendQb([
+        {
+          weekStart: '2026-07-13',
+          subtest: 'ddk',
+          total: '4',
+          correct: '3',
+          avgScore: null,
+          avgMetric: '18.46',
+        },
+      ]);
+      qabResultRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const res = await service.getQabTrend(PATIENT_ID, 12);
+
+      const ddk = res.series.find((s) => s.subtest === 'ddk');
+      expect(ddk?.points[0]).toEqual({
+        weekStart: '2026-07-13',
+        total: 4,
+        correct: 3,
+        accuracy: 75,
+        avgScore: null,
+        avgMetric: 18.5,
+      });
+    });
+
+    it('metric이 없는 검사는 avgMetric이 null이다', async () => {
+      const qb = trendQb([
+        {
+          weekStart: '2026-07-13',
+          subtest: 'word',
+          total: '10',
+          correct: '7',
+          avgScore: null,
+          avgMetric: null,
+        },
+      ]);
+      qabResultRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const res = await service.getQabTrend(PATIENT_ID, 12);
+
+      expect(res.series[0].points[0].avgMetric).toBeNull();
+      expect(res.series[0].points[0].accuracy).toBe(70);
+    });
+  });
 });

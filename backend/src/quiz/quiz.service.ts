@@ -160,6 +160,8 @@ export interface QabWeeklyPoint {
   accuracy: number;
   /** loc의 평균 의식 수준 점수(0~3), 발화 항목의 평균 발음 점수(0~100). */
   avgScore: number | null;
+  /** ddk의 평균 감지 횟수(음절 반복 수). 소수 1자리. 발화·이해 검사는 null. */
+  avgMetric: number | null;
 }
 
 /** 검사별 주차 추이. */
@@ -981,6 +983,7 @@ export class QuizService {
         'correct',
       )
       .addSelect('AVG(r.score)', 'avgScore')
+      .addSelect('AVG(r.metric)', 'avgMetric')
       .where('r.patient_id = :pid', { pid: effectivePatientId })
       .andWhere(
         "r.created_at >= date_trunc('week', now()) - make_interval(weeks => :weeks)",
@@ -995,6 +998,7 @@ export class QuizService {
         total: string;
         correct: string;
         avgScore: string | null;
+        avgMetric: string | null;
       }>();
 
     const bySubtest = new Map<string, QabWeeklyPoint[]>();
@@ -1010,6 +1014,11 @@ export class QuizService {
         accuracy: total === 0 ? 0 : Math.round((correct / total) * 100),
         avgScore:
           row.avgScore === null ? null : Math.round(Number(row.avgScore)),
+        // ddk 감지 횟수. 요약과 같은 소수 1자리로 맞춘다.
+        avgMetric:
+          row.avgMetric === null
+            ? null
+            : Math.round(Number(row.avgMetric) * 10) / 10,
       });
       bySubtest.set(row.subtest, points);
     }

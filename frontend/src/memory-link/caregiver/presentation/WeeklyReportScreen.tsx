@@ -16,7 +16,10 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../shared/AuthContext.js';
 import { quizApi } from '../../patient/quiz/infrastructure/QuizApi.js';
-import type { QabTrendSeries } from '../../patient/quiz/domain/QabResult.js';
+import type {
+  QabTrendSeries,
+  QabWeeklyPoint,
+} from '../../patient/quiz/domain/QabResult.js';
 import { withHonorific } from '../../shared/honorific.js';
 
 /** 약 3개월. 주간 변동이 커서 이 정도는 봐야 흐름이 보인다. */
@@ -42,8 +45,50 @@ const SUBTEST_ORDER = [
   'ddk',
 ];
 
-/** loc는 정답률이 아니라 반응률이다. 같은 말로 쓰면 오독한다. */
-const isReactionBased = (subtest: string): boolean => subtest === 'loc';
+// 검사마다 "성적"의 뜻이 다르다. 같은 표에 같은 라벨로 담으면 오독한다.
+//  - reaction(loc): 정오답이 아니라 반응 여부·의식 점수(0~3)
+//  - ddk: 목표 음절 수 통과 여부 + 실제 감지 횟수(핵심 지표)
+//  - speech(따라말하기·읽기): 통과 여부 + 발음 정확도(0~100)
+//  - accuracy(단어·문장·이름대기): 정답률 그대로
+type SubtestKind = 'reaction' | 'ddk' | 'speech' | 'accuracy';
+
+function subtestKind(subtest: string): SubtestKind {
+  if (subtest === 'loc') return 'reaction';
+  if (subtest === 'ddk') return 'ddk';
+  if (subtest === 'repeat' || subtest === 'reading') return 'speech';
+  return 'accuracy';
+}
+
+const HIT_LABEL: Record<SubtestKind, string> = {
+  reaction: '반응',
+  ddk: '통과',
+  speech: '정답',
+  accuracy: '정답',
+};
+const RATE_LABEL: Record<SubtestKind, string> = {
+  reaction: '반응률',
+  ddk: '통과율',
+  speech: '정답률',
+  accuracy: '정답률',
+};
+
+/** 검사마다 실제로 의미 있는 추가 지표 열. 없으면 null. */
+interface ExtraCol {
+  header: string;
+  value: (p: QabWeeklyPoint) => number | string;
+}
+function extraCol(kind: SubtestKind): ExtraCol | null {
+  switch (kind) {
+    case 'reaction':
+      return { header: '평균(0~3)', value: (p) => p.avgScore ?? '-' };
+    case 'ddk':
+      return { header: '평균 감지(회)', value: (p) => p.avgMetric ?? '-' };
+    case 'speech':
+      return { header: '발음(0~100)', value: (p) => p.avgScore ?? '-' };
+    default:
+      return null;
+  }
+}
 
 function formatWeek(iso: string): string {
   const d = new Date(`${iso}T00:00:00`);
@@ -161,64 +206,71 @@ export function WeeklyReportScreen({ onBack }: WeeklyReportScreenProps) {
             </p>
 
             <div className="flex flex-col gap-5">
-              {sorted.map((s) => (
-                <section key={s.subtest} className="break-inside-avoid">
-                  <h2 className="mb-2 text-base font-semibold text-[#1A1916]">
-                    {SUBTEST_LABELS[s.subtest] ?? s.subtest}
-                  </h2>
-                  <table className="w-full border-collapse text-sm">
-                    <caption className="sr-only">
-                      {SUBTEST_LABELS[s.subtest] ?? s.subtest} 주차별 기록
-                    </caption>
-                    <thead>
-                      <tr className="border-b border-[#E8E4DC] text-left text-[#5C6661]">
-                        <th scope="col" className="py-1.5 font-medium">
-                          주 시작
-                        </th>
-                        <th scope="col" className="py-1.5 font-medium">
-                          {isReactionBased(s.subtest) ? '반응' : '정답'}
-                        </th>
-                        <th scope="col" className="py-1.5 font-medium">
-                          문항
-                        </th>
-                        <th scope="col" className="py-1.5 text-right font-medium">
-                          {isReactionBased(s.subtest) ? '반응률' : '정답률'}
-                        </th>
-                        {isReactionBased(s.subtest) && (
+              {sorted.map((s) => {
+                const kind = subtestKind(s.subtest);
+                const extra = extraCol(kind);
+                return (
+                  <section key={s.subtest} className="break-inside-avoid">
+                    <h2 className="mb-2 text-base font-semibold text-[#1A1916]">
+                      {SUBTEST_LABELS[s.subtest] ?? s.subtest}
+                    </h2>
+                    <table className="w-full border-collapse text-sm">
+                      <caption className="sr-only">
+                        {SUBTEST_LABELS[s.subtest] ?? s.subtest} 주차별 기록
+                      </caption>
+                      <thead>
+                        <tr className="border-b border-[#E8E4DC] text-left text-[#5C6661]">
+                          <th scope="col" className="py-1.5 font-medium">
+                            주 시작
+                          </th>
+                          <th scope="col" className="py-1.5 font-medium">
+                            {HIT_LABEL[kind]}
+                          </th>
+                          <th scope="col" className="py-1.5 font-medium">
+                            문항
+                          </th>
                           <th
                             scope="col"
                             className="py-1.5 text-right font-medium"
                           >
-                            평균(0~3)
+                            {RATE_LABEL[kind]}
                           </th>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {s.points.map((p) => (
-                        <tr
-                          key={p.weekStart}
-                          className="border-b border-[#F2F1EC]"
-                        >
-                          <td className="py-1.5 tabular-nums">
-                            {formatWeek(p.weekStart)}
-                          </td>
-                          <td className="py-1.5 tabular-nums">{p.correct}</td>
-                          <td className="py-1.5 tabular-nums">{p.total}</td>
-                          <td className="py-1.5 text-right font-medium tabular-nums">
-                            {p.accuracy}%
-                          </td>
-                          {isReactionBased(s.subtest) && (
-                            <td className="py-1.5 text-right tabular-nums">
-                              {p.avgScore ?? '-'}
-                            </td>
+                          {extra && (
+                            <th
+                              scope="col"
+                              className="py-1.5 text-right font-medium"
+                            >
+                              {extra.header}
+                            </th>
                           )}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </section>
-              ))}
+                      </thead>
+                      <tbody>
+                        {s.points.map((p) => (
+                          <tr
+                            key={p.weekStart}
+                            className="border-b border-[#F2F1EC]"
+                          >
+                            <td className="py-1.5 tabular-nums">
+                              {formatWeek(p.weekStart)}
+                            </td>
+                            <td className="py-1.5 tabular-nums">{p.correct}</td>
+                            <td className="py-1.5 tabular-nums">{p.total}</td>
+                            <td className="py-1.5 text-right font-medium tabular-nums">
+                              {p.accuracy}%
+                            </td>
+                            {extra && (
+                              <td className="py-1.5 text-right tabular-nums">
+                                {extra.value(p)}
+                              </td>
+                            )}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </section>
+                );
+              })}
             </div>
 
             {/* 한계 고지 — 이게 없으면 의료진이 오독한다 */}
@@ -243,6 +295,17 @@ export function WeeklyReportScreen({ onBack }: WeeklyReportScreenProps) {
                   &lsquo;의식 수준&rsquo;은 소리를 듣고 화면을 누르기까지의
                   반응으로 0~3점을 매깁니다. 정답·오답이 아니라 반응 여부와
                   속도를 봅니다.
+                </li>
+                <li>
+                  &lsquo;따라 말하기&rsquo;·&lsquo;소리 내어 읽기&rsquo;의
+                  &lsquo;발음&rsquo;은 음성 인식이 매긴 0~100점 근사치입니다.
+                  주변 소음·발음 습관에 민감하니 통과 여부와 함께 참고로만
+                  봐주세요.
+                </li>
+                <li>
+                  &lsquo;말운동(퍼터커)&rsquo;의 &lsquo;평균 감지&rsquo;는 정해진
+                  시간 동안 인식된 음절 반복 횟수입니다. 많을수록 말 움직임이
+                  빠른 편이며, &lsquo;통과&rsquo;는 목표 횟수를 넘겼는지입니다.
                 </li>
               </ul>
             </section>
