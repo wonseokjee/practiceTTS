@@ -39,4 +39,17 @@ describe('LoginScreen 소셜 로그인 버튼', () => {
     render(<LoginScreen />);
     expect(screen.queryByText('최근 사용')).toBeNull();
   });
+
+  it('?error=social이면 소셜 로그인 실패 안내를 보여준다', () => {
+    window.history.pushState({}, '', '/login?error=social');
+    render(<LoginScreen />);
+    expect(screen.getByText(/소셜 로그인에 실패/)).toBeTruthy();
+    window.history.pushState({}, '', '/login'); // 정리
+  });
+
+  it('일반 진입에는 실패 안내가 없다', () => {
+    window.history.pushState({}, '', '/login');
+    render(<LoginScreen />);
+    expect(screen.queryByText(/소셜 로그인에 실패/)).toBeNull();
+  });
 });

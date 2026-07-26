@@ -313,6 +313,10 @@ function RegisterForm() {
 
 export function LoginScreen() {
   const [activeTab, setActiveTab] = useState<Tab>('login');
+  // 백엔드 소셜 콜백이 실패하면 /login?error=social로 되돌아온다(state 불일치·동의 거부 등).
+  const socialFailed =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('error') === 'social';
 
   return (
     <div className="min-h-screen bg-[#F7F6F3] flex items-center justify-center px-4">
@@ -322,6 +326,17 @@ export function LoginScreen() {
           <h1 className="text-2xl font-bold text-[#1A1916]">Memory Link</h1>
           <p className="mt-1 text-sm text-[#6B6560]">인지 훈련 및 기억 연결 플랫폼</p>
         </div>
+
+        {socialFailed && (
+          <div className="mx-6 mb-2">
+            <p
+              role="alert"
+              className="rounded-lg bg-[#C94040]/10 px-3 py-2 text-sm text-[#C94040]"
+            >
+              소셜 로그인에 실패했어요. 다시 시도해 주세요.
+            </p>
+          </div>
+        )}
 
         {/* 탭 */}
         <div className="flex border-b border-[#E8E4DC] mx-6">

@@ -8,6 +8,7 @@ import {
   Req,
   Request,
   Res,
+  UseFilters,
   UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -21,6 +22,7 @@ import { RegisterDto } from './dto/register.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { User } from './entities/user.entity';
 import { SocialInitiateGuard, verifyOAuthState } from './oauth-state';
+import { SocialAuthExceptionFilter } from './social-auth-exception.filter';
 import type { SocialProfile } from './social-profile';
 
 /** 환자 모드 복귀 PIN 검증 요청 DTO */
@@ -104,6 +106,7 @@ export class AuthController {
   // 일회용 코드로 프론트에 리다이렉트한다(JWT를 URL에 직접 노출하지 않음).
   @Get('kakao/callback')
   @UseGuards(AuthGuard('kakao'))
+  @UseFilters(SocialAuthExceptionFilter)
   async kakaoCallback(
     @Req() req: ExpressRequest & SocialRequest,
     @Res() res: Response,
@@ -128,6 +131,7 @@ export class AuthController {
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
+  @UseFilters(SocialAuthExceptionFilter)
   async googleCallback(
     @Req() req: ExpressRequest & SocialRequest,
     @Res() res: Response,

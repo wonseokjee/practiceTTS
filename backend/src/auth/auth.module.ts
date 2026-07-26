@@ -10,6 +10,7 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 import { JwtStrategy } from './jwt.strategy';
 import { KakaoStrategy } from './kakao.strategy';
 import { GoogleStrategy } from './google.strategy';
+import { SocialAuthExceptionFilter } from './social-auth-exception.filter';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { GoogleStrategy } from './google.strategy';
     KakaoStrategy,
     GoogleStrategy,
     JwtAuthGuard,
+    SocialAuthExceptionFilter,
   ],
   // 다른 모듈에서 가드와 서비스를 사용할 수 있도록 export
   exports: [JwtAuthGuard, AuthService],
