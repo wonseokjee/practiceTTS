@@ -5,11 +5,9 @@ import { render, screen, waitFor } from '@testing-library/react';
 
 const loginWithCode = vi.fn();
 const navigate = vi.fn();
-let searchString = '';
 
 vi.mock('react-router-dom', () => ({
   useNavigate: () => navigate,
-  useSearchParams: () => [new URLSearchParams(searchString), vi.fn()],
 }));
 vi.mock('./AuthContext.js', () => ({
   useAuth: () => ({ loginWithCode }),
@@ -17,15 +15,20 @@ vi.mock('./AuthContext.js', () => ({
 
 import { SocialCallbackScreen } from './SocialCallbackScreen.js';
 
+/** 코드는 URL 프래그먼트(#code=)로 전달된다. */
+function setHash(value: string) {
+  window.location.hash = value;
+}
+
 describe('SocialCallbackScreen', () => {
   beforeEach(() => {
     loginWithCode.mockReset();
     navigate.mockReset();
-    searchString = '';
+    setHash('');
   });
 
-  it('코드가 있으면 교환 후 루트로 이동한다', async () => {
-    searchString = 'code=abc123';
+  it('프래그먼트에 코드가 있으면 교환 후 루트로 이동한다', async () => {
+    setHash('#code=abc123');
     loginWithCode.mockResolvedValue(undefined);
 
     render(<SocialCallbackScreen />);
@@ -37,7 +40,7 @@ describe('SocialCallbackScreen', () => {
   });
 
   it('코드가 없으면 실패 UI를 보여주고 교환하지 않는다', async () => {
-    searchString = '';
+    setHash('');
 
     render(<SocialCallbackScreen />);
 
@@ -48,7 +51,7 @@ describe('SocialCallbackScreen', () => {
   });
 
   it('교환이 실패하면 실패 UI를 보여준다', async () => {
-    searchString = 'code=bad';
+    setHash('#code=bad');
     loginWithCode.mockRejectedValue(new Error('invalid'));
 
     render(<SocialCallbackScreen />);

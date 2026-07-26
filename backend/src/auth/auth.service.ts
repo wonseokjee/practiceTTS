@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   HttpException,
   HttpStatus,
   Injectable,
@@ -370,6 +371,11 @@ export class AuthService {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('사용자를 찾을 수 없습니다.');
+    }
+    // 온보딩(환자 연결)은 보호자만. therapist 등 다른 역할이 patient_id=null이라고
+    // 환자 레코드를 만들어 붙이지 못하게 막는다.
+    if (user.role !== 'caregiver') {
+      throw new ForbiddenException('보호자 계정만 온보딩할 수 있습니다.');
     }
     if (user.patientId !== null) {
       throw new ConflictException('이미 온보딩이 완료되었습니다.');

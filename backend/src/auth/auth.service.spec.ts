@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   HttpException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -281,7 +282,7 @@ describe('AuthService', () => {
 
   describe('completeOnboarding', () => {
     it('어르신 성함·PIN으로 환자 레코드를 만들고 연결한다', async () => {
-      const social = { id: 'u1', patientId: null } as User;
+      const social = { id: 'u1', patientId: null, role: 'caregiver' } as User;
       // 1) 초기 조회(미완성) 2) 트랜잭션 후 재조회
       userRepository.findOne.mockResolvedValueOnce(social);
 
@@ -324,7 +325,7 @@ describe('AuthService', () => {
     it('동시 온보딩 경합(조건부 갱신 0행)은 409로 롤백된다', async () => {
       // 사전 체크는 통과(patient_id=null)했지만, 트랜잭션 안 조건부 UPDATE가
       // 0행 → 다른 요청이 먼저 연결함 → 409(트랜잭션 롤백으로 고아 patient 없음).
-      const social = { id: 'u1', patientId: null } as User;
+      const social = { id: 'u1', patientId: null, role: 'caregiver' } as User;
       userRepository.findOne.mockResolvedValueOnce(social);
       const fakeManager = {
         getRepository: () => ({
@@ -350,6 +351,7 @@ describe('AuthService', () => {
       userRepository.findOne.mockResolvedValueOnce({
         id: 'u1',
         patientId: 'already',
+        role: 'caregiver',
       } as User);
 
       await expect(
@@ -358,6 +360,21 @@ describe('AuthService', () => {
           patientModePin: '1234',
         }),
       ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('보호자가 아닌 역할(therapist 등)은 403', async () => {
+      userRepository.findOne.mockResolvedValueOnce({
+        id: 't1',
+        patientId: null,
+        role: 'therapist',
+      } as User);
+
+      await expect(
+        service.completeOnboarding('t1', {
+          patientDisplayName: '박순자',
+          patientModePin: '1234',
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
     });
   });
 
@@ -403,9 +420,9 @@ describe('AuthService', () => {
     });
 
     it('유효하지 않은 코드는 401', async () => {
-      await expect(
-        service.redeemOneTimeCode('nope'),
-      ).rejects.toBeInstanceOf(UnauthorizedException);
+      await expect(service.redeemOneTimeCode('nope')).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
     });
   });
 });

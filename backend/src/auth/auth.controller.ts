@@ -5,7 +5,6 @@ import {
   HttpCode,
   HttpStatus,
   Post,
-  Query,
   Req,
   Request,
   Res,
@@ -112,9 +111,10 @@ export class AuthController {
     verifyOAuthState(req, res, 'kakao');
     const code = await this.authService.socialLoginToCode(req.user);
     const frontend =
-      this.configService.get<string>('FRONTEND_URL') ??
-      'http://localhost:5173';
-    res.redirect(`${frontend}/auth/callback?code=${encodeURIComponent(code)}`);
+      this.configService.get<string>('FRONTEND_URL') ?? 'http://localhost:5173';
+    // 코드를 쿼리(?)가 아니라 프래그먼트(#)로 전달한다. 프래그먼트는 서버로
+    // 전송되지 않아(액세스 로그·Referer에 안 남음) 단명 코드의 유출면을 줄인다.
+    res.redirect(`${frontend}/auth/callback#code=${encodeURIComponent(code)}`);
   }
 
   // ─── 소셜 로그인(구글) ─────────────────────────────────────────
@@ -135,9 +135,10 @@ export class AuthController {
     verifyOAuthState(req, res, 'google');
     const code = await this.authService.socialLoginToCode(req.user);
     const frontend =
-      this.configService.get<string>('FRONTEND_URL') ??
-      'http://localhost:5173';
-    res.redirect(`${frontend}/auth/callback?code=${encodeURIComponent(code)}`);
+      this.configService.get<string>('FRONTEND_URL') ?? 'http://localhost:5173';
+    // 코드를 쿼리(?)가 아니라 프래그먼트(#)로 전달한다. 프래그먼트는 서버로
+    // 전송되지 않아(액세스 로그·Referer에 안 남음) 단명 코드의 유출면을 줄인다.
+    res.redirect(`${frontend}/auth/callback#code=${encodeURIComponent(code)}`);
   }
 
   // POST /auth/token - 일회용 코드를 실제 JWT + user로 교환(1회 소비).

@@ -9,11 +9,17 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext.js';
 
+/** URL 프래그먼트(#code=...)에서 코드를 읽는다. 백엔드가 코드를 쿼리가 아니라
+ *  프래그먼트로 넘겨(서버·Referer 노출 방지) 여기서 파싱한다. */
+function codeFromHash(): string | null {
+  const hash = window.location.hash.replace(/^#/, '');
+  return new URLSearchParams(hash).get('code');
+}
+
 export function SocialCallbackScreen() {
-  const [params] = useSearchParams();
   const navigate = useNavigate();
   const { loginWithCode } = useAuth();
   const [failed, setFailed] = useState(false);
@@ -24,7 +30,7 @@ export function SocialCallbackScreen() {
     if (ranRef.current) return;
     ranRef.current = true;
 
-    const code = params.get('code');
+    const code = codeFromHash();
     if (!code) {
       setFailed(true);
       return;
@@ -33,7 +39,7 @@ export function SocialCallbackScreen() {
     loginWithCode(code)
       .then(() => navigate('/', { replace: true }))
       .catch(() => setFailed(true));
-  }, [params, loginWithCode, navigate]);
+  }, [loginWithCode, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#F7F6F3] p-6">

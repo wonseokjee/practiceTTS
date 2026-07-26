@@ -44,19 +44,25 @@ export class AddSocialLoginToUsers1784400000000 implements MigrationInterface {
       `DROP INDEX IF EXISTS "UQ_users_provider_account"`,
     );
 
-    // NOT NULL 복원은 위험할 수 있다: 소셜 유저(email/password NULL)가 이미
-    // 있으면 SET NOT NULL이 실패한다. 방어적으로, 되돌리기 전에 소셜 계정이
-    // 남아 있으면 복원을 건너뛴다(컬럼만 제거). 데이터 손실 없이 안전.
+    // 소셜 유저가 이미 있으면 되돌리기를 거부한다. auth_provider·provider_user_id를
+    // 드롭하면 그들의 제공자 신원이 사라지고, email/password도 NULL이라 로그인이
+    // 영구 불능이 된다. 롤백은 소셜 계정을 먼저 정리(이관/삭제)한 뒤 수행해야 한다.
     const socialRows = await queryRunner.query(
       `SELECT 1 FROM "users" WHERE "auth_provider" <> 'local' LIMIT 1`,
     );
-    if (!Array.isArray(socialRows) || socialRows.length === 0) {
-      await queryRunner.query(`
-        ALTER TABLE "users"
-          ALTER COLUMN "email" SET NOT NULL,
-          ALTER COLUMN "password_hash" SET NOT NULL
-      `);
+    if (Array.isArray(socialRows) && socialRows.length > 0) {
+      throw new Error(
+        '소셜 유저가 존재해 이 마이그레이션을 되돌릴 수 없습니다. ' +
+          'auth_provider/provider_user_id를 드롭하면 해당 계정이 로그인 불능이 됩니다. ' +
+          '먼저 소셜 계정을 이관하거나 삭제한 뒤 다시 시도하세요.',
+      );
     }
+
+    await queryRunner.query(`
+      ALTER TABLE "users"
+        ALTER COLUMN "email" SET NOT NULL,
+        ALTER COLUMN "password_hash" SET NOT NULL
+    `);
 
     await queryRunner.query(`
       ALTER TABLE "users"

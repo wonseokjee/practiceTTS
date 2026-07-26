@@ -16,7 +16,8 @@ import type { SocialProfile } from './social-profile';
 export class KakaoStrategy extends PassportStrategy(Strategy, 'kakao') {
   constructor(configService: ConfigService) {
     super({
-      clientID: configService.get<string>('KAKAO_CLIENT_ID') || 'not-configured',
+      clientID:
+        configService.get<string>('KAKAO_CLIENT_ID') || 'not-configured',
       clientSecret: configService.get<string>('KAKAO_CLIENT_SECRET') || '',
       callbackURL:
         configService.get<string>('KAKAO_CALLBACK_URL') ||

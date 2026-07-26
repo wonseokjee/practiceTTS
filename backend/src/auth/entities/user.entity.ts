@@ -32,7 +32,12 @@ export class User {
   email: string | null;
 
   // 비밀번호 해시는 기본적으로 조회 제외 (보안). 소셜 유저는 없음(NULL).
-  @Column({ name: 'password_hash', select: false, type: 'varchar', nullable: true })
+  @Column({
+    name: 'password_hash',
+    select: false,
+    type: 'varchar',
+    nullable: true,
+  })
   passwordHash: string | null;
 
   // 로그인 제공자. 기존 계정은 마이그레이션 기본값 'local'.
@@ -61,7 +66,10 @@ export class User {
 
   // 연결된 환자 엔티티 참조 (자기 참조 관계)
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'patient_id', foreignKeyConstraintName: 'FK_users_patient' })
+  @JoinColumn({
+    name: 'patient_id',
+    foreignKeyConstraintName: 'FK_users_patient',
+  })
   patient: User | null;
 
   // 환자 모드 복귀 PIN 해시 (보호자에만 설정). bcrypt 해시, 기본 조회 제외(보안).
