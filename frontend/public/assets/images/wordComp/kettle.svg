@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" role="img">
+  <rect width="300" height="300" fill="#FAF9F7" rx="16"/>
+  <g stroke="#2A2724" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">
+    <!-- 몸통 -->
+    <path d="M104 182 q4 -30 48 -30 q44 0 48 30 v34 q0 28 -34 28 h-28 q-34 0 -34 -28 z" fill="#9AB0A8"/>
+    <!-- 주둥이 -->
+    <path d="M104 186 q-30 -4 -40 -32 q22 2 40 20 z" fill="#9AB0A8"/>
+    <!-- 손잡이(반원) -->
+    <path d="M118 156 q34 -50 70 0" fill="none"/>
+    <!-- 뚜껑 꼭지 -->
+    <path d="M140 152 h24" fill="none"/>
+    <circle cx="152" cy="140" r="9" fill="#9AB0A8"/>
+  </g>
+</svg>
