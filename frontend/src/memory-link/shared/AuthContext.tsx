@@ -18,6 +18,7 @@ import {
 import type { ReactNode } from 'react';
 import {
   memoryLinkApi,
+  ML_LAST_PROVIDER_KEY,
   ML_PATIENT_MODE_KEY,
   ML_TOKEN_KEY,
 } from './MemoryLinkApi.js';
@@ -63,6 +64,7 @@ interface MeResponseRaw {
   patientId: string | null;
   patientDisplayName?: string | null;
   needsOnboarding?: boolean;
+  authProvider?: string;
 }
 
 // ─── 런타임 타입 검증 ─────────────────────────────────────────
@@ -390,6 +392,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const meRaw = meResponse.data;
       if (!isMeResponse(meRaw)) {
         throw new Error('사용자 정보 형식이 올바르지 않습니다.');
+      }
+      // 어느 소셜로 로그인했는지 기록 → 다음 로그인 화면에 "최근 사용" 배지.
+      if (meRaw.authProvider === 'kakao' || meRaw.authProvider === 'google') {
+        localStorage.setItem(ML_LAST_PROVIDER_KEY, meRaw.authProvider);
       }
       setUser(toAuthUser(meRaw));
     },

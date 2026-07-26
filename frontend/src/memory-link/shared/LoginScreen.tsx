@@ -12,16 +12,31 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useAuth } from './AuthContext.js';
 import type { RegisterData } from './AuthContext.js';
-import { API_BASE_URL } from './MemoryLinkApi.js';
+import { API_BASE_URL, ML_LAST_PROVIDER_KEY } from './MemoryLinkApi.js';
 import { extractErrorMessage } from './extractErrorMessage.js';
 
 type Tab = 'login' | 'register';
 
+/** 직전에 성공한 소셜 로그인에 붙이는 "최근 사용" 배지. */
+function RecentBadge() {
+  return (
+    <span className="absolute right-3 rounded-full bg-black/10 px-2 py-0.5 text-[11px] font-medium text-[#3C4043]">
+      최근 사용
+    </span>
+  );
+}
+
 /**
- * 카카오로 시작하기. 백엔드 /auth/kakao로 전체 페이지 이동(리다이렉트 OAuth).
- * SPA 라우팅이 아니라 window.location으로 백엔드가 카카오 인가 페이지로 302한다.
+ * 소셜 로그인 버튼들. 백엔드 /auth/<provider>로 전체 페이지 이동(리다이렉트 OAuth).
+ * SPA 라우팅이 아니라 window.location으로 백엔드가 인가 페이지로 302한다.
+ * 직전에 쓴 제공자에는 "최근 사용" 배지를 달아, 어느 걸로 가입했는지 헷갈리지 않게 한다.
  */
 function SocialLoginButtons() {
+  const last =
+    typeof window !== 'undefined'
+      ? localStorage.getItem(ML_LAST_PROVIDER_KEY)
+      : null;
+
   return (
     <div className="mt-6">
       <div className="flex items-center gap-3 text-xs text-[#9AA09B]">
@@ -34,20 +49,22 @@ function SocialLoginButtons() {
         onClick={() => {
           window.location.href = `${API_BASE_URL}/auth/kakao`;
         }}
-        className="mt-4 flex w-full min-h-[48px] items-center justify-center gap-2 rounded-full bg-[#FEE500] font-medium text-[#191600] transition-opacity hover:opacity-90"
+        className="relative mt-4 flex w-full min-h-[48px] items-center justify-center gap-2 rounded-full bg-[#FEE500] font-medium text-[#191600] transition-opacity hover:opacity-90"
       >
         <span aria-hidden="true" className="text-lg">💬</span>
         카카오로 시작하기
+        {last === 'kakao' && <RecentBadge />}
       </button>
       <button
         type="button"
         onClick={() => {
           window.location.href = `${API_BASE_URL}/auth/google`;
         }}
-        className="mt-3 flex w-full min-h-[48px] items-center justify-center gap-2 rounded-full border border-[#DADCE0] bg-white font-medium text-[#3C4043] transition-colors hover:bg-[#F7F8F8]"
+        className="relative mt-3 flex w-full min-h-[48px] items-center justify-center gap-2 rounded-full border border-[#DADCE0] bg-white font-medium text-[#3C4043] transition-colors hover:bg-[#F7F8F8]"
       >
         <span aria-hidden="true" className="text-lg">🟦</span>
         Google로 시작하기
+        {last === 'google' && <RecentBadge />}
       </button>
     </div>
   );
