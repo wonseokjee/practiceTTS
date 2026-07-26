@@ -260,6 +260,23 @@ describe('AuthService', () => {
       expect(result.email).toBeNull();
       expect(result.authProvider).toBe('kakao');
     });
+
+    it('이메일 UNIQUE 경합(사전체크 이후 선점) 시 email=null로 재시도해 생성한다', async () => {
+      userRepository.findOne
+        .mockResolvedValueOnce(null) // (provider,id) 없음
+        .mockResolvedValueOnce(null) // 사전 체크: 이메일 미사용
+        .mockResolvedValueOnce(null); // catch 재조회: provider 행 없음 → 이메일 경합
+      userRepository.save
+        .mockRejectedValueOnce(
+          new QueryFailedError('insert', [], { code: '23505' } as never),
+        )
+        .mockImplementationOnce(async (e: Partial<User>) => e as User);
+
+      const result = await service.findOrCreateSocialUser(profile);
+
+      expect(result.email).toBeNull(); // 재시도에서 이메일을 비웠다
+      expect(userRepository.save).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe('completeOnboarding', () => {

@@ -300,8 +300,8 @@ export class AuthService {
     try {
       return await this.userRepository.save(user);
     } catch (err) {
-      // 동시 최초 로그인 경합: 부분 고유 인덱스 위반 → 방금 만들어진 행을 재조회.
       if (this.isUniqueViolation(err)) {
+        // (1) 동시 최초 로그인 경합: 부분 고유 인덱스 위반 → 방금 만들어진 행을 재조회.
         const again = await this.userRepository.findOne({
           where: {
             authProvider: profile.provider,
@@ -309,6 +309,12 @@ export class AuthService {
           },
         });
         if (again) return again;
+        // (2) 그게 아니면 이메일 UNIQUE 경합: 사전 체크 이후 다른 계정이 이 이메일을
+        //     선점했다. email 없이 1회 재시도(이메일은 부가 정보라 비워도 로그인 가능).
+        if (user.email !== null) {
+          user.email = null;
+          return await this.userRepository.save(user);
+        }
       }
       throw err;
     }
@@ -316,10 +322,16 @@ export class AuthService {
 
   /** 일회용 코드 발급(단명). userId를 매핑해 둔다. */
   private issueOneTimeCode(userId: string): string {
+    const now = Date.now();
+    // 교환 없이 버려진 코드(사용자가 콜백 후 이탈)가 무한 누적되지 않게,
+    // 발급할 때마다 만료된 항목을 청소한다. n은 TTL 창의 활동량으로 제한된다.
+    for (const [existing, entry] of this.oneTimeCodes) {
+      if (now > entry.expiresAt) this.oneTimeCodes.delete(existing);
+    }
     const code = randomUUID();
     this.oneTimeCodes.set(code, {
       userId,
-      expiresAt: Date.now() + AuthService.ONE_TIME_CODE_TTL_MS,
+      expiresAt: now + AuthService.ONE_TIME_CODE_TTL_MS,
     });
     return code;
   }
