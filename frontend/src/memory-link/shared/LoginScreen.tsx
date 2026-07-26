@@ -137,7 +137,10 @@ function LoginForm() {
       </div>
 
       {error !== null && (
-        <p role="alert" className="text-sm text-[#C94040] bg-[#C94040]/10 px-3 py-2 rounded-lg">
+        <p
+          role="alert"
+          className="rounded-xl border border-[#C94040]/25 bg-[#FEF0F0] px-4 py-3 text-sm text-[#8b2020]"
+        >
           {error}
         </p>
       )}
@@ -293,7 +296,10 @@ function RegisterForm() {
       </div>
 
       {error !== null && (
-        <p role="alert" className="text-sm text-[#C94040] bg-[#C94040]/10 px-3 py-2 rounded-lg">
+        <p
+          role="alert"
+          className="rounded-xl border border-[#C94040]/25 bg-[#FEF0F0] px-4 py-3 text-sm text-[#8b2020]"
+        >
           {error}
         </p>
       )}
@@ -331,7 +337,7 @@ export function LoginScreen() {
           <div className="mx-6 mb-2">
             <p
               role="alert"
-              className="rounded-lg bg-[#C94040]/10 px-3 py-2 text-sm text-[#C94040]"
+              className="rounded-xl border border-[#C94040]/25 bg-[#FEF0F0] px-4 py-3 text-sm text-[#8b2020]"
             >
               소셜 로그인에 실패했어요. 다시 시도해 주세요.
             </p>

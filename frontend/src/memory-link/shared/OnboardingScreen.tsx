@@ -104,7 +104,7 @@ export function OnboardingScreen() {
           {error !== null && (
             <p
               role="alert"
-              className="text-sm text-[#C94040] bg-[#C94040]/10 px-3 py-2 rounded-lg"
+              className="rounded-xl border border-[#C94040]/25 bg-[#FEF0F0] px-4 py-3 text-sm text-[#8b2020]"
             >
               {error}
             </p>
