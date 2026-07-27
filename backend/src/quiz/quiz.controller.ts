@@ -19,6 +19,7 @@ import {
 } from '@nestjs/common';
 import type { User } from '../auth/entities/user.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { OnboardingGuard } from '../auth/onboarding.guard';
 import { resolveEffectivePatientId } from '../auth/effective-patient-id.util';
 import { GenerateQuizDto } from './dto/generate-quiz.dto';
 import { QuizSetSummaryDto } from './dto/quiz-set-summary.dto';
@@ -48,7 +49,7 @@ interface AuthenticatedRequest extends Request {
  * - 비즈니스 로직 없음 (QuizService 위임). QuizError → HttpException 매핑만 담당.
  */
 @Controller()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, OnboardingGuard)
 export class QuizController {
   constructor(private readonly quizService: QuizService) {}
 

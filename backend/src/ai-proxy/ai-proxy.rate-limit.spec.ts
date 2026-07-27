@@ -91,14 +91,17 @@ describe('AiProxyController 레이트리밋', () => {
     expect(ttsMeta).toMatchObject({ name: 'tts' });
 
     // 컨트롤러 가드에 RateLimitGuard가 JwtAuthGuard **뒤에** 있어야
-    // req.user.id로 버킷을 나눌 수 있다.
+    // req.user.id로 버킷을 나눌 수 있다. 중간에 OnboardingGuard(온보딩 전
+    // 보호자 차단)가 끼어도 이 불변식은 유지된다 — RateLimit는 auth 뒤.
     const guards = Reflect.getMetadata('__guards__', AiProxyController) as
       | unknown[]
       | undefined;
     expect(guards).toBeDefined();
-    expect(guards).toHaveLength(2);
     expect(guards?.[0]).toBe(JwtAuthGuard);
-    expect(guards?.[1]).toBe(RateLimitGuard);
+    // RateLimitGuard는 JwtAuthGuard보다 뒤(인덱스가 크다)에 온다.
+    const jwtIdx = guards?.indexOf(JwtAuthGuard) ?? -1;
+    const rlIdx = guards?.indexOf(RateLimitGuard) ?? -1;
+    expect(rlIdx).toBeGreaterThan(jwtIdx);
   });
 
   it('429에 Retry-After를 실어준다', async () => {

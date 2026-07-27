@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { IsBoolean } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { OnboardingGuard } from '../auth/onboarding.guard';
 import { EffectivePatientId } from '../auth/decorators/effective-patient-id.decorator';
 import { CreateSessionDto } from './dto/create-session.dto';
 import type { MessageResponseDto } from './dto/message-response.dto';
@@ -33,7 +34,7 @@ class CompleteSessionDto {
  *   서비스 레이어에서 세션 소유권을 effective patientId로 추가 검증.
  */
 @Controller('training')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, OnboardingGuard)
 export class TrainingController {
   constructor(private readonly trainingService: TrainingService) {}
 

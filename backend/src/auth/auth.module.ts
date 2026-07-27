@@ -7,6 +7,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { User } from './entities/user.entity';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { OnboardingGuard } from './onboarding.guard';
 import { JwtStrategy } from './jwt.strategy';
 import { KakaoStrategy } from './kakao.strategy';
 import { GoogleStrategy } from './google.strategy';
@@ -41,9 +42,10 @@ import { SocialAuthExceptionFilter } from './social-auth-exception.filter';
     KakaoStrategy,
     GoogleStrategy,
     JwtAuthGuard,
+    OnboardingGuard,
     SocialAuthExceptionFilter,
   ],
   // 다른 모듈에서 가드와 서비스를 사용할 수 있도록 export
-  exports: [JwtAuthGuard, AuthService],
+  exports: [JwtAuthGuard, OnboardingGuard, AuthService],
 })
 export class AuthModule {}

@@ -12,6 +12,7 @@ import { createReadStream } from 'fs';
 import { stat } from 'fs/promises';
 import { extname, join } from 'path';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { OnboardingGuard } from '../auth/onboarding.guard';
 import type { User } from '../auth/entities/user.entity';
 import { resolveUploadDir } from '../common/upload-path';
 import { MemoryPhotoService } from './services/memory-photo.service';
@@ -40,7 +41,7 @@ const CONTENT_TYPES: Record<string, string> = {
  * 아니라 사진이 404가 된다. 되돌리려면 접근 통제 설계를 먼저 정해야 한다.
  */
 @Controller('uploads/memory-images')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, OnboardingGuard)
 export class MemoryPhotoController {
   private readonly uploadDir = resolveUploadDir();
 

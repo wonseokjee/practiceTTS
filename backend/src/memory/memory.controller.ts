@@ -22,6 +22,7 @@ import { mkdirSync } from 'fs';
 import { extname } from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { OnboardingGuard } from '../auth/onboarding.guard';
 import { resolveUploadDir } from '../common/upload-path';
 import type { User } from '../auth/entities/user.entity';
 import { MAX_PHOTO_SIZE_BYTES } from './constants/memory-entry.constants';
@@ -50,7 +51,7 @@ interface AuthenticatedRequest extends Request {
  * - 비즈니스 로직 없음 (MemoryEntryService 위임)
  */
 @Controller()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, OnboardingGuard)
 export class MemoryController {
   constructor(
     private readonly memoryEntryService: MemoryEntryService,

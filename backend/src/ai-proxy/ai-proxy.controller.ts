@@ -18,6 +18,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { firstValueFrom } from 'rxjs';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { OnboardingGuard } from '../auth/onboarding.guard';
 import type { User } from '../auth/entities/user.entity';
 import { aiServiceHeaders } from '../common/ai-service-auth';
 import { RateLimit, RateLimitGuard } from '../common/rate-limit.guard';
@@ -84,7 +85,7 @@ const RATE_WINDOW_MS = 60_000;
 @Controller('ai')
 // 순서가 중요하다. JwtAuthGuard가 먼저 돌아야 RateLimitGuard가 req.user.id로
 // 버킷을 나눌 수 있다.
-@UseGuards(JwtAuthGuard, RateLimitGuard)
+@UseGuards(JwtAuthGuard, OnboardingGuard, RateLimitGuard)
 export class AiProxyController {
   private readonly logger = new Logger(AiProxyController.name);
   private readonly baseUrl: string;
