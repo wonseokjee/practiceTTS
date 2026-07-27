@@ -2,6 +2,7 @@ import {
   ConflictException,
   ForbiddenException,
   HttpException,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
@@ -27,7 +28,7 @@ describe('AuthService', () => {
     Pick<Repository<User>, 'createQueryBuilder' | 'findOne' | 'create' | 'save'>
   >;
   let identityRepository: jest.Mocked<
-    Pick<Repository<SocialIdentity>, 'findOne' | 'create' | 'save'>
+    Pick<Repository<SocialIdentity>, 'findOne' | 'find' | 'create' | 'save' | 'delete'>
   >;
   let dataSource: { transaction: jest.Mock };
   let jwtService: { sign: jest.Mock };
@@ -41,8 +42,10 @@ describe('AuthService', () => {
     } as never;
     identityRepository = {
       findOne: jest.fn(),
+      find: jest.fn(async () => [] as SocialIdentity[]),
       create: jest.fn((e: Partial<SocialIdentity>) => e as SocialIdentity),
       save: jest.fn(async (e: Partial<SocialIdentity>) => e as SocialIdentity),
+      delete: jest.fn(async () => ({ affected: 1 })),
     } as never;
     dataSource = { transaction: jest.fn() };
     jwtService = { sign: jest.fn(() => 'signed-token') };
@@ -505,6 +508,141 @@ describe('AuthService', () => {
           patientModePin: '1234',
         }),
       ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+  });
+
+  describe('수동 연결(linkSocialIdentity)', () => {
+    const profile = {
+      provider: 'google' as const,
+      providerUserId: 'g1',
+      email: 'e@test.com',
+      emailVerified: true,
+      displayName: '구글',
+    };
+
+    it('새 provider를 현재 유저에 연결한다', async () => {
+      identityRepository.findOne
+        .mockResolvedValueOnce(null) // 소셜계정 미사용
+        .mockResolvedValueOnce(null); // 유저가 이 provider 미보유
+
+      await service.linkSocialIdentity('u1', profile);
+
+      expect(identityRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'u1',
+          provider: 'google',
+          providerUserId: 'g1',
+        }),
+      );
+    });
+
+    it('그 소셜계정이 이미 다른 유저에 연결돼 있으면 409', async () => {
+      identityRepository.findOne.mockResolvedValueOnce({
+        userId: 'other',
+      } as SocialIdentity);
+
+      await expect(
+        service.linkSocialIdentity('u1', profile),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(identityRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('같은 유저에 이미 연결된 소셜계정이면 멱등 성공(중복 저장 없음)', async () => {
+      identityRepository.findOne.mockResolvedValueOnce({
+        userId: 'u1',
+      } as SocialIdentity);
+
+      await service.linkSocialIdentity('u1', profile);
+
+      expect(identityRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('유저가 같은 provider를 이미 붙였으면 409(유저당 provider 1개)', async () => {
+      identityRepository.findOne
+        .mockResolvedValueOnce(null) // 소셜계정 미사용
+        .mockResolvedValueOnce({ userId: 'u1', provider: 'google' } as SocialIdentity);
+
+      await expect(
+        service.linkSocialIdentity('u1', profile),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(identityRepository.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('연결 해제(unlinkSocialIdentity)', () => {
+    it('마지막 로그인 수단(소셜 1개·비번 없음)은 403으로 막는다', async () => {
+      identityRepository.find.mockResolvedValueOnce([
+        { provider: 'kakao', providerUserId: 'k1' },
+      ] as SocialIdentity[]);
+      userRepository.createQueryBuilder.mockReturnValue(
+        fakeQueryBuilder({
+          id: 'u1',
+          role: 'caregiver',
+          passwordHash: null,
+        } as User) as never,
+      );
+
+      await expect(
+        service.unlinkSocialIdentity('u1', 'kakao'),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('두 개 연결 중 하나 해제 → 남은 목록 반환, 주 provider 재지정', async () => {
+      identityRepository.find.mockResolvedValueOnce([
+        { provider: 'kakao', providerUserId: 'k1' },
+        { provider: 'google', providerUserId: 'g1' },
+      ] as SocialIdentity[]);
+      userRepository.createQueryBuilder.mockReturnValue(
+        fakeQueryBuilder({
+          id: 'u1',
+          role: 'caregiver',
+          passwordHash: null,
+        } as User) as never,
+      );
+      const userRepo = {
+        findOne: jest.fn(async () => ({ authProvider: 'kakao' }) as User),
+        update: jest.fn(async () => ({ affected: 1 })),
+      };
+      const idRepo = { delete: jest.fn(async () => ({ affected: 1 })) };
+      dataSource.transaction.mockImplementation(
+        async (cb: (m: unknown) => Promise<unknown>) =>
+          cb({
+            getRepository: (entity: unknown) =>
+              entity === User ? userRepo : idRepo,
+          }),
+      );
+
+      const remaining = await service.unlinkSocialIdentity('u1', 'kakao');
+
+      expect(remaining).toEqual(['google']);
+      expect(idRepo.delete).toHaveBeenCalledWith({
+        userId: 'u1',
+        provider: 'kakao',
+      });
+      // 주 provider가 방금 뺀 kakao였으므로 남은 google로 재지정
+      expect(userRepo.update).toHaveBeenCalledWith(
+        { id: 'u1' },
+        { authProvider: 'google', providerUserId: 'g1' },
+      );
+    });
+
+    it('연결되지 않은 provider 해제는 404', async () => {
+      identityRepository.find.mockResolvedValueOnce([
+        { provider: 'kakao', providerUserId: 'k1' },
+      ] as SocialIdentity[]);
+
+      await expect(
+        service.unlinkSocialIdentity('u1', 'google'),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('연결 시작 코드(issue/redeemLinkCode)', () => {
+    it('발급한 코드를 userId로 1회 교환하고, 재사용/무효는 null', () => {
+      const code = service.issueLinkCode('u7');
+      expect(service.redeemLinkCode(code)).toBe('u7');
+      expect(service.redeemLinkCode(code)).toBeNull(); // 1회 소비
+      expect(service.redeemLinkCode('nope')).toBeNull();
     });
   });
 

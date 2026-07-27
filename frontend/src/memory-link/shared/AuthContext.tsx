@@ -25,6 +25,9 @@ import {
 
 // ─── 도메인 타입 ─────────────────────────────────────────────
 
+/** 수동 연결 가능한 소셜 제공자. */
+export type SocialProvider = 'kakao' | 'google';
+
 export interface AuthUser {
   id: string;
   /** 소셜 로그인은 이메일이 없을 수 있다(카카오 동의 선택). */
@@ -37,6 +40,8 @@ export interface AuthUser {
   patientDisplayName: string | null;
   /** 소셜 최초 로그인 후 어르신 성함·PIN 미입력 상태. true면 온보딩으로 라우팅. */
   needsOnboarding: boolean;
+  /** 이 계정에 연결된 소셜 제공자 목록(계정 병합). 설정의 "연결된 계정"에 표시. */
+  linkedProviders: SocialProvider[];
 }
 
 export interface RegisterData {
@@ -65,6 +70,7 @@ interface MeResponseRaw {
   patientDisplayName?: string | null;
   needsOnboarding?: boolean;
   authProvider?: string;
+  linkedProviders?: unknown;
 }
 
 // ─── 런타임 타입 검증 ─────────────────────────────────────────
@@ -94,6 +100,11 @@ function toAuthUser(raw: MeResponseRaw): AuthUser {
     raw.role === 'caregiver' || raw.role === 'patient' || raw.role === 'therapist'
       ? raw.role
       : 'patient';
+  const linkedProviders = Array.isArray(raw.linkedProviders)
+    ? raw.linkedProviders.filter(
+        (p): p is SocialProvider => p === 'kakao' || p === 'google',
+      )
+    : [];
   return {
     id: raw.id,
     email: raw.email,
@@ -102,6 +113,7 @@ function toAuthUser(raw: MeResponseRaw): AuthUser {
     patientId: raw.patientId ?? null,
     patientDisplayName: raw.patientDisplayName ?? null,
     needsOnboarding: raw.needsOnboarding ?? false,
+    linkedProviders,
   };
 }
 
@@ -184,6 +196,7 @@ function buildDevUser(mode: DevAuthMode): AuthUser | null {
       patientId: null,
       patientDisplayName: null,
       needsOnboarding: false,
+      linkedProviders: [],
     };
   }
   if (mode === 'caregiver') {
@@ -196,6 +209,7 @@ function buildDevUser(mode: DevAuthMode): AuthUser | null {
         (import.meta.env.VITE_DEV_PATIENT_ID as string | undefined) ?? null,
       patientDisplayName: '로컬 테스트 어르신',
       needsOnboarding: false,
+      linkedProviders: [],
     };
   }
   return null;

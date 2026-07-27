@@ -28,7 +28,10 @@ import { CompleteOnboardingDto } from './dto/complete-onboarding.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { User } from './entities/user.entity';
-import { SocialIdentity } from './entities/social-identity.entity';
+import {
+  SocialIdentity,
+  SocialProviderName,
+} from './entities/social-identity.entity';
 import type { SocialProfile } from './social-profile';
 
 // JWT payload 타입 정의
@@ -48,6 +51,9 @@ export type UserResponse = Omit<
   patientDisplayName: string | null;
   // 소셜 최초 로그인 후 어르신 성함·PIN 미입력 상태. 프론트가 온보딩으로 라우팅.
   needsOnboarding: boolean;
+  // 이 계정에 연결된 소셜 제공자 목록(계정 병합). 설정 화면의 "연결된 계정"에 표시.
+  // 신원 조회가 필요한 응답(getMe·소셜 로그인)에서만 채우고, 그 외엔 빈 배열.
+  linkedProviders: SocialProviderName[];
 };
 
 /** PIN 검증 시도 추적 (in-memory, 점증 디레이용) */
@@ -74,6 +80,18 @@ export class AuthService {
     { userId: string; expiresAt: number }
   >();
   private static readonly ONE_TIME_CODE_TTL_MS = 60_000;
+
+  /**
+   * 소셜 계정 "수동 연결" 시작용 단명 코드 저장소(계정 병합 2단계).
+   * 로그인 상태에서 발급하고, 브라우저가 GET /auth/:provider/link?code=로 넘긴다.
+   * 링크 시작 라우트는 이 코드를 쿠키로 옮겨 콜백까지 나르고, 콜백이 1회 소비한다
+   * (단일 인스턴스 가정 — oneTimeCodes와 동일).
+   */
+  private readonly linkCodes = new Map<
+    string,
+    { userId: string; expiresAt: number }
+  >();
+  private static readonly LINK_CODE_TTL_MS = 120_000;
 
   constructor(
     @InjectRepository(User)
@@ -204,7 +222,8 @@ export class AuthService {
       throw new NotFoundException('사용자를 찾을 수 없습니다.');
     }
 
-    return this.toUserResponse(user);
+    const linkedProviders = await this.listLinkedProviders(userId);
+    return this.toUserResponse(user, linkedProviders);
   }
 
   /**
@@ -432,9 +451,10 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
     }
+    const linkedProviders = await this.listLinkedProviders(user.id);
     return {
       accessToken: this.issueToken(user),
-      user: this.toUserResponse(user),
+      user: this.toUserResponse(user, linkedProviders),
     };
   }
 
@@ -535,7 +555,10 @@ export class AuthService {
   }
 
   // 응답에서 민감 정보(passwordHash, PIN 해시) 및 자기참조 관계 제거
-  private toUserResponse(user: User): UserResponse {
+  private toUserResponse(
+    user: User,
+    linkedProviders: SocialProviderName[] = [],
+  ): UserResponse {
     const {
       passwordHash: _pw,
       patient: _patient,
@@ -550,6 +573,143 @@ export class AuthService {
       patientDisplayName: _patient?.displayName ?? null,
       // 보호자인데 아직 연결된 환자가 없으면 온보딩 필요(소셜 최초 로그인).
       needsOnboarding: user.role === 'caregiver' && user.patientId === null,
+      linkedProviders,
     };
+  }
+
+  // ─── 소셜 계정 수동 연결(계정 병합 2단계) ─────────────────────
+
+  /** 이 유저에 연결된 소셜 제공자 목록. */
+  async listLinkedProviders(userId: string): Promise<SocialProviderName[]> {
+    const rows = await this.identityRepository.find({ where: { userId } });
+    return rows.map((r) => r.provider);
+  }
+
+  /** 수동 연결 시작 코드 발급(단명·1회용). 만료 항목은 발급 시 청소. */
+  issueLinkCode(userId: string): string {
+    const now = Date.now();
+    for (const [existing, entry] of this.linkCodes) {
+      if (now > entry.expiresAt) this.linkCodes.delete(existing);
+    }
+    const code = randomUUID();
+    this.linkCodes.set(code, {
+      userId,
+      expiresAt: now + AuthService.LINK_CODE_TTL_MS,
+    });
+    return code;
+  }
+
+  /** 링크 코드 → userId 교환(1회 소비). 만료/무효면 null. */
+  redeemLinkCode(code: string): string | null {
+    const entry = this.linkCodes.get(code);
+    this.linkCodes.delete(code); // 1회용: 조회 즉시 폐기
+    if (!entry || Date.now() > entry.expiresAt) return null;
+    return entry.userId;
+  }
+
+  /**
+   * 로그인된 유저에게 소셜 신원을 연결한다(콜백에서 호출).
+   *  - 그 소셜계정이 이미 다른 유저에 연결돼 있으면 409(계정 탈취/오연결 방지).
+   *  - 같은 유저에 이미 연결돼 있으면 멱등 성공.
+   *  - 이 유저가 같은 provider를 이미 붙였으면 409(유저당 provider 1개).
+   */
+  async linkSocialIdentity(
+    userId: string,
+    profile: SocialProfile,
+  ): Promise<void> {
+    const existing = await this.identityRepository.findOne({
+      where: {
+        provider: profile.provider,
+        providerUserId: profile.providerUserId,
+      },
+    });
+    if (existing) {
+      if (existing.userId === userId) return; // 이미 연결됨(멱등)
+      throw new ConflictException(
+        '이미 다른 계정에 연결된 소셜 계정입니다.',
+      );
+    }
+    const sameProvider = await this.identityRepository.findOne({
+      where: { userId, provider: profile.provider },
+    });
+    if (sameProvider) {
+      throw new ConflictException('이미 이 제공자가 연결되어 있습니다.');
+    }
+    try {
+      await this.identityRepository.save(
+        this.identityRepository.create({
+          userId,
+          provider: profile.provider,
+          providerUserId: profile.providerUserId,
+          email: profile.email,
+        }),
+      );
+    } catch (err) {
+      // 사전 체크 이후의 경합(유니크 위반)은 연결 충돌로 수렴.
+      if (this.isUniqueViolation(err)) {
+        throw new ConflictException('이미 연결된 소셜 계정입니다.');
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * 소셜 신원 연결 해제. 남은 로그인 수단이 0이 되면(소셜 전용 계정의 마지막
+   * 신원) 계정이 로그인 불능이 되므로 막는다(403). users의 "주 provider"가 방금
+   * 뺀 것을 가리키면 남은 신원(또는 로컬)으로 재지정해 무결성을 유지한다.
+   *
+   * @returns 해제 후 남은 연결 제공자 목록
+   */
+  async unlinkSocialIdentity(
+    userId: string,
+    provider: SocialProviderName,
+  ): Promise<SocialProviderName[]> {
+    const rows = await this.identityRepository.find({ where: { userId } });
+    const target = rows.find((r) => r.provider === provider);
+    if (!target) {
+      throw new NotFoundException('연결되지 않은 제공자입니다.');
+    }
+
+    // 비밀번호로도 로그인 가능한 계정인가(로컬 가입 후 소셜 연결한 경우).
+    const withHash = await this.userRepository
+      .createQueryBuilder('user')
+      .addSelect('user.passwordHash')
+      .where('user.id = :id', { id: userId })
+      .getOne();
+    const hasPassword = withHash ? this.canLogin(withHash) : false;
+
+    // 마지막 로그인 수단(비번 없음 + 소셜 신원 1개)은 해제 불가.
+    if (rows.length === 1 && !hasPassword) {
+      throw new ForbiddenException('마지막 로그인 수단은 해제할 수 없어요.');
+    }
+
+    const remaining = rows.filter((r) => r.provider !== provider);
+    await this.dataSource.transaction(async (manager) => {
+      const idRepo = manager.getRepository(SocialIdentity);
+      const userRepo = manager.getRepository(User);
+      await idRepo.delete({ userId, provider });
+
+      // users의 주 provider가 방금 뺀 것을 가리키면 재지정(무결성·재로그인 대비).
+      const fresh = await userRepo.findOne({ where: { id: userId } });
+      if (fresh && fresh.authProvider === provider) {
+        if (remaining.length > 0) {
+          await userRepo.update(
+            { id: userId },
+            {
+              authProvider: remaining[0].provider,
+              providerUserId: remaining[0].providerUserId,
+            },
+          );
+        } else {
+          // 남은 소셜 신원이 없다(=비번 로그인 계정). 로컬로 되돌린다.
+          await userRepo.update(
+            { id: userId },
+            { authProvider: 'local', providerUserId: null },
+          );
+        }
+      }
+    });
+
+    return remaining.map((r) => r.provider);
   }
 }

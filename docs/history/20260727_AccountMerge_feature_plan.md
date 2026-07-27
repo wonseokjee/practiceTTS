@@ -53,7 +53,25 @@ user_social_identities
 | 단계 | 내용 | 상태 |
 |---|---|---|
 | **1단계** | identity 테이블 + 마이그레이션 + `emailVerified` 캡처 + 자동 연결(백엔드만) | ✅ 구현 완료 |
-| **2단계** | 수동 연결(`GET /auth/link/:provider`, 인증 필요) + `DELETE /auth/link/:provider`(마지막 수단 해제 불가) + `UserResponse.linkedProviders` + ProfileScreen "연결된 계정" UI | ⏳ 예정 |
+| **2단계** | 수동 연결 + 해제 + `linkedProviders` + 계정 연결 UI | ✅ 구현 완료 |
+
+### 2단계 수동 연결 흐름
+
+브라우저 top-level 이동엔 Authorization 헤더가 없어, 유저 의도를 쿠키로 나른다.
+
+1. `POST /auth/link/start`(JWT) → 1회용 link code 발급(단명·in-memory)
+2. `GET /auth/:provider/link?code=`(`LinkInitiateGuard`) → code를 httpOnly 쿠키로 옮기고
+   CSRF state 심은 뒤 소셜 인가로 리다이렉트
+3. `GET /auth/:provider/callback` → link 쿠키가 있으면 **연결 모드**: code를 1회 소비해
+   userId를 얻고, `linkSocialIdentity`로 현재 계정에 신원을 붙인 뒤
+   `/caregiver?linked=..`(실패 시 `?linkError=..`)로 복귀. 없으면 로그인 모드.
+4. `DELETE /auth/link/:provider`(JWT) → 해제. **마지막 로그인 수단(비번 없는 소셜 1개)은
+   403.** users의 "주 provider"가 방금 뺀 것이면 남은 신원/로컬로 재지정.
+
+- 연결 충돌: 그 소셜계정이 다른 유저에 있으면 409, 같은 유저면 멱등, 유저당 provider 1개.
+- `UserResponse.linkedProviders`는 `getMe`·소셜 로그인 응답에서 채운다.
+- 프론트: [AccountLinkScreen](../../frontend/src/memory-link/caregiver/presentation/AccountLinkScreen.tsx)
+  ("연결된 계정" 화면, 대시보드 "계정" 버튼), `?linked/?linkError` 배너 처리.
 
 ### 1단계 자동 연결 로직 (`findOrCreateSocialUser`)
 

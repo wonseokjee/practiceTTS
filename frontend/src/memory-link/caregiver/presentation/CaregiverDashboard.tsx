@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../../shared/AuthContext.js';
 import { DailyHealingBanner } from '../../shared/components/DailyHealingBanner.js';
 import { useCaptureFlow } from '../application/useCaptureFlow.js';
 import { useMemoryEntries } from '../application/useMemoryEntries.js';
+import { AccountLinkScreen } from './AccountLinkScreen.js';
+import type { AccountLinkNotice } from './AccountLinkScreen.js';
 import { CaptureScreen } from './CaptureScreen.js';
 import { EntryDetailScreen } from './EntryDetailScreen.js';
 import { EntryListScreen } from './EntryListScreen.js';
@@ -13,7 +15,37 @@ import { withHonorific } from '../../shared/honorific.js';
 import { isConversationModeEnabled } from '../../shared/featureFlags.js';
 
 /** 대시보드 화면 상태 */
-type DashboardView = 'list' | 'capture' | 'detail' | 'profile' | 'report';
+type DashboardView =
+  | 'list'
+  | 'capture'
+  | 'detail'
+  | 'profile'
+  | 'report'
+  | 'account';
+
+/**
+ * 소셜 계정 연결 콜백 복귀(/caregiver?linked=..|?linkError=..)를 배너 알림으로.
+ * 백엔드 handleSocialCallback이 리다이렉트에 실어 보내는 값과 짝을 맞춘다.
+ */
+function parseLinkNotice(search: string): AccountLinkNotice | null {
+  const params = new URLSearchParams(search);
+  const linked = params.get('linked');
+  if (linked === 'kakao' || linked === 'google') {
+    const label = linked === 'kakao' ? '카카오' : '구글';
+    return { kind: 'success', text: `${label} 계정을 연결했어요.` };
+  }
+  const err = params.get('linkError');
+  if (err) {
+    const text =
+      err === 'conflict'
+        ? '이미 다른 계정에 연결된 소셜 계정이에요.'
+        : err === 'state' || err === 'expired'
+          ? '요청이 만료됐어요. 다시 시도해 주세요.'
+          : '연결에 실패했어요. 다시 시도해 주세요.';
+    return { kind: 'error', text };
+  }
+  return null;
+}
 
 /**
  * 보호자 대시보드
@@ -25,8 +57,21 @@ export function CaregiverDashboard() {
   const { user, logout, enterPatientMode } = useAuth();
   const [view, setView] = useState<DashboardView>('list');
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
+  const [accountNotice, setAccountNotice] = useState<AccountLinkNotice | null>(
+    null,
+  );
 
   const memoryEntries = useMemoryEntries();
+
+  // 소셜 연결 콜백 복귀(?linked/?linkError) 감지 → 계정 화면 + 배너로 안내하고,
+  // URL의 쿼리는 지운다(새로고침·뒤로가기 시 배너가 다시 뜨지 않게).
+  useEffect(() => {
+    const notice = parseLinkNotice(window.location.search);
+    if (!notice) return;
+    setAccountNotice(notice);
+    setView('account');
+    window.history.replaceState(null, '', window.location.pathname);
+  }, []);
 
   // patientId가 없는 보호자는 기능 사용 불가
   const patientId = user?.patientId ?? null;
@@ -112,6 +157,17 @@ export function CaregiverDashboard() {
             aria-label="환자 정보 편집"
           >
             환자 정보
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setAccountNotice(null);
+              setView('account');
+            }}
+            className="min-h-[44px] rounded-full border border-[#2D6A56] px-4 py-2 text-sm font-medium text-[#2D6A56] transition-colors duration-[180ms] ease-out hover:bg-[#EBF4F0]"
+            aria-label="계정 연결 관리"
+          >
+            계정
           </button>
           <button
             type="button"
@@ -222,6 +278,14 @@ export function CaregiverDashboard() {
         {/* 환자 정보(프로필) 화면 */}
         {view === 'profile' && (
           <ProfileScreen onBack={handleBackToList} />
+        )}
+
+        {/* 계정 연결(카카오·구글) 관리 화면 */}
+        {view === 'account' && (
+          <AccountLinkScreen
+            onBack={handleBackToList}
+            notice={accountNotice}
+          />
         )}
 
         {/* 상세 화면 */}

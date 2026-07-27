@@ -1,6 +1,6 @@
 import { UnauthorizedException } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { verifyOAuthState } from './oauth-state';
+import { readLinkCode, verifyOAuthState } from './oauth-state';
 
 function mockReq(cookieState?: string, queryState?: string): Request {
   return {
@@ -50,5 +50,37 @@ describe('verifyOAuthState (CSRF)', () => {
       verifyOAuthState(mockReq('abc', 'evil'), res, 'kakao'),
     ).toThrow();
     expect(res.clearCookie).toHaveBeenCalled();
+  });
+});
+
+describe('readLinkCode (수동 연결 분기)', () => {
+  it('link 쿠키가 있으면 code를 반환하고 쿠키를 지운다(연결 모드)', () => {
+    const res = mockRes();
+    const req = {
+      cookies: { oauth_link_google: 'code-123' },
+    } as unknown as Request;
+
+    expect(readLinkCode(req, res, 'google')).toBe('code-123');
+    expect(res.clearCookie).toHaveBeenCalledWith('oauth_link_google', {
+      path: '/',
+    });
+  });
+
+  it('link 쿠키가 없으면 null(일반 로그인 모드)', () => {
+    const res = mockRes();
+    const req = { cookies: {} } as unknown as Request;
+
+    expect(readLinkCode(req, res, 'kakao')).toBeNull();
+    // 있든 없든 정리는 시도한다(1회용).
+    expect(res.clearCookie).toHaveBeenCalledWith('oauth_link_kakao', {
+      path: '/',
+    });
+  });
+
+  it('link 쿠키가 빈 문자열이면 null(연결 모드로 오인 안 함)', () => {
+    const res = mockRes();
+    const req = { cookies: { oauth_link_kakao: '' } } as unknown as Request;
+
+    expect(readLinkCode(req, res, 'kakao')).toBeNull();
   });
 });
