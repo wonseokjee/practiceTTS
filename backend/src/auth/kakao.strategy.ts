@@ -37,10 +37,17 @@ export class KakaoStrategy extends PassportStrategy(Strategy, 'kakao') {
       profile._json?.properties?.nickname ??
       profile.username ??
       '카카오 사용자';
+    const email = account?.email ?? null;
+    // is_email_verified는 카카오 응답에 있지만 passport-kakao 타입엔 없어 안전 캐스팅.
+    const isVerified =
+      (account as { is_email_verified?: boolean } | undefined)
+        ?.is_email_verified === true;
     return {
       provider: 'kakao',
       providerUserId: String(profile.id),
-      email: account?.email ?? null,
+      email,
+      // 카카오는 is_email_verified로 검증 여부를 준다. 없거나 false면 미검증 취급.
+      emailVerified: email !== null && isVerified,
       displayName: nickname,
     };
   }

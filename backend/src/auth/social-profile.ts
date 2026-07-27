@@ -11,6 +11,12 @@ export interface SocialProfile {
   providerUserId: string;
   /** 이메일. 카카오는 동의 선택이라 없을 수 있다. */
   email: string | null;
+  /**
+   * provider가 이 이메일을 검증했는가. 계정 자동 연결(같은 이메일 → 기존 계정
+   * 합류)은 검증된 이메일에만 허용한다 — 미검증 이메일로 붙이면 계정 탈취 위험.
+   * 이메일이 없으면 의미 없으므로 false.
+   */
+  emailVerified: boolean;
   /** 표시 이름(닉네임). 없으면 제공자명 기반 기본값. */
   displayName: string;
 }

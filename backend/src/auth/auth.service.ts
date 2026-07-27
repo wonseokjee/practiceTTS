@@ -28,6 +28,7 @@ import { CompleteOnboardingDto } from './dto/complete-onboarding.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { User } from './entities/user.entity';
+import { SocialIdentity } from './entities/social-identity.entity';
 import type { SocialProfile } from './social-profile';
 
 // JWT payload 타입 정의
@@ -77,6 +78,8 @@ export class AuthService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(SocialIdentity)
+    private readonly identityRepository: Repository<SocialIdentity>,
     private readonly jwtService: JwtService,
     private readonly dataSource: DataSource,
   ) {}
@@ -268,58 +271,133 @@ export class AuthService {
   }
 
   /**
-   * (provider, providerUserId)로 유저를 찾고, 없으면 미완성 소셜 유저를 만든다.
-   *  - 신규 유저는 patient_id=null → needsOnboarding=true(어르신 성함·PIN 미입력).
-   *  - 이메일이 이미 다른 계정에 있으면 자동 병합하지 않고 email=null로 생성.
+   * 소셜 프로필 → 유저 해석(계정 병합 1단계, 자동 연결).
+   *
+   *  1) (provider, providerUserId) identity가 있으면 그 유저로 재방문 로그인.
+   *  2) 없으면: **검증된 이메일**이 기존 (환자 아님) 계정과 일치하면 그 계정에
+   *     identity를 붙여 합류(자동 연결). 실수로 다른 provider를 눌러 빈 계정이
+   *     생기는 것을 막는다.
+   *  3) 그마저 없으면 patient_id=null 미완성 보호자를 새로 만든다(온보딩 필요).
+   *
+   * 자동 연결은 검증 이메일에만 허용한다 — 미검증 이메일로 붙이면 남의 계정을
+   * 탈취할 수 있다. 이메일이 없거나 다르면 자동 연결은 불가하고, 이 경우는
+   * 2단계(설정에서 수동 연결)로 커버한다.
    */
   async findOrCreateSocialUser(profile: SocialProfile): Promise<User> {
-    const existing = await this.userRepository.findOne({
-      where: {
-        authProvider: profile.provider,
-        providerUserId: profile.providerUserId,
-      },
-    });
+    const existing = await this.findIdentityUser(
+      this.identityRepository,
+      profile,
+    );
     if (existing) return existing;
 
-    // 이메일 충돌: 기존 계정이 이 이메일을 쓰면 병합하지 않고 email 없이 만든다.
-    let email = profile.email;
-    if (email) {
-      const taken = await this.userRepository.findOne({ where: { email } });
-      if (taken) email = null;
+    // 신규 신원: 유저 생성/자동연결 + identity 생성을 한 트랜잭션으로 묶는다.
+    // 유니크 경합이 나면 트랜잭션 전체가 롤백되므로(고아 없음), 트랜잭션 밖에서
+    // 원인을 갈라 처리한다. Postgres는 트랜잭션 내 첫 에러 이후 그 트랜잭션의
+    // 모든 쿼리를 거부하므로, 재조회·재시도는 반드시 트랜잭션 밖에서 한다.
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        return await this.dataSource.transaction((manager) =>
+          this.attachOrCreateForSocial(manager, profile),
+        );
+      } catch (err) {
+        if (!this.isUniqueViolation(err)) throw err;
+        // (a) provider-id 경합: 다른 요청이 같은 소셜계정을 먼저 연결함 → 그 유저.
+        const again = await this.findIdentityUser(
+          this.identityRepository,
+          profile,
+        );
+        if (again) return again;
+        // (b) email 경합: 사전체크 이후 이 이메일을 선점당함. 재시도하면 이번엔
+        //     사전체크가 taken을 보고 email=null로 만든다. 마지막 시도면 rethrow.
+        if (attempt === 1) throw err;
+      }
+    }
+    // 루프는 반환/throw로만 끝난다. 타입 만족용.
+    throw new Error('unreachable');
+  }
+
+  /** (provider, providerUserId) identity로 연결된 유저를 찾는다(없으면 null). */
+  private async findIdentityUser(
+    repo: Repository<SocialIdentity>,
+    profile: SocialProfile,
+  ): Promise<User | null> {
+    const identity = await repo.findOne({
+      where: {
+        provider: profile.provider,
+        providerUserId: profile.providerUserId,
+      },
+      relations: { user: true },
+    });
+    return identity?.user ?? null;
+  }
+
+  /**
+   * (트랜잭션 내) 신규 소셜 신원을 유저에 연결한다 — 자동 연결 또는 신규 생성.
+   * 유니크 경합은 여기서 잡지 않는다. 트랜잭션을 롤백시키고 호출부가 처리한다.
+   */
+  private async attachOrCreateForSocial(
+    manager: EntityManager,
+    profile: SocialProfile,
+  ): Promise<User> {
+    const userRepo = manager.getRepository(User);
+    const idRepo = manager.getRepository(SocialIdentity);
+
+    // 트랜잭션 시작 직전 다른 요청이 같은 identity를 만들었을 수 있다(경합) → 재확인.
+    const raced = await this.findIdentityUser(idRepo, profile);
+    if (raced) return raced;
+
+    // 자동 연결 대상: 검증된 이메일이 기존 (환자 아님) 계정과 일치할 때만.
+    let target: User | null = null;
+    if (profile.email && profile.emailVerified) {
+      const byEmail = await userRepo.findOne({
+        where: { email: profile.email },
+      });
+      // 환자 placeholder는 로그인 불가 레코드라 자동 연결 대상에서 제외한다.
+      if (byEmail && byEmail.role !== 'patient') target = byEmail;
     }
 
-    const user = this.userRepository.create({
+    // 자동 연결 대상이 없으면 미완성 보호자 계정을 새로 만든다(온보딩 필요).
+    if (!target) target = await this.createSocialUser(userRepo, profile);
+
+    // 유저 ↔ 소셜 신원 연결. 유니크 위반은 밖에서 처리(트랜잭션 롤백).
+    await idRepo.save(
+      idRepo.create({
+        userId: target.id,
+        provider: profile.provider,
+        providerUserId: profile.providerUserId,
+        email: profile.email,
+      }),
+    );
+    return target;
+  }
+
+  /**
+   * (트랜잭션 내) 신규 소셜 보호자 레코드 생성. users.email은 UNIQUE라, 이미
+   * 쓰이는 이메일(미검증이라 자동연결 못 한 경우 등)이면 비워 충돌을 피한다.
+   * 사전체크 이후의 이메일 경합은 잡지 않고 트랜잭션을 롤백시킨다(호출부 재시도).
+   */
+  private async createSocialUser(
+    userRepo: Repository<User>,
+    profile: SocialProfile,
+  ): Promise<User> {
+    let email = profile.email;
+    if (email) {
+      const taken = await userRepo.findOne({ where: { email } });
+      if (taken) email = null;
+    }
+    const user = userRepo.create({
       email,
       passwordHash: null,
       role: 'caregiver',
       displayName: profile.displayName,
       patientId: null, // 온보딩 필요
       patientModePinHash: null,
+      // users의 auth_provider/provider_user_id는 "최초/주 provider" 표시용으로
+      // 남긴다(로그인 조회의 근거는 identity 테이블). 신규 유저는 이 provider가 주.
       authProvider: profile.provider,
       providerUserId: profile.providerUserId,
     });
-
-    try {
-      return await this.userRepository.save(user);
-    } catch (err) {
-      if (this.isUniqueViolation(err)) {
-        // (1) 동시 최초 로그인 경합: 부분 고유 인덱스 위반 → 방금 만들어진 행을 재조회.
-        const again = await this.userRepository.findOne({
-          where: {
-            authProvider: profile.provider,
-            providerUserId: profile.providerUserId,
-          },
-        });
-        if (again) return again;
-        // (2) 그게 아니면 이메일 UNIQUE 경합: 사전 체크 이후 다른 계정이 이 이메일을
-        //     선점했다. email 없이 1회 재시도(이메일은 부가 정보라 비워도 로그인 가능).
-        if (user.email !== null) {
-          user.email = null;
-          return await this.userRepository.save(user);
-        }
-      }
-      throw err;
-    }
+    return userRepo.save(user);
   }
 
   /** 일회용 코드 발급(단명). userId를 매핑해 둔다. */

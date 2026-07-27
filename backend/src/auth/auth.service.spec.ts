@@ -10,6 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import { AuthService } from './auth.service';
 import { UNUSABLE_PASSWORD_HASH } from './auth.constants';
 import { User } from './entities/user.entity';
+import { SocialIdentity } from './entities/social-identity.entity';
 
 /** createQueryBuilder 체인을 흉내내고 getOne 결과를 주입 */
 function fakeQueryBuilder(result: User | null) {
@@ -25,6 +26,9 @@ describe('AuthService', () => {
   let userRepository: jest.Mocked<
     Pick<Repository<User>, 'createQueryBuilder' | 'findOne' | 'create' | 'save'>
   >;
+  let identityRepository: jest.Mocked<
+    Pick<Repository<SocialIdentity>, 'findOne' | 'create' | 'save'>
+  >;
   let dataSource: { transaction: jest.Mock };
   let jwtService: { sign: jest.Mock };
 
@@ -35,15 +39,35 @@ describe('AuthService', () => {
       create: jest.fn((e: Partial<User>) => e as User),
       save: jest.fn(async (e: Partial<User>) => e as User),
     } as never;
+    identityRepository = {
+      findOne: jest.fn(),
+      create: jest.fn((e: Partial<SocialIdentity>) => e as SocialIdentity),
+      save: jest.fn(async (e: Partial<SocialIdentity>) => e as SocialIdentity),
+    } as never;
     dataSource = { transaction: jest.fn() };
     jwtService = { sign: jest.fn(() => 'signed-token') };
 
     service = new AuthService(
       userRepository as unknown as Repository<User>,
+      identityRepository as unknown as Repository<SocialIdentity>,
       jwtService as unknown as JwtService,
       dataSource as unknown as DataSource,
     );
   });
+
+  /**
+   * findOrCreateSocialUser의 트랜잭션 흐름용 fakeManager.
+   * getRepository(User)→userRepo, getRepository(SocialIdentity)→idRepo로 분기.
+   */
+  function socialManager(
+    userRepo: Record<string, jest.Mock>,
+    idRepo: Record<string, jest.Mock>,
+  ) {
+    return {
+      getRepository: (entity: unknown) =>
+        entity === User ? userRepo : idRepo,
+    };
+  }
 
   describe('register', () => {
     it('보호자+환자 2행을 생성·연결하고 환자는 로그인 불가 sentinel을 가진다', async () => {
@@ -223,60 +247,166 @@ describe('AuthService', () => {
       provider: 'kakao' as const,
       providerUserId: '12345',
       email: 'kko@test.com',
+      emailVerified: true,
       displayName: '카카오사용자',
     };
 
-    it('기존 소셜 유저가 있으면 그대로 반환한다(중복 생성 없음)', async () => {
-      const existing = { id: 'u1', authProvider: 'kakao' } as User;
-      userRepository.findOne.mockResolvedValueOnce(existing);
+    it('기존 identity가 있으면 연결된 유저를 반환한다(중복 생성 없음)', async () => {
+      const user = { id: 'u1' } as User;
+      identityRepository.findOne.mockResolvedValueOnce({
+        user,
+      } as SocialIdentity);
 
       const result = await service.findOrCreateSocialUser(profile);
 
-      expect(result).toBe(existing);
-      expect(userRepository.save).not.toHaveBeenCalled();
+      expect(result).toBe(user);
+      expect(dataSource.transaction).not.toHaveBeenCalled();
     });
 
-    it('신규면 patient_id=null 미완성 보호자를 만든다(온보딩 필요)', async () => {
-      userRepository.findOne
-        .mockResolvedValueOnce(null) // (provider,id) 없음
-        .mockResolvedValueOnce(null); // 이메일 미사용
+    it('검증된 이메일이 기존 보호자와 일치하면 자동 연결한다(새 계정 안 만듦)', async () => {
+      identityRepository.findOne.mockResolvedValueOnce(null); // 외부: identity 없음
+      const existingCaregiver = {
+        id: 'cg1',
+        role: 'caregiver',
+        email: 'kko@test.com',
+      } as User;
+      const userRepo = {
+        findOne: jest.fn().mockResolvedValueOnce(existingCaregiver),
+        create: jest.fn(),
+        save: jest.fn(),
+      };
+      const idRepo = {
+        findOne: jest.fn().mockResolvedValueOnce(null), // 트랜잭션 내 재확인: 없음
+        create: jest.fn((e: Partial<SocialIdentity>) => e),
+        save: jest.fn(async (e: Partial<SocialIdentity>) => e),
+      };
+      dataSource.transaction.mockImplementation(
+        async (cb: (m: unknown) => Promise<unknown>) =>
+          cb(socialManager(userRepo, idRepo)),
+      );
 
       const result = await service.findOrCreateSocialUser(profile);
+
+      expect(result).toBe(existingCaregiver);
+      expect(userRepo.create).not.toHaveBeenCalled(); // 새 유저 생성 안 함
+      expect(idRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'cg1',
+          provider: 'kakao',
+          providerUserId: '12345',
+        }),
+      );
+    });
+
+    it('환자 placeholder 계정에는 자동 연결하지 않고 새 계정을 만든다', async () => {
+      identityRepository.findOne.mockResolvedValueOnce(null);
+      const patientRecord = {
+        id: 'p1',
+        role: 'patient',
+        email: 'kko@test.com',
+      } as User;
+      const userRepo = {
+        // 두 번 조회된다: (1) 자동연결 후보 → 환자라 제외, (2) createSocialUser의
+        // 이메일 사전체크 → 같은 이메일이 물려 있어 email을 비운다.
+        findOne: jest.fn().mockResolvedValue(patientRecord),
+        create: jest.fn((e: Partial<User>) => e),
+        save: jest.fn(async (e: Partial<User>) => ({ id: 'new', ...e })),
+      };
+      const idRepo = {
+        findOne: jest.fn().mockResolvedValueOnce(null),
+        create: jest.fn((e: Partial<SocialIdentity>) => e),
+        save: jest.fn(async (e: Partial<SocialIdentity>) => e),
+      };
+      dataSource.transaction.mockImplementation(
+        async (cb: (m: unknown) => Promise<unknown>) =>
+          cb(socialManager(userRepo, idRepo)),
+      );
+
+      const result = await service.findOrCreateSocialUser(profile);
+
+      expect(result.role).toBe('caregiver'); // 새 보호자 계정
+      // email이 이미 환자 레코드에 물려 있으므로 createSocialUser가 비운다
+      expect(result.email).toBeNull();
+      expect(userRepo.create).toHaveBeenCalled();
+    });
+
+    it('이메일이 미검증이면 자동 연결하지 않는다(자동연결 후보 조회 자체를 안 함)', async () => {
+      identityRepository.findOne.mockResolvedValueOnce(null);
+      const userRepo = {
+        // createSocialUser의 이메일 사전체크만 호출된다(미사용 이메일)
+        findOne: jest.fn().mockResolvedValueOnce(null),
+        create: jest.fn((e: Partial<User>) => e),
+        save: jest.fn(async (e: Partial<User>) => ({ id: 'new', ...e })),
+      };
+      const idRepo = {
+        findOne: jest.fn().mockResolvedValueOnce(null),
+        create: jest.fn((e: Partial<SocialIdentity>) => e),
+        save: jest.fn(async (e: Partial<SocialIdentity>) => e),
+      };
+      dataSource.transaction.mockImplementation(
+        async (cb: (m: unknown) => Promise<unknown>) =>
+          cb(socialManager(userRepo, idRepo)),
+      );
+
+      const result = await service.findOrCreateSocialUser({
+        ...profile,
+        emailVerified: false,
+      });
 
       expect(result.role).toBe('caregiver');
-      expect(result.authProvider).toBe('kakao');
-      expect(result.providerUserId).toBe('12345');
+      expect(result.email).toBe('kko@test.com'); // 미사용이라 그대로 보존
+      // findOne이 딱 1번(이메일 사전체크)만 — 자동연결 후보 조회는 스킵됐다
+      expect(userRepo.findOne).toHaveBeenCalledTimes(1);
+    });
+
+    it('신규(이메일 없음)면 미완성 보호자를 만들고 identity를 연결한다', async () => {
+      identityRepository.findOne.mockResolvedValueOnce(null);
+      const userRepo = {
+        findOne: jest.fn(),
+        create: jest.fn((e: Partial<User>) => e),
+        save: jest.fn(async (e: Partial<User>) => ({ id: 'new', ...e })),
+      };
+      const idRepo = {
+        findOne: jest.fn().mockResolvedValueOnce(null),
+        create: jest.fn((e: Partial<SocialIdentity>) => e),
+        save: jest.fn(async (e: Partial<SocialIdentity>) => e),
+      };
+      dataSource.transaction.mockImplementation(
+        async (cb: (m: unknown) => Promise<unknown>) =>
+          cb(socialManager(userRepo, idRepo)),
+      );
+
+      const result = await service.findOrCreateSocialUser({
+        ...profile,
+        email: null,
+        emailVerified: false,
+      });
+
+      expect(result.role).toBe('caregiver');
       expect(result.patientId).toBeNull();
       expect(result.passwordHash).toBeNull();
-      expect(result.email).toBe('kko@test.com');
-    });
-
-    it('이메일이 이미 다른 계정에 있으면 병합하지 않고 email=null로 만든다', async () => {
-      userRepository.findOne
-        .mockResolvedValueOnce(null) // (provider,id) 없음
-        .mockResolvedValueOnce({ id: 'other' } as User); // 이메일 이미 사용중
-
-      const result = await service.findOrCreateSocialUser(profile);
-
-      expect(result.email).toBeNull();
       expect(result.authProvider).toBe('kakao');
+      expect(userRepo.findOne).not.toHaveBeenCalled(); // 이메일 없어 사전체크 스킵
+      expect(idRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ provider: 'kakao', providerUserId: '12345' }),
+      );
     });
 
-    it('이메일 UNIQUE 경합(사전체크 이후 선점) 시 email=null로 재시도해 생성한다', async () => {
-      userRepository.findOne
-        .mockResolvedValueOnce(null) // (provider,id) 없음
-        .mockResolvedValueOnce(null) // 사전 체크: 이메일 미사용
-        .mockResolvedValueOnce(null); // catch 재조회: provider 행 없음 → 이메일 경합
-      userRepository.save
-        .mockRejectedValueOnce(
-          new QueryFailedError('insert', [], { code: '23505' } as never),
-        )
-        .mockImplementationOnce(async (e: Partial<User>) => e as User);
+    it('동시 최초 로그인 경합(유니크 위반)은 롤백 후 이긴 유저를 반환한다', async () => {
+      const winner = { id: 'winner' } as User;
+      identityRepository.findOne
+        .mockResolvedValueOnce(null) // 외부 사전조회: 없음
+        .mockResolvedValueOnce({ user: winner } as SocialIdentity); // 경합 후 재조회
+      dataSource.transaction.mockRejectedValueOnce(
+        new QueryFailedError('insert', [], { code: '23505' } as never),
+      );
 
-      const result = await service.findOrCreateSocialUser(profile);
+      const result = await service.findOrCreateSocialUser({
+        ...profile,
+        emailVerified: false,
+      });
 
-      expect(result.email).toBeNull(); // 재시도에서 이메일을 비웠다
-      expect(userRepository.save).toHaveBeenCalledTimes(2);
+      expect(result).toBe(winner);
     });
   });
 
@@ -380,24 +510,29 @@ describe('AuthService', () => {
 
   describe('일회용 코드 교환', () => {
     it('발급된 코드를 실제 JWT+user로 교환하고 1회만 유효하다', async () => {
-      // 신규 소셜 유저 생성(코드 발급). email=null이라 이메일 충돌 조회는 생략되어
-      // findOne은 (provider,id) 조회 1번만 호출된다.
-      userRepository.findOne.mockResolvedValueOnce(null);
-      userRepository.create.mockReturnValueOnce({
-        id: 'u9',
-        role: 'caregiver',
-        patientId: null,
-      } as User);
-      userRepository.save.mockResolvedValueOnce({
-        id: 'u9',
-        role: 'caregiver',
-        patientId: null,
-      } as User);
+      // 신규 소셜 유저 생성(코드 발급). email=null이라 이메일 사전체크는 생략된다.
+      identityRepository.findOne.mockResolvedValueOnce(null); // 외부: identity 없음
+      const newUser = { id: 'u9', role: 'caregiver', patientId: null } as User;
+      const userRepo = {
+        findOne: jest.fn(),
+        create: jest.fn(() => newUser),
+        save: jest.fn(async () => newUser),
+      };
+      const idRepo = {
+        findOne: jest.fn().mockResolvedValueOnce(null),
+        create: jest.fn((e: Partial<SocialIdentity>) => e),
+        save: jest.fn(async (e: Partial<SocialIdentity>) => e),
+      };
+      dataSource.transaction.mockImplementation(
+        async (cb: (m: unknown) => Promise<unknown>) =>
+          cb(socialManager(userRepo, idRepo)),
+      );
 
       const code = await service.socialLoginToCode({
         provider: 'kakao',
         providerUserId: '999',
         email: null,
+        emailVerified: false,
         displayName: '카카오',
       });
       expect(typeof code).toBe('string');

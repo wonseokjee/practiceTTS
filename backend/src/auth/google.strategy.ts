@@ -32,10 +32,15 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     profile: Profile,
     done: VerifyCallback,
   ): void {
+    // 구글 프로필 원본(_json)에 email_verified가 담긴다. 타입에 없어 안전 캐스팅.
+    const json = profile._json as { email_verified?: boolean } | undefined;
+    const email = profile.emails?.[0]?.value ?? null;
     const social: SocialProfile = {
       provider: 'google',
       providerUserId: profile.id,
-      email: profile.emails?.[0]?.value ?? null,
+      email,
+      // 구글은 검증된 이메일만 email_verified=true로 준다.
+      emailVerified: email !== null && json?.email_verified === true,
       displayName:
         profile.displayName || profile.name?.givenName || '구글 사용자',
     };
