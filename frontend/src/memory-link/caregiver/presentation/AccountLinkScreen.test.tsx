@@ -59,7 +59,7 @@ describe('AccountLinkScreen', () => {
 
     await waitFor(() => {
       expect(window.location.href).toBe(
-        'http://api.test/auth/google/link?code=c1',
+        'http://api.test/auth/google/link?ticket=c1',
       );
     });
     expect(post).toHaveBeenCalledWith('/auth/link/start', {});

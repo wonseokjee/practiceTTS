@@ -21,9 +21,13 @@ export interface AccountLinkNotice {
 }
 
 interface AccountLinkScreenProps {
-  onBack: () => void;
+  onBack?: () => void;
   /** ?linked/?linkError 복귀 결과(있으면 배너로 표시). */
   notice?: AccountLinkNotice | null;
+  /** 뒤로가기 버튼 라벨(설정 허브에서는 "설정"). 기본 "목록으로". */
+  backLabel?: string;
+  /** true면 자체 뒤로가기 버튼을 숨긴다(상위가 네비게이션을 소유할 때). */
+  embedded?: boolean;
 }
 
 const PROVIDER_META: Record<
@@ -42,7 +46,12 @@ const PROVIDER_META: Record<
 
 const ALL_PROVIDERS: SocialProvider[] = ['kakao', 'google'];
 
-export function AccountLinkScreen({ onBack, notice }: AccountLinkScreenProps) {
+export function AccountLinkScreen({
+  onBack,
+  notice,
+  backLabel = '목록으로',
+  embedded = false,
+}: AccountLinkScreenProps) {
   const { user, refreshUser } = useAuth();
   const [banner, setBanner] = useState<AccountLinkNotice | null>(
     notice ?? null,
@@ -69,7 +78,9 @@ export function AccountLinkScreen({ onBack, notice }: AccountLinkScreenProps) {
       if (typeof code !== 'string' || code.length === 0) {
         throw new Error('invalid code');
       }
-      window.location.href = `${API_BASE_URL}/auth/${provider}/link?code=${encodeURIComponent(code)}`;
+      // 파라미터 이름은 반드시 `ticket` — `code`는 OAuth2 예약어라 passport가
+      // 콜백으로 오인해 토큰 교환을 시도한다(500). LinkInitiateGuard와 짝을 맞춘다.
+      window.location.href = `${API_BASE_URL}/auth/${provider}/link?ticket=${encodeURIComponent(code)}`;
     } catch {
       setBusyProvider(null);
       setBanner({
@@ -109,14 +120,16 @@ export function AccountLinkScreen({ onBack, notice }: AccountLinkScreenProps) {
 
   return (
     <div className="font-pretendard mx-auto w-full max-w-lg">
-      <button
-        type="button"
-        onClick={onBack}
-        className="mb-4 flex items-center gap-1 text-sm text-[#5C6661] transition-colors hover:text-[#2D6A56]"
-        aria-label="목록으로 돌아가기"
-      >
-        ← 목록으로
-      </button>
+      {!embedded && (
+        <button
+          type="button"
+          onClick={onBack}
+          className="mb-4 flex items-center gap-1 text-sm text-[#5C6661] transition-colors hover:text-[#2D6A56]"
+          aria-label={`${backLabel}(으)로 돌아가기`}
+        >
+          ← {backLabel}
+        </button>
+      )}
 
       <header className="mb-6">
         <h2 className="text-2xl font-bold text-[#2D6A56]">연결된 계정</h2>

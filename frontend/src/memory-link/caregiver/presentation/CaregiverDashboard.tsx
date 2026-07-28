@@ -3,25 +3,18 @@ import { useAuth } from '../../shared/AuthContext.js';
 import { DailyHealingBanner } from '../../shared/components/DailyHealingBanner.js';
 import { useCaptureFlow } from '../application/useCaptureFlow.js';
 import { useMemoryEntries } from '../application/useMemoryEntries.js';
-import { AccountLinkScreen } from './AccountLinkScreen.js';
 import type { AccountLinkNotice } from './AccountLinkScreen.js';
 import { CaptureScreen } from './CaptureScreen.js';
 import { EntryDetailScreen } from './EntryDetailScreen.js';
 import { EntryListScreen } from './EntryListScreen.js';
-import { ProfileScreen } from './ProfileScreen.js';
+import { SettingsScreen } from './SettingsScreen.js';
 import { QabProgressCard } from './QabProgressCard.js';
 import { WeeklyReportScreen } from './WeeklyReportScreen.js';
 import { withHonorific } from '../../shared/honorific.js';
 import { isConversationModeEnabled } from '../../shared/featureFlags.js';
 
 /** 대시보드 화면 상태 */
-type DashboardView =
-  | 'list'
-  | 'capture'
-  | 'detail'
-  | 'profile'
-  | 'report'
-  | 'account';
+type DashboardView = 'list' | 'capture' | 'detail' | 'report' | 'settings';
 
 /**
  * 소셜 계정 연결 콜백 복귀(/caregiver?linked=..|?linkError=..)를 배너 알림으로.
@@ -63,13 +56,14 @@ export function CaregiverDashboard() {
 
   const memoryEntries = useMemoryEntries();
 
-  // 소셜 연결 콜백 복귀(?linked/?linkError) 감지 → 계정 화면 + 배너로 안내하고,
+  // 소셜 연결 콜백 복귀(?linked/?linkError) 감지 → 설정 화면 + 배너로 안내하고,
   // URL의 쿼리는 지운다(새로고침·뒤로가기 시 배너가 다시 뜨지 않게).
+  // 배너가 있으면 SettingsScreen이 계정 섹션으로 스크롤한다.
   useEffect(() => {
     const notice = parseLinkNotice(window.location.search);
     if (!notice) return;
     setAccountNotice(notice);
-    setView('account');
+    setView('settings');
     window.history.replaceState(null, '', window.location.pathname);
   }, []);
 
@@ -152,22 +146,14 @@ export function CaregiverDashboard() {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => setView('profile')}
-            className="min-h-[44px] rounded-full border border-[#2D6A56] px-4 py-2 text-sm font-medium text-[#2D6A56] transition-colors duration-[180ms] ease-out hover:bg-[#EBF4F0]"
-            aria-label="환자 정보 편집"
-          >
-            환자 정보
-          </button>
-          <button
-            type="button"
             onClick={() => {
               setAccountNotice(null);
-              setView('account');
+              setView('settings');
             }}
             className="min-h-[44px] rounded-full border border-[#2D6A56] px-4 py-2 text-sm font-medium text-[#2D6A56] transition-colors duration-[180ms] ease-out hover:bg-[#EBF4F0]"
-            aria-label="계정 연결 관리"
+            aria-label="설정 (환자 정보·계정)"
           >
-            계정
+            설정
           </button>
           <button
             type="button"
@@ -180,14 +166,6 @@ export function CaregiverDashboard() {
           <span className="hidden text-sm text-[#6B6560] sm:inline">
             {user?.displayName}
           </span>
-          <button
-            type="button"
-            onClick={logout}
-            className="text-xs text-[#9AA09B] hover:text-[#6B6560] transition-colors"
-            aria-label="로그아웃"
-          >
-            로그아웃
-          </button>
         </div>
       </header>
 
@@ -275,16 +253,11 @@ export function CaregiverDashboard() {
         {/* 진료용 리포트 */}
         {view === 'report' && <WeeklyReportScreen onBack={handleBackToList} />}
 
-        {/* 환자 정보(프로필) 화면 */}
-        {view === 'profile' && (
-          <ProfileScreen onBack={handleBackToList} />
-        )}
-
-        {/* 계정 연결(카카오·구글) 관리 화면 */}
-        {view === 'account' && (
-          <AccountLinkScreen
+        {/* 설정: 환자 정보 + 계정 연결 + 로그아웃 (세로 스택) */}
+        {view === 'settings' && (
+          <SettingsScreen
             onBack={handleBackToList}
-            notice={accountNotice}
+            accountNotice={accountNotice}
           />
         )}
 

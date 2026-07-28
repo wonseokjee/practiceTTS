@@ -55,13 +55,15 @@ export function SocialInitiateGuard(provider: string): Type<CanActivate> {
 /**
  * 소셜 계정 "수동 연결" 시작용 가드(계정 병합 2단계).
  *
- * 로그인 상태에서 발급한 1회용 link code(?code=)를 httpOnly 쿠키로 옮겨 콜백까지
+ * 로그인 상태에서 발급한 1회용 link code(?ticket=)를 httpOnly 쿠키로 옮겨 콜백까지
  * 나른다(브라우저 top-level 이동이라 Authorization 헤더가 없어, 쿠키로 유저 의도를
  * 전달한다). 동시에 로그인과 같은 CSRF state 쿠키도 심는다. 코드의 실제 소비(1회)는
  * 콜백에서 authService.redeemLinkCode가 한다 — 그래야 코드를 재사용/위조로부터 막고,
  * 로그인/연결을 같은 콜백 URL로 공유할 수 있다.
  *
- * code는 랜덤 UUID·단명·1회용이라, 유출돼도 가치가 낮다(콜백이 먼저 소비하면 무효).
+ * 파라미터 이름이 `ticket`인 이유: `code`는 OAuth2 예약어라, 인가 시작 요청에 실으면
+ * passport-oauth2가 "콜백(인가코드 수신)"으로 오인해 토큰 교환을 시도한다(500). 다른
+ * 이름을 써서 그 충돌을 피한다. ticket은 랜덤 UUID·단명·1회용이라 유출돼도 가치가 낮다.
  */
 export function LinkInitiateGuard(provider: string): Type<CanActivate> {
   @Injectable()
@@ -70,7 +72,7 @@ export function LinkInitiateGuard(provider: string): Type<CanActivate> {
       const req = context.switchToHttp().getRequest<Request>();
       const res = context.switchToHttp().getResponse<Response>();
 
-      const code = typeof req.query.code === 'string' ? req.query.code : '';
+      const code = typeof req.query.ticket === 'string' ? req.query.ticket : '';
       // link code를 콜백까지 나를 httpOnly 쿠키. 콜백이 존재를 보고 "연결 모드"로 분기.
       res.cookie(linkCookieName(provider), code, {
         httpOnly: true,
