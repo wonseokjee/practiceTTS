@@ -34,6 +34,13 @@ import {
 } from './entities/social-identity.entity';
 import type { SocialProfile } from './social-profile';
 
+/**
+ * 소셜 인가 시작의 의도.
+ *  - 'link' : 현재 계정에 새 provider 추가(2단계 수동 연결).
+ *  - 'merge': 빈 신규 계정을 OAuth로 증명한 기존 계정에 흡수(3단계).
+ */
+export type LinkMode = 'link' | 'merge';
+
 // JWT payload 타입 정의
 export interface JwtPayload {
   sub: string; // userId
@@ -82,14 +89,18 @@ export class AuthService {
   private static readonly ONE_TIME_CODE_TTL_MS = 60_000;
 
   /**
-   * 소셜 계정 "수동 연결" 시작용 단명 코드 저장소(계정 병합 2단계).
-   * 로그인 상태에서 발급하고, 브라우저가 GET /auth/:provider/link?code=로 넘긴다.
+   * 소셜 계정 "수동 연결/병합" 시작용 단명 코드 저장소(계정 병합 2·3단계).
+   * 로그인 상태에서 발급하고, 브라우저가 GET /auth/:provider/link?ticket=로 넘긴다.
    * 링크 시작 라우트는 이 코드를 쿠키로 옮겨 콜백까지 나르고, 콜백이 1회 소비한다
    * (단일 인스턴스 가정 — oneTimeCodes와 동일).
+   *
+   * mode:
+   *  - 'link' : 현재 계정에 새 provider 신원을 추가(2단계).
+   *  - 'merge': 현재(빈 신규) 계정을, OAuth로 증명한 기존 계정에 흡수시킴(3단계).
    */
   private readonly linkCodes = new Map<
     string,
-    { userId: string; expiresAt: number }
+    { userId: string; mode: LinkMode; expiresAt: number }
   >();
   private static readonly LINK_CODE_TTL_MS = 120_000;
 
@@ -585,8 +596,8 @@ export class AuthService {
     return rows.map((r) => r.provider);
   }
 
-  /** 수동 연결 시작 코드 발급(단명·1회용). 만료 항목은 발급 시 청소. */
-  issueLinkCode(userId: string): string {
+  /** 연결/병합 시작 코드 발급(단명·1회용). 만료 항목은 발급 시 청소. */
+  issueLinkCode(userId: string, mode: LinkMode = 'link'): string {
     const now = Date.now();
     for (const [existing, entry] of this.linkCodes) {
       if (now > entry.expiresAt) this.linkCodes.delete(existing);
@@ -594,17 +605,18 @@ export class AuthService {
     const code = randomUUID();
     this.linkCodes.set(code, {
       userId,
+      mode,
       expiresAt: now + AuthService.LINK_CODE_TTL_MS,
     });
     return code;
   }
 
-  /** 링크 코드 → userId 교환(1회 소비). 만료/무효면 null. */
-  redeemLinkCode(code: string): string | null {
+  /** 링크 코드 → {userId, mode} 교환(1회 소비). 만료/무효면 null. */
+  redeemLinkCode(code: string): { userId: string; mode: LinkMode } | null {
     const entry = this.linkCodes.get(code);
     this.linkCodes.delete(code); // 1회용: 조회 즉시 폐기
     if (!entry || Date.now() > entry.expiresAt) return null;
-    return entry.userId;
+    return { userId: entry.userId, mode: entry.mode };
   }
 
   /**
@@ -711,5 +723,84 @@ export class AuthService {
     });
 
     return remaining.map((r) => r.provider);
+  }
+
+  /**
+   * 계정 병합(3단계): 빈 신규 계정(source)을, OAuth로 증명한 기존 계정(target)에
+   * 흡수시킨다. source의 소셜 신원을 target으로 옮기고 source를 삭제한다.
+   *
+   * 배경: 카카오가 이메일을 안 주면 자동 연결이 안 돼 빈 중복 계정이 생긴다.
+   * 유저가 그 계정에서 "기존 계정에 연결"로 기존 provider(구글 등) 로그인을 하면,
+   * 이 메서드가 카카오 신원을 기존 계정으로 이전한다.
+   *
+   * 안전장치:
+   *  - target은 그 소셜 신원의 소유자여야 한다(없으면 신규 생성하지 않고 404).
+   *  - target ≠ source (같은 계정으로 로그인하면 의미 없음 → 409).
+   *  - source는 patient_id=null(데이터 없는 신규)이어야 한다. 데이터가 있는 계정의
+   *    사후 통합(기억·검사 병합)은 범위 밖이라 막는다(409).
+   *
+   * @returns 흡수한 기존 계정(target) id
+   */
+  async mergeAccounts(
+    sourceUserId: string,
+    profile: SocialProfile,
+  ): Promise<{ targetUserId: string }> {
+    const target = await this.findIdentityUser(this.identityRepository, profile);
+    if (!target) {
+      throw new NotFoundException(
+        '그 로그인으로 가입된 기존 계정이 없습니다.',
+      );
+    }
+    if (target.id === sourceUserId) {
+      throw new ConflictException(
+        '같은 계정입니다. 기존 계정의 다른 로그인 방법을 선택하세요.',
+      );
+    }
+
+    const source = await this.userRepository.findOne({
+      where: { id: sourceUserId },
+    });
+    if (!source) {
+      throw new NotFoundException('현재 계정을 찾을 수 없습니다.');
+    }
+    // 데이터 있는 계정은 자동 병합 대상이 아니다(사후 데이터 통합은 범위 밖).
+    if (source.patientId !== null) {
+      throw new ConflictException(
+        '이미 어르신 정보가 등록된 계정은 자동 병합할 수 없습니다.',
+      );
+    }
+
+    await this.dataSource.transaction(async (manager) => {
+      const idRepo = manager.getRepository(SocialIdentity);
+      const userRepo = manager.getRepository(User);
+
+      const targetIds = await idRepo.find({ where: { userId: target.id } });
+      const targetProviders = new Set(targetIds.map((i) => i.provider));
+      const sourceIds = await idRepo.find({ where: { userId: sourceUserId } });
+
+      for (const si of sourceIds) {
+        // target이 아직 없는 provider만 이전한다(유저당 provider 1개 유니크).
+        // target이 이미 가진 provider면 source와 함께 CASCADE 삭제된다.
+        if (!targetProviders.has(si.provider)) {
+          await idRepo.update({ id: si.id }, { userId: target.id });
+        }
+      }
+      // 남은 신원/데이터는 CASCADE로 정리(source는 patient_id=null이라 환자 없음).
+      await userRepo.delete({ id: sourceUserId });
+    });
+
+    return { targetUserId: target.id };
+  }
+
+  /**
+   * 병합 수행 후, 흡수한 기존 계정으로 로그인시킬 일회용 코드를 발급한다.
+   * (콜백이 이 코드로 /auth/callback 리다이렉트 → 프론트가 기존 계정 세션으로 교체.)
+   */
+  async mergeAndIssueLoginCode(
+    sourceUserId: string,
+    profile: SocialProfile,
+  ): Promise<string> {
+    const { targetUserId } = await this.mergeAccounts(sourceUserId, profile);
+    return this.issueOneTimeCode(targetUserId);
   }
 }

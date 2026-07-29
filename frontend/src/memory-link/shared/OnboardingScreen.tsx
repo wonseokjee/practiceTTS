@@ -6,11 +6,26 @@
  * 완료되면 needsOnboarding이 false가 되어 보호자 대시보드로 진입한다.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext.js';
-import { memoryLinkApi } from './MemoryLinkApi.js';
+import { API_BASE_URL, memoryLinkApi } from './MemoryLinkApi.js';
+
+type MergeProvider = 'kakao' | 'google';
+
+/** 병합 콜백 실패(?mergeError=..) → 안내 문구. 백엔드 handleSocialCallback과 짝. */
+function parseMergeError(search: string): string | null {
+  const e = new URLSearchParams(search).get('mergeError');
+  if (!e) return null;
+  if (e === 'notfound') {
+    return '그 로그인으로 가입된 기존 계정이 없어요. 다른 방법을 선택해 주세요.';
+  }
+  if (e === 'conflict') {
+    return '같은 계정이거나 이미 정보가 등록된 계정이에요. 기존 계정의 다른 로그인 방법을 선택해 주세요.';
+  }
+  return '연결에 실패했어요. 잠시 후 다시 시도해 주세요.';
+}
 
 export function OnboardingScreen() {
   const navigate = useNavigate();
@@ -19,6 +34,39 @@ export function OnboardingScreen() {
   const [patientModePin, setPatientModePin] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mergeBusy, setMergeBusy] = useState<MergeProvider | null>(null);
+  const [mergeNotice, setMergeNotice] = useState<string | null>(() =>
+    parseMergeError(window.location.search),
+  );
+
+  // 병합 실패 배너를 띄웠으면 URL의 쿼리를 지운다(새로고침 시 재노출 방지).
+  useEffect(() => {
+    if (mergeNotice) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, [mergeNotice]);
+
+  // "기존 계정에 연결": 병합 시작 코드를 받아 그 provider 로그인으로 이동한다.
+  // 콜백이 이 계정(빈 신규)을 로그인한 기존 계정에 흡수시키고, 그 계정으로 로그인시킨다.
+  const startMerge = async (provider: MergeProvider): Promise<void> => {
+    setError(null);
+    setMergeNotice(null);
+    setMergeBusy(provider);
+    try {
+      const res = await memoryLinkApi.post<{ code?: unknown }>(
+        '/auth/merge/start',
+        {},
+      );
+      const code = res.data?.code;
+      if (typeof code !== 'string' || code.length === 0) {
+        throw new Error('invalid code');
+      }
+      window.location.href = `${API_BASE_URL}/auth/${provider}/link?ticket=${encodeURIComponent(code)}`;
+    } catch {
+      setMergeBusy(null);
+      setError('연결을 시작하지 못했어요. 잠시 후 다시 시도해 주세요.');
+    }
+  };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
@@ -118,6 +166,45 @@ export function OnboardingScreen() {
             {isSubmitting ? '저장 중...' : '시작하기'}
           </button>
         </form>
+
+        {/* 이미 다른 방법으로 가입한 계정이 있으면, 새로 만들지 말고 그 계정에 흡수 */}
+        <div className="mt-6 border-t border-[#E8E4DC] pt-5">
+          <p className="text-sm font-medium text-[#1A1916]">
+            이미 다른 방법으로 가입하셨나요?
+          </p>
+          <p className="mt-1 mb-3 text-xs text-[#6B6560]">
+            기존에 쓰던 로그인으로 연결하면, 이 계정 대신 그 계정으로 들어가요.
+            (등록해 둔 정보가 그대로 있어요.)
+          </p>
+
+          {mergeNotice !== null && (
+            <p
+              role="alert"
+              className="mb-3 rounded-xl border border-[#C94040]/25 bg-[#FEF0F0] px-4 py-3 text-sm text-[#8b2020]"
+            >
+              {mergeNotice}
+            </p>
+          )}
+
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => void startMerge('kakao')}
+              disabled={mergeBusy !== null}
+              className="w-full min-h-[48px] rounded-full bg-[#FEE500] text-sm font-medium text-[#191600] transition-colors hover:bg-[#f5dc00] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {mergeBusy === 'kakao' ? '이동 중…' : '카카오로 기존 계정에 연결'}
+            </button>
+            <button
+              type="button"
+              onClick={() => void startMerge('google')}
+              disabled={mergeBusy !== null}
+              className="w-full min-h-[48px] rounded-full border border-[#DADCE0] bg-white text-sm font-medium text-[#3C4043] transition-colors hover:bg-[#F7F6F3] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {mergeBusy === 'google' ? '이동 중…' : '구글로 기존 계정에 연결'}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

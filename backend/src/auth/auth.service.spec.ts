@@ -637,12 +637,131 @@ describe('AuthService', () => {
     });
   });
 
-  describe('연결 시작 코드(issue/redeemLinkCode)', () => {
-    it('발급한 코드를 userId로 1회 교환하고, 재사용/무효는 null', () => {
-      const code = service.issueLinkCode('u7');
-      expect(service.redeemLinkCode(code)).toBe('u7');
+  describe('연결/병합 시작 코드(issue/redeemLinkCode)', () => {
+    it('발급한 코드를 {userId,mode}로 1회 교환하고, 재사용/무효는 null', () => {
+      const code = service.issueLinkCode('u7'); // 기본 link
+      expect(service.redeemLinkCode(code)).toEqual({
+        userId: 'u7',
+        mode: 'link',
+      });
       expect(service.redeemLinkCode(code)).toBeNull(); // 1회 소비
       expect(service.redeemLinkCode('nope')).toBeNull();
+    });
+
+    it('merge 모드 코드도 발급·교환된다', () => {
+      const code = service.issueLinkCode('u8', 'merge');
+      expect(service.redeemLinkCode(code)).toEqual({
+        userId: 'u8',
+        mode: 'merge',
+      });
+    });
+  });
+
+  describe('계정 병합(mergeAccounts)', () => {
+    const profile = {
+      provider: 'google' as const,
+      providerUserId: 'g1',
+      email: 'e@test.com',
+      emailVerified: true,
+      displayName: '구글',
+    };
+
+    function mergeManager(
+      idRepo: Record<string, jest.Mock>,
+      userRepo: Record<string, jest.Mock>,
+    ) {
+      dataSource.transaction.mockImplementation(
+        async (cb: (m: unknown) => Promise<unknown>) =>
+          cb({
+            getRepository: (entity: unknown) =>
+              entity === User ? userRepo : idRepo,
+          }),
+      );
+    }
+
+    it('빈 소스 계정을 기존 계정에 흡수한다(신원 이전 + 소스 삭제)', async () => {
+      identityRepository.findOne.mockResolvedValueOnce({
+        user: { id: 'A' },
+      } as SocialIdentity); // 대상 = 기존 계정 A
+      userRepository.findOne.mockResolvedValueOnce({
+        id: 'C',
+        patientId: null,
+      } as User); // 소스 = 빈 신규 C
+
+      const idRepo = {
+        find: jest
+          .fn()
+          .mockResolvedValueOnce([{ provider: 'google', id: 'ti1' }]) // A의 신원
+          .mockResolvedValueOnce([{ provider: 'kakao', id: 'si1' }]), // C의 신원
+        update: jest.fn(async () => ({ affected: 1 })),
+      };
+      const userRepo = { delete: jest.fn(async () => ({ affected: 1 })) };
+      mergeManager(idRepo, userRepo);
+
+      const res = await service.mergeAccounts('C', profile);
+
+      expect(res).toEqual({ targetUserId: 'A' });
+      // C의 카카오 신원을 A로 이전
+      expect(idRepo.update).toHaveBeenCalledWith({ id: 'si1' }, { userId: 'A' });
+      // 빈 소스 삭제
+      expect(userRepo.delete).toHaveBeenCalledWith({ id: 'C' });
+    });
+
+    it('그 로그인으로 가입된 기존 계정이 없으면 404(신규 생성 안 함)', async () => {
+      identityRepository.findOne.mockResolvedValueOnce(null);
+
+      await expect(
+        service.mergeAccounts('C', profile),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('같은 계정으로 로그인하면 409', async () => {
+      identityRepository.findOne.mockResolvedValueOnce({
+        user: { id: 'C' },
+      } as SocialIdentity);
+
+      await expect(
+        service.mergeAccounts('C', profile),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('데이터 있는 소스(patient_id 있음)는 병합 불가 409', async () => {
+      identityRepository.findOne.mockResolvedValueOnce({
+        user: { id: 'A' },
+      } as SocialIdentity);
+      userRepository.findOne.mockResolvedValueOnce({
+        id: 'C',
+        patientId: 'p1',
+      } as User);
+
+      await expect(
+        service.mergeAccounts('C', profile),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('대상이 이미 가진 provider는 이전하지 않는다(소스와 함께 삭제)', async () => {
+      identityRepository.findOne.mockResolvedValueOnce({
+        user: { id: 'A' },
+      } as SocialIdentity);
+      userRepository.findOne.mockResolvedValueOnce({
+        id: 'C',
+        patientId: null,
+      } as User);
+
+      const idRepo = {
+        find: jest
+          .fn()
+          .mockResolvedValueOnce([{ provider: 'kakao', id: 'ti1' }]) // A가 이미 카카오 보유
+          .mockResolvedValueOnce([{ provider: 'kakao', id: 'si1' }]), // C도 카카오
+        update: jest.fn(),
+      };
+      const userRepo = { delete: jest.fn(async () => ({ affected: 1 })) };
+      mergeManager(idRepo, userRepo);
+
+      await service.mergeAccounts('C', profile);
+
+      expect(idRepo.update).not.toHaveBeenCalled(); // 중복이라 이전 안 함
+      expect(userRepo.delete).toHaveBeenCalledWith({ id: 'C' });
     });
   });
 

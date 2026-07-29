@@ -7,6 +7,7 @@ import {
   HttpCode,
   HttpException,
   HttpStatus,
+  NotFoundException,
   Param,
   Post,
   Req,
@@ -157,7 +158,17 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
   startLink(@Request() req: AuthenticatedRequest): { code: string } {
-    return { code: this.authService.issueLinkCode(req.user.id) };
+    return { code: this.authService.issueLinkCode(req.user.id, 'link') };
+  }
+
+  // POST /auth/merge/start - 빈 신규 계정을 기존 계정에 흡수(계정 병합 3단계) 시작.
+  // 온보딩 화면에서 "기존 계정에 연결"을 누르면 호출한다. 이후 GET
+  // /auth/:provider/link?ticket= 로 기존 계정의 provider 로그인을 시작한다.
+  @Post('merge/start')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  startMerge(@Request() req: AuthenticatedRequest): { code: string } {
+    return { code: this.authService.issueLinkCode(req.user.id, 'merge') };
   }
 
   // GET /auth/kakao/link - 연결용 카카오 인가 시작. 가드가 link code를 쿠키로
@@ -218,15 +229,41 @@ export class AuthController {
       throw err; // 로그인 모드 → 예외 필터가 /login 으로 처리.
     }
 
-    // ── 연결 모드 ──
+    // ── 연결/병합 모드 ──
     if (linkCode) {
-      const userId = this.authService.redeemLinkCode(linkCode);
-      if (!userId) {
+      const redeemed = this.authService.redeemLinkCode(linkCode);
+      if (!redeemed) {
         res.redirect(`${frontend}/caregiver?linkError=expired`);
         return;
       }
+
+      // 병합 모드: 현재(빈 신규) 계정을 OAuth로 증명한 기존 계정에 흡수.
+      if (redeemed.mode === 'merge') {
+        try {
+          const code = await this.authService.mergeAndIssueLoginCode(
+            redeemed.userId,
+            req.user,
+          );
+          // 병합 성공 → 흡수한 기존 계정 세션으로 로그인(코드 교환).
+          res.redirect(
+            `${frontend}/auth/callback#code=${encodeURIComponent(code)}`,
+          );
+        } catch (err) {
+          const reason =
+            err instanceof NotFoundException
+              ? 'notfound'
+              : err instanceof HttpException &&
+                  err.getStatus() === HttpStatus.CONFLICT
+                ? 'conflict'
+                : 'unknown';
+          res.redirect(`${frontend}/onboarding?mergeError=${reason}`);
+        }
+        return;
+      }
+
+      // 연결 모드: 현재 계정에 새 provider 추가.
       try {
-        await this.authService.linkSocialIdentity(userId, req.user);
+        await this.authService.linkSocialIdentity(redeemed.userId, req.user);
         res.redirect(`${frontend}/caregiver?linked=${provider}`);
       } catch (err) {
         const reason =
