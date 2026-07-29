@@ -60,13 +60,19 @@ user_social_identities
 
 브라우저 top-level 이동엔 Authorization 헤더가 없어, 유저 의도를 쿠키로 나른다.
 
-1. `POST /auth/link/start`(JWT) → 1회용 link code 발급(단명·in-memory)
-2. `GET /auth/:provider/link?ticket=`(`LinkInitiateGuard`) → ticket을 httpOnly 쿠키로 옮기고
-   CSRF state 심은 뒤 소셜 인가로 리다이렉트. (파라미터가 `code`가 아니라 `ticket`인 이유:
-   `code`는 OAuth2 예약어라 passport가 콜백으로 오인해 토큰 교환을 시도해 500이 난다.)
-3. `GET /auth/:provider/callback` → link 쿠키가 있으면 **연결 모드**: code를 1회 소비해
-   userId를 얻고, `linkSocialIdentity`로 현재 계정에 신원을 붙인 뒤
+1. `POST /auth/link/start`(JWT, **withCredentials**) → 1회용 의도 code를 발급해
+   **httpOnly 쿠키(`oauth_intent`)로 심는다**. 코드는 응답 본문이 아니라 쿠키로만 전달.
+2. `GET /auth/:provider/link`(`LinkInitiateGuard`) → `oauth_intent` 쿠키가 있어야 인가를
+   시작한다(CSRF state도 심음). URL에 코드가 없다.
+3. `GET /auth/:provider/callback` → `oauth_intent` 쿠키가 있으면 **연결 모드**: code를 1회
+   소비해 userId를 얻고, `linkSocialIdentity`로 현재 계정에 신원을 붙인 뒤
    `/caregiver?linked=..`(실패 시 `?linkError=..`)로 복귀. 없으면 로그인 모드.
+
+> **계정 연결 CSRF 방어**: 의도 코드를 URL(`?ticket=`)로 받으면 공격자가 자기 코드를
+> 피해자에게 링크로 넘겨 피해자 소셜 신원을 공격자 계정에 연결할 수 있다(연결 대상이
+> "코드 소유자"라서). 그래서 코드는 **인증된 start 응답의 httpOnly 쿠키로만** 전달한다 —
+> 공격자는 피해자 브라우저에 이 쿠키를 심을 수 없어, 연결이 항상 "start를 호출한 그
+> 세션"에 결속된다. (Codex 크로스모델 리뷰 지적 반영.)
 4. `DELETE /auth/link/:provider`(JWT) → 해제. **마지막 로그인 수단(비번 없는 소셜 1개)은
    403.** users의 "주 provider"가 방금 뺀 것이면 남은 신원/로컬로 재지정.
 
@@ -83,7 +89,7 @@ user_social_identities
 `mode`(link|merge)로 분기한다.
 
 1. `POST /auth/merge/start`(JWT) → merge 모드 코드 발급
-2. `GET /auth/:provider/link?ticket=` → 기존 계정의 provider 로그인
+2. `GET /auth/:provider/link` → 기존 계정의 provider 로그인(의도는 `oauth_intent` 쿠키)
 3. 콜백(merge 모드): `mergeAccounts(source, profile)`
    - 대상 = OAuth로 증명한 기존 계정(소유자 없으면 **404**, 신규 생성 안 함)
    - 대상 ≠ 소스(**409**), 소스는 `patient_id=null` 인 빈 계정만(데이터 있으면 **409**)

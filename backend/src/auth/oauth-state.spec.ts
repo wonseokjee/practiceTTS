@@ -53,34 +53,34 @@ describe('verifyOAuthState (CSRF)', () => {
   });
 });
 
-describe('readLinkCode (수동 연결 분기)', () => {
-  it('link 쿠키가 있으면 code를 반환하고 쿠키를 지운다(연결 모드)', () => {
+describe('readLinkCode (연결/병합 분기)', () => {
+  it('oauth_intent 쿠키가 있으면 code를 반환하고 쿠키를 지운다', () => {
     const res = mockRes();
     const req = {
-      cookies: { oauth_link_google: 'code-123' },
+      cookies: { oauth_intent: 'code-123' },
     } as unknown as Request;
 
-    expect(readLinkCode(req, res, 'google')).toBe('code-123');
-    expect(res.clearCookie).toHaveBeenCalledWith('oauth_link_google', {
+    expect(readLinkCode(req, res)).toBe('code-123');
+    expect(res.clearCookie).toHaveBeenCalledWith('oauth_intent', {
       path: '/',
     });
   });
 
-  it('link 쿠키가 없으면 null(일반 로그인 모드)', () => {
+  it('oauth_intent 쿠키가 없으면 null(일반 로그인 모드)', () => {
     const res = mockRes();
     const req = { cookies: {} } as unknown as Request;
 
-    expect(readLinkCode(req, res, 'kakao')).toBeNull();
+    expect(readLinkCode(req, res)).toBeNull();
     // 있든 없든 정리는 시도한다(1회용).
-    expect(res.clearCookie).toHaveBeenCalledWith('oauth_link_kakao', {
+    expect(res.clearCookie).toHaveBeenCalledWith('oauth_intent', {
       path: '/',
     });
   });
 
-  it('link 쿠키가 빈 문자열이면 null(연결 모드로 오인 안 함)', () => {
+  it('oauth_intent 쿠키가 빈 문자열이면 null(연결 모드로 오인 안 함)', () => {
     const res = mockRes();
-    const req = { cookies: { oauth_link_kakao: '' } } as unknown as Request;
+    const req = { cookies: { oauth_intent: '' } } as unknown as Request;
 
-    expect(readLinkCode(req, res, 'kakao')).toBeNull();
+    expect(readLinkCode(req, res)).toBeNull();
   });
 });

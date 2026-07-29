@@ -50,19 +50,20 @@ describe('AccountLinkScreen', () => {
     expect(screen.getByRole('button', { name: '연결하기' })).toBeTruthy();
   });
 
-  it('연결하기 → 시작 코드를 받아 소셜 인가로 이동한다', async () => {
+  it('연결하기 → 의도 쿠키 심고(withCredentials) 소셜 인가로 이동한다', async () => {
     mockUser = { linkedProviders: ['kakao'] };
-    post.mockResolvedValueOnce({ data: { code: 'c1' } });
+    post.mockResolvedValueOnce({ data: { ok: true } });
     render(<AccountLinkScreen onBack={vi.fn()} />);
 
     fireEvent.click(screen.getByRole('button', { name: '연결하기' }));
 
     await waitFor(() => {
-      expect(window.location.href).toBe(
-        'http://api.test/auth/google/link?ticket=c1',
-      );
+      expect(window.location.href).toBe('http://api.test/auth/google/link');
     });
-    expect(post).toHaveBeenCalledWith('/auth/link/start', {});
+    // URL에 코드 없음(쿠키로 전달), start는 withCredentials로 호출
+    expect(post).toHaveBeenCalledWith('/auth/link/start', {}, {
+      withCredentials: true,
+    });
   });
 
   it('마지막 하나 남은 연결은 해제 버튼이 비활성화된다', () => {

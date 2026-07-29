@@ -774,6 +774,18 @@ export class AuthService {
       const idRepo = manager.getRepository(SocialIdentity);
       const userRepo = manager.getRepository(User);
 
+      // 트랜잭션 내 재확인(TOCTOU 방어): 사전 체크 이후 소스가 온보딩을 완료했다면
+      // patient_id가 생겼을 수 있다. 그대로 삭제하면 방금 만든 환자·데이터가 CASCADE로
+      // 사라진다. 여기서 다시 확인해, 비었을 때만 삭제한다(아니면 롤백).
+      const freshSource = await userRepo.findOne({
+        where: { id: sourceUserId },
+      });
+      if (freshSource && freshSource.patientId !== null) {
+        throw new ConflictException(
+          '이미 어르신 정보가 등록된 계정은 자동 병합할 수 없습니다.',
+        );
+      }
+
       const targetIds = await idRepo.find({ where: { userId: target.id } });
       const targetProviders = new Set(targetIds.map((i) => i.provider));
       const sourceIds = await idRepo.find({ where: { userId: sourceUserId } });

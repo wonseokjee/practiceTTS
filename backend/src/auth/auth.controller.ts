@@ -30,6 +30,7 @@ import { SocialProviderName } from './entities/social-identity.entity';
 import {
   LinkInitiateGuard,
   readLinkCode,
+  setIntentCookie,
   SocialInitiateGuard,
   verifyOAuthState,
 } from './oauth-state';
@@ -152,27 +153,38 @@ export class AuthController {
 
   // ─── 소셜 계정 수동 연결(계정 병합 2단계) ─────────────────────
 
-  // POST /auth/link/start - 로그인 상태에서 연결 시작 코드 발급(1회용·단명).
-  // 프론트는 이 코드로 GET /auth/:provider/link?code= 로 top-level 이동한다.
+  // POST /auth/link/start - 로그인 상태에서 연결 의도 코드 발급.
+  // 코드를 응답 본문이 아니라 httpOnly 쿠키(oauth_intent)로 심는다 → 연결이 "이 세션"에
+  // 결속돼 계정 연결 CSRF를 막는다(setIntentCookie 주석 참고). 프론트는 이후 GET
+  // /auth/:provider/link 로 top-level 이동만 하면 된다(URL에 코드 없음).
+  // 프론트 XHR은 withCredentials로 호출해야 Set-Cookie가 저장된다.
   @Post('link/start')
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
-  startLink(@Request() req: AuthenticatedRequest): { code: string } {
-    return { code: this.authService.issueLinkCode(req.user.id, 'link') };
+  startLink(
+    @Request() req: AuthenticatedRequest,
+    @Res({ passthrough: true }) res: Response,
+  ): { ok: true } {
+    setIntentCookie(res, this.authService.issueLinkCode(req.user.id, 'link'));
+    return { ok: true };
   }
 
   // POST /auth/merge/start - 빈 신규 계정을 기존 계정에 흡수(계정 병합 3단계) 시작.
-  // 온보딩 화면에서 "기존 계정에 연결"을 누르면 호출한다. 이후 GET
-  // /auth/:provider/link?ticket= 로 기존 계정의 provider 로그인을 시작한다.
+  // 온보딩 화면에서 "기존 계정에 연결"을 누르면 호출한다. link/start와 동일하게
+  // 의도 코드를 oauth_intent 쿠키로 심는다(merge 모드).
   @Post('merge/start')
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
-  startMerge(@Request() req: AuthenticatedRequest): { code: string } {
-    return { code: this.authService.issueLinkCode(req.user.id, 'merge') };
+  startMerge(
+    @Request() req: AuthenticatedRequest,
+    @Res({ passthrough: true }) res: Response,
+  ): { ok: true } {
+    setIntentCookie(res, this.authService.issueLinkCode(req.user.id, 'merge'));
+    return { ok: true };
   }
 
-  // GET /auth/kakao/link - 연결용 카카오 인가 시작. 가드가 link code를 쿠키로
-  // 옮기고 CSRF state를 심는다. 콜백이 link 쿠키를 보고 "연결 모드"로 처리한다.
+  // GET /auth/kakao/link - 연결용 카카오 인가 시작. 가드가 oauth_intent 쿠키(인증된
+  // start가 심음)를 요구하고 CSRF state를 심는다. 콜백이 그 쿠키를 보고 연결/병합 처리.
   @Get('kakao/link')
   @UseGuards(LinkInitiateGuard('kakao'))
   kakaoLink(): void {
@@ -216,7 +228,7 @@ export class AuthController {
     provider: SocialProviderName,
   ): Promise<void> {
     const frontend = this.frontendUrl();
-    const linkCode = readLinkCode(req, res, provider);
+    const linkCode = readLinkCode(req, res);
 
     // state(CSRF) 대조. 연결 모드면 실패를 대시보드로 안내(로그인 화면 아님).
     try {

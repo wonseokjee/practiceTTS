@@ -24,8 +24,29 @@ function stateCookieName(provider: string): string {
   return `oauth_state_${provider}`;
 }
 
-function linkCookieName(provider: string): string {
-  return `oauth_link_${provider}`;
+/**
+ * 연결/병합 "의도" 쿠키. 인증된 start 엔드포인트만 httpOnly로 심는다(브라우저 세션에
+ * 결속). provider와 무관한 단일 이름 — 의도 코드는 provider를 담지 않는다.
+ */
+const INTENT_COOKIE = 'oauth_intent';
+
+/**
+ * 인증된 /auth/link|merge/start에서 호출: 1회용 의도 코드를 httpOnly 쿠키로 심는다.
+ *
+ * 왜 URL(?ticket=)이 아니라 쿠키인가(계정 연결 CSRF 방어): 코드를 URL로 받으면
+ * 공격자가 자기 코드를 피해자에게 링크로 넘겨(`/auth/google/link?ticket=…`) 피해자의
+ * 소셜 신원을 공격자 계정에 연결시킬 수 있다(연결 대상이 "이 브라우저의 로그인 유저"가
+ * 아니라 "코드 소유자"라서). httpOnly 쿠키는 인증된 XHR 응답으로만 심기므로, 공격자가
+ * 피해자 브라우저에 심을 수 없다 → 연결은 항상 "start를 호출한 그 세션"에 묶인다.
+ */
+export function setIntentCookie(res: Response, code: string): void {
+  res.cookie(INTENT_COOKIE, code, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: STATE_TTL_MS,
+    path: '/',
+  });
 }
 
 /**
@@ -53,17 +74,15 @@ export function SocialInitiateGuard(provider: string): Type<CanActivate> {
 }
 
 /**
- * 소셜 계정 "수동 연결" 시작용 가드(계정 병합 2단계).
+ * 소셜 계정 "수동 연결/병합" 시작용 가드(계정 병합 2·3단계).
  *
- * 로그인 상태에서 발급한 1회용 link code(?ticket=)를 httpOnly 쿠키로 옮겨 콜백까지
- * 나른다(브라우저 top-level 이동이라 Authorization 헤더가 없어, 쿠키로 유저 의도를
- * 전달한다). 동시에 로그인과 같은 CSRF state 쿠키도 심는다. 코드의 실제 소비(1회)는
- * 콜백에서 authService.redeemLinkCode가 한다 — 그래야 코드를 재사용/위조로부터 막고,
- * 로그인/연결을 같은 콜백 URL로 공유할 수 있다.
+ * 브라우저 top-level 이동엔 Authorization 헤더가 없어, 유저 의도를 쿠키로 전달한다.
+ * 의도 코드는 **인증된 start 엔드포인트가 심은 oauth_intent 쿠키**로만 받는다(URL
+ * ?ticket= 폐기 — setIntentCookie 주석의 CSRF 사유 참고). 그 쿠키가 없으면(=이 세션이
+ * start를 호출한 적 없음, 예: 공격자가 유도한 링크) 인가를 시작하지 않는다.
  *
- * 파라미터 이름이 `ticket`인 이유: `code`는 OAuth2 예약어라, 인가 시작 요청에 실으면
- * passport-oauth2가 "콜백(인가코드 수신)"으로 오인해 토큰 교환을 시도한다(500). 다른
- * 이름을 써서 그 충돌을 피한다. ticket은 랜덤 UUID·단명·1회용이라 유출돼도 가치가 낮다.
+ * 로그인과 같은 CSRF state 쿠키도 심는다. 의도 코드는 oauth_intent 그대로 콜백까지
+ * 실려가고, 콜백이 readLinkCode로 1회 소비한다.
  */
 export function LinkInitiateGuard(provider: string): Type<CanActivate> {
   @Injectable()
@@ -72,15 +91,14 @@ export function LinkInitiateGuard(provider: string): Type<CanActivate> {
       const req = context.switchToHttp().getRequest<Request>();
       const res = context.switchToHttp().getResponse<Response>();
 
-      const code = typeof req.query.ticket === 'string' ? req.query.ticket : '';
-      // link code를 콜백까지 나를 httpOnly 쿠키. 콜백이 존재를 보고 "연결 모드"로 분기.
-      res.cookie(linkCookieName(provider), code, {
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: STATE_TTL_MS,
-        path: '/',
-      });
+      // 인증된 start가 심은 의도 쿠키가 있어야 한다. 없으면 이 브라우저 세션이 연결을
+      // 시작한 게 아니다(계정 연결 CSRF 차단) → 인가 시작 거부.
+      const intent = (req.cookies as Record<string, string> | undefined)?.[
+        INTENT_COOKIE
+      ];
+      if (!intent) {
+        throw new UnauthorizedException('잘못된 연결 요청입니다.');
+      }
 
       const state = randomBytes(16).toString('hex');
       res.cookie(stateCookieName(provider), state, {
@@ -97,17 +115,15 @@ export function LinkInitiateGuard(provider: string): Type<CanActivate> {
 }
 
 /**
- * 콜백에서 link 쿠키를 읽고 즉시 지운다(1회용). 값이 있으면 "연결 모드"의 link code,
- * 없으면 일반 로그인. 실제 code 소비(userId 매핑)는 호출부가 redeemLinkCode로 한다.
+ * 콜백에서 의도 쿠키(oauth_intent)를 읽고 즉시 지운다(1회용). 값이 있으면 연결/병합
+ * 모드의 코드, 없으면 일반 로그인. 실제 code 소비(userId·mode 매핑)는 호출부가
+ * redeemLinkCode로 한다.
  */
-export function readLinkCode(
-  req: Request,
-  res: Response,
-  provider: string,
-): string | null {
-  const name = linkCookieName(provider);
-  const code = (req.cookies as Record<string, string> | undefined)?.[name];
-  res.clearCookie(name, { path: '/' });
+export function readLinkCode(req: Request, res: Response): string | null {
+  const code = (req.cookies as Record<string, string> | undefined)?.[
+    INTENT_COOKIE
+  ];
+  res.clearCookie(INTENT_COOKIE, { path: '/' });
   return typeof code === 'string' && code.length > 0 ? code : null;
 }
 

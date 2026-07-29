@@ -695,7 +695,10 @@ describe('AuthService', () => {
           .mockResolvedValueOnce([{ provider: 'kakao', id: 'si1' }]), // C의 신원
         update: jest.fn(async () => ({ affected: 1 })),
       };
-      const userRepo = { delete: jest.fn(async () => ({ affected: 1 })) };
+      const userRepo = {
+        findOne: jest.fn(async () => ({ id: 'C', patientId: null })),
+        delete: jest.fn(async () => ({ affected: 1 })),
+      };
       mergeManager(idRepo, userRepo);
 
       const res = await service.mergeAccounts('C', profile);
@@ -739,6 +742,29 @@ describe('AuthService', () => {
       ).rejects.toBeInstanceOf(ConflictException);
     });
 
+    it('트랜잭션 내 재확인: 소스가 그 사이 온보딩되면 롤백(409·삭제 안 함)', async () => {
+      identityRepository.findOne.mockResolvedValueOnce({
+        user: { id: 'A' },
+      } as SocialIdentity);
+      // 외부 사전 체크는 통과(patient_id=null)
+      userRepository.findOne.mockResolvedValueOnce({
+        id: 'C',
+        patientId: null,
+      } as User);
+      const idRepo = { find: jest.fn(async () => []), update: jest.fn() };
+      const userRepo = {
+        // 트랜잭션 진입 후 재확인: 그 사이 온보딩돼 patient_id가 생김
+        findOne: jest.fn(async () => ({ id: 'C', patientId: 'p-new' })),
+        delete: jest.fn(),
+      };
+      mergeManager(idRepo, userRepo);
+
+      await expect(
+        service.mergeAccounts('C', profile),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(userRepo.delete).not.toHaveBeenCalled(); // 롤백 — 데이터 유실 없음
+    });
+
     it('대상이 이미 가진 provider는 이전하지 않는다(소스와 함께 삭제)', async () => {
       identityRepository.findOne.mockResolvedValueOnce({
         user: { id: 'A' },
@@ -755,7 +781,10 @@ describe('AuthService', () => {
           .mockResolvedValueOnce([{ provider: 'kakao', id: 'si1' }]), // C도 카카오
         update: jest.fn(),
       };
-      const userRepo = { delete: jest.fn(async () => ({ affected: 1 })) };
+      const userRepo = {
+        findOne: jest.fn(async () => ({ id: 'C', patientId: null })),
+        delete: jest.fn(async () => ({ affected: 1 })),
+      };
       mergeManager(idRepo, userRepo);
 
       await service.mergeAccounts('C', profile);

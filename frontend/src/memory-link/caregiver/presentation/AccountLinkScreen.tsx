@@ -73,18 +73,10 @@ export function AccountLinkScreen({
     setBanner(null);
     setBusyProvider(provider);
     try {
-      // 1회용 연결 코드를 받아, 소셜 인가로 top-level 이동한다(쿠키가 함께 실림).
-      const res = await memoryLinkApi.post<{ code?: unknown }>(
-        '/auth/link/start',
-        {},
-      );
-      const code = res.data?.code;
-      if (typeof code !== 'string' || code.length === 0) {
-        throw new Error('invalid code');
-      }
-      // 파라미터 이름은 반드시 `ticket` — `code`는 OAuth2 예약어라 passport가
-      // 콜백으로 오인해 토큰 교환을 시도한다(500). LinkInitiateGuard와 짝을 맞춘다.
-      window.location.href = `${API_BASE_URL}/auth/${provider}/link?ticket=${encodeURIComponent(code)}`;
+      // 연결 의도를 httpOnly 쿠키로 심는다(CSRF 방어). withCredentials가 있어야
+      // 교차 출처(:5173→:3000) 응답의 Set-Cookie가 저장된다. 이후 top-level 이동만.
+      await memoryLinkApi.post('/auth/link/start', {}, { withCredentials: true });
+      window.location.href = `${API_BASE_URL}/auth/${provider}/link`;
     } catch {
       setBusyProvider(null);
       setBanner({

@@ -54,15 +54,9 @@ export function OnboardingScreen() {
     setMergeNotice(null);
     setMergeBusy(provider);
     try {
-      const res = await memoryLinkApi.post<{ code?: unknown }>(
-        '/auth/merge/start',
-        {},
-      );
-      const code = res.data?.code;
-      if (typeof code !== 'string' || code.length === 0) {
-        throw new Error('invalid code');
-      }
-      window.location.href = `${API_BASE_URL}/auth/${provider}/link?ticket=${encodeURIComponent(code)}`;
+      // 병합 의도를 httpOnly 쿠키로 심는다(CSRF 방어). withCredentials 필수.
+      await memoryLinkApi.post('/auth/merge/start', {}, { withCredentials: true });
+      window.location.href = `${API_BASE_URL}/auth/${provider}/link`;
     } catch {
       setMergeBusy(null);
       setError('연결을 시작하지 못했어요. 잠시 후 다시 시도해 주세요.');
