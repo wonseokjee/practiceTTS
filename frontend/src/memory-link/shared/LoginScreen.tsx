@@ -14,6 +14,7 @@ import { useAuth } from './AuthContext.js';
 import type { RegisterData } from './AuthContext.js';
 import { API_BASE_URL, ML_LAST_PROVIDER_KEY } from './MemoryLinkApi.js';
 import { extractErrorMessage } from './extractErrorMessage.js';
+import { GoogleIcon, KakaoIcon } from './components/ProviderIcons.js';
 
 type Tab = 'login' | 'register';
 
@@ -51,7 +52,7 @@ function SocialLoginButtons() {
         }}
         className="relative mt-4 flex w-full min-h-[48px] items-center justify-center gap-2 rounded-full bg-[#FEE500] font-medium text-[#191600] transition-opacity hover:opacity-90"
       >
-        <span aria-hidden="true" className="text-lg">💬</span>
+        <KakaoIcon className="h-5 w-5" />
         카카오로 시작하기
         {last === 'kakao' && <RecentBadge />}
       </button>
@@ -62,7 +63,7 @@ function SocialLoginButtons() {
         }}
         className="relative mt-3 flex w-full min-h-[48px] items-center justify-center gap-2 rounded-full border border-[#DADCE0] bg-white font-medium text-[#3C4043] transition-colors hover:bg-[#F7F8F8]"
       >
-        <span aria-hidden="true" className="text-lg">🟦</span>
+        <GoogleIcon className="h-5 w-5" />
         Google로 시작하기
         {last === 'google' && <RecentBadge />}
       </button>

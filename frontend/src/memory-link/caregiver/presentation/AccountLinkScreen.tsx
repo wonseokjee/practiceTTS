@@ -13,6 +13,10 @@
 import { useEffect, useState } from 'react';
 import { useAuth, type SocialProvider } from '../../shared/AuthContext.js';
 import { API_BASE_URL, memoryLinkApi } from '../../shared/MemoryLinkApi.js';
+import {
+  GoogleIcon,
+  KakaoIcon,
+} from '../../shared/components/ProviderIcons.js';
 
 /** 소셜 콜백 복귀 시 대시보드가 URL에서 파싱해 넘겨주는 알림. */
 export interface AccountLinkNotice {
@@ -168,10 +172,14 @@ export function AccountLinkScreen({
             >
               <div className="flex items-center gap-3">
                 <span
-                  className={`inline-flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold ${meta.className}`}
+                  className={`inline-flex h-9 w-9 items-center justify-center rounded-full ${meta.className}`}
                   aria-hidden="true"
                 >
-                  {meta.label[0]}
+                  {provider === 'kakao' ? (
+                    <KakaoIcon className="h-4 w-4" />
+                  ) : (
+                    <GoogleIcon className="h-4 w-4" />
+                  )}
                 </span>
                 <div>
                   <p className="text-sm font-medium text-[#1F2A26]">

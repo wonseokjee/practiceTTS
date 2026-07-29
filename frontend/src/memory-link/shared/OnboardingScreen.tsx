@@ -11,6 +11,7 @@ import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext.js';
 import { API_BASE_URL, memoryLinkApi } from './MemoryLinkApi.js';
+import { GoogleIcon, KakaoIcon } from './components/ProviderIcons.js';
 
 type MergeProvider = 'kakao' | 'google';
 
@@ -191,16 +192,18 @@ export function OnboardingScreen() {
               type="button"
               onClick={() => void startMerge('kakao')}
               disabled={mergeBusy !== null}
-              className="w-full min-h-[48px] rounded-full bg-[#FEE500] text-sm font-medium text-[#191600] transition-colors hover:bg-[#f5dc00] disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex w-full min-h-[48px] items-center justify-center gap-2 rounded-full bg-[#FEE500] text-sm font-medium text-[#191600] transition-colors hover:bg-[#f5dc00] disabled:cursor-not-allowed disabled:opacity-50"
             >
+              <KakaoIcon className="h-4 w-4" />
               {mergeBusy === 'kakao' ? '이동 중…' : '카카오로 기존 계정에 연결'}
             </button>
             <button
               type="button"
               onClick={() => void startMerge('google')}
               disabled={mergeBusy !== null}
-              className="w-full min-h-[48px] rounded-full border border-[#DADCE0] bg-white text-sm font-medium text-[#3C4043] transition-colors hover:bg-[#F7F6F3] disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex w-full min-h-[48px] items-center justify-center gap-2 rounded-full border border-[#DADCE0] bg-white text-sm font-medium text-[#3C4043] transition-colors hover:bg-[#F7F6F3] disabled:cursor-not-allowed disabled:opacity-50"
             >
+              <GoogleIcon className="h-4 w-4" />
               {mergeBusy === 'google' ? '이동 중…' : '구글로 기존 계정에 연결'}
             </button>
           </div>
