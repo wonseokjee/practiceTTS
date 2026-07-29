@@ -54,14 +54,16 @@ user_social_identities
 |---|---|---|
 | **1단계** | identity 테이블 + 마이그레이션 + `emailVerified` 캡처 + 자동 연결(백엔드만) | ✅ 구현 완료 |
 | **2단계** | 수동 연결 + 해제 + `linkedProviders` + 계정 연결 UI | ✅ 구현 완료 |
+| **3단계** | 로그인으로 빈 중복 계정 병합(온보딩 "기존 계정에 연결") | ✅ 구현 완료 |
 
 ### 2단계 수동 연결 흐름
 
 브라우저 top-level 이동엔 Authorization 헤더가 없어, 유저 의도를 쿠키로 나른다.
 
 1. `POST /auth/link/start`(JWT) → 1회용 link code 발급(단명·in-memory)
-2. `GET /auth/:provider/link?code=`(`LinkInitiateGuard`) → code를 httpOnly 쿠키로 옮기고
-   CSRF state 심은 뒤 소셜 인가로 리다이렉트
+2. `GET /auth/:provider/link?ticket=`(`LinkInitiateGuard`) → ticket을 httpOnly 쿠키로 옮기고
+   CSRF state 심은 뒤 소셜 인가로 리다이렉트. (파라미터가 `code`가 아니라 `ticket`인 이유:
+   `code`는 OAuth2 예약어라 passport가 콜백으로 오인해 토큰 교환을 시도해 500이 난다.)
 3. `GET /auth/:provider/callback` → link 쿠키가 있으면 **연결 모드**: code를 1회 소비해
    userId를 얻고, `linkSocialIdentity`로 현재 계정에 신원을 붙인 뒤
    `/caregiver?linked=..`(실패 시 `?linkError=..`)로 복귀. 없으면 로그인 모드.
@@ -71,7 +73,27 @@ user_social_identities
 - 연결 충돌: 그 소셜계정이 다른 유저에 있으면 409, 같은 유저면 멱등, 유저당 provider 1개.
 - `UserResponse.linkedProviders`는 `getMe`·소셜 로그인 응답에서 채운다.
 - 프론트: [AccountLinkScreen](../../frontend/src/memory-link/caregiver/presentation/AccountLinkScreen.tsx)
-  ("연결된 계정" 화면, 대시보드 "계정" 버튼), `?linked/?linkError` 배너 처리.
+  ("연결된 계정" 화면, 대시보드 "설정 → 계정"), `?linked/?linkError` 배너 처리.
+
+### 3단계 로그인으로 병합(빈 중복 계정 흡수)
+
+카카오가 이메일을 안 주면 자동 연결이 안 돼, 실수로 다른 provider를 누르면 **빈 중복
+계정**이 생긴다. 그 계정에서 "기존 계정에 연결"로 기존 provider 로그인을 하면, 빈 계정을
+그 기존 계정에 흡수시킨다(유저 자가 해결). 연결 인프라(link code·쿠키·콜백)를 재사용하고,
+`mode`(link|merge)로 분기한다.
+
+1. `POST /auth/merge/start`(JWT) → merge 모드 코드 발급
+2. `GET /auth/:provider/link?ticket=` → 기존 계정의 provider 로그인
+3. 콜백(merge 모드): `mergeAccounts(source, profile)`
+   - 대상 = OAuth로 증명한 기존 계정(소유자 없으면 **404**, 신규 생성 안 함)
+   - 대상 ≠ 소스(**409**), 소스는 `patient_id=null` 인 빈 계정만(데이터 있으면 **409**)
+   - 소스의 소셜 신원을 대상으로 이전(유저당 provider 1개 유니크는 중복 시 이전 생략) 후
+     소스 삭제 → 흡수한 기존 계정 세션으로 로그인(일회용 코드 → `/auth/callback`)
+4. 프론트: [OnboardingScreen](../../frontend/src/memory-link/shared/OnboardingScreen.tsx)
+   "이미 다른 방법으로 가입하셨나요?" 섹션(카카오·구글 버튼) + `?mergeError` 배너.
+
+**범위 재확인**: 3단계는 소스가 **데이터 없는 빈 계정**일 때만. 양쪽에 데이터가 쌓인 계정의
+사후 통합(기억·검사 병합)은 여전히 범위 밖이다.
 
 ### 1단계 자동 연결 로직 (`findOrCreateSocialUser`)
 
