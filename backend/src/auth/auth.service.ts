@@ -676,34 +676,43 @@ export class AuthService {
     userId: string,
     provider: SocialProviderName,
   ): Promise<SocialProviderName[]> {
-    const rows = await this.identityRepository.find({ where: { userId } });
-    const target = rows.find((r) => r.provider === provider);
-    if (!target) {
-      throw new NotFoundException('연결되지 않은 제공자입니다.');
-    }
-
-    // 비밀번호로도 로그인 가능한 계정인가(로컬 가입 후 소셜 연결한 경우).
-    const withHash = await this.userRepository
-      .createQueryBuilder('user')
-      .addSelect('user.passwordHash')
-      .where('user.id = :id', { id: userId })
-      .getOne();
-    const hasPassword = withHash ? this.canLogin(withHash) : false;
-
-    // 마지막 로그인 수단(비번 없음 + 소셜 신원 1개)은 해제 불가.
-    if (rows.length === 1 && !hasPassword) {
-      throw new ForbiddenException('마지막 로그인 수단은 해제할 수 없어요.');
-    }
-
-    const remaining = rows.filter((r) => r.provider !== provider);
-    await this.dataSource.transaction(async (manager) => {
+    // 판정(마지막 수단?)과 삭제를 한 트랜잭션에서, 유저 행을 잠그고(FOR UPDATE)
+    // 수행한다. 동시 해제 두 건이 같은 유저 행 잠금을 두고 직렬화되므로, 각자가
+    // 보는 신원 수가 상대의 삭제까지 반영한 정확한 값이 된다 → 둘 다 "1개 남았네"로
+    // 통과해 로그인 수단이 0이 되는 경합(TOCTOU)을 막는다.
+    return this.dataSource.transaction(async (manager) => {
       const idRepo = manager.getRepository(SocialIdentity);
       const userRepo = manager.getRepository(User);
+
+      // 유저 행 잠금 + 비밀번호 로그인 가능 여부(로컬 가입 후 소셜 연결) 확인.
+      const user = await userRepo
+        .createQueryBuilder('user')
+        .addSelect('user.passwordHash')
+        .setLock('pessimistic_write')
+        .where('user.id = :id', { id: userId })
+        .getOne();
+      if (!user) {
+        throw new NotFoundException('사용자를 찾을 수 없습니다.');
+      }
+      const hasPassword = this.canLogin(user);
+
+      // 잠금 하에서 신원을 읽어야 카운트가 정확하다.
+      const rows = await idRepo.find({ where: { userId } });
+      const target = rows.find((r) => r.provider === provider);
+      if (!target) {
+        throw new NotFoundException('연결되지 않은 제공자입니다.');
+      }
+
+      // 마지막 로그인 수단(비번 없음 + 소셜 신원 1개)은 해제 불가.
+      if (rows.length === 1 && !hasPassword) {
+        throw new ForbiddenException('마지막 로그인 수단은 해제할 수 없어요.');
+      }
+
       await idRepo.delete({ userId, provider });
 
+      const remaining = rows.filter((r) => r.provider !== provider);
       // users의 주 provider가 방금 뺀 것을 가리키면 재지정(무결성·재로그인 대비).
-      const fresh = await userRepo.findOne({ where: { id: userId } });
-      if (fresh && fresh.authProvider === provider) {
+      if (user.authProvider === provider) {
         if (remaining.length > 0) {
           await userRepo.update(
             { id: userId },
@@ -720,9 +729,9 @@ export class AuthService {
           );
         }
       }
-    });
 
-    return remaining.map((r) => r.provider);
+      return remaining.map((r) => r.provider);
+    });
   }
 
   /**

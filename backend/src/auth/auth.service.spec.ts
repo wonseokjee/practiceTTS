@@ -17,6 +17,7 @@ import { SocialIdentity } from './entities/social-identity.entity';
 function fakeQueryBuilder(result: User | null) {
   const qb: Record<string, unknown> = {};
   qb.addSelect = jest.fn(() => qb);
+  qb.setLock = jest.fn(() => qb);
   qb.where = jest.fn(() => qb);
   qb.getOne = jest.fn(async () => result);
   return qb;
@@ -570,46 +571,57 @@ describe('AuthService', () => {
   });
 
   describe('연결 해제(unlinkSocialIdentity)', () => {
-    it('마지막 로그인 수단(소셜 1개·비번 없음)은 403으로 막는다', async () => {
-      identityRepository.find.mockResolvedValueOnce([
-        { provider: 'kakao', providerUserId: 'k1' },
-      ] as SocialIdentity[]);
-      userRepository.createQueryBuilder.mockReturnValue(
-        fakeQueryBuilder({
-          id: 'u1',
-          role: 'caregiver',
-          passwordHash: null,
-        } as User) as never,
-      );
-
-      await expect(
-        service.unlinkSocialIdentity('u1', 'kakao'),
-      ).rejects.toBeInstanceOf(ForbiddenException);
-    });
-
-    it('두 개 연결 중 하나 해제 → 남은 목록 반환, 주 provider 재지정', async () => {
-      identityRepository.find.mockResolvedValueOnce([
-        { provider: 'kakao', providerUserId: 'k1' },
-        { provider: 'google', providerUserId: 'g1' },
-      ] as SocialIdentity[]);
-      userRepository.createQueryBuilder.mockReturnValue(
-        fakeQueryBuilder({
-          id: 'u1',
-          role: 'caregiver',
-          passwordHash: null,
-        } as User) as never,
-      );
+    // 판정·삭제가 모두 트랜잭션 내 manager repo로 이뤄진다(동시 해제 직렬화).
+    function unlinkManager(
+      user: Partial<User> | null,
+      identities: Partial<SocialIdentity>[],
+      idExtra: Record<string, jest.Mock> = {},
+      userExtra: Record<string, jest.Mock> = {},
+    ) {
       const userRepo = {
-        findOne: jest.fn(async () => ({ authProvider: 'kakao' }) as User),
+        createQueryBuilder: jest.fn(() => fakeQueryBuilder(user as User)),
         update: jest.fn(async () => ({ affected: 1 })),
+        ...userExtra,
       };
-      const idRepo = { delete: jest.fn(async () => ({ affected: 1 })) };
+      const idRepo = {
+        find: jest.fn(async () => identities as SocialIdentity[]),
+        delete: jest.fn(async () => ({ affected: 1 })),
+        ...idExtra,
+      };
       dataSource.transaction.mockImplementation(
         async (cb: (m: unknown) => Promise<unknown>) =>
           cb({
             getRepository: (entity: unknown) =>
               entity === User ? userRepo : idRepo,
           }),
+      );
+      return { userRepo, idRepo };
+    }
+
+    it('마지막 로그인 수단(소셜 1개·비번 없음)은 403으로 막는다', async () => {
+      const { idRepo } = unlinkManager(
+        { id: 'u1', role: 'caregiver', passwordHash: null },
+        [{ provider: 'kakao', providerUserId: 'k1' }],
+      );
+
+      await expect(
+        service.unlinkSocialIdentity('u1', 'kakao'),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(idRepo.delete).not.toHaveBeenCalled(); // 삭제 안 함
+    });
+
+    it('두 개 연결 중 하나 해제 → 남은 목록 반환, 주 provider 재지정', async () => {
+      const { userRepo, idRepo } = unlinkManager(
+        {
+          id: 'u1',
+          role: 'caregiver',
+          passwordHash: null,
+          authProvider: 'kakao',
+        },
+        [
+          { provider: 'kakao', providerUserId: 'k1' },
+          { provider: 'google', providerUserId: 'g1' },
+        ],
       );
 
       const remaining = await service.unlinkSocialIdentity('u1', 'kakao');
@@ -627,13 +639,46 @@ describe('AuthService', () => {
     });
 
     it('연결되지 않은 provider 해제는 404', async () => {
-      identityRepository.find.mockResolvedValueOnce([
-        { provider: 'kakao', providerUserId: 'k1' },
-      ] as SocialIdentity[]);
+      const { idRepo } = unlinkManager(
+        { id: 'u1', role: 'caregiver', passwordHash: null },
+        [{ provider: 'kakao', providerUserId: 'k1' }],
+      );
 
       await expect(
         service.unlinkSocialIdentity('u1', 'google'),
       ).rejects.toBeInstanceOf(NotFoundException);
+      expect(idRepo.delete).not.toHaveBeenCalled();
+    });
+
+    it('동시 해제 직렬화를 위해 유저 행을 FOR UPDATE로 잠근다', async () => {
+      const qb = fakeQueryBuilder({
+        id: 'u1',
+        role: 'caregiver',
+        passwordHash: null,
+        authProvider: 'google',
+      } as User);
+      const userRepo = {
+        createQueryBuilder: jest.fn(() => qb),
+        update: jest.fn(async () => ({ affected: 1 })),
+      };
+      const idRepo = {
+        find: jest.fn(async () => [
+          { provider: 'kakao', providerUserId: 'k1' },
+          { provider: 'google', providerUserId: 'g1' },
+        ]),
+        delete: jest.fn(async () => ({ affected: 1 })),
+      };
+      dataSource.transaction.mockImplementation(
+        async (cb: (m: unknown) => Promise<unknown>) =>
+          cb({
+            getRepository: (entity: unknown) =>
+              entity === User ? userRepo : idRepo,
+          }),
+      );
+
+      await service.unlinkSocialIdentity('u1', 'kakao');
+
+      expect(qb.setLock).toHaveBeenCalledWith('pessimistic_write');
     });
   });
 
