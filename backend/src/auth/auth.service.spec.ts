@@ -700,6 +700,13 @@ describe('AuthService', () => {
         mode: 'merge',
       });
     });
+
+    it('코드가 상한을 넘으면 가장 오래된 코드가 밀려난다(메모리 상한)', () => {
+      const first = service.issueLinkCode('first', 'link');
+      // 상한(1000)까지 추가 발급 → 가장 오래된 first가 밀려나야 한다.
+      for (let i = 0; i < 1000; i += 1) service.issueLinkCode('u' + i, 'link');
+      expect(service.redeemLinkCode(first)).toBeNull();
+    });
   });
 
   describe('계정 병합(mergeAccounts)', () => {
@@ -810,7 +817,7 @@ describe('AuthService', () => {
       expect(userRepo.delete).not.toHaveBeenCalled(); // 롤백 — 데이터 유실 없음
     });
 
-    it('대상이 이미 가진 provider는 이전하지 않는다(소스와 함께 삭제)', async () => {
+    it('소스가 대상에 이미 있는 provider를 가지면 병합 거부(409·조용히 안 지움)', async () => {
       identityRepository.findOne.mockResolvedValueOnce({
         user: { id: 'A' },
       } as SocialIdentity);
@@ -822,20 +829,21 @@ describe('AuthService', () => {
       const idRepo = {
         find: jest
           .fn()
-          .mockResolvedValueOnce([{ provider: 'kakao', id: 'ti1' }]) // A가 이미 카카오 보유
-          .mockResolvedValueOnce([{ provider: 'kakao', id: 'si1' }]), // C도 카카오
+          .mockResolvedValueOnce([{ provider: 'kakao', id: 'ti1' }]) // A가 이미 카카오
+          .mockResolvedValueOnce([{ provider: 'kakao', id: 'si1' }]), // C도 카카오 → 충돌
         update: jest.fn(),
       };
       const userRepo = {
-        findOne: jest.fn(async () => ({ id: 'C', patientId: null })),
-        delete: jest.fn(async () => ({ affected: 1 })),
+        findOne: jest.fn(async () => ({ id: 'C', patientId: null })), // in-tx TOCTOU 통과
+        delete: jest.fn(),
       };
       mergeManager(idRepo, userRepo);
 
-      await service.mergeAccounts('C', profile);
-
-      expect(idRepo.update).not.toHaveBeenCalled(); // 중복이라 이전 안 함
-      expect(userRepo.delete).toHaveBeenCalledWith({ id: 'C' });
+      await expect(
+        service.mergeAccounts('C', profile),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(idRepo.update).not.toHaveBeenCalled(); // 이전 안 함
+      expect(userRepo.delete).not.toHaveBeenCalled(); // 소스 안 지움(조용한 유실 방지)
     });
   });
 

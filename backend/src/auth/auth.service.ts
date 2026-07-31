@@ -103,6 +103,8 @@ export class AuthService {
     { userId: string; mode: LinkMode; expiresAt: number }
   >();
   private static readonly LINK_CODE_TTL_MS = 120_000;
+  /** 링크 코드 맵 크기 상한(폭주 시 메모리 무한 증가 방지). */
+  private static readonly MAX_LINK_CODES = 1000;
 
   constructor(
     @InjectRepository(User)
@@ -596,11 +598,19 @@ export class AuthService {
     return rows.map((r) => r.provider);
   }
 
-  /** 연결/병합 시작 코드 발급(단명·1회용). 만료 항목은 발급 시 청소. */
+  /** 연결/병합 시작 코드 발급(단명·1회용). 만료 항목 청소 + 크기 상한. */
   issueLinkCode(userId: string, mode: LinkMode = 'link'): string {
     const now = Date.now();
     for (const [existing, entry] of this.linkCodes) {
       if (now > entry.expiresAt) this.linkCodes.delete(existing);
+    }
+    // 크기 상한: 인증된 유저가 start를 폭주시켜도 맵이 무한히 커지지 않게, TTL 창에
+    // 아직 안 만료된 항목이 상한을 넘으면 가장 오래된 것부터 밀어낸다(Map은 삽입 순서
+    // 보존 = 만료 순서). 밀려난 코드는 무효가 될 뿐(교환 시 null) 보안 영향 없다.
+    while (this.linkCodes.size >= AuthService.MAX_LINK_CODES) {
+      const oldest = this.linkCodes.keys().next().value;
+      if (oldest === undefined) break;
+      this.linkCodes.delete(oldest);
     }
     const code = randomUUID();
     this.linkCodes.set(code, {
@@ -799,14 +809,22 @@ export class AuthService {
       const targetProviders = new Set(targetIds.map((i) => i.provider));
       const sourceIds = await idRepo.find({ where: { userId: sourceUserId } });
 
-      for (const si of sourceIds) {
-        // target이 아직 없는 provider만 이전한다(유저당 provider 1개 유니크).
-        // target이 이미 가진 provider면 source와 함께 CASCADE 삭제된다.
-        if (!targetProviders.has(si.provider)) {
-          await idRepo.update({ id: si.id }, { userId: target.id });
-        }
+      // 충돌: 소스가 대상에 이미 있는 provider를 가지면, 그 신원은 유니크
+      // (user_id, provider)라 이전 못 하고 소스 삭제 시 사라진다. 조용히 잃지 않도록
+      // 병합을 거부한다(사용자가 상황을 인지하고 결정하게). 흔한 경우(소스 신원 1개)엔
+      // 충돌이 없어 정상 진행된다.
+      const conflict = sourceIds.find((si) => targetProviders.has(si.provider));
+      if (conflict) {
+        throw new ConflictException(
+          '기존 계정에 이미 같은 종류의 로그인이 있어 합칠 수 없습니다.',
+        );
       }
-      // 남은 신원/데이터는 CASCADE로 정리(source는 patient_id=null이라 환자 없음).
+
+      // 충돌이 없으므로 소스 신원을 모두 대상으로 이전한다.
+      for (const si of sourceIds) {
+        await idRepo.update({ id: si.id }, { userId: target.id });
+      }
+      // 남은 데이터는 CASCADE로 정리(source는 patient_id=null이라 환자 없음).
       await userRepo.delete({ id: sourceUserId });
     });
 
