@@ -6,6 +6,7 @@ import base64
 import json
 
 from domain.entities import TagResult
+from models.tagging import TagLLMOut
 from domain.errors import GeminiApiError, ImageDecodeError, ImageSizeError, TagParseError
 from interfaces.llm_client import ILlmClient
 from prompts.tagging_prompt import TAGGING_SYSTEM_PROMPT
@@ -49,6 +50,11 @@ class TaggingService:
                 text_prompt=TAGGING_SYSTEM_PROMPT,
                 image_base64=image_base64,
                 model=_VISION_MODEL,
+                # 구조화 출력: TagLLMOut({location_tag,object_tags,confidence}) 강제
+                generation_config={
+                    "response_mime_type": "application/json",
+                    "response_schema": TagLLMOut,
+                },
             )
         except GeminiApiError:
             raise

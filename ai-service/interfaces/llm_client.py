@@ -36,6 +36,7 @@ class ILlmClient(ABC):
         text_prompt: str,
         image_base64: str,
         model: str,
+        **kwargs,
     ) -> str:
         """이미지(Base64)와 텍스트 프롬프트를 받아 Vision LLM 응답 반환.
 
@@ -43,6 +44,7 @@ class ILlmClient(ABC):
             text_prompt: 이미지 분석에 사용할 텍스트 프롬프트
             image_base64: Base64 인코딩된 이미지 데이터
             model: 사용할 Vision 모델 이름 (예: "gemini-1.5-pro")
+            **kwargs: 모델별 추가 파라미터 (generation_config 등 — complete와 동일)
 
         Returns:
             LLM이 생성한 텍스트 응답

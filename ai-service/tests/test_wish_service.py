@@ -22,9 +22,11 @@ class FakeLlmClient(ILlmClient):
     def __init__(self, *, raw=None, error=None, delay=0.0):
         self._raw, self._error, self._delay = raw, error, delay
         self.call_count = 0
+        self.captured_kwargs: list[dict] = []
 
     async def complete(self, messages, model, **kwargs) -> str:
         self.call_count += 1
+        self.captured_kwargs.append(kwargs)
         if self._delay:
             await asyncio.sleep(self._delay)
         if self._error is not None:
@@ -54,6 +56,22 @@ class TestLLM정상:
         assert res.fill_blank.answer == "손녀"
         assert "_" in res.fill_blank.prompt
         assert res.fill_blank.hint_first_char == "손"
+
+    async def test_구조화출력_스키마를_강제한다(self):
+        """LLM 호출 generation_config에 JSON 모드 + FillBlankOut 스키마가 실린다."""
+        from models.wish import FillBlankOut
+
+        raw = json.dumps(
+            {"prompt": "보고 싶었어 우리 ___", "answer": "손녀", "hint_first_char": "손"},
+            ensure_ascii=False,
+        )
+        fake = FakeLlmClient(raw=raw)
+
+        await WishToPracticeService(fake).convert(req())
+
+        gc = fake.captured_kwargs[0]["generation_config"]
+        assert gc["response_mime_type"] == "application/json"
+        assert gc["response_schema"] is FillBlankOut
 
 
 class TestLLM실패시폴백:

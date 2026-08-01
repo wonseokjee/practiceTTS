@@ -93,7 +93,13 @@ class WishToPracticeService:
                 self._llm.complete(
                     messages=messages,
                     model=_WISH_MODEL,
-                    generation_config={"temperature": 0.2},
+                    # 구조화 출력: FillBlankOut({prompt,answer,hint_first_char}) 형식의
+                    # 유효 JSON만 반환하도록 강제(형식만; 의미 검증은 _sanitize).
+                    generation_config={
+                        "temperature": 0.2,
+                        "response_mime_type": "application/json",
+                        "response_schema": FillBlankOut,
+                    },
                 ),
                 timeout=_LLM_TIMEOUT_SECONDS,
             )
