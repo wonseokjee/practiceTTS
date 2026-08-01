@@ -25,11 +25,8 @@ WISH_TO_PRACTICE_PROMPT = """당신은 한국어 언어재활 보조 도구의 �
 [입력 — 보호자 한마디]
 {WISH_MESSAGE}
 
-[출력 형식 — JSON만, markdown/설명 금지]
-{{"prompt": "...___...", "answer": "..", "hint_first_char": ".."}}
-추가 설명 없이 JSON만 반환하세요."""
+[출력 예시 — 각 필드의 의미 참고용]
+(형식/유효성은 API가 스키마로 강제합니다.)
+{{"prompt": "...___...", "answer": "..", "hint_first_char": ".."}}"""
 
-WISH_RETRY_INSTRUCTION = (
-    "위 한마디로 빈칸 채우기 1문항을 만드세요. 반드시 유효한 JSON 객체 하나만 출력하고, "
-    "코드펜스(```)나 설명 문장을 절대 붙이지 마세요."
-)
+WISH_RETRY_INSTRUCTION = "위 한마디로 빈칸 채우기 1문항을 만드세요."

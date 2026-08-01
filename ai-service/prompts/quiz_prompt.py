@@ -42,14 +42,11 @@ QUIZ_SYSTEM_PROMPT = """당신은 한국어 언어재활 보조 도구의 문제
 사진 태그(선택): {PHOTO_TAGS}
 목표 단어(선택, 가능하면 포함): {TARGET_WORDS}
 
-[출력 형식 — JSON만, markdown/설명 금지]
+[출력 예시 — 각 필드의 의미 참고용]
+(형식/유효성은 API가 스키마로 강제하므로, 아래는 필드가 무엇을 담아야 하는지의 예시입니다.)
 {{"questions": [
   {{"type": "multiple_choice", "prompt": "...", "choices": ["..","..","..",".."], "correct_answer": ".."}},
   {{"type": "fill_blank", "prompt": "오늘 ___을 만났어요.", "correct_answer": "..", "hint_first_char": ".."}}
-]}}
-추가 설명 없이 JSON만 반환하세요."""
+]}}"""
 
-QUIZ_RETRY_INSTRUCTION = (
-    "위 조건에 맞는 퀴즈를 생성하세요. 반드시 유효한 JSON 객체 하나만 출력하고, "
-    "코드펜스(```)나 설명 문장을 절대 붙이지 마세요."
-)
+QUIZ_RETRY_INSTRUCTION = "위 조건에 맞는 퀴즈를 생성하세요."
