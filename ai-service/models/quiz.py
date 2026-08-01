@@ -81,6 +81,18 @@ class QuizQuestionOut(BaseModel):
     hint_first_char: str | None = None
 
 
+class QuizLLMResponse(BaseModel):
+    """LLM 구조화 출력(JSON 모드) 강제용 스키마.
+
+    Gemini에 response_schema로 넘겨, 모델이 이 형식({"questions":[...]})의 유효
+    JSON만 반환하도록 강제한다. 코드펜스·군더더기·깨진 JSON을 원천 차단해 파싱
+    실패·재시도를 없앤다. **형식만** 보장하며, 의미 불변식(I1~I5: 정답이 보기 안에
+    있는지 등)은 여전히 QuizService._sanitize가 검증한다.
+    """
+
+    questions: list[QuizQuestionOut]
+
+
 class QuizGenerateResponse(BaseModel):
     """POST /quiz/generate 응답 모델."""
 

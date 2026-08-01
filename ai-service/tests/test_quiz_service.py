@@ -152,6 +152,23 @@ class TestTCQ1정상생성:
         assert fake.call_count == 1  # 재시도 없음
         assert response.fallback_used is False
 
+    async def test_구조화출력_스키마를_강제한다(self):
+        """LLM 호출 generation_config에 JSON 모드 + QuizLLMResponse 스키마가 실린다.
+
+        이 수정의 핵심 불변식: Gemini가 {"questions":[...]} 형식 유효 JSON만 반환하도록
+        강제해 코드펜스·군더더기·깨진 JSON으로 인한 파싱 실패·재시도를 없앤다.
+        """
+        from models.quiz import QuizLLMResponse
+
+        fake = FakeLlmClient(raw=valid_five_questions_json())
+        service = QuizGeneratorService(fake)
+
+        await service.generate_quiz(make_request())
+
+        gc = fake.captured_kwargs[0]["generation_config"]
+        assert gc["response_mime_type"] == "application/json"
+        assert gc["response_schema"] is QuizLLMResponse
+
     async def test_multiple_choice_문제는_choices4개이고_정답이_choices에_포함된다(self):
         # Arrange
         service = QuizGeneratorService(FakeLlmClient(raw=valid_five_questions_json()))

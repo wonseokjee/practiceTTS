@@ -29,6 +29,7 @@ from models.quiz import (
     QuizDistribution,
     QuizGenerateRequest,
     QuizGenerateResponse,
+    QuizLLMResponse,
     QuizQuestionOut,
 )
 from prompts.quiz_prompt import QUIZ_RETRY_INSTRUCTION, QUIZ_SYSTEM_PROMPT
@@ -195,7 +196,15 @@ class QuizGeneratorService:
                 self._llm.complete(
                     messages=messages,
                     model=_QUIZ_MODEL,
-                    generation_config={"temperature": temperature},
+                    # 구조화 출력: Gemini가 QuizLLMResponse({"questions":[...]}) 형식의
+                    # 유효 JSON만 반환하도록 강제한다(코드펜스·군더더기·깨진 JSON 차단).
+                    # GeminiClient가 generation_config를 GenerateContentConfig로 그대로
+                    # 흘려보내므로 여기서 두 키를 얹기만 하면 된다.
+                    generation_config={
+                        "temperature": temperature,
+                        "response_mime_type": "application/json",
+                        "response_schema": QuizLLMResponse,
+                    },
                 ),
                 timeout=_LLM_TIMEOUT_SECONDS,
             )
