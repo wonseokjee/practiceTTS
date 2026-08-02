@@ -19,6 +19,7 @@ interface MockSttInstance {
   onError: ((m: string) => void) | null;
   start: ReturnType<typeof vi.fn>;
   stop: ReturnType<typeof vi.fn>;
+  cancel: ReturnType<typeof vi.fn>;
 }
 
 const { sttInstances, ttsSpeak } = vi.hoisted(() => ({
@@ -32,6 +33,7 @@ vi.mock('../../../infrastructure/SttService.js', () => {
     onError: MockSttInstance['onError'] = null;
     start = vi.fn();
     stop = vi.fn();
+    cancel = vi.fn();
     constructor() {
       sttInstances.push(this);
     }

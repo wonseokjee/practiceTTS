@@ -116,10 +116,10 @@ export function TrainingScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 컴포넌트 언마운트 시 STT 중단
+  // 컴포넌트 언마운트 시 STT 취소(녹음 음성을 서버로 업로드하지 않고 마이크 해제)
   useEffect(() => {
     return () => {
-      sttService.stop();
+      sttService.cancel();
     };
   }, [sttService]);
 

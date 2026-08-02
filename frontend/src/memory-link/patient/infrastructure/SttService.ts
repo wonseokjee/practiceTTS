@@ -15,6 +15,8 @@ export interface ISttService {
   start(candidates?: string[]): void;
   /** STT 인식 중단 */
   stop(): void;
+  /** 취소 — 결과를 만들지 않고 인식/녹음을 중단한다(이탈 시 서버 업로드 방지). */
+  cancel(): void;
   /** 인식 성공 시 콜백 (신뢰도 기준 충족 시에만 호출) */
   onResult: ((result: SttResult) => void) | null;
   /** 인식 에러 또는 신뢰도 미달 시 콜백 */
@@ -73,6 +75,14 @@ export class WebSpeechSttService implements ISttService {
   stop(): void {
     if (this.recognition !== null && this.isRunning) {
       this.recognition.stop();
+      this.isRunning = false;
+    }
+  }
+
+  cancel(): void {
+    // 브라우저 인식은 서버 업로드가 없다. abort로 결과 없이 즉시 중단한다.
+    if (this.recognition !== null && this.isRunning) {
+      this.recognition.abort();
       this.isRunning = false;
     }
   }
