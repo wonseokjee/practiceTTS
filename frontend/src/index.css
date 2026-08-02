@@ -47,6 +47,12 @@ body {
   height: 100%;
   overflow: hidden;
   margin: 0;
+  /* 한국어는 어절(단어) 단위로 줄바꿈해야 한다. 기본값은 CJK를 음절 사이 아무
+     데서나 끊어 「환자에게 건 / 네기」처럼 단어 중간에서 깨진다(고령 의료앱 가독성
+     손해). keep-all로 어절을 보존하고, URL 등 끊을 수 없는 긴 토큰만 안전망으로
+     넘긴다(overflow-wrap: anywhere → 가로 오버플로 방지). */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 #root {
