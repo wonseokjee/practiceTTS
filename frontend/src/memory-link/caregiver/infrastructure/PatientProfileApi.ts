@@ -42,9 +42,13 @@ export const patientProfileApi: IPatientProfileApi = {
   async get(): Promise<PatientProfile | null> {
     try {
       const res = await memoryLinkApi.get<unknown>('/patient-profile');
+      // 미등록은 이제 200 null로 온다(백엔드가 404 대신 반환 — 콘솔 노이즈 제거).
+      if (res.data === null || res.data === undefined || res.data === '') {
+        return null;
+      }
       return toPatientProfile(res.data);
     } catch (err: unknown) {
-      // 미등록(404)은 null로 정상 처리
+      // 구버전 백엔드(404 반환)와의 호환을 위해 404도 계속 null로 처리한다.
       const status = (err as { response?: { status?: number } })?.response
         ?.status;
       if (status === 404) {

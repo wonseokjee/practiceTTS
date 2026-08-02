@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
   ParseUUIDPipe,
   Post,
@@ -34,16 +35,27 @@ interface AuthenticatedRequest extends Request {
 export class ProfileController {
   constructor(private readonly profileService: ProfileService) {}
 
-  /** GET /patient-profile — 보호자 본인 환자의 프로필 조회 */
+  /** GET /patient-profile — 보호자 본인 환자의 프로필 조회.
+   *
+   * 미등록은 정상 상태다(첫 진입은 빈 폼). 예전엔 404를 던져 화면은 잘 그려지되
+   * 브라우저가 실패 요청을 콘솔에 계속 찍어 진짜 에러를 가렸다(QA ISSUE-003).
+   * 미등록을 200 null로 반환해 콘솔 노이즈를 없앤다. getProfile 서비스는
+   * upsert 등 내부에서 '존재 보장' 용도로 재사용되므로 그대로 두고, 여기서만 흡수한다.
+   */
   @Get()
   async getProfile(
     @Req() req: AuthenticatedRequest,
-  ): Promise<PatientProfileResponseDto> {
+  ): Promise<PatientProfileResponseDto | null> {
     const patientId = this.resolvePatientId(req);
-    return this.profileService.getProfile(
-      { patientId: req.user.patientId },
-      patientId,
-    );
+    try {
+      return await this.profileService.getProfile(
+        { patientId: req.user.patientId },
+        patientId,
+      );
+    } catch (err) {
+      if (err instanceof NotFoundException) return null;
+      throw err;
+    }
   }
 
   /** PUT /patient-profile — 프로필 upsert (family 동봉 시 전체 교체) */
