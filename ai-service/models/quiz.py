@@ -93,6 +93,25 @@ class QuizLLMResponse(BaseModel):
     questions: list[QuizQuestionOut]
 
 
+class QuizCritiqueVerdict(BaseModel):
+    """자기검증 패스의 문항 1개 판정.
+
+    index: 검증 대상 문항의 0-기반 순번(입력 순서와 동일).
+    keep: 타당하면 True(유지), 부적절하면 False(폐기 → 백필 보충).
+    reason: 폐기 사유(로그/디버깅용, 환자에게 노출 안 됨).
+    """
+
+    index: int
+    keep: bool
+    reason: str = ""
+
+
+class QuizCritiqueResponse(BaseModel):
+    """자기검증 LLM 구조화 출력 스키마(문항별 유지/폐기 판정 목록)."""
+
+    verdicts: list[QuizCritiqueVerdict]
+
+
 class QuizGenerateResponse(BaseModel):
     """POST /quiz/generate 응답 모델."""
 

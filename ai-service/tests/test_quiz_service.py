@@ -137,7 +137,10 @@ def valid_five_questions_json() -> str:
 class TestTCQ1정상생성:
     """Given 유효 5문제 JSON + 정상 요청 / When generate_quiz / Then 5문제 반환."""
 
-    async def test_5문제를_반환하고_재시도없이_1회_호출한다(self):
+    async def test_5문제를_반환하고_재시도없이_1회_호출한다(self, monkeypatch):
+        # 이 테스트는 '생성' 호출 횟수를 검증하므로 자기검증 패스를 끈다
+        # (critique는 별도 클래스에서 검증). 켜져 있으면 호출이 +1 된다.
+        monkeypatch.setattr(quiz_service, "_CRITIQUE_ENABLED", False)
         # Arrange
         fake = FakeLlmClient(raw=valid_five_questions_json())
         service = QuizGeneratorService(fake)
@@ -234,7 +237,9 @@ class TestTCQ2타임아웃:
 class TestTCQ3JSON깨짐:
     """가드 1(재시도) + 가드 2(폴백) 동작 검증."""
 
-    async def test_3a_1차깨짐_2차정상이면_재시도로_5문제_생성하고_2회호출한다(self):
+    async def test_3a_1차깨짐_2차정상이면_재시도로_5문제_생성하고_2회호출한다(self, monkeypatch):
+        # '생성' 호출 횟수 검증이라 자기검증 패스를 끈다(critique는 별도 검증).
+        monkeypatch.setattr(quiz_service, "_CRITIQUE_ENABLED", False)
         # Arrange: 1차는 깨진 텍스트, 2차는 정상 JSON
         fake = FakeLlmClient(raws=["이건 JSON이 아닙니다 그냥 텍스트", valid_five_questions_json()])
         service = QuizGeneratorService(fake)
@@ -535,3 +540,51 @@ class Test문항타당성:
         assert out is not None
         assert out.correct_answer == "사과"
         assert out.hint_first_char == "사"
+
+
+# ======================================================================
+# 자기검증(critique) 패스: 규칙이 못 잡는 부적절 문항을 LLM으로 폐기
+# ======================================================================
+def _critique_json(*drop_indices: int) -> str:
+    """지정 index를 keep=false로 판정하는 critique 응답 JSON."""
+    verdicts = [
+        {"index": i, "keep": False, "reason": "테스트 폐기"} for i in drop_indices
+    ]
+    return json.dumps({"verdicts": verdicts}, ensure_ascii=False)
+
+
+class Test자기검증패스:
+    """generate_quiz의 5.5 단계(_critique) 동작 검증."""
+
+    async def test_부적절_판정_문항은_폐기되고_백필로_보충된다(self):
+        # 1차: 정상 5문제 생성 / 2차(critique): index 0 폐기 판정
+        fake = FakeLlmClient(raws=[valid_five_questions_json(), _critique_json(0)])
+        service = QuizGeneratorService(fake)
+
+        response = await service.generate_quiz(make_request())
+
+        # 폐기 1개 → 백필 1개 보충 → 총계 유지 + fallback_used True
+        assert len(response.questions) == 5
+        assert response.fallback_used is True
+        assert fake.call_count == 2  # 생성 1 + 자기검증 1
+
+    async def test_critique_실패시_원문을_유지한다_failopen(self):
+        # 2차(critique)가 깨진 JSON → 파싱 실패 → 폐기 없이 원문 유지
+        fake = FakeLlmClient(raws=[valid_five_questions_json(), "critique 깨짐 {불완전"])
+        service = QuizGeneratorService(fake)
+
+        response = await service.generate_quiz(make_request())
+
+        assert len(response.questions) == 5
+        assert response.fallback_used is False  # 폐기 없음
+        assert fake.call_count == 2
+
+    async def test_critique_비활성화시_호출하지_않는다(self, monkeypatch):
+        monkeypatch.setattr(quiz_service, "_CRITIQUE_ENABLED", False)
+        fake = FakeLlmClient(raw=valid_five_questions_json())
+        service = QuizGeneratorService(fake)
+
+        response = await service.generate_quiz(make_request())
+
+        assert len(response.questions) == 5
+        assert fake.call_count == 1  # 자기검증 호출 없음

@@ -27,13 +27,19 @@ from domain.errors import (
 from interfaces.llm_client import ILlmClient
 from models.quiz import (
     PatientNoteIn,
+    QuizCritiqueResponse,
     QuizDistribution,
     QuizGenerateRequest,
     QuizGenerateResponse,
     QuizLLMResponse,
     QuizQuestionOut,
 )
-from prompts.quiz_prompt import QUIZ_RETRY_INSTRUCTION, QUIZ_SYSTEM_PROMPT
+from prompts.quiz_prompt import (
+    QUIZ_CRITIQUE_INSTRUCTION,
+    QUIZ_CRITIQUE_PROMPT,
+    QUIZ_RETRY_INSTRUCTION,
+    QUIZ_SYSTEM_PROMPT,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +48,10 @@ logger = logging.getLogger(__name__)
 _QUIZ_MODEL = os.getenv("GEMINI_QUIZ_MODEL", "gemini-2.5-flash-lite")
 # LLM 호출 제한 시간 (초)
 _LLM_TIMEOUT_SECONDS = 25
+# 자기검증(critique) 패스 on/off. 기본 on, 문제 시 QUIZ_CRITIQUE_ENABLED=0으로 끔.
+_CRITIQUE_ENABLED = os.getenv("QUIZ_CRITIQUE_ENABLED", "1") not in ("0", "false", "False")
+# 자기검증 호출 제한 시간(초). 초과/실패 시 폐기 없이 원문 유지(fail-open).
+_CRITIQUE_TIMEOUT_SECONDS = 15
 # 문장(prompt) 최대 길이 (가드 5)
 _MAX_SENTENCE_LEN = 30
 # patient_notes 합본 최소 글자 수
@@ -97,6 +107,10 @@ class QuizGeneratorService:
 
         # 5. [가드 3·4·5] 안전 가드 통과 문제만 추출 (요청 분포도 함께 적용)
         questions = self._sanitize(parsed, notes_blob, dist)
+
+        # 5.5 자기검증 패스: 규칙이 못 잡는 "그럴듯하지만 부적절한" 문항을 폐기.
+        #     실패/타임아웃 시 원문 유지(fail-open) — 품질 향상 장치이지 관문이 아니다.
+        questions = await self._critique(questions, notes_blob)
 
         # 6. [가드 2] 부족분을 규칙 기반 빈칸 폴백으로 보충
         fallback_used = len(questions) < need
@@ -214,6 +228,73 @@ class QuizGeneratorService:
                 f"Gemini 응답이 {_LLM_TIMEOUT_SECONDS}초를 초과했습니다"
             ) from exc
         # GeminiApiError는 _llm.complete가 이미 raise → 그대로 전파
+
+    async def _critique(
+        self, questions: list[QuizQuestionOut], notes_blob: str
+    ) -> list[QuizQuestionOut]:
+        """자기검증 패스 — 규칙이 못 잡는 부적절 문항을 LLM으로 걸러낸다.
+
+        정답 유일성·오답 타당성·자연스러움·근거를 2차 LLM이 문항별로 판정하고,
+        명백히 부적절한 것(keep=false)만 폐기한다. 폐기분은 상위에서 백필로 보충된다.
+
+        **fail-open**: 비활성/빈 입력/타임아웃/오류/파싱실패 등 어떤 이유로든 판정을
+        얻지 못하면 원문을 그대로 유지한다. 이 패스는 품질 향상 장치이지, 여기서
+        막혀 퀴즈가 비는 일이 있어선 안 된다(Tier 1 규칙이 이미 기본 타당성 보장).
+        """
+        if not _CRITIQUE_ENABLED or not questions:
+            return questions
+
+        payload = [
+            {
+                "index": i,
+                "type": q.type,
+                "prompt": q.prompt,
+                "choices": q.choices,
+                "correct_answer": q.correct_answer,
+            }
+            for i, q in enumerate(questions)
+        ]
+        prompt = QUIZ_CRITIQUE_PROMPT.format(
+            PATIENT_NOTES=notes_blob,
+            QUESTIONS_JSON=json.dumps(payload, ensure_ascii=False),
+        )
+        messages = [
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": QUIZ_CRITIQUE_INSTRUCTION},
+        ]
+        try:
+            raw = await asyncio.wait_for(
+                self._llm.complete(
+                    messages=messages,
+                    model=_QUIZ_MODEL,
+                    generation_config={
+                        "temperature": 0.0,
+                        "response_mime_type": "application/json",
+                        "response_schema": QuizCritiqueResponse,
+                    },
+                ),
+                timeout=_CRITIQUE_TIMEOUT_SECONDS,
+            )
+            data = json.loads(self._strip_code_fence(raw))
+            verdicts = data.get("verdicts", [])
+        except Exception as exc:  # noqa: BLE001 - 어떤 실패든 원문 유지(fail-open)
+            logger.warning("자기검증 패스 실패, 원문 유지: %s", exc)
+            return questions
+
+        # 명시적으로 keep=false 판정된 인덱스만 폐기(누락/불명은 유지 = 안전).
+        drop: set[int] = set()
+        for v in verdicts:
+            if not isinstance(v, dict):
+                continue
+            idx = v.get("index")
+            if isinstance(idx, int) and 0 <= idx < len(questions) and v.get("keep") is False:
+                drop.add(idx)
+
+        if not drop:
+            return questions
+        kept = [q for i, q in enumerate(questions) if i not in drop]
+        logger.info("자기검증: %d개 폐기 (총 %d개 중)", len(drop), len(questions))
+        return kept
 
     def _parse_questions(self, raw: str) -> list[dict]:
         """코드펜스 제거 + json.loads + {..} 슬라이스 폴백. 실패 시 ValueError."""
