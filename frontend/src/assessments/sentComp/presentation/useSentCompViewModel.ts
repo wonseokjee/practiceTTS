@@ -34,6 +34,11 @@ import type { SentenceComprehensionResult } from '../domain/types.js';
 import { HtmlAudioPlayer } from '../../../shared/infrastructure/HtmlAudioPlayer.js';
 import { JsonSentCompItemRepository } from '../infrastructure/JsonSentCompItemRepository.js';
 import { SessionLocalStorageSentCompRepository } from '../infrastructure/LocalStorageSentCompRepository.js';
+import {
+  ServerAssessmentResultSubmitter,
+  createAssessmentSessionToken,
+  toQabResults,
+} from '../../shared/infrastructure/AssessmentResultSubmitter.js';
 import { SubmitAnswerUseCase } from '../application/useCases/SubmitAnswerUseCase.js';
 import { CalculateScoreUseCase } from '../application/useCases/CalculateScoreUseCase.js';
 import { SentCompError, SentCompErrorCode } from '../application/errors.js';
@@ -147,6 +152,11 @@ export function useSentCompViewModel(
         // sentenceType(union)·choices(튜플) strictness 때문에 unknown 경유 단언.
         sentCompItemsData as unknown as SentenceComprehensionItem[],
       ),
+    [],
+  );
+
+  const resultSubmitter = useMemo(
+    () => new ServerAssessmentResultSubmitter(),
     [],
   );
 
@@ -315,6 +325,21 @@ export function useSentCompViewModel(
         const calculatedScore =
           await calculateScoreUseCase.execute(sessionId);
         setScore(calculatedScore);
+
+        // 서버 저장 — 보호자의 회복 추이에 반영된다. 로컬에만 두면 캐시를
+        // 지우는 순간 임상 기록이 사라진다. 실패해도 던지지 않는다.
+        const results = await resultRepository.getResultsBySession(sessionId);
+        await resultSubmitter.submit({
+          sessionToken: createAssessmentSessionToken(),
+          results: toQabResults(
+            'sentence',
+            results.map((item) => ({
+              itemRef: item.itemId,
+              isCorrect: item.isCorrect,
+            })),
+          ),
+        });
+
         // onComplete는 여기서 호출하지 않음 - ScoreResultPanel의 "다음" 버튼에서 호출됨
       } catch (err) {
         console.error('[useSentCompViewModel] 채점 실패:', err);

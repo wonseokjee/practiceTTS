@@ -107,8 +107,13 @@ class GeminiClient(ILlmClient):
         text_prompt: str,
         image_base64: str,
         model: str,
+        **kwargs,
     ) -> str:
-        """이미지(Base64)와 텍스트 프롬프트를 받아 Gemini Vision 응답 반환."""
+        """이미지(Base64)와 텍스트 프롬프트를 받아 Gemini Vision 응답 반환.
+
+        kwargs.generation_config를 GenerateContentConfig로 변환해 전달한다
+        (complete와 동일 — response_schema로 구조화 출력 강제 가능).
+        """
         if not _PIL_AVAILABLE:
             raise GeminiApiError(
                 "Vision 기능을 사용하려면 Pillow 라이브러리가 필요합니다: pip install Pillow"
@@ -119,9 +124,14 @@ class GeminiClient(ILlmClient):
             image_bytes = base64.b64decode(image_base64)
             image = PILImage.open(io.BytesIO(image_bytes))
 
+            gen_config = dict(kwargs.get("generation_config") or {})
+            config = (
+                types.GenerateContentConfig(**gen_config) if gen_config else None
+            )
             response = await self._client.aio.models.generate_content(
                 model=model,
                 contents=[text_prompt, image],
+                config=config,
             )
             return response.text
 

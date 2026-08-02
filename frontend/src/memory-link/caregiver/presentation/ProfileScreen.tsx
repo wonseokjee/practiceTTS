@@ -9,7 +9,11 @@ import {
 import { usePatientProfile } from '../application/usePatientProfile.js';
 
 interface ProfileScreenProps {
-  onBack: () => void;
+  onBack?: () => void;
+  /** 뒤로가기 버튼 라벨(설정 허브에서는 "설정"). 기본 "목록으로". */
+  backLabel?: string;
+  /** true면 자체 뒤로가기 버튼을 숨긴다(상위가 네비게이션을 소유할 때). */
+  embedded?: boolean;
 }
 
 /**
@@ -17,7 +21,11 @@ interface ProfileScreenProps {
  * - 고향·직업·취미·의미있는 장소·가족 구성원을 등록한다.
  * - 가족 목록은 전체 교체(PUT) 방식으로 저장한다.
  */
-export function ProfileScreen({ onBack }: ProfileScreenProps) {
+export function ProfileScreen({
+  onBack,
+  backLabel = '목록으로',
+  embedded = false,
+}: ProfileScreenProps) {
   const { profile, isLoading, isSaving, error, save } = usePatientProfile();
 
   const [hometown, setHometown] = useState('');
@@ -69,14 +77,16 @@ export function ProfileScreen({ onBack }: ProfileScreenProps) {
 
   return (
     <div className="font-pretendard mx-auto w-full max-w-lg">
-      <button
-        type="button"
-        onClick={onBack}
-        className="mb-4 flex items-center gap-1 text-sm text-[#5C6661] transition-colors hover:text-[#2D6A56]"
-        aria-label="목록으로 돌아가기"
-      >
-        ← 목록으로
-      </button>
+      {!embedded && (
+        <button
+          type="button"
+          onClick={onBack}
+          className="mb-4 flex items-center gap-1 text-sm text-[#5C6661] transition-colors hover:text-[#2D6A56]"
+          aria-label={`${backLabel}(으)로 돌아가기`}
+        >
+          ← {backLabel}
+        </button>
+      )}
 
       <header className="mb-6">
         <h2 className="text-2xl font-bold text-[#2D6A56]">환자 정보</h2>

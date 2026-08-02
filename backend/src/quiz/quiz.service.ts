@@ -150,6 +150,36 @@ export interface QabSummaryResult {
   items: QabSubtestSummary[];
 }
 
+/** 한 검사의 특정 주차 성적. */
+export interface QabWeeklyPoint {
+  /** 그 주 월요일 (YYYY-MM-DD). 그래프의 x축이 된다. */
+  weekStart: string;
+  total: number;
+  correct: number;
+  /** 0~100 정수. loc는 정답률이 아니라 반응률이다. */
+  accuracy: number;
+  /** loc의 평균 의식 수준 점수(0~3), 발화 항목의 평균 발음 점수(0~100). */
+  avgScore: number | null;
+  /** ddk의 평균 감지 횟수(음절 반복 수). 소수 1자리. 발화·이해 검사는 null. */
+  avgMetric: number | null;
+}
+
+/** 검사별 주차 추이. */
+export interface QabTrendSeries {
+  subtest: string;
+  /** 오래된 주부터. 비어 있을 수 있다(그 검사를 아직 안 함). */
+  points: QabWeeklyPoint[];
+  /**
+   * 직전 주 대비 정답률 변화(%p). 주가 2개 미만이면 null.
+   * 보호자가 "나아지고 있나"를 한눈에 보는 값이다.
+   */
+  deltaFromPrevious: number | null;
+}
+
+export interface QabTrendResult {
+  series: QabTrendSeries[];
+}
+
 /**
  * 퀴즈 도메인 서비스 (Phase 3).
  *
@@ -927,6 +957,89 @@ export class QuizService {
    * QAB 검사별 회복 추적 요약 (보호자용).
    * 검사 종류별로 정확도 + 수치 지표(평균/최고) + 마지막 측정 시각을 집계한다.
    */
+  /**
+   * 검사별 **주차** 추이. 보호자가 "나아지고 있나"를 보는 데이터다.
+   *
+   * getQabSummary는 전 기간을 하나로 합쳐서, 좋아지는 중인지 나빠지는 중인지
+   * 알 수 없었다. 치매 진료는 "지난 몇 달 어떠셨어요?"로 시작하는데 보호자는
+   * 대개 기억으로 답한다. 주 단위 기록을 내밀 수 있으면 그 자체로 가치다.
+   *
+   * 주차 경계는 **월요일 기준**이다(date_trunc('week')가 ISO 주라 월요일 시작).
+   * 보호자 도움(assisted) 문항은 환자 수행이 아니므로 정확도 집계에서 뺀다.
+   *
+   * @param weeks 최근 몇 주를 볼지. 너무 길면 그래프가 읽히지 않는다.
+   */
+  async getQabTrend(
+    effectivePatientId: string,
+    weeks = 8,
+  ): Promise<QabTrendResult> {
+    const raw = await this.qabResultRepository
+      .createQueryBuilder('r')
+      .select("to_char(date_trunc('week', r.created_at), 'YYYY-MM-DD')", 'weekStart')
+      .addSelect('r.subtest', 'subtest')
+      .addSelect('COUNT(*) FILTER (WHERE NOT r.assisted)', 'total')
+      .addSelect(
+        'SUM(CASE WHEN r.is_correct AND NOT r.assisted THEN 1 ELSE 0 END)',
+        'correct',
+      )
+      .addSelect('AVG(r.score)', 'avgScore')
+      .addSelect('AVG(r.metric)', 'avgMetric')
+      .where('r.patient_id = :pid', { pid: effectivePatientId })
+      .andWhere(
+        "r.created_at >= date_trunc('week', now()) - make_interval(weeks => :weeks)",
+        { weeks: weeks - 1 },
+      )
+      .groupBy("date_trunc('week', r.created_at)")
+      .addGroupBy('r.subtest')
+      .orderBy("date_trunc('week', r.created_at)", 'ASC')
+      .getRawMany<{
+        weekStart: string;
+        subtest: string;
+        total: string;
+        correct: string;
+        avgScore: string | null;
+        avgMetric: string | null;
+      }>();
+
+    const bySubtest = new Map<string, QabWeeklyPoint[]>();
+    for (const row of raw) {
+      const total = Number(row.total);
+      const correct = Number(row.correct);
+      const points = bySubtest.get(row.subtest) ?? [];
+      points.push({
+        weekStart: row.weekStart,
+        total,
+        correct,
+        // 도움만 받은 주는 분모가 0이다. 0으로 나누지 않는다.
+        accuracy: total === 0 ? 0 : Math.round((correct / total) * 100),
+        avgScore:
+          row.avgScore === null ? null : Math.round(Number(row.avgScore)),
+        // ddk 감지 횟수. 요약과 같은 소수 1자리로 맞춘다.
+        avgMetric:
+          row.avgMetric === null
+            ? null
+            : Math.round(Number(row.avgMetric) * 10) / 10,
+      });
+      bySubtest.set(row.subtest, points);
+    }
+
+    const series: QabTrendSeries[] = [...bySubtest.entries()].map(
+      ([subtest, points]) => ({
+        subtest,
+        points,
+        // 마지막 두 주만 비교한다. 중간에 검사를 쉰 주는 행이 없으므로
+        // "직전에 검사한 주" 대비가 된다 — 보호자에게는 그게 자연스럽다.
+        deltaFromPrevious:
+          points.length < 2
+            ? null
+            : points[points.length - 1].accuracy -
+              points[points.length - 2].accuracy,
+      }),
+    );
+
+    return { series };
+  }
+
   async getQabSummary(
     effectivePatientId: string,
   ): Promise<QabSummaryResult> {

@@ -48,10 +48,24 @@ export const ML_TOKEN_KEY = 'ml_token';
 export const ML_PATIENT_MODE_KEY = 'ml_patient_mode';
 
 /**
+ * 마지막으로 성공한 소셜 로그인 제공자('kakao'|'google'). 로그인 화면에서
+ * "최근 사용" 배지를 그 버튼에 달아, 어느 걸로 가입했는지 헷갈리지 않게 한다.
+ * 로그아웃해도 유지(다음 로그인 힌트로 계속 쓴다).
+ */
+export const ML_LAST_PROVIDER_KEY = 'ml_last_provider';
+
+/**
  * 401이어도 세션 만료로 간주하지 않는 경로.
  * verify-pin은 "틀린 PIN"을 401로 반환하므로, 전역 로그아웃/리다이렉트 대상에서 제외한다.
  */
-const SKIP_401_REDIRECT_PATHS = ['/auth/patient-mode/verify-pin'];
+// verify-pin은 "틀린 PIN"을, /auth/token은 "만료·무효 소셜 코드"를 401로 반환한다.
+// 둘 다 세션 만료가 아니므로 전역 로그아웃/리다이렉트 대상에서 제외한다.
+// (특히 /auth/token: 악의적 /auth/callback?code=bad 링크가 기존 로그인 세션을
+//  강제 로그아웃시키던 문제를 막는다. 실패는 SocialCallbackScreen이 로컬 처리.)
+const SKIP_401_REDIRECT_PATHS = [
+  '/auth/patient-mode/verify-pin',
+  '/auth/token',
+];
 
 export const memoryLinkApi = axios.create({
   baseURL: BASE_URL,

@@ -17,6 +17,8 @@ import type { ScoreDTO } from './assessments/sentComp/application/dtos.js';
 import type { SessionSummaryDTO } from './assessments/wordComp/application/dtos/SessionSummaryDTO.js';
 import { AuthProvider, useAuth } from './memory-link/shared/AuthContext.js';
 import { LoginScreen } from './memory-link/shared/LoginScreen.js';
+import { SocialCallbackScreen } from './memory-link/shared/SocialCallbackScreen.js';
+import { OnboardingScreen } from './memory-link/shared/OnboardingScreen.js';
 import { CaregiverDashboard } from './memory-link/caregiver/presentation/CaregiverDashboard.js';
 import { PatientDashboard } from './memory-link/patient/presentation/PatientDashboard.js';
 
@@ -171,11 +173,40 @@ function CaregiverRoute({ children }: { children: ReactNode }) {
     );
   }
 
+  // 소셜 최초 로그인: 어르신 성함·PIN 미입력이면 온보딩 먼저.
+  if (user.needsOnboarding) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
   // 환자 모드 중에는 보호자 화면 직접 접근 차단(PIN으로만 복귀) → /patient로 유지
   if (isPatientMode) {
     return <Navigate to="/patient" replace />;
   }
 
+  return <>{children}</>;
+}
+
+/**
+ * 온보딩 전용 라우트: 소셜 최초 로그인(보호자 + needsOnboarding)만 허용.
+ * 이미 온보딩된 보호자는 대시보드로, 비로그인은 로그인으로.
+ */
+function OnboardingRoute({ children }: { children: ReactNode }) {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <span className="text-[#6B6560]">로딩 중...</span>
+      </div>
+    );
+  }
+
+  if (user === null) {
+    return <Navigate to="/login" replace />;
+  }
+  if (user.role !== 'caregiver' || !user.needsOnboarding) {
+    return <Navigate to="/" replace />;
+  }
   return <>{children}</>;
 }
 
@@ -234,6 +265,10 @@ function RootRedirect() {
   }
 
   if (user.role === 'caregiver') {
+    // 소셜 최초 로그인은 온보딩부터
+    if (user.needsOnboarding) {
+      return <Navigate to="/onboarding" replace />;
+    }
     // 환자 모드 잠금 중에는 "/" 접근도 환자 화면 유지
     return <Navigate to={isPatientMode ? '/patient' : '/caregiver'} replace />;
   }
@@ -264,6 +299,7 @@ function LoginRoute() {
 
   if (user !== null) {
     if (user.role === 'caregiver') {
+      if (user.needsOnboarding) return <Navigate to="/onboarding" replace />;
       return <Navigate to={isPatientMode ? '/patient' : '/caregiver'} replace />;
     }
     if (user.role === 'patient') return <Navigate to="/patient" replace />;
@@ -298,6 +334,19 @@ function App() {
 
           {/* 로그인 / 회원가입 */}
           <Route path="/login" element={<LoginRoute />} />
+
+          {/* 소셜 로그인 콜백(일회용 코드 교환) — 인증 전이라 가드 없음 */}
+          <Route path="/auth/callback" element={<SocialCallbackScreen />} />
+
+          {/* 소셜 최초 로그인 온보딩(어르신 성함·PIN) */}
+          <Route
+            path="/onboarding"
+            element={
+              <OnboardingRoute>
+                <OnboardingScreen />
+              </OnboardingRoute>
+            }
+          />
 
           {/* 보호자 전용 라우트 */}
           <Route

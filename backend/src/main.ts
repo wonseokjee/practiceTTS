@@ -1,14 +1,19 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import * as cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // React 개발 서버에서의 CORS 요청 허용
+  // 소셜 로그인 CSRF state 검증에 httpOnly 쿠키를 쓴다(oauth-state.ts).
+  app.use(cookieParser());
+
+  // 프론트 origin 허용. 소셜 콜백 후 프론트가 /auth/token을 교차 출처로 호출하므로,
+  // 프로덕션에서도 정확한 origin이어야 한다. FRONTEND_URL과 정렬한다(미설정 시 dev).
   app.enableCors({
-    origin: 'http://localhost:5173',
+    origin: process.env.FRONTEND_URL ?? 'http://localhost:5173',
     credentials: true,
   });
 

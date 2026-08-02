@@ -19,14 +19,12 @@ SCENARIO_SYSTEM_PROMPT = """당신은 인지 재활 훈련 전문 치료사입�
 [마스킹된 기억 컨텍스트]
 {MASKED_CONTEXT}
 
-[출력 형식]
-반드시 아래 JSON 형식으로만 응답하세요:
+[각 필드에 담을 내용 — 형식/유효성은 API 스키마가 강제]
 {{
   "opening_question": "훈련 시작 질문 (목표 단어 절대 포함 금지)",
   "context_summary": "시나리오 배경 요약 (100~500자, 한국어)",
   "scene_description": "시나리오 배경 설명 (한국어)"
-}}
-추가 설명 없이 JSON만 반환하세요."""
+}}"""
 
 SCENARIO_FALLBACK_PROMPT = """이전 응답에서 금지된 단어가 포함되었습니다.
 목표 단어를 전혀 언급하지 않고 배경 상황만 묘사하는 질문을 새로 생성하세요.
@@ -34,8 +32,7 @@ SCENARIO_FALLBACK_PROMPT = """이전 응답에서 금지된 단어가 포함되�
 [절대 금지 단어]
 {GUARDRAIL_WORDS}
 
-[출력 형식]
-반드시 아래 JSON 형식으로만 응답하세요:
+[각 필드에 담을 내용 — 형식은 스키마가 강제]
 {{
   "opening_question": "금지 단어 없는 새 훈련 시작 질문",
   "context_summary": "시나리오 배경 요약 (100~500자, 한국어)",

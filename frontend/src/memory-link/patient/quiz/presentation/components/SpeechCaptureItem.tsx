@@ -9,7 +9,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTTS } from '../../../../../shared/hooks/useTTS.js';
 import { createTtsService } from '../../../../../shared/infrastructure/ttsFactory.js';
-import { createSttService } from '../../infrastructure/sttFactory.js';
+import { createSpeechCaptureService } from '../../infrastructure/SpeechCaptureService.js';
+import type { AzurePronunciationScores } from '../../domain/pronunciationScore.js';
 
 interface SpeechCaptureItemProps {
   /** 보여줄/들려줄 내용 */
@@ -22,12 +23,15 @@ interface SpeechCaptureItemProps {
   showFeedback: boolean;
   /** 채점 결과 — 피드백 단계에서만 의미 */
   isCorrect: boolean | null;
-  onSubmit: (transcript: string) => void;
+  /** 채점 제출. azure는 음소 점수(가능할 때), 없으면 null(문자열 채점 폴백). */
+  onSubmit: (transcript: string, azure: AzurePronunciationScores | null) => void;
   /** 보호자 통과 처리(도움받음). 없으면 목표 텍스트 제출로 폴백. */
   onSkip?: () => void;
 }
 
-type CaptureStatus = 'idle' | 'listening' | 'recognized' | 'error';
+// 'processing' = 녹음 종료 후 서버 발음평가/인식 응답을 기다리는 구간(1~2초).
+// 이 상태가 없으면 "다 말했어요"를 눌러도 화면이 그대로라 무반응처럼 보인다.
+type CaptureStatus = 'idle' | 'listening' | 'processing' | 'recognized' | 'error';
 
 /** 따라말하기/소리내어읽기 음성 입력 */
 export function SpeechCaptureItem({
@@ -42,17 +46,19 @@ export function SpeechCaptureItem({
 }: SpeechCaptureItemProps) {
   const [status, setStatus] = useState<CaptureStatus>('idle');
   const [transcript, setTranscript] = useState<string>('');
+  const [azure, setAzure] = useState<AzurePronunciationScores | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>('');
 
-  const stt = useMemo(() => createSttService(), []);
+  const stt = useMemo(() => createSpeechCaptureService(), []);
   const ttsService = useMemo(() => createTtsService(), []);
   const { isPlaying, speak } = useTTS(ttsService);
 
-  // STT 콜백 프로퍼티 할당(TrainingScreen 등과 동일한 코드베이스 공통 패턴).
+  // 캡처 콜백 프로퍼티 할당(TrainingScreen 등과 동일한 코드베이스 공통 패턴).
   /* eslint-disable react-hooks/immutability */
   useEffect(() => {
     stt.onResult = (result) => {
       setTranscript(result.transcript);
+      setAzure(result.azure);
       setStatus('recognized');
     };
     stt.onError = (message) => {
@@ -62,7 +68,8 @@ export function SpeechCaptureItem({
     return () => {
       stt.onResult = null;
       stt.onError = null;
-      stt.stop();
+      // 이탈 시 취소: 녹음된 환자 음성을 서버로 업로드하지 않고 마이크만 해제한다.
+      stt.cancel();
     };
   }, [stt]);
   /* eslint-enable react-hooks/immutability */
@@ -76,19 +83,22 @@ export function SpeechCaptureItem({
     if (!isSelectable) return;
     setErrorMessage('');
     setStatus('listening');
-    // 따라말하기/읽기 목표 텍스트를 phrase hint로 전달(서버 STT 제약 인식).
-    stt.start(text.length > 0 ? [text] : undefined);
+    // 목표 텍스트를 발음 평가 기준(reference) 겸 phrase hint로 전달.
+    stt.start(text);
   };
 
   // 서버 STT는 자동 종료되지 않으므로 사용자가 발화 종료를 알린다(→ 인식 실행).
   // Web Speech는 stop()이 최종 결과를 확정한다. 두 구현 모두에서 안전.
+  // stop() 직후 서버 응답까지 1~2초가 걸리므로 즉시 'processing'으로 바꿔
+  // 진행 중임을 보여준다(무반응 오해 방지). onResult/onError가 상태를 넘긴다.
   const handleStopRecord = (): void => {
+    setStatus('processing');
     stt.stop();
   };
 
   const handleSubmitTranscript = (): void => {
     if (transcript.trim().length === 0) return;
-    onSubmit(transcript.trim());
+    onSubmit(transcript.trim(), azure);
   };
 
   // "넘어가기": 보호자가 했다고 보고 통과 처리(도움받음).
@@ -98,7 +108,8 @@ export function SpeechCaptureItem({
       onSkip();
       return;
     }
-    onSubmit(text);
+    // 통과 처리는 목표 텍스트를 그대로 제출(문자열 채점 → 정답). 음소 점수는 없음.
+    onSubmit(text, null);
   };
 
   let resultBoxClass = 'border-[#D4D8D4] bg-white text-[#1F2A26]';
@@ -166,6 +177,11 @@ export function SpeechCaptureItem({
           듣고 있어요… 또박또박 말씀해주세요.
         </p>
       )}
+      {!showFeedback && status === 'processing' && (
+        <p className="text-base text-[#2D6A56]" role="status">
+          발음을 확인하고 있어요…
+        </p>
+      )}
       {!showFeedback && status === 'error' && errorMessage.length > 0 && (
         <p className="text-base text-[#7A2E15]" role="alert">
           {errorMessage}
@@ -184,6 +200,16 @@ export function SpeechCaptureItem({
             >
               <span aria-hidden="true" className="text-2xl">✓</span>
               다 말했어요
+            </button>
+          ) : status === 'processing' ? (
+            <button
+              type="button"
+              disabled
+              className="flex min-h-[64px] items-center justify-center gap-2 rounded-md border-2 border-[#C5C8C5] bg-white px-6 py-4 text-xl font-medium text-[#A8AFA9]"
+              aria-label="발음 확인 중"
+            >
+              <span aria-hidden="true" className="animate-pulse text-2xl">⏳</span>
+              확인 중…
             </button>
           ) : (
             <button

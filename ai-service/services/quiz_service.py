@@ -14,6 +14,7 @@ import asyncio
 import json
 import logging
 import os
+import random
 import re
 import time
 
@@ -26,12 +27,19 @@ from domain.errors import (
 from interfaces.llm_client import ILlmClient
 from models.quiz import (
     PatientNoteIn,
+    QuizCritiqueResponse,
     QuizDistribution,
     QuizGenerateRequest,
     QuizGenerateResponse,
+    QuizLLMResponse,
     QuizQuestionOut,
 )
-from prompts.quiz_prompt import QUIZ_RETRY_INSTRUCTION, QUIZ_SYSTEM_PROMPT
+from prompts.quiz_prompt import (
+    QUIZ_CRITIQUE_INSTRUCTION,
+    QUIZ_CRITIQUE_PROMPT,
+    QUIZ_RETRY_INSTRUCTION,
+    QUIZ_SYSTEM_PROMPT,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -40,10 +48,18 @@ logger = logging.getLogger(__name__)
 _QUIZ_MODEL = os.getenv("GEMINI_QUIZ_MODEL", "gemini-2.5-flash-lite")
 # LLM 호출 제한 시간 (초)
 _LLM_TIMEOUT_SECONDS = 25
+# 자기검증(critique) 패스 on/off. 기본 on, 문제 시 QUIZ_CRITIQUE_ENABLED=0으로 끔.
+_CRITIQUE_ENABLED = os.getenv("QUIZ_CRITIQUE_ENABLED", "1") not in ("0", "false", "False")
+# 자기검증 호출 제한 시간(초). 초과/실패 시 폐기 없이 원문 유지(fail-open).
+_CRITIQUE_TIMEOUT_SECONDS = 15
 # 문장(prompt) 최대 길이 (가드 5)
 _MAX_SENTENCE_LEN = 30
 # patient_notes 합본 최소 글자 수
 _MIN_NOTES_BLOB_LEN = 10
+# patient_notes 합본 최대 글자 수. 보호자 일기는 짧다(몇 문장). 상한이 없으면
+# 거대 입력이 프롬프트에 두 번(생성+자기검증) 실려 토큰 비용 폭증·프롬프트 인젝션
+# 표면이 커진다. 인증된 보호자 입력이라 위험은 낮지만 방어적으로 자른다.
+_MAX_NOTES_BLOB_LEN = 2000
 # 예/아니오 정답 허용값
 _YES_NO_ANSWERS = {"yes", "no"}
 # 폴백 후보 단어 추출용 한글 토큰 정규식 (2~5자)
@@ -96,6 +112,10 @@ class QuizGeneratorService:
         # 5. [가드 3·4·5] 안전 가드 통과 문제만 추출 (요청 분포도 함께 적용)
         questions = self._sanitize(parsed, notes_blob, dist)
 
+        # 5.5 자기검증 패스: 규칙이 못 잡는 "그럴듯하지만 부적절한" 문항을 폐기.
+        #     실패/타임아웃 시 원문 유지(fail-open) — 품질 향상 장치이지 관문이 아니다.
+        questions = await self._critique(questions, notes_blob)
+
         # 6. [가드 2] 부족분을 규칙 기반 빈칸 폴백으로 보충
         fallback_used = len(questions) < need
         if fallback_used:
@@ -122,9 +142,14 @@ class QuizGeneratorService:
             )
         # 줄바꿈으로 구분해 노트 경계를 가로지르는 허위 부분일치(가드 3)를 방지한다.
         blob = "\n".join(n.answer_text for n in notes)
-        if len(blob.strip()) < _MIN_NOTES_BLOB_LEN:
+        stripped = blob.strip()
+        if len(stripped) < _MIN_NOTES_BLOB_LEN:
             raise InvalidPatientNotesError(
                 f"메모 합본 글자 수가 부족합니다 (최소 {_MIN_NOTES_BLOB_LEN}자)"
+            )
+        if len(stripped) > _MAX_NOTES_BLOB_LEN:
+            raise InvalidPatientNotesError(
+                f"메모 합본 글자 수가 너무 깁니다 (최대 {_MAX_NOTES_BLOB_LEN}자)"
             )
         return blob
 
@@ -195,7 +220,15 @@ class QuizGeneratorService:
                 self._llm.complete(
                     messages=messages,
                     model=_QUIZ_MODEL,
-                    generation_config={"temperature": temperature},
+                    # 구조화 출력: Gemini가 QuizLLMResponse({"questions":[...]}) 형식의
+                    # 유효 JSON만 반환하도록 강제한다(코드펜스·군더더기·깨진 JSON 차단).
+                    # GeminiClient가 generation_config를 GenerateContentConfig로 그대로
+                    # 흘려보내므로 여기서 두 키를 얹기만 하면 된다.
+                    generation_config={
+                        "temperature": temperature,
+                        "response_mime_type": "application/json",
+                        "response_schema": QuizLLMResponse,
+                    },
                 ),
                 timeout=_LLM_TIMEOUT_SECONDS,
             )
@@ -204,6 +237,78 @@ class QuizGeneratorService:
                 f"Gemini 응답이 {_LLM_TIMEOUT_SECONDS}초를 초과했습니다"
             ) from exc
         # GeminiApiError는 _llm.complete가 이미 raise → 그대로 전파
+
+    async def _critique(
+        self, questions: list[QuizQuestionOut], notes_blob: str
+    ) -> list[QuizQuestionOut]:
+        """자기검증 패스 — 규칙이 못 잡는 부적절 문항을 LLM으로 걸러낸다.
+
+        정답 유일성·오답 타당성·자연스러움·근거를 2차 LLM이 문항별로 판정하고,
+        명백히 부적절한 것(keep=false)만 폐기한다. 폐기분은 상위에서 백필로 보충된다.
+
+        **fail-open**: 비활성/빈 입력/타임아웃/오류/파싱실패 등 어떤 이유로든 판정을
+        얻지 못하면 원문을 그대로 유지한다. 이 패스는 품질 향상 장치이지, 여기서
+        막혀 퀴즈가 비는 일이 있어선 안 된다(Tier 1 규칙이 이미 기본 타당성 보장).
+        """
+        if not _CRITIQUE_ENABLED or not questions:
+            return questions
+
+        payload = [
+            {
+                "index": i,
+                "type": q.type,
+                "prompt": q.prompt,
+                "choices": q.choices,
+                "correct_answer": q.correct_answer,
+            }
+            for i, q in enumerate(questions)
+        ]
+        prompt = QUIZ_CRITIQUE_PROMPT.format(
+            PATIENT_NOTES=notes_blob,
+            QUESTIONS_JSON=json.dumps(payload, ensure_ascii=False),
+        )
+        messages = [
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": QUIZ_CRITIQUE_INSTRUCTION},
+        ]
+        try:
+            raw = await asyncio.wait_for(
+                self._llm.complete(
+                    messages=messages,
+                    model=_QUIZ_MODEL,
+                    generation_config={
+                        "temperature": 0.0,
+                        "response_mime_type": "application/json",
+                        "response_schema": QuizCritiqueResponse,
+                    },
+                ),
+                timeout=_CRITIQUE_TIMEOUT_SECONDS,
+            )
+            data = json.loads(self._strip_code_fence(raw))
+            verdicts = data.get("verdicts", []) if isinstance(data, dict) else []
+        except Exception as exc:  # noqa: BLE001 - 어떤 실패든 원문 유지(fail-open)
+            logger.warning("자기검증 패스 실패, 원문 유지: %s", exc)
+            return questions
+
+        # verdicts가 리스트가 아니면(null·잘못된 형) 판정 불가 → 원문 유지(fail-open).
+        # 이 검사가 없으면 아래 루프가 try 밖에서 TypeError로 퀴즈 생성을 500으로 깨뜨린다.
+        if not isinstance(verdicts, list):
+            return questions
+
+        # 명시적으로 keep=false 판정된 인덱스만 폐기(누락/불명은 유지 = 안전).
+        drop: set[int] = set()
+        for v in verdicts:
+            if not isinstance(v, dict):
+                continue
+            idx = v.get("index")
+            if isinstance(idx, int) and 0 <= idx < len(questions) and v.get("keep") is False:
+                drop.add(idx)
+
+        if not drop:
+            return questions
+        kept = [q for i, q in enumerate(questions) if i not in drop]
+        logger.info("자기검증: %d개 폐기 (총 %d개 중)", len(drop), len(questions))
+        return kept
 
     def _parse_questions(self, raw: str) -> list[dict]:
         """코드펜스 제거 + json.loads + {..} 슬라이스 폴백. 실패 시 ValueError."""
@@ -297,19 +402,37 @@ class QuizGeneratorService:
     def _sanitize_multiple_choice(
         self, prompt: str, correct_answer: str, choices: object, notes_blob: str
     ) -> QuizQuestionOut | None:
-        """불변식 I1 + 가드 3 적용."""
+        """불변식 I1 + 가드 3 + 오답지 타당성 검증.
+
+        타당성(문항이 '단일 정답'을 갖도록):
+          - 선택지 정확히 4개, 중복 없음(중복 보기/정답=오답 무효 문항 차단).
+          - 정답이 선택지에 포함 & 메모에 실재(환각 차단).
+          - 오답이 메모에 실재하면 폐기 — 그 오답도 사실이라 정답이 2개가 되어
+            타당성이 깨진다(프롬프트로만 지시하던 것을 코드로 강제).
+          - 정답 위치 편향(LLM이 정답을 앞에 두는 경향) 제거를 위해 셔플.
+        """
         if not isinstance(choices, list) or len(choices) != 4:
             return None
         choices_str = [str(c).strip() for c in choices]
+        # 중복 보기 = 무효 문항(정답과 동일한 오답 포함). set 크기로 한 번에 차단.
+        if len(set(choices_str)) != 4:
+            return None
         if correct_answer not in choices_str:
             return None
         # 가드 3: 정답이 메모 합본에 부분 일치해야 함 (환각 방지)
         if not self._answer_in_notes(correct_answer, notes_blob):
             return None
+        # 오답이 메모에 실재하면 '두 번째 정답'이 되어 문항이 무효 → 폐기(백필이 보충).
+        distractors = [c for c in choices_str if c != correct_answer]
+        if any(self._answer_in_notes(d, notes_blob) for d in distractors):
+            return None
+        # 위치 편향 제거.
+        shuffled = choices_str[:]
+        random.shuffle(shuffled)
         return QuizQuestionOut(
             type="multiple_choice",
             prompt=prompt,
-            choices=choices_str,
+            choices=shuffled,
             correct_answer=correct_answer,
         )
 
@@ -334,9 +457,15 @@ class QuizGeneratorService:
         hint_first_char: object,
         notes_blob: str,
     ) -> QuizQuestionOut | None:
-        """불변식 I3 + 가드 3 적용. hint_first_char 누락 시 정답 첫 글자로 보정."""
+        """불변식 I3 + 가드 3 + 빈칸 타당성. hint_first_char 누락 시 정답 첫 글자로 보정."""
         # 가드 3: 정답이 메모 합본에 부분 일치해야 함
         if not self._answer_in_notes(correct_answer, notes_blob):
+            return None
+        # 타당성: 문장에 빈칸이 실제로 있어야 한다(밑줄 2개 이상). 없으면 풀 수 없는 문항.
+        if "__" not in prompt:
+            return None
+        # 타당성: 정답이 문장에 그대로 노출되면(빈칸 처리 실패) 답이 보이는 무효 문항 → 폐기.
+        if correct_answer in prompt:
             return None
         first_char = correct_answer.replace(" ", "")[:1]
         if not first_char:

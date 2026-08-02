@@ -10,6 +10,7 @@ Guardrail 정책:
 import json
 
 from domain.entities import ScenarioResult
+from models.scenario import ScenarioLLMOut
 from domain.errors import (
     EmptyTargetWordsError,
     GeminiApiError,
@@ -140,6 +141,12 @@ class ScenarioService:
             raw_response = await self._llm.complete(
                 messages=messages,
                 model=_SCENARIO_MODEL,
+                # 구조화 출력: ScenarioLLMOut 3키의 유효 JSON만 반환하도록 강제
+                # (형식만; context_summary 길이 보정 등 의미 처리는 파서가 담당).
+                generation_config={
+                    "response_mime_type": "application/json",
+                    "response_schema": ScenarioLLMOut,
+                },
             )
 
             # 응답 파싱

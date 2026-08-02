@@ -6,13 +6,18 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { User } from './entities/user.entity';
+import { SocialIdentity } from './entities/social-identity.entity';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { OnboardingGuard } from './onboarding.guard';
 import { JwtStrategy } from './jwt.strategy';
+import { KakaoStrategy } from './kakao.strategy';
+import { GoogleStrategy } from './google.strategy';
+import { SocialAuthExceptionFilter } from './social-auth-exception.filter';
 
 @Module({
   imports: [
-    // User 엔티티 Repository 등록
-    TypeOrmModule.forFeature([User]),
+    // User + 소셜 신원(계정 병합) Repository 등록
+    TypeOrmModule.forFeature([User, SocialIdentity]),
     PassportModule,
     // JWT 설정: 환경변수에서 시크릿 키 주입
     JwtModule.registerAsync({
@@ -32,8 +37,16 @@ import { JwtStrategy } from './jwt.strategy';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, JwtAuthGuard],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    KakaoStrategy,
+    GoogleStrategy,
+    JwtAuthGuard,
+    OnboardingGuard,
+    SocialAuthExceptionFilter,
+  ],
   // 다른 모듈에서 가드와 서비스를 사용할 수 있도록 export
-  exports: [JwtAuthGuard, AuthService],
+  exports: [JwtAuthGuard, OnboardingGuard, AuthService],
 })
 export class AuthModule {}

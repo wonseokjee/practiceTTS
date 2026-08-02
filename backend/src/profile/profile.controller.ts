@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import type { User } from '../auth/entities/user.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { OnboardingGuard } from '../auth/onboarding.guard';
 import { FamilyMemberInputDto } from './dto/family-member-input.dto';
 import type { PatientProfileResponseDto } from './dto/patient-profile-response.dto';
 import { UpsertPatientProfileDto } from './dto/upsert-patient-profile.dto';
@@ -29,7 +30,7 @@ interface AuthenticatedRequest extends Request {
  * - 모든 엔드포인트 JwtAuthGuard 적용.
  */
 @Controller('patient-profile')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, OnboardingGuard)
 export class ProfileController {
   constructor(private readonly profileService: ProfileService) {}
 

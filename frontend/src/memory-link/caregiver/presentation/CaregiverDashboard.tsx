@@ -1,18 +1,44 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../../shared/AuthContext.js';
 import { DailyHealingBanner } from '../../shared/components/DailyHealingBanner.js';
 import { useCaptureFlow } from '../application/useCaptureFlow.js';
 import { useMemoryEntries } from '../application/useMemoryEntries.js';
+import type { AccountLinkNotice } from './AccountLinkScreen.js';
 import { CaptureScreen } from './CaptureScreen.js';
 import { EntryDetailScreen } from './EntryDetailScreen.js';
 import { EntryListScreen } from './EntryListScreen.js';
-import { ProfileScreen } from './ProfileScreen.js';
+import { SettingsScreen } from './SettingsScreen.js';
 import { QabProgressCard } from './QabProgressCard.js';
+import { WeeklyReportScreen } from './WeeklyReportScreen.js';
 import { withHonorific } from '../../shared/honorific.js';
 import { isConversationModeEnabled } from '../../shared/featureFlags.js';
 
 /** 대시보드 화면 상태 */
-type DashboardView = 'list' | 'capture' | 'detail' | 'profile';
+type DashboardView = 'list' | 'capture' | 'detail' | 'report' | 'settings';
+
+/**
+ * 소셜 계정 연결 콜백 복귀(/caregiver?linked=..|?linkError=..)를 배너 알림으로.
+ * 백엔드 handleSocialCallback이 리다이렉트에 실어 보내는 값과 짝을 맞춘다.
+ */
+function parseLinkNotice(search: string): AccountLinkNotice | null {
+  const params = new URLSearchParams(search);
+  const linked = params.get('linked');
+  if (linked === 'kakao' || linked === 'google') {
+    const label = linked === 'kakao' ? '카카오' : '구글';
+    return { kind: 'success', text: `${label} 계정을 연결했어요.` };
+  }
+  const err = params.get('linkError');
+  if (err) {
+    const text =
+      err === 'conflict'
+        ? '이미 다른 계정에 연결된 소셜 계정이에요.'
+        : err === 'state' || err === 'expired'
+          ? '요청이 만료됐어요. 다시 시도해 주세요.'
+          : '연결에 실패했어요. 다시 시도해 주세요.';
+    return { kind: 'error', text };
+  }
+  return null;
+}
 
 /**
  * 보호자 대시보드
@@ -24,8 +50,22 @@ export function CaregiverDashboard() {
   const { user, logout, enterPatientMode } = useAuth();
   const [view, setView] = useState<DashboardView>('list');
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
+  const [accountNotice, setAccountNotice] = useState<AccountLinkNotice | null>(
+    null,
+  );
 
   const memoryEntries = useMemoryEntries();
+
+  // 소셜 연결 콜백 복귀(?linked/?linkError) 감지 → 설정 화면 + 배너로 안내하고,
+  // URL의 쿼리는 지운다(새로고침·뒤로가기 시 배너가 다시 뜨지 않게).
+  // 배너가 있으면 SettingsScreen이 계정 섹션으로 스크롤한다.
+  useEffect(() => {
+    const notice = parseLinkNotice(window.location.search);
+    if (!notice) return;
+    setAccountNotice(notice);
+    setView('settings');
+    window.history.replaceState(null, '', window.location.pathname);
+  }, []);
 
   // patientId가 없는 보호자는 기능 사용 불가
   const patientId = user?.patientId ?? null;
@@ -106,11 +146,14 @@ export function CaregiverDashboard() {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => setView('profile')}
+            onClick={() => {
+              setAccountNotice(null);
+              setView('settings');
+            }}
             className="min-h-[44px] rounded-full border border-[#2D6A56] px-4 py-2 text-sm font-medium text-[#2D6A56] transition-colors duration-[180ms] ease-out hover:bg-[#EBF4F0]"
-            aria-label="환자 정보 편집"
+            aria-label="설정 (환자 정보·계정)"
           >
-            환자 정보
+            설정
           </button>
           <button
             type="button"
@@ -123,14 +166,6 @@ export function CaregiverDashboard() {
           <span className="hidden text-sm text-[#6B6560] sm:inline">
             {user?.displayName}
           </span>
-          <button
-            type="button"
-            onClick={logout}
-            className="text-xs text-[#9AA09B] hover:text-[#6B6560] transition-colors"
-            aria-label="로그아웃"
-          >
-            로그아웃
-          </button>
         </div>
       </header>
 
@@ -192,7 +227,7 @@ export function CaregiverDashboard() {
             <DailyHealingBanner />
 
             {/* 발화 검사 회복 추세 (데이터 있을 때만 표시) */}
-            <QabProgressCard />
+            <QabProgressCard onOpenReport={() => setView('report')} />
 
             {/* 기억 목록 그리드 */}
             <EntryListScreen
@@ -215,9 +250,15 @@ export function CaregiverDashboard() {
           </div>
         )}
 
-        {/* 환자 정보(프로필) 화면 */}
-        {view === 'profile' && (
-          <ProfileScreen onBack={handleBackToList} />
+        {/* 진료용 리포트 */}
+        {view === 'report' && <WeeklyReportScreen onBack={handleBackToList} />}
+
+        {/* 설정: 환자 정보 + 계정 연결 + 로그아웃 (세로 스택) */}
+        {view === 'settings' && (
+          <SettingsScreen
+            onBack={handleBackToList}
+            accountNotice={accountNotice}
+          />
         )}
 
         {/* 상세 화면 */}

@@ -137,7 +137,10 @@ def valid_five_questions_json() -> str:
 class TestTCQ1정상생성:
     """Given 유효 5문제 JSON + 정상 요청 / When generate_quiz / Then 5문제 반환."""
 
-    async def test_5문제를_반환하고_재시도없이_1회_호출한다(self):
+    async def test_5문제를_반환하고_재시도없이_1회_호출한다(self, monkeypatch):
+        # 이 테스트는 '생성' 호출 횟수를 검증하므로 자기검증 패스를 끈다
+        # (critique는 별도 클래스에서 검증). 켜져 있으면 호출이 +1 된다.
+        monkeypatch.setattr(quiz_service, "_CRITIQUE_ENABLED", False)
         # Arrange
         fake = FakeLlmClient(raw=valid_five_questions_json())
         service = QuizGeneratorService(fake)
@@ -151,6 +154,23 @@ class TestTCQ1정상생성:
         assert response.model == "gemini-2.5-flash-lite"
         assert fake.call_count == 1  # 재시도 없음
         assert response.fallback_used is False
+
+    async def test_구조화출력_스키마를_강제한다(self):
+        """LLM 호출 generation_config에 JSON 모드 + QuizLLMResponse 스키마가 실린다.
+
+        이 수정의 핵심 불변식: Gemini가 {"questions":[...]} 형식 유효 JSON만 반환하도록
+        강제해 코드펜스·군더더기·깨진 JSON으로 인한 파싱 실패·재시도를 없앤다.
+        """
+        from models.quiz import QuizLLMResponse
+
+        fake = FakeLlmClient(raw=valid_five_questions_json())
+        service = QuizGeneratorService(fake)
+
+        await service.generate_quiz(make_request())
+
+        gc = fake.captured_kwargs[0]["generation_config"]
+        assert gc["response_mime_type"] == "application/json"
+        assert gc["response_schema"] is QuizLLMResponse
 
     async def test_multiple_choice_문제는_choices4개이고_정답이_choices에_포함된다(self):
         # Arrange
@@ -217,7 +237,9 @@ class TestTCQ2타임아웃:
 class TestTCQ3JSON깨짐:
     """가드 1(재시도) + 가드 2(폴백) 동작 검증."""
 
-    async def test_3a_1차깨짐_2차정상이면_재시도로_5문제_생성하고_2회호출한다(self):
+    async def test_3a_1차깨짐_2차정상이면_재시도로_5문제_생성하고_2회호출한다(self, monkeypatch):
+        # '생성' 호출 횟수 검증이라 자기검증 패스를 끈다(critique는 별도 검증).
+        monkeypatch.setattr(quiz_service, "_CRITIQUE_ENABLED", False)
         # Arrange: 1차는 깨진 텍스트, 2차는 정상 JSON
         fake = FakeLlmClient(raws=["이건 JSON이 아닙니다 그냥 텍스트", valid_five_questions_json()])
         service = QuizGeneratorService(fake)
@@ -451,3 +473,143 @@ class TestLLM호출실패:
         # Act / Assert
         with pytest.raises(GeminiApiError):
             await service.generate_quiz(make_request())
+
+
+# ======================================================================
+# Tier 1: 오답지/빈칸 타당성 검증 (문항이 '단일 정답'을 갖도록)
+# ======================================================================
+class Test문항타당성:
+    """_sanitize_multiple_choice / _sanitize_fill_blank 직접 단위 검증.
+
+    generate_quiz 를 거치면 백필이 무효 문항을 대체해 '폐기'를 직접 관찰하기
+    어려우므로, sanitizer 를 직접 호출해 폐기(None) 여부를 결정적으로 검증한다.
+    """
+
+    NOTES = "공원에서 산책했어요\n손녀와 사과를 먹었어요\n날씨가 맑았어요"
+
+    def _svc(self) -> QuizGeneratorService:
+        return QuizGeneratorService(FakeLlmClient())
+
+    def test_MC_중복보기는_폐기된다(self):
+        svc = self._svc()
+        # 오답 하나가 정답과 동일 → 실질 3보기 → 무효
+        out = svc._sanitize_multiple_choice(
+            "무엇을 먹었나요?", "사과", ["사과", "사과", "포도", "수박"], self.NOTES
+        )
+        assert out is None
+
+    def test_MC_오답이_메모에_실재하면_폐기된다(self):
+        svc = self._svc()
+        # '공원'은 메모에 실재 → 정답 '사과' 외에 또 하나의 참이 되어 정답 2개
+        out = svc._sanitize_multiple_choice(
+            "무엇을 먹었나요?", "사과", ["사과", "공원", "수박", "참외"], self.NOTES
+        )
+        assert out is None
+
+    def test_MC_정상_문항은_보기가_보존되고_정답이_유지된다(self):
+        svc = self._svc()
+        out = svc._sanitize_multiple_choice(
+            "무엇을 먹었나요?", "사과", ["사과", "포도", "수박", "참외"], self.NOTES
+        )
+        assert out is not None
+        # 셔플되어도 4개 보기 집합과 정답은 보존된다
+        assert set(out.choices) == {"사과", "포도", "수박", "참외"}
+        assert out.correct_answer == "사과"
+
+    def test_fillblank_빈칸없으면_폐기된다(self):
+        svc = self._svc()
+        # 밑줄(빈칸)이 없어 풀 수 없는 문항
+        out = svc._sanitize_fill_blank(
+            "손녀와 사과를 먹었어요.", "사과", "사", self.NOTES
+        )
+        assert out is None
+
+    def test_fillblank_정답이_문장에_노출되면_폐기된다(self):
+        svc = self._svc()
+        # 빈칸은 있으나 정답 '사과'가 문장에 그대로 노출 → 답이 보이는 무효 문항
+        out = svc._sanitize_fill_blank(
+            "손녀와 ___를 먹었어요. 사과 맛있었죠.", "사과", "사", self.NOTES
+        )
+        assert out is None
+
+    def test_fillblank_정상_문항은_통과한다(self):
+        svc = self._svc()
+        out = svc._sanitize_fill_blank(
+            "손녀와 ___를 먹었어요.", "사과", "사", self.NOTES
+        )
+        assert out is not None
+        assert out.correct_answer == "사과"
+        assert out.hint_first_char == "사"
+
+
+# ======================================================================
+# 자기검증(critique) 패스: 규칙이 못 잡는 부적절 문항을 LLM으로 폐기
+# ======================================================================
+def _critique_json(*drop_indices: int) -> str:
+    """지정 index를 keep=false로 판정하는 critique 응답 JSON."""
+    verdicts = [
+        {"index": i, "keep": False, "reason": "테스트 폐기"} for i in drop_indices
+    ]
+    return json.dumps({"verdicts": verdicts}, ensure_ascii=False)
+
+
+class Test자기검증패스:
+    """generate_quiz의 5.5 단계(_critique) 동작 검증."""
+
+    async def test_부적절_판정_문항은_폐기되고_백필로_보충된다(self):
+        # 1차: 정상 5문제 생성 / 2차(critique): index 0 폐기 판정
+        fake = FakeLlmClient(raws=[valid_five_questions_json(), _critique_json(0)])
+        service = QuizGeneratorService(fake)
+
+        response = await service.generate_quiz(make_request())
+
+        # 폐기 1개 → 백필 1개 보충 → 총계 유지 + fallback_used True
+        assert len(response.questions) == 5
+        assert response.fallback_used is True
+        assert fake.call_count == 2  # 생성 1 + 자기검증 1
+
+    async def test_critique_실패시_원문을_유지한다_failopen(self):
+        # 2차(critique)가 깨진 JSON → 파싱 실패 → 폐기 없이 원문 유지
+        fake = FakeLlmClient(raws=[valid_five_questions_json(), "critique 깨짐 {불완전"])
+        service = QuizGeneratorService(fake)
+
+        response = await service.generate_quiz(make_request())
+
+        assert len(response.questions) == 5
+        assert response.fallback_used is False  # 폐기 없음
+        assert fake.call_count == 2
+
+    async def test_critique_비활성화시_호출하지_않는다(self, monkeypatch):
+        monkeypatch.setattr(quiz_service, "_CRITIQUE_ENABLED", False)
+        fake = FakeLlmClient(raw=valid_five_questions_json())
+        service = QuizGeneratorService(fake)
+
+        response = await service.generate_quiz(make_request())
+
+        assert len(response.questions) == 5
+        assert fake.call_count == 1  # 자기검증 호출 없음
+
+    async def test_critique_verdicts가_null이면_원문유지_failopen(self):
+        # {"verdicts": null} — 스키마 위반 응답. 루프 진입 전 원문 유지해야 하며
+        # (try 밖 TypeError로 500 나면 안 됨) 퀴즈가 그대로 나와야 한다.
+        bad = json.dumps({"verdicts": None}, ensure_ascii=False)
+        fake = FakeLlmClient(raws=[valid_five_questions_json(), bad])
+        service = QuizGeneratorService(fake)
+
+        response = await service.generate_quiz(make_request())
+
+        assert len(response.questions) == 5
+        assert response.fallback_used is False
+        assert fake.call_count == 2
+
+
+class Test입력크기상한:
+    """patient_notes 합본 상한 — 거대 입력으로 인한 토큰 비용/인젝션 표면 방어."""
+
+    async def test_메모_합본이_상한_초과면_거부된다(self):
+        huge = "가" * 3000  # _MAX_NOTES_BLOB_LEN(2000) 초과
+        service = QuizGeneratorService(FakeLlmClient(raw=valid_five_questions_json()))
+        with pytest.raises(InvalidPatientNotesError):
+            await service.generate_quiz(
+                make_request(patient_notes=[{"category": "activity", "answer_text": huge}])
+            )

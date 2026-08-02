@@ -9,6 +9,18 @@ class TagRequest(BaseModel):
     memory_entry_id: str  # UUID
 
 
+class TagLLMOut(BaseModel):
+    """LLM(Vision) 구조화 출력 강제용 스키마.
+
+    Gemini가 이 3개 키의 유효 JSON만 반환하도록 response_schema로 넘긴다
+    (memory_entry_id는 LLM 출력이 아니라 서비스가 붙인다).
+    """
+
+    location_tag: str
+    object_tags: list[str]
+    confidence: float
+
+
 class TagResponse(BaseModel):
     """POST /tag 응답 모델."""
 

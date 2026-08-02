@@ -12,9 +12,64 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useAuth } from './AuthContext.js';
 import type { RegisterData } from './AuthContext.js';
+import { API_BASE_URL, ML_LAST_PROVIDER_KEY } from './MemoryLinkApi.js';
 import { extractErrorMessage } from './extractErrorMessage.js';
+import { GoogleIcon, KakaoIcon } from './components/ProviderIcons.js';
 
 type Tab = 'login' | 'register';
+
+/** 직전에 성공한 소셜 로그인에 붙이는 "최근 사용" 배지. */
+function RecentBadge() {
+  return (
+    <span className="absolute right-3 rounded-full bg-black/10 px-2 py-0.5 text-[11px] font-medium text-[#3C4043]">
+      최근 사용
+    </span>
+  );
+}
+
+/**
+ * 소셜 로그인 버튼들. 백엔드 /auth/<provider>로 전체 페이지 이동(리다이렉트 OAuth).
+ * SPA 라우팅이 아니라 window.location으로 백엔드가 인가 페이지로 302한다.
+ * 직전에 쓴 제공자에는 "최근 사용" 배지를 달아, 어느 걸로 가입했는지 헷갈리지 않게 한다.
+ */
+function SocialLoginButtons() {
+  const last =
+    typeof window !== 'undefined'
+      ? localStorage.getItem(ML_LAST_PROVIDER_KEY)
+      : null;
+
+  return (
+    <div className="mt-6">
+      <div className="flex items-center gap-3 text-xs text-[#9AA09B]">
+        <span className="h-px flex-1 bg-[#E8E4DC]" />
+        간편 로그인
+        <span className="h-px flex-1 bg-[#E8E4DC]" />
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          window.location.href = `${API_BASE_URL}/auth/kakao`;
+        }}
+        className="relative mt-4 flex w-full min-h-[48px] items-center justify-center gap-2 rounded-full bg-[#FEE500] font-medium text-[#191600] transition-opacity hover:opacity-90"
+      >
+        <KakaoIcon className="h-5 w-5" />
+        카카오로 시작하기
+        {last === 'kakao' && <RecentBadge />}
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          window.location.href = `${API_BASE_URL}/auth/google`;
+        }}
+        className="relative mt-3 flex w-full min-h-[48px] items-center justify-center gap-2 rounded-full border border-[#DADCE0] bg-white font-medium text-[#3C4043] transition-colors hover:bg-[#F7F8F8]"
+      >
+        <GoogleIcon className="h-5 w-5" />
+        Google로 시작하기
+        {last === 'google' && <RecentBadge />}
+      </button>
+    </div>
+  );
+}
 
 // ─── 로그인 폼 ────────────────────────────────────────────────
 
@@ -83,7 +138,10 @@ function LoginForm() {
       </div>
 
       {error !== null && (
-        <p role="alert" className="text-sm text-[#C94040] bg-[#C94040]/10 px-3 py-2 rounded-lg">
+        <p
+          role="alert"
+          className="rounded-xl border border-[#C94040]/25 bg-[#FEF0F0] px-4 py-3 text-sm text-[#8b2020]"
+        >
           {error}
         </p>
       )}
@@ -239,7 +297,10 @@ function RegisterForm() {
       </div>
 
       {error !== null && (
-        <p role="alert" className="text-sm text-[#C94040] bg-[#C94040]/10 px-3 py-2 rounded-lg">
+        <p
+          role="alert"
+          className="rounded-xl border border-[#C94040]/25 bg-[#FEF0F0] px-4 py-3 text-sm text-[#8b2020]"
+        >
           {error}
         </p>
       )}
@@ -259,6 +320,10 @@ function RegisterForm() {
 
 export function LoginScreen() {
   const [activeTab, setActiveTab] = useState<Tab>('login');
+  // 백엔드 소셜 콜백이 실패하면 /login?error=social로 되돌아온다(state 불일치·동의 거부 등).
+  const socialFailed =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('error') === 'social';
 
   return (
     <div className="min-h-screen bg-[#F7F6F3] flex items-center justify-center px-4">
@@ -268,6 +333,17 @@ export function LoginScreen() {
           <h1 className="text-2xl font-bold text-[#1A1916]">Memory Link</h1>
           <p className="mt-1 text-sm text-[#6B6560]">인지 훈련 및 기억 연결 플랫폼</p>
         </div>
+
+        {socialFailed && (
+          <div className="mx-6 mb-2">
+            <p
+              role="alert"
+              className="rounded-xl border border-[#C94040]/25 bg-[#FEF0F0] px-4 py-3 text-sm text-[#8b2020]"
+            >
+              소셜 로그인에 실패했어요. 다시 시도해 주세요.
+            </p>
+          </div>
+        )}
 
         {/* 탭 */}
         <div className="flex border-b border-[#E8E4DC] mx-6">
@@ -298,6 +374,7 @@ export function LoginScreen() {
         {/* 폼 */}
         <div className="px-6 py-6">
           {activeTab === 'login' ? <LoginForm /> : <RegisterForm />}
+          <SocialLoginButtons />
         </div>
       </div>
     </div>

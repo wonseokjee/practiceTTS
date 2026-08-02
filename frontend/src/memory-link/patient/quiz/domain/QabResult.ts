@@ -10,7 +10,9 @@ export type QabSubtest =
   | 'naming'
   | 'repeat'
   | 'reading'
-  | 'ddk';
+  | 'ddk'
+  /** 의식 수준. 문항 정오답이 아니라 반응시간으로 0~3점을 매긴다. */
+  | 'loc';
 
 /** 제출용 단일 결과 (세션 완료 시 일괄 전송) */
 export interface QabResultInput {
@@ -22,7 +24,12 @@ export interface QabResultInput {
   assisted?: boolean;
   /** 수치 지표(ddk 감지 횟수 등). 없으면 생략 */
   metric?: number;
-  /** 발음 정확도 점수(0~100). 발화 항목(따라말하기/읽기)만. 없으면 생략 */
+  /**
+   * 점수. 두 가지 용도로 쓴다(subtest가 구분한다).
+   *  - repeat/reading: 발음 정확도 0~100
+   *  - loc: 그 시도의 의식 수준 점수 0~3
+   * 집계가 GROUP BY subtest라 서로 섞이지 않는다.
+   */
   score?: number;
 }
 
@@ -41,4 +48,27 @@ export interface QabSubtestSummary {
   /** 발음 정확도 평균(0..100). 발화 기록 없으면 null */
   avgScore: number | null;
   lastAt: string | null;
+}
+
+/** 한 검사의 특정 주차 성적 (백엔드 QabWeeklyPoint 미러) */
+export interface QabWeeklyPoint {
+  /** 그 주 월요일 (YYYY-MM-DD) */
+  weekStart: string;
+  total: number;
+  correct: number;
+  /** 0~100. loc는 정답률이 아니라 반응률이다. */
+  accuracy: number;
+  /** loc 의식 점수(0~3) 또는 발화 발음 점수(0~100). 없으면 null. */
+  avgScore: number | null;
+  /** ddk 평균 감지 횟수. 이해·발화 검사는 null. */
+  avgMetric: number | null;
+}
+
+/** 검사별 주차 추이 */
+export interface QabTrendSeries {
+  subtest: string;
+  /** 오래된 주부터 */
+  points: QabWeeklyPoint[];
+  /** 직전 검사 주 대비 정답률 변화(%p). 주가 2개 미만이면 null. */
+  deltaFromPrevious: number | null;
 }

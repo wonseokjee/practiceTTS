@@ -81,6 +81,37 @@ class QuizQuestionOut(BaseModel):
     hint_first_char: str | None = None
 
 
+class QuizLLMResponse(BaseModel):
+    """LLM 구조화 출력(JSON 모드) 강제용 스키마.
+
+    Gemini에 response_schema로 넘겨, 모델이 이 형식({"questions":[...]})의 유효
+    JSON만 반환하도록 강제한다. 코드펜스·군더더기·깨진 JSON을 원천 차단해 파싱
+    실패·재시도를 없앤다. **형식만** 보장하며, 의미 불변식(I1~I5: 정답이 보기 안에
+    있는지 등)은 여전히 QuizService._sanitize가 검증한다.
+    """
+
+    questions: list[QuizQuestionOut]
+
+
+class QuizCritiqueVerdict(BaseModel):
+    """자기검증 패스의 문항 1개 판정.
+
+    index: 검증 대상 문항의 0-기반 순번(입력 순서와 동일).
+    keep: 타당하면 True(유지), 부적절하면 False(폐기 → 백필 보충).
+    reason: 폐기 사유(로그/디버깅용, 환자에게 노출 안 됨).
+    """
+
+    index: int
+    keep: bool
+    reason: str = ""
+
+
+class QuizCritiqueResponse(BaseModel):
+    """자기검증 LLM 구조화 출력 스키마(문항별 유지/폐기 판정 목록)."""
+
+    verdicts: list[QuizCritiqueVerdict]
+
+
 class QuizGenerateResponse(BaseModel):
     """POST /quiz/generate 응답 모델."""
 

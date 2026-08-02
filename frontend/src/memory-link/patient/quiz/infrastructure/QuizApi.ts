@@ -5,6 +5,7 @@
 // - 응답은 런타임 타입가드로 검증한다 (MemoryEntryApi 스타일).
 
 import { memoryLinkApi } from '../../../shared/MemoryLinkApi.js';
+import type { QabTrendSeries } from '../domain/QabResult.js';
 import type {
   AttemptResult,
   BestScore,
@@ -61,6 +62,8 @@ export interface IQuizApi {
   ): Promise<{ saved: number }>;
   /** GET /quiz/qab-summary — QAB 검사별 회복 추세 (보호자용) */
   getQabSummary(): Promise<QabSubtestSummary[]>;
+  /** GET /quiz/qab-trend — 검사별 주차 추이 (보호자용) */
+  getQabTrend(weeks?: number): Promise<QabTrendSeries[]>;
 }
 
 // ─── 런타임 타입가드 ──────────────────────────────────────────────
@@ -307,5 +310,17 @@ export const quizApi: IQuizApi = {
       throw new Error(INVALID_RESPONSE_MESSAGE);
     }
     return items;
+  },
+
+  async getQabTrend(weeks?: number): Promise<QabTrendSeries[]> {
+    const res = await memoryLinkApi.get<unknown>('/quiz/qab-trend', {
+      params: weeks === undefined ? undefined : { weeks },
+    });
+    const obj = asRecord(res.data);
+    const series = obj?.series;
+    if (!Array.isArray(series)) {
+      throw new Error(INVALID_RESPONSE_MESSAGE);
+    }
+    return series as QabTrendSeries[];
   },
 };

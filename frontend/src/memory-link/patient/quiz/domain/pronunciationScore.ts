@@ -98,3 +98,88 @@ export function evaluateSpeech(
     caregiverLabel: caregiverGradeLabel(grade),
   };
 }
+
+// ─── Azure 발음 평가(음소 단위) 채점 정책 ─────────────────────────────
+//
+// 위 evaluateSpeech는 "STT가 인식한 텍스트와 목표의 문자열 근접도"라, STT 오인식과
+// 조음 오류를 구분하지 못한다. Azure Pronunciation Assessment는 오디오에서 직접
+// 음소 정확도를 재므로 이 한계가 없다. 서버 발음 평가가 가능하면 이쪽을 쓰고,
+// 불가능하면(WebSpeech·미구성) evaluateSpeech로 폴백한다.
+
+/** ai-service /pronunciation 응답의 점수 부분(0~100). */
+export interface AzurePronunciationScores {
+  /** 음소 정확도 평균 */
+  accuracyScore: number;
+  /** 유창성 */
+  fluencyScore: number;
+  /** 완성도(빠뜨림 없이 말한 비율) */
+  completenessScore: number;
+  /** 종합 발음 점수 */
+  pronunciationScore: number;
+  /** 운율(억양·강세). 미지원 시 null */
+  prosodyScore: number | null;
+}
+
+/**
+ * Azure 점수를 정답/오답·등급으로 매핑하는 관대한 임계값(0~100).
+ *
+ * 대상이 실어증·구음장애 어르신이라, 목적은 임상 등급이 아니라 격려와 진전
+ * 추적이다. 문자열 채점의 정답 경계(오류율 0.34 = 점수 66)보다 약간 더 관대하게
+ * good 경계를 60으로 둔다. 완벽주의로 좌절시키지 않는 것이 재활 지속에 중요하다.
+ */
+const AZURE_GRADE_THRESHOLDS = {
+  perfect: 90,
+  great: 75,
+  good: 60, // 이상이면 정답 처리
+  close: 40,
+} as const;
+
+/**
+ * 종합 점수를 낸다. 단어(따라말하기 낱말)는 조음 정확도가 전부지만,
+ * 문장은 "얼마나 많이 말했는가(완성도)"도 함께 봐야 빠뜨림에 정직하다.
+ */
+function azureComposite(
+  azure: AzurePronunciationScores,
+  mode: 'word' | 'sentence',
+): number {
+  if (mode === 'word') return azure.accuracyScore;
+  return Math.round(azure.accuracyScore * 0.6 + azure.completenessScore * 0.4);
+}
+
+function gradeFromScore(score: number): PronunciationGrade {
+  if (score >= AZURE_GRADE_THRESHOLDS.perfect) return 'perfect';
+  if (score >= AZURE_GRADE_THRESHOLDS.great) return 'great';
+  if (score >= AZURE_GRADE_THRESHOLDS.good) return 'good';
+  if (score >= AZURE_GRADE_THRESHOLDS.close) return 'close';
+  return 'retry';
+}
+
+/**
+ * Azure 발음 평가 결과로 발화를 종합 평가한다(evaluateSpeech의 음소 단위 대체).
+ *
+ * transcript가 비면(NoMatch → 전 점수 0) retry·오답으로 본다.
+ */
+export function evaluateFromAzure(
+  azure: AzurePronunciationScores,
+  transcript: string,
+  mode: 'word' | 'sentence',
+): SpeechEvaluation {
+  if (transcript.trim().length === 0) {
+    return {
+      grade: 'retry',
+      score: 0,
+      isCorrect: false,
+      encouragement: patientEncouragement('retry'),
+      caregiverLabel: caregiverGradeLabel('retry'),
+    };
+  }
+  const composite = azureComposite(azure, mode);
+  const grade = gradeFromScore(composite);
+  return {
+    grade,
+    score: composite,
+    isCorrect: isGradePass(grade),
+    encouragement: patientEncouragement(grade),
+    caregiverLabel: caregiverGradeLabel(grade),
+  };
+}

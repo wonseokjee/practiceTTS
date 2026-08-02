@@ -21,7 +21,13 @@ interface PictureNamingItemProps {
   onSkip?: () => void;
 }
 
-type NamingStatus = 'idle' | 'listening' | 'recognized' | 'error';
+// 'processing' = 녹음 종료 후 서버 인식 응답 대기(1~2초). 무반응 오해 방지용.
+type NamingStatus =
+  | 'idle'
+  | 'listening'
+  | 'processing'
+  | 'recognized'
+  | 'error';
 
 /** 그림 이름대기(보고 말하기) 문항 */
 export function PictureNamingItem({
@@ -69,6 +75,7 @@ export function PictureNamingItem({
   // 서버 STT는 자동 종료되지 않으므로 사용자가 발화 종료를 알린다(→ 인식 실행).
   // Web Speech는 stop()이 최종 결과를 확정한다. 두 구현 모두에서 안전.
   const handleStopRecord = (): void => {
+    setStatus('processing');
     stt.stop();
   };
 
@@ -151,6 +158,11 @@ export function PictureNamingItem({
           듣고 있어요… 그림의 이름을 또박또박 말씀해주세요.
         </p>
       )}
+      {!showFeedback && status === 'processing' && (
+        <p className="text-base text-[#2D6A56]" role="status">
+          인식하고 있어요…
+        </p>
+      )}
       {!showFeedback && status === 'error' && errorMessage.length > 0 && (
         <p className="text-base text-[#7A2E15]" role="alert">
           {errorMessage}
@@ -169,6 +181,16 @@ export function PictureNamingItem({
             >
               <span aria-hidden="true" className="text-2xl">✓</span>
               다 말했어요
+            </button>
+          ) : status === 'processing' ? (
+            <button
+              type="button"
+              disabled
+              className="flex min-h-[64px] items-center justify-center gap-2 rounded-md border-2 border-[#C5C8C5] bg-white px-6 py-4 text-xl font-medium text-[#A8AFA9]"
+              aria-label="인식 중"
+            >
+              <span aria-hidden="true" className="animate-pulse text-2xl">⏳</span>
+              인식 중…
             </button>
           ) : (
             <button

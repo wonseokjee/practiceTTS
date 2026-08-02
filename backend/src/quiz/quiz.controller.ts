@@ -19,6 +19,7 @@ import {
 } from '@nestjs/common';
 import type { User } from '../auth/entities/user.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { OnboardingGuard } from '../auth/onboarding.guard';
 import { resolveEffectivePatientId } from '../auth/effective-patient-id.util';
 import { GenerateQuizDto } from './dto/generate-quiz.dto';
 import { QuizSetSummaryDto } from './dto/quiz-set-summary.dto';
@@ -28,6 +29,7 @@ import { QuizError, QuizErrorCode } from './errors/quiz.errors';
 import {
   BestScoreResult,
   QabSummaryResult,
+  QabTrendResult,
   QuizSetDetail,
   RequestGenerationResult,
   SaveQabResultsResult,
@@ -47,7 +49,7 @@ interface AuthenticatedRequest extends Request {
  * - 비즈니스 로직 없음 (QuizService 위임). QuizError → HttpException 매핑만 담당.
  */
 @Controller()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, OnboardingGuard)
 export class QuizController {
   constructor(private readonly quizService: QuizService) {}
 
@@ -162,6 +164,29 @@ export class QuizController {
     const effectivePatientId = resolveEffectivePatientId(req.user);
     try {
       return await this.quizService.saveQabResults(effectivePatientId, dto);
+    } catch (error) {
+      throw this.mapError(error);
+    }
+  }
+
+  /**
+   * GET /quiz/qab-trend
+   * 검사별 주차 추이. 보호자가 회복 방향(나아지는지)을 본다.
+   */
+  @Get('quiz/qab-trend')
+  async getQabTrend(
+    @Req() req: AuthenticatedRequest,
+    @Query('weeks') weeks?: string,
+  ): Promise<QabTrendResult> {
+    const effectivePatientId = resolveEffectivePatientId(req.user);
+    // 진료 리포트는 12주(약 3개월)를 보고 싶어 한다. 대시보드 카드는 8주면
+    // 충분하다. 범위를 벗어난 값은 기본값으로 떨어뜨린다 — 사용자 입력으로
+    // 무제한 기간을 스캔하게 두지 않는다.
+    const parsed = Number(weeks);
+    const safeWeeks =
+      Number.isInteger(parsed) && parsed >= 1 && parsed <= 52 ? parsed : 8;
+    try {
+      return await this.quizService.getQabTrend(effectivePatientId, safeWeeks);
     } catch (error) {
       throw this.mapError(error);
     }

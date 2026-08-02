@@ -18,21 +18,30 @@ import {
 import type { ReactNode } from 'react';
 import {
   memoryLinkApi,
+  ML_LAST_PROVIDER_KEY,
   ML_PATIENT_MODE_KEY,
   ML_TOKEN_KEY,
 } from './MemoryLinkApi.js';
 
 // ─── 도메인 타입 ─────────────────────────────────────────────
 
+/** 수동 연결 가능한 소셜 제공자. */
+export type SocialProvider = 'kakao' | 'google';
+
 export interface AuthUser {
   id: string;
-  email: string;
+  /** 소셜 로그인은 이메일이 없을 수 있다(카카오 동의 선택). */
+  email: string | null;
   role: 'caregiver' | 'patient' | 'therapist';
   displayName: string;
   /** 보호자(caregiver)인 경우 연결된 환자 ID, 없으면 null */
   patientId: string | null;
   /** 보호자가 돌보는 환자(어르신) 성함 — 환자 모드 인사말 등에 사용. 없으면 null */
   patientDisplayName: string | null;
+  /** 소셜 최초 로그인 후 어르신 성함·PIN 미입력 상태. true면 온보딩으로 라우팅. */
+  needsOnboarding: boolean;
+  /** 이 계정에 연결된 소셜 제공자 목록(계정 병합). 설정의 "연결된 계정"에 표시. */
+  linkedProviders: SocialProvider[];
 }
 
 export interface RegisterData {
@@ -54,11 +63,14 @@ interface LoginResponseRaw {
 
 interface MeResponseRaw {
   id: string;
-  email: string;
+  email: string | null;
   role: string;
   displayName: string;
   patientId: string | null;
   patientDisplayName?: string | null;
+  needsOnboarding?: boolean;
+  authProvider?: string;
+  linkedProviders?: unknown;
 }
 
 // ─── 런타임 타입 검증 ─────────────────────────────────────────
@@ -77,7 +89,7 @@ function isMeResponse(value: unknown): value is MeResponseRaw {
   const obj = value as Record<string, unknown>;
   return (
     typeof obj.id === 'string' &&
-    typeof obj.email === 'string' &&
+    (obj.email === null || typeof obj.email === 'string') &&
     typeof obj.role === 'string' &&
     typeof obj.displayName === 'string'
   );
@@ -88,6 +100,11 @@ function toAuthUser(raw: MeResponseRaw): AuthUser {
     raw.role === 'caregiver' || raw.role === 'patient' || raw.role === 'therapist'
       ? raw.role
       : 'patient';
+  const linkedProviders = Array.isArray(raw.linkedProviders)
+    ? raw.linkedProviders.filter(
+        (p): p is SocialProvider => p === 'kakao' || p === 'google',
+      )
+    : [];
   return {
     id: raw.id,
     email: raw.email,
@@ -95,6 +112,8 @@ function toAuthUser(raw: MeResponseRaw): AuthUser {
     displayName: raw.displayName,
     patientId: raw.patientId ?? null,
     patientDisplayName: raw.patientDisplayName ?? null,
+    needsOnboarding: raw.needsOnboarding ?? false,
+    linkedProviders,
   };
 }
 
@@ -106,6 +125,10 @@ interface AuthContextValue {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
+  /** 소셜 콜백 일회용 코드를 JWT로 교환해 로그인 상태로 만든다. */
+  loginWithCode: (code: string) => Promise<void>;
+  /** 현재 토큰으로 사용자 정보를 다시 불러온다(온보딩 완료 후 등). */
+  refreshUser: () => Promise<void>;
   logout: () => void;
   /** 보호자 세션 내 화면 모드 — true면 환자 화면(/patient) 노출 */
   isPatientMode: boolean;
@@ -172,6 +195,8 @@ function buildDevUser(mode: DevAuthMode): AuthUser | null {
       displayName: '로컬 테스트 환자',
       patientId: null,
       patientDisplayName: null,
+      needsOnboarding: false,
+      linkedProviders: [],
     };
   }
   if (mode === 'caregiver') {
@@ -183,6 +208,8 @@ function buildDevUser(mode: DevAuthMode): AuthUser | null {
       patientId:
         (import.meta.env.VITE_DEV_PATIENT_ID as string | undefined) ?? null,
       patientDisplayName: '로컬 테스트 어르신',
+      needsOnboarding: false,
+      linkedProviders: [],
     };
   }
   return null;
@@ -363,6 +390,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [saveToken],
   );
 
+  /** 소셜 콜백 일회용 코드 → JWT 교환 후 로그인 상태로 만든다. */
+  const loginWithCode = useCallback(
+    async (code: string): Promise<void> => {
+      const response = await memoryLinkApi.post<unknown>('/auth/token', {
+        code,
+      });
+      const raw = response.data;
+      if (!isLoginResponse(raw)) {
+        throw new Error('서버 응답 형식이 올바르지 않습니다.');
+      }
+      saveToken(raw.accessToken);
+
+      const meResponse = await memoryLinkApi.get<unknown>('/auth/me');
+      const meRaw = meResponse.data;
+      if (!isMeResponse(meRaw)) {
+        throw new Error('사용자 정보 형식이 올바르지 않습니다.');
+      }
+      // 어느 소셜로 로그인했는지 기록 → 다음 로그인 화면에 "최근 사용" 배지.
+      if (meRaw.authProvider === 'kakao' || meRaw.authProvider === 'google') {
+        localStorage.setItem(ML_LAST_PROVIDER_KEY, meRaw.authProvider);
+      }
+      setUser(toAuthUser(meRaw));
+    },
+    [saveToken],
+  );
+
+  /** 현재 토큰으로 사용자 정보를 다시 불러온다(온보딩 완료 후 등). */
+  const refreshUser = useCallback(async (): Promise<void> => {
+    const meResponse = await memoryLinkApi.get<unknown>('/auth/me');
+    const meRaw = meResponse.data;
+    if (isMeResponse(meRaw)) {
+      setUser(toAuthUser(meRaw));
+    }
+  }, []);
+
   /** 로그아웃 */
   const logout = useCallback(() => {
     localStorage.removeItem(ML_PATIENT_MODE_KEY);
@@ -400,6 +462,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         login,
         register,
+        loginWithCode,
+        refreshUser,
         logout,
         isPatientMode,
         enterPatientMode,

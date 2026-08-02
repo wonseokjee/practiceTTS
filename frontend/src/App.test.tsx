@@ -138,6 +138,9 @@ vi.mock('react-router-dom', async (importOriginal) => {
     Route: ({ element }: { path?: string; element: React.ReactNode }) => <>{element}</>,
     Navigate: () => null,
     useNavigate: () => vi.fn(),
+    // Route mock이 모든 element를 렌더하므로 /auth/callback의 SocialCallbackScreen도
+    // 마운트된다. 그 화면이 쓰는 useSearchParams를 모킹해 실제 Router 요구를 피한다.
+    useSearchParams: () => [new URLSearchParams(''), vi.fn()],
   };
 });
 

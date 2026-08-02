@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# 검사 그림 작업용 임시 페이지 (커밋 대상 아님)
+public/_candidates.html
+public/_candidates.json
+public/_process.html

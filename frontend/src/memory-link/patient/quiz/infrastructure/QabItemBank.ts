@@ -9,6 +9,7 @@
 // 단어이해 풀: 기존 wordComp 이미지(74종)로 자동 생성한 확장 뱅크.
 // (표준 wordComp 검사 JSON은 그대로 두고, 혼합 퀴즈용 풀만 별도로 확장한다.)
 import wordPoolData from '../../../../assets/data/qabWordPool.json';
+import namingPhotos from '../../../../assets/data/namingPhotos.json';
 import sentCompData from '../../../../assets/data/sentCompItems.json';
 // 거울 문항(정답/오답 반전)으로 문장이해 풀을 새 이미지 없이 2배로 확장한다.
 import sentMirrorData from '../../../../assets/data/qabSentMirror.json';
@@ -62,18 +63,132 @@ function shuffle<T>(items: readonly T[]): T[] {
   return result;
 }
 
+// ── 통제된 유인지(distractor) 생성 ─────────────────────────────
+//
+// 기존에는 오답지가 문항 JSON에 무작위 무관 단어로 박혀 있어, 같은 범주 유인지가
+// 없으면 소거법으로 다 맞아 변별력이 없었다(예: 비행기 ↔ 바나나·우체통).
+// 표준 실어증 검사(K-WAB, BNT)처럼 "같은 의미 범주 2 + 무관 1"로 유인지를
+// 구성해, 범주만 알면 못 맞추고 '정확히 그 단어'를 이해해야 맞도록 만든다.
+
+/** slug → 의미 범주. 미등록 slug는 'object'로 폴백(크래시 방지). (테스트 노출) */
+export const WORD_CATEGORY: Record<string, string> = {
+  // 동물
+  butterfly: 'animal', cat: 'animal', chick: 'animal', dog: 'animal',
+  elephant: 'animal', lion: 'animal', tiger: 'animal', turtle: 'animal',
+  whale: 'animal',
+  // 음식
+  apple: 'food', banana: 'food', bread: 'food', candy: 'food', grape: 'food',
+  juice: 'food', melon: 'food', milk: 'food', orange: 'food', pear: 'food',
+  strawberry: 'food', sweet_potato: 'food', tomato: 'food', watermelon: 'food',
+  // 탈것
+  airplane: 'vehicle', bicycle: 'vehicle', bus: 'vehicle', car: 'vehicle',
+  ship: 'vehicle', train: 'vehicle',
+  // 식물
+  flower: 'plant', tree: 'plant',
+  // 장소
+  hospital: 'place', library: 'place', pharmacy: 'place', pool: 'place',
+  school: 'place',
+  // 사물(가장 큰 범주 — 생활용품·도구·의류 등)
+  bag: 'object', balloon: 'object', basket: 'object', bed: 'object',
+  blanket: 'object', book: 'object', chair: 'object', clock: 'object',
+  comb: 'object', computer: 'object', desk: 'object', glasses: 'object',
+  gloves: 'object', guitar: 'object', hammer: 'object', hat: 'object',
+  kettle: 'object', key: 'object', knife: 'object', ladder: 'object',
+  ladle: 'object', mailbox: 'object', mirror: 'object', notebook: 'object',
+  pencil: 'object', phone: 'object', piano: 'object', pot: 'object',
+  refrigerator: 'object', rice_cooker: 'object', sand: 'object',
+  scissors: 'object', shoes: 'object', soap: 'object', socks: 'object',
+  toothbrush: 'object', toothpaste: 'object', towel: 'object',
+  trumpet: 'object', umbrella: 'object', washing_machine: 'object',
+  spine: 'body', student: 'person',
+};
+
+interface MasterWord {
+  slug: string;
+  label: string;
+  imageUrl: string;
+  category: string;
+}
+
+/** 정답 선택지 기준 마스터 단어 풀(유인지 후보). slug 기준 중복 제거. */
+const MASTER_WORDS: MasterWord[] = (() => {
+  const bySlug = new Map<string, MasterWord>();
+  for (const it of WORD_ITEMS) {
+    const correct = it.choices.find((c) => c.isCorrect);
+    if (!correct) continue;
+    const slug = slugFromUrl(correct.imageUrl);
+    if (bySlug.has(slug)) continue;
+    bySlug.set(slug, {
+      slug,
+      label: correct.label,
+      imageUrl: correct.imageUrl,
+      category: WORD_CATEGORY[slug] ?? 'object',
+    });
+  }
+  return [...bySlug.values()];
+})();
+
+/** 통제된 유인지 3개를 골라 정답과 함께 4보기를 만든다(같은 범주 2 + 무관 1). */
+function buildControlledChoices(target: MasterWord) {
+  const sameCat = shuffle(
+    MASTER_WORDS.filter(
+      (w) => w.slug !== target.slug && w.category === target.category,
+    ),
+  );
+  const otherCat = shuffle(
+    MASTER_WORDS.filter((w) => w.category !== target.category),
+  );
+
+  const foils: MasterWord[] = [];
+  foils.push(...sameCat.slice(0, 2)); // 같은 범주 2 (부족하면 그만큼만)
+  for (const w of otherCat) {
+    // 무관 1 + 같은 범주가 모자랄 때 추가 보충
+    if (foils.length >= 3) break;
+    if (!foils.some((f) => f.slug === w.slug)) foils.push(w);
+  }
+  // 그래도 3개가 안 되면(풀이 아주 작을 때) 아무거나 채운다.
+  if (foils.length < 3) {
+    for (const w of shuffle(MASTER_WORDS)) {
+      if (foils.length >= 3) break;
+      if (w.slug !== target.slug && !foils.some((f) => f.slug === w.slug)) {
+        foils.push(w);
+      }
+    }
+  }
+
+  const raw = [
+    { slug: target.slug, label: target.label, imageUrl: target.imageUrl, isCorrect: true },
+    ...foils.slice(0, 3).map((f) => ({
+      slug: f.slug, label: f.label, imageUrl: f.imageUrl, isCorrect: false,
+    })),
+  ];
+  return shuffle(raw).map((c, idx) => ({
+    choiceId: `${target.slug}_c${idx}`,
+    label: c.label,
+    imageUrl: c.imageUrl,
+    isCorrect: c.isCorrect,
+  }));
+}
+
 function toWordItem(it: RawWordItem): QabImageItem {
+  const correct = it.choices.find((c) => c.isCorrect);
+  const slug = correct ? slugFromUrl(correct.imageUrl) : '';
+  const target = MASTER_WORDS.find((w) => w.slug === slug);
+  // 마스터 풀에 없으면(예외) 기존 JSON 보기로 폴백해 안전하게 렌더.
+  const choices = target
+    ? buildControlledChoices(target)
+    : shuffle(it.choices).map((c) => ({
+        choiceId: c.choiceId,
+        label: c.label,
+        imageUrl: c.imageUrl,
+        isCorrect: c.isCorrect,
+      }));
   return {
     itemId: it.itemId,
     category: 'word',
     promptText: it.targetWord,
     instruction: WORD_INSTRUCTION,
-    choices: shuffle(it.choices).map((c) => ({
-      choiceId: c.choiceId,
-      label: c.label,
-      imageUrl: c.imageUrl,
-      isCorrect: c.isCorrect,
-    })),
+    choices,
   };
 }
 
@@ -95,16 +210,41 @@ function toSentItem(it: RawSentItem): QabImageItem {
   };
 }
 
+/** 실물 사진이 준비된 단어 slug 집합. */
+const NAMING_PHOTO_SLUGS = new Set<string>(namingPhotos.slugs);
+
+/** 이미지 URL에서 파일명 slug를 뽑는다. "/a/b/apple.svg" → "apple". */
+function slugFromUrl(url: string): string {
+  return url.split('/').pop()!.replace(/\.[^.]+$/, '');
+}
+
 /**
- * 그림 이름대기(검사5) 문항으로 변환 — 단어이해 정답 그림을 대상 그림으로 재사용한다.
- * 정답 선택지가 없으면(데이터 이상) null.
+ * 그림 이름대기(검사5) 문항으로 변환.
+ *
+ * 왜 이름대기만 사진이고 단어이해는 선화인가:
+ *   표준 실어증 검사(K-WAB, BNT)가 선화를 쓰는 건 '진단 도구로서의 통제'
+ *   때문이다 — 사진은 색·품종·조명·각도가 섞여, 틀렸을 때 단어를 몰라서인지
+ *   그 사진 속 개체를 못 알아봐서인지 구분이 안 된다. 표준화·재현성에는
+ *   선화가 맞다.
+ *   그러나 이 앱은 진단이 아니라 가정 자가 훈련이다. 여기서는 엄밀성보다
+ *   환자의 참여·반응이 중요하고, 고령·치매 환자는 산출 과제에서 추상적
+ *   선화보다 실물 사진에 더 잘 반응한다. 그래서 이름대기는 사진으로 간다.
+ *   단어이해(4지선다)는 변별이 핵심이라 통제를 유지(선화)한다 — 정답만
+ *   사진이면 단어를 몰라도 사진만 골라 다 맞아 검사가 무효가 된다.
+ *
+ * 구현: 사진이 준비된 단어는 /assets/images/naming/<slug>.png를, 아직 없는
+ * 단어는 단어이해 SVG를 그대로 쓴다(폴백). 정답 선택지가 없으면 null.
  */
 function toNamingItem(it: RawWordItem): QabNamingItem | null {
   const correct = it.choices.find((c) => c.isCorrect);
   if (!correct) return null;
+  const slug = slugFromUrl(correct.imageUrl);
+  const imageUrl = NAMING_PHOTO_SLUGS.has(slug)
+    ? `/assets/images/naming/${slug}.png`
+    : correct.imageUrl;
   return {
     itemId: `naming_${it.itemId}`,
-    imageUrl: correct.imageUrl,
+    imageUrl,
     targetWord: it.targetWord,
     instruction: NAMING_INSTRUCTION,
   };

@@ -21,12 +21,27 @@ import type {
   LocTrialResponseDTO,
 } from './dto/LocTrialDTO.js';
 import { getLocScoreLabel } from '../domain/LocScorer.js';
+import type { IAssessmentResultSubmitter } from '../../shared/infrastructure/AssessmentResultSubmitter.js';
+import {
+  createAssessmentSessionToken,
+  toQabResults,
+} from '../../shared/infrastructure/AssessmentResultSubmitter.js';
 
 export class FinishLocAssessmentUseCase {
   private readonly resultRepository: ILocResultRepository;
+  private readonly resultSubmitter: IAssessmentResultSubmitter | null;
 
-  constructor(resultRepository: ILocResultRepository) {
+  /**
+   * @param resultSubmitter 서버 저장. 없으면 로컬에만 남긴다(기존 동작).
+   *   로컬 저장은 기기·브라우저에 묶여 있어 캐시를 지우면 사라지고 보호자도
+   *   볼 수 없다. 임상 기록이므로 서버에 남기는 쪽이 기본이다.
+   */
+  constructor(
+    resultRepository: ILocResultRepository,
+    resultSubmitter: IAssessmentResultSubmitter | null = null,
+  ) {
     this.resultRepository = resultRepository;
+    this.resultSubmitter = resultSubmitter;
   }
 
   /**
@@ -68,6 +83,26 @@ export class FinishLocAssessmentUseCase {
           err,
         ),
       );
+    }
+
+    // 서버 저장 — 보호자의 회복 추이에 반영된다.
+    //
+    // 시도마다 한 행씩 남긴다. isCorrect는 '반응이 있었는가'로,
+    // score는 그 시도의 0~3점으로 매핑한다(집계상 반응률·평균점수가 된다).
+    // 실패해도 던지지 않는다 — 검사는 이미 끝났고, 여기서 오류를 올리면
+    // 환자가 마친 뒤 오류 화면을 본다.
+    if (this.resultSubmitter !== null) {
+      await this.resultSubmitter.submit({
+        sessionToken: createAssessmentSessionToken(),
+        results: toQabResults(
+          'loc',
+          result.trials.map((trial) => ({
+            itemRef: `trial-${trial.trialNumber}`,
+            isCorrect: trial.latency !== null,
+            score: trial.score,
+          })),
+        ),
+      });
     }
 
     // DTO 변환 (도메인 엔티티 직접 노출 금지)

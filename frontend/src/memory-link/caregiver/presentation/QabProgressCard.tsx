@@ -5,12 +5,18 @@
 // 데이터가 없으면(아직 검사 전) 카드를 숨긴다 — 대시보드를 비우지 않게.
 
 import { useEffect, useState } from 'react';
+import { QabSparkline } from './components/QabSparkline.js';
 import { quizApi } from '../../patient/quiz/infrastructure/QuizApi.js';
-import type { QabSubtestSummary } from '../../patient/quiz/domain/QabResult.js';
+import type {
+  QabSubtestSummary,
+  QabTrendSeries,
+} from '../../patient/quiz/domain/QabResult.js';
 
 interface QabProgressCardProps {
   /** 요약 조회 함수 (테스트 주입용) */
   fetchSummary?: () => Promise<QabSubtestSummary[]>;
+  /** 주차별 기록 상세 열기. 없으면 링크를 감춘다(테스트·독립 사용 대비). */
+  onOpenReport?: () => void;
 }
 
 /** 검사 종류 → 한글 라벨 + 표시 순서 */
@@ -21,14 +27,37 @@ const SUBTEST_LABELS: Record<string, string> = {
   repeat: '따라 말하기',
   reading: '소리 내어 읽기',
   ddk: '말운동(퍼터커)',
+  loc: '의식 수준',
 };
-const SUBTEST_ORDER = ['word', 'sentence', 'naming', 'repeat', 'reading', 'ddk'];
+const SUBTEST_ORDER = [
+  'loc',
+  'word',
+  'sentence',
+  'naming',
+  'repeat',
+  'reading',
+  'ddk',
+];
+
+/**
+ * loc는 다른 검사와 지표의 의미가 다르다.
+ *  - accuracy: 정답률이 아니라 **반응률**(무반응이 아닌 시도 비율)
+ *  - avgScore: 발음 점수가 아니라 **의식 수준 점수**(0~3)
+ * 같은 말로 표기하면 보호자가 오해한다 — 발음 검사가 아닌데 "발음 0점"이
+ * 뜨는 식이다.
+ */
+const IS_REACTION_BASED = (subtest: string): boolean => subtest === 'loc';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
-export function QabProgressCard({ fetchSummary }: QabProgressCardProps) {
+export function QabProgressCard({
+  fetchSummary,
+  onOpenReport,
+}: QabProgressCardProps) {
   const [state, setState] = useState<LoadState>('loading');
   const [items, setItems] = useState<QabSubtestSummary[]>([]);
+  // 주차 추이. 실패해도 카드 전체를 죽이지 않는다 — 요약만으로도 쓸모가 있다.
+  const [trend, setTrend] = useState<Map<string, QabTrendSeries>>(new Map());
 
   useEffect(() => {
     let alive = true;
@@ -42,6 +71,16 @@ export function QabProgressCard({ fetchSummary }: QabProgressCardProps) {
       .catch(() => {
         if (alive) setState('error');
       });
+    void quizApi
+      .getQabTrend()
+      .then((series) => {
+        if (!alive) return;
+        setTrend(new Map(series.map((x) => [x.subtest, x])));
+      })
+      .catch(() => {
+        // 추이는 부가 정보다. 없으면 요약만 보여준다.
+      });
+
     return () => {
       alive = false;
     };
@@ -64,6 +103,16 @@ export function QabProgressCard({ fetchSummary }: QabProgressCardProps) {
         환자분이 푼 검사별 정답률이에요. 꾸준히 오르는지 지켜봐 주세요.
       </p>
 
+      {onOpenReport !== undefined && (
+        <button
+          type="button"
+          onClick={onOpenReport}
+          className="mb-4 min-h-[44px] text-sm font-medium text-[#2D6A56] hover:underline"
+        >
+          주차별 기록 보기 →
+        </button>
+      )}
+
       <ul className="flex flex-col gap-3">
         {sorted.map((it) => {
           const label = SUBTEST_LABELS[it.subtest] ?? it.subtest;
@@ -72,8 +121,9 @@ export function QabProgressCard({ fetchSummary }: QabProgressCardProps) {
           return (
             <li key={it.subtest} className="flex flex-col gap-1">
               <div className="flex items-baseline justify-between">
-                <span className="text-sm font-medium text-[#1F2A26]">
+                <span className="flex items-center gap-2 text-sm font-medium text-[#1F2A26]">
                   {label}
+                  <WeeklyTrend series={trend.get(it.subtest)} label={label} />
                 </span>
                 <span className="text-sm tabular-nums text-[#5C6661]">
                   {it.subtest === 'ddk' && it.maxMetric !== null ? (
@@ -81,17 +131,20 @@ export function QabProgressCard({ fetchSummary }: QabProgressCardProps) {
                   ) : null}
                   {it.total > 0 ? (
                     <>
-                      정답률{' '}
+                      {IS_REACTION_BASED(it.subtest) ? '반응률' : '정답률'}{' '}
                       <span className="font-bold text-[#2D6A56]">
                         {it.accuracy}%
                       </span>{' '}
                       ({it.correct}/{it.total}){assistedSuffix}
-                      {/* 발화 항목(따라말하기/읽기) 발음 정확도 평균 — 보호자용 숫자 */}
+                      {/* 발화 항목은 발음 정확도(0~100), loc는 의식 수준 점수(0~3) */}
                       {it.avgScore !== null && (
                         <>
-                          {' · 발음 '}
+                          {IS_REACTION_BASED(it.subtest)
+                            ? ' · 평균 '
+                            : ' · 발음 '}
                           <span className="font-bold text-[#2D6A56]">
                             {it.avgScore}점
+                            {IS_REACTION_BASED(it.subtest) ? ' / 3' : ''}
                           </span>
                         </>
                       )}
@@ -110,7 +163,7 @@ export function QabProgressCard({ fetchSummary }: QabProgressCardProps) {
                   aria-valuenow={it.accuracy}
                   aria-valuemin={0}
                   aria-valuemax={100}
-                  aria-label={`${label} 정답률 ${it.accuracy}%`}
+                  aria-label={`${label} ${IS_REACTION_BASED(it.subtest) ? "반응률" : "정답률"} ${it.accuracy}%`}
                 >
                   <div
                     className="h-full rounded-full bg-[#2D6A56] transition-[width] duration-[250ms] ease-in-out"
@@ -123,5 +176,49 @@ export function QabProgressCard({ fetchSummary }: QabProgressCardProps) {
         })}
       </ul>
     </section>
+  );
+}
+
+// ─── 주차 추이 ──────────────────────────────────────────────────
+
+/**
+ * 검사 하나의 주차 추이 — 스파크라인 + 직전 검사 주 대비 변화.
+ *
+ * 델타를 상태색(빨강/초록)으로 칠하지 않는다. 의도적인 선택이다.
+ *
+ * 이 수치는 주당 문항 10~20개에서 나온 값이라 주간 변동이 크다. 2문항 차이가
+ * "-20%p"로 보인다. 치매는 진행성이라 등락도 정상이다. 그걸 빨간색으로
+ * 칠하면 (a) 노이즈에 보호자가 놀라고 (b) 진짜 하락과 구분이 안 된다.
+ *
+ * 대신 방향과 숫자를 담담히 보여주고, 옆의 스파크라인이 "한 번 튄 건지
+ * 추세인지"를 판단하게 한다. 판단은 보호자와 임상의의 몫이다.
+ */
+function WeeklyTrend({
+  series,
+  label,
+}: {
+  series: QabTrendSeries | undefined;
+  label: string;
+}) {
+  if (series === undefined || series.points.length < 2) {
+    return null;
+  }
+
+  const values = series.points.map((p) => p.accuracy);
+  const delta = series.deltaFromPrevious;
+
+  return (
+    <span className="flex items-center gap-1.5">
+      <QabSparkline
+        values={values}
+        label={`${label} 최근 ${values.length}주 추이: ${values.join(', ')}%`}
+      />
+      {delta !== null && delta !== 0 && (
+        <span className="text-xs tabular-nums text-[#5C6661]">
+          {delta > 0 ? '▲' : '▼'}
+          {Math.abs(delta)}%p
+        </span>
+      )}
+    </span>
   );
 }
