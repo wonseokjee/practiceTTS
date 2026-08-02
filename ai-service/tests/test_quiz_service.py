@@ -468,3 +468,70 @@ class TestLLM호출실패:
         # Act / Assert
         with pytest.raises(GeminiApiError):
             await service.generate_quiz(make_request())
+
+
+# ======================================================================
+# Tier 1: 오답지/빈칸 타당성 검증 (문항이 '단일 정답'을 갖도록)
+# ======================================================================
+class Test문항타당성:
+    """_sanitize_multiple_choice / _sanitize_fill_blank 직접 단위 검증.
+
+    generate_quiz 를 거치면 백필이 무효 문항을 대체해 '폐기'를 직접 관찰하기
+    어려우므로, sanitizer 를 직접 호출해 폐기(None) 여부를 결정적으로 검증한다.
+    """
+
+    NOTES = "공원에서 산책했어요\n손녀와 사과를 먹었어요\n날씨가 맑았어요"
+
+    def _svc(self) -> QuizGeneratorService:
+        return QuizGeneratorService(FakeLlmClient())
+
+    def test_MC_중복보기는_폐기된다(self):
+        svc = self._svc()
+        # 오답 하나가 정답과 동일 → 실질 3보기 → 무효
+        out = svc._sanitize_multiple_choice(
+            "무엇을 먹었나요?", "사과", ["사과", "사과", "포도", "수박"], self.NOTES
+        )
+        assert out is None
+
+    def test_MC_오답이_메모에_실재하면_폐기된다(self):
+        svc = self._svc()
+        # '공원'은 메모에 실재 → 정답 '사과' 외에 또 하나의 참이 되어 정답 2개
+        out = svc._sanitize_multiple_choice(
+            "무엇을 먹었나요?", "사과", ["사과", "공원", "수박", "참외"], self.NOTES
+        )
+        assert out is None
+
+    def test_MC_정상_문항은_보기가_보존되고_정답이_유지된다(self):
+        svc = self._svc()
+        out = svc._sanitize_multiple_choice(
+            "무엇을 먹었나요?", "사과", ["사과", "포도", "수박", "참외"], self.NOTES
+        )
+        assert out is not None
+        # 셔플되어도 4개 보기 집합과 정답은 보존된다
+        assert set(out.choices) == {"사과", "포도", "수박", "참외"}
+        assert out.correct_answer == "사과"
+
+    def test_fillblank_빈칸없으면_폐기된다(self):
+        svc = self._svc()
+        # 밑줄(빈칸)이 없어 풀 수 없는 문항
+        out = svc._sanitize_fill_blank(
+            "손녀와 사과를 먹었어요.", "사과", "사", self.NOTES
+        )
+        assert out is None
+
+    def test_fillblank_정답이_문장에_노출되면_폐기된다(self):
+        svc = self._svc()
+        # 빈칸은 있으나 정답 '사과'가 문장에 그대로 노출 → 답이 보이는 무효 문항
+        out = svc._sanitize_fill_blank(
+            "손녀와 ___를 먹었어요. 사과 맛있었죠.", "사과", "사", self.NOTES
+        )
+        assert out is None
+
+    def test_fillblank_정상_문항은_통과한다(self):
+        svc = self._svc()
+        out = svc._sanitize_fill_blank(
+            "손녀와 ___를 먹었어요.", "사과", "사", self.NOTES
+        )
+        assert out is not None
+        assert out.correct_answer == "사과"
+        assert out.hint_first_char == "사"

@@ -14,6 +14,7 @@ import asyncio
 import json
 import logging
 import os
+import random
 import re
 import time
 
@@ -306,19 +307,37 @@ class QuizGeneratorService:
     def _sanitize_multiple_choice(
         self, prompt: str, correct_answer: str, choices: object, notes_blob: str
     ) -> QuizQuestionOut | None:
-        """불변식 I1 + 가드 3 적용."""
+        """불변식 I1 + 가드 3 + 오답지 타당성 검증.
+
+        타당성(문항이 '단일 정답'을 갖도록):
+          - 선택지 정확히 4개, 중복 없음(중복 보기/정답=오답 무효 문항 차단).
+          - 정답이 선택지에 포함 & 메모에 실재(환각 차단).
+          - 오답이 메모에 실재하면 폐기 — 그 오답도 사실이라 정답이 2개가 되어
+            타당성이 깨진다(프롬프트로만 지시하던 것을 코드로 강제).
+          - 정답 위치 편향(LLM이 정답을 앞에 두는 경향) 제거를 위해 셔플.
+        """
         if not isinstance(choices, list) or len(choices) != 4:
             return None
         choices_str = [str(c).strip() for c in choices]
+        # 중복 보기 = 무효 문항(정답과 동일한 오답 포함). set 크기로 한 번에 차단.
+        if len(set(choices_str)) != 4:
+            return None
         if correct_answer not in choices_str:
             return None
         # 가드 3: 정답이 메모 합본에 부분 일치해야 함 (환각 방지)
         if not self._answer_in_notes(correct_answer, notes_blob):
             return None
+        # 오답이 메모에 실재하면 '두 번째 정답'이 되어 문항이 무효 → 폐기(백필이 보충).
+        distractors = [c for c in choices_str if c != correct_answer]
+        if any(self._answer_in_notes(d, notes_blob) for d in distractors):
+            return None
+        # 위치 편향 제거.
+        shuffled = choices_str[:]
+        random.shuffle(shuffled)
         return QuizQuestionOut(
             type="multiple_choice",
             prompt=prompt,
-            choices=choices_str,
+            choices=shuffled,
             correct_answer=correct_answer,
         )
 
@@ -343,9 +362,15 @@ class QuizGeneratorService:
         hint_first_char: object,
         notes_blob: str,
     ) -> QuizQuestionOut | None:
-        """불변식 I3 + 가드 3 적용. hint_first_char 누락 시 정답 첫 글자로 보정."""
+        """불변식 I3 + 가드 3 + 빈칸 타당성. hint_first_char 누락 시 정답 첫 글자로 보정."""
         # 가드 3: 정답이 메모 합본에 부분 일치해야 함
         if not self._answer_in_notes(correct_answer, notes_blob):
+            return None
+        # 타당성: 문장에 빈칸이 실제로 있어야 한다(밑줄 2개 이상). 없으면 풀 수 없는 문항.
+        if "__" not in prompt:
+            return None
+        # 타당성: 정답이 문장에 그대로 노출되면(빈칸 처리 실패) 답이 보이는 무효 문항 → 폐기.
+        if correct_answer in prompt:
             return None
         first_char = correct_answer.replace(" ", "")[:1]
         if not first_char:
