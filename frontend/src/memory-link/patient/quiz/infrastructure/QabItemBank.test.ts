@@ -7,7 +7,13 @@ import {
   pickSentItems,
   pickWordItems,
   qabItemCount,
+  WORD_CATEGORY,
 } from './QabItemBank.js';
+
+/** 선택지 imageUrl("/…/apple.svg")에서 slug를 뽑는다. */
+function slugOf(url: string): string {
+  return url.split('/').pop()!.replace(/\.[^.]+$/, '');
+}
 
 describe('QabItemBank', () => {
   it('pickQabItems: 요청 개수만큼(한도 내) 반환한다', () => {
@@ -37,6 +43,31 @@ describe('QabItemBank', () => {
   it('pickWordItems는 word, pickSentItems는 sentence만 반환한다', () => {
     expect(pickWordItems(3).every((i) => i.category === 'word')).toBe(true);
     expect(pickSentItems(3).every((i) => i.category === 'sentence')).toBe(true);
+  });
+
+  it('단어이해: 4보기가 모두 서로 다른 그림/라벨이다(중복 유인지 없음)', () => {
+    for (const item of pickWordItems(30)) {
+      expect(item.choices).toHaveLength(4);
+      const urls = new Set(item.choices.map((c) => c.imageUrl));
+      const labels = new Set(item.choices.map((c) => c.label));
+      expect(urls.size).toBe(4);
+      expect(labels.size).toBe(4);
+      expect(item.choices.filter((c) => c.isCorrect)).toHaveLength(1);
+    }
+  });
+
+  it('단어이해: 큰 범주(동물/음식/사물) 정답은 같은 범주 유인지를 최소 2개 포함한다', () => {
+    // 통제된 유인지: 범주만 알고는 못 맞추도록 같은 범주 오답을 우선 배치한다.
+    const big = new Set(['animal', 'food', 'object']);
+    for (const item of pickWordItems(60)) {
+      const correct = item.choices.find((c) => c.isCorrect)!;
+      const cat = WORD_CATEGORY[slugOf(correct.imageUrl)] ?? 'object';
+      if (!big.has(cat)) continue;
+      const sameCatDistractors = item.choices.filter(
+        (c) => !c.isCorrect && (WORD_CATEGORY[slugOf(c.imageUrl)] ?? 'object') === cat,
+      );
+      expect(sameCatDistractors.length).toBeGreaterThanOrEqual(2);
+    }
   });
 
   it('0개 요청 시 빈 배열', () => {

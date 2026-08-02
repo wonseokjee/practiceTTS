@@ -63,18 +63,132 @@ function shuffle<T>(items: readonly T[]): T[] {
   return result;
 }
 
+// ── 통제된 유인지(distractor) 생성 ─────────────────────────────
+//
+// 기존에는 오답지가 문항 JSON에 무작위 무관 단어로 박혀 있어, 같은 범주 유인지가
+// 없으면 소거법으로 다 맞아 변별력이 없었다(예: 비행기 ↔ 바나나·우체통).
+// 표준 실어증 검사(K-WAB, BNT)처럼 "같은 의미 범주 2 + 무관 1"로 유인지를
+// 구성해, 범주만 알면 못 맞추고 '정확히 그 단어'를 이해해야 맞도록 만든다.
+
+/** slug → 의미 범주. 미등록 slug는 'object'로 폴백(크래시 방지). (테스트 노출) */
+export const WORD_CATEGORY: Record<string, string> = {
+  // 동물
+  butterfly: 'animal', cat: 'animal', chick: 'animal', dog: 'animal',
+  elephant: 'animal', lion: 'animal', tiger: 'animal', turtle: 'animal',
+  whale: 'animal',
+  // 음식
+  apple: 'food', banana: 'food', bread: 'food', candy: 'food', grape: 'food',
+  juice: 'food', melon: 'food', milk: 'food', orange: 'food', pear: 'food',
+  strawberry: 'food', sweet_potato: 'food', tomato: 'food', watermelon: 'food',
+  // 탈것
+  airplane: 'vehicle', bicycle: 'vehicle', bus: 'vehicle', car: 'vehicle',
+  ship: 'vehicle', train: 'vehicle',
+  // 식물
+  flower: 'plant', tree: 'plant',
+  // 장소
+  hospital: 'place', library: 'place', pharmacy: 'place', pool: 'place',
+  school: 'place',
+  // 사물(가장 큰 범주 — 생활용품·도구·의류 등)
+  bag: 'object', balloon: 'object', basket: 'object', bed: 'object',
+  blanket: 'object', book: 'object', chair: 'object', clock: 'object',
+  comb: 'object', computer: 'object', desk: 'object', glasses: 'object',
+  gloves: 'object', guitar: 'object', hammer: 'object', hat: 'object',
+  kettle: 'object', key: 'object', knife: 'object', ladder: 'object',
+  ladle: 'object', mailbox: 'object', mirror: 'object', notebook: 'object',
+  pencil: 'object', phone: 'object', piano: 'object', pot: 'object',
+  refrigerator: 'object', rice_cooker: 'object', sand: 'object',
+  scissors: 'object', shoes: 'object', soap: 'object', socks: 'object',
+  toothbrush: 'object', toothpaste: 'object', towel: 'object',
+  trumpet: 'object', umbrella: 'object', washing_machine: 'object',
+  spine: 'body', student: 'person',
+};
+
+interface MasterWord {
+  slug: string;
+  label: string;
+  imageUrl: string;
+  category: string;
+}
+
+/** 정답 선택지 기준 마스터 단어 풀(유인지 후보). slug 기준 중복 제거. */
+const MASTER_WORDS: MasterWord[] = (() => {
+  const bySlug = new Map<string, MasterWord>();
+  for (const it of WORD_ITEMS) {
+    const correct = it.choices.find((c) => c.isCorrect);
+    if (!correct) continue;
+    const slug = slugFromUrl(correct.imageUrl);
+    if (bySlug.has(slug)) continue;
+    bySlug.set(slug, {
+      slug,
+      label: correct.label,
+      imageUrl: correct.imageUrl,
+      category: WORD_CATEGORY[slug] ?? 'object',
+    });
+  }
+  return [...bySlug.values()];
+})();
+
+/** 통제된 유인지 3개를 골라 정답과 함께 4보기를 만든다(같은 범주 2 + 무관 1). */
+function buildControlledChoices(target: MasterWord) {
+  const sameCat = shuffle(
+    MASTER_WORDS.filter(
+      (w) => w.slug !== target.slug && w.category === target.category,
+    ),
+  );
+  const otherCat = shuffle(
+    MASTER_WORDS.filter((w) => w.category !== target.category),
+  );
+
+  const foils: MasterWord[] = [];
+  foils.push(...sameCat.slice(0, 2)); // 같은 범주 2 (부족하면 그만큼만)
+  for (const w of otherCat) {
+    // 무관 1 + 같은 범주가 모자랄 때 추가 보충
+    if (foils.length >= 3) break;
+    if (!foils.some((f) => f.slug === w.slug)) foils.push(w);
+  }
+  // 그래도 3개가 안 되면(풀이 아주 작을 때) 아무거나 채운다.
+  if (foils.length < 3) {
+    for (const w of shuffle(MASTER_WORDS)) {
+      if (foils.length >= 3) break;
+      if (w.slug !== target.slug && !foils.some((f) => f.slug === w.slug)) {
+        foils.push(w);
+      }
+    }
+  }
+
+  const raw = [
+    { slug: target.slug, label: target.label, imageUrl: target.imageUrl, isCorrect: true },
+    ...foils.slice(0, 3).map((f) => ({
+      slug: f.slug, label: f.label, imageUrl: f.imageUrl, isCorrect: false,
+    })),
+  ];
+  return shuffle(raw).map((c, idx) => ({
+    choiceId: `${target.slug}_c${idx}`,
+    label: c.label,
+    imageUrl: c.imageUrl,
+    isCorrect: c.isCorrect,
+  }));
+}
+
 function toWordItem(it: RawWordItem): QabImageItem {
+  const correct = it.choices.find((c) => c.isCorrect);
+  const slug = correct ? slugFromUrl(correct.imageUrl) : '';
+  const target = MASTER_WORDS.find((w) => w.slug === slug);
+  // 마스터 풀에 없으면(예외) 기존 JSON 보기로 폴백해 안전하게 렌더.
+  const choices = target
+    ? buildControlledChoices(target)
+    : shuffle(it.choices).map((c) => ({
+        choiceId: c.choiceId,
+        label: c.label,
+        imageUrl: c.imageUrl,
+        isCorrect: c.isCorrect,
+      }));
   return {
     itemId: it.itemId,
     category: 'word',
     promptText: it.targetWord,
     instruction: WORD_INSTRUCTION,
-    choices: shuffle(it.choices).map((c) => ({
-      choiceId: c.choiceId,
-      label: c.label,
-      imageUrl: c.imageUrl,
-      isCorrect: c.isCorrect,
-    })),
+    choices,
   };
 }
 
