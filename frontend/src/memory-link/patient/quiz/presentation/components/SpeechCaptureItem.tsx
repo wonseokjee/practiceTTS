@@ -68,7 +68,8 @@ export function SpeechCaptureItem({
     return () => {
       stt.onResult = null;
       stt.onError = null;
-      stt.stop();
+      // 이탈 시 취소: 녹음된 환자 음성을 서버로 업로드하지 않고 마이크만 해제한다.
+      stt.cancel();
     };
   }, [stt]);
   /* eslint-enable react-hooks/immutability */

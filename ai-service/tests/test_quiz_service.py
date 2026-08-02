@@ -588,3 +588,28 @@ class Test자기검증패스:
 
         assert len(response.questions) == 5
         assert fake.call_count == 1  # 자기검증 호출 없음
+
+    async def test_critique_verdicts가_null이면_원문유지_failopen(self):
+        # {"verdicts": null} — 스키마 위반 응답. 루프 진입 전 원문 유지해야 하며
+        # (try 밖 TypeError로 500 나면 안 됨) 퀴즈가 그대로 나와야 한다.
+        bad = json.dumps({"verdicts": None}, ensure_ascii=False)
+        fake = FakeLlmClient(raws=[valid_five_questions_json(), bad])
+        service = QuizGeneratorService(fake)
+
+        response = await service.generate_quiz(make_request())
+
+        assert len(response.questions) == 5
+        assert response.fallback_used is False
+        assert fake.call_count == 2
+
+
+class Test입력크기상한:
+    """patient_notes 합본 상한 — 거대 입력으로 인한 토큰 비용/인젝션 표면 방어."""
+
+    async def test_메모_합본이_상한_초과면_거부된다(self):
+        huge = "가" * 3000  # _MAX_NOTES_BLOB_LEN(2000) 초과
+        service = QuizGeneratorService(FakeLlmClient(raw=valid_five_questions_json()))
+        with pytest.raises(InvalidPatientNotesError):
+            await service.generate_quiz(
+                make_request(patient_notes=[{"category": "activity", "answer_text": huge}])
+            )

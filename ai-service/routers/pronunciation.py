@@ -5,6 +5,8 @@ POST /pronunciation (multipart: audio + reference_text + lang)
 정답을 아는 재활 과제(퀴즈·낭독)에서 목표 단어/문장을 reference_text로 넘긴다.
 평가 실패 시 502 → 상위(백엔드)에서 기존 문자열 채점(nameMatch)으로 폴백 가능.
 """
+import asyncio
+
 from fastapi import (
     APIRouter,
     Depends,
@@ -92,7 +94,10 @@ async def assess(
         )
 
     try:
-        result = service.assess(wav_bytes, reference, lang)
+        # Azure SDK의 recognize_once()는 블로킹 네트워크 호출이다. async 라우트에서
+        # 직접 부르면 단일 이벤트 루프를 막아, 한 요청이 지연되면 무관한 요청(health,
+        # 다른 퀴즈)까지 얼어붙는다. 스레드로 오프로드해 루프를 풀어준다.
+        result = await asyncio.to_thread(service.assess, wav_bytes, reference, lang)
     except Exception as exc:  # 엔진 취소·네트워크 등 → 상위에서 폴백.
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,

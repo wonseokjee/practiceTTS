@@ -28,6 +28,10 @@ export interface ISpeechCaptureService {
   start(referenceText: string): void;
   /** 녹음 종료 → 평가/인식 실행. */
   stop(): void;
+  /** 취소 — 업로드/평가 없이 마이크를 해제하고 진행 중 요청을 중단한다.
+   *  문항 이탈/언마운트 시 호출해, 환자 음성이 화면을 떠난 뒤 서버로 올라가지
+   *  않게 한다(불필요한 업로드·비용 방지). stop()과 달리 결과를 만들지 않는다. */
+  cancel(): void;
   onResult: ((result: SpeechCaptureResult) => void) | null;
   onError: ((error: string) => void) | null;
 }
@@ -66,6 +70,9 @@ export class ServerPronunciationService implements ISpeechCaptureService {
   private isRecording = false;
   private startPromise: Promise<void> | null = null;
   private startFailed = false;
+  // 취소 여부 + 진행 중 fetch 핸들. cancel()이 이 둘로 업로드를 막고 중단한다.
+  private cancelled = false;
+  private inflight: AbortController | null = null;
 
   constructor(lang = 'ko-KR') {
     this.lang = lang;
@@ -76,6 +83,7 @@ export class ServerPronunciationService implements ISpeechCaptureService {
     this.referenceText = referenceText ?? '';
     this.isRecording = true;
     this.startFailed = false;
+    this.cancelled = false;
     this.startPromise = this.recorder.start().catch(() => {
       this.isRecording = false;
       this.startFailed = true;
@@ -89,9 +97,22 @@ export class ServerPronunciationService implements ISpeechCaptureService {
     void this.evaluate();
   }
 
+  cancel(): void {
+    this.cancelled = true;
+    const wasRecording = this.isRecording;
+    this.isRecording = false;
+    // 진행 중인 업로드가 있으면 중단한다.
+    this.inflight?.abort();
+    // 녹음 중이었다면 마이크만 해제(업로드하지 않음). stop()이 이미 처리 중이면
+    // (isRecording=false) 이중 정지하지 않는다.
+    if (wasRecording) {
+      void this.recorder.stop().catch(() => {});
+    }
+  }
+
   private async evaluate(): Promise<void> {
     await this.startPromise;
-    if (this.startFailed) return;
+    if (this.startFailed || this.cancelled) return;
 
     let wav: Blob;
     try {
@@ -100,18 +121,22 @@ export class ServerPronunciationService implements ISpeechCaptureService {
       this.onError?.('녹음을 처리하지 못했습니다. 다시 시도해주세요.');
       return;
     }
+    // 녹음을 처리하는 사이 취소됐으면 업로드하지 않는다.
+    if (this.cancelled) return;
 
     const token = localStorage.getItem(ML_TOKEN_KEY);
     const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
 
     // 1차: 발음 평가(음소 점수 포함)
     const assessed = await this.tryAssess(wav, authHeaders);
+    if (this.cancelled) return;
     if (assessed) {
       this.onResult?.(assessed);
       return;
     }
     // 2차: 같은 녹음을 STT로(전사만, azure=null) — 최소 문자열 채점은 유지
     const recognized = await this.tryStt(wav, authHeaders);
+    if (this.cancelled) return;
     if (recognized) {
       this.onResult?.({ ...recognized, azure: null });
       return;
@@ -127,6 +152,7 @@ export class ServerPronunciationService implements ISpeechCaptureService {
     authHeaders: Record<string, string> | undefined,
   ): Promise<SpeechCaptureResult | null> {
     const controller = new AbortController();
+    this.inflight = controller; // cancel()이 이 요청을 중단할 수 있게 등록
     const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     try {
       const form = new FormData();
@@ -157,6 +183,7 @@ export class ServerPronunciationService implements ISpeechCaptureService {
       return null;
     } finally {
       clearTimeout(timer);
+      this.inflight = null;
     }
   }
 
@@ -166,6 +193,7 @@ export class ServerPronunciationService implements ISpeechCaptureService {
     authHeaders: Record<string, string> | undefined,
   ): Promise<SttResult | null> {
     const controller = new AbortController();
+    this.inflight = controller; // cancel()이 이 요청을 중단할 수 있게 등록
     const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     try {
       const form = new FormData();
@@ -192,6 +220,7 @@ export class ServerPronunciationService implements ISpeechCaptureService {
       return null;
     } finally {
       clearTimeout(timer);
+      this.inflight = null;
     }
   }
 }
@@ -223,6 +252,11 @@ export class WebSpeechCaptureAdapter implements ISpeechCaptureService {
   }
 
   stop(): void {
+    this.stt.stop();
+  }
+
+  cancel(): void {
+    // 브라우저 인식은 서버 업로드가 없다. 인식만 중단하면 된다.
     this.stt.stop();
   }
 }

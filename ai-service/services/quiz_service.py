@@ -56,6 +56,10 @@ _CRITIQUE_TIMEOUT_SECONDS = 15
 _MAX_SENTENCE_LEN = 30
 # patient_notes 합본 최소 글자 수
 _MIN_NOTES_BLOB_LEN = 10
+# patient_notes 합본 최대 글자 수. 보호자 일기는 짧다(몇 문장). 상한이 없으면
+# 거대 입력이 프롬프트에 두 번(생성+자기검증) 실려 토큰 비용 폭증·프롬프트 인젝션
+# 표면이 커진다. 인증된 보호자 입력이라 위험은 낮지만 방어적으로 자른다.
+_MAX_NOTES_BLOB_LEN = 2000
 # 예/아니오 정답 허용값
 _YES_NO_ANSWERS = {"yes", "no"}
 # 폴백 후보 단어 추출용 한글 토큰 정규식 (2~5자)
@@ -138,9 +142,14 @@ class QuizGeneratorService:
             )
         # 줄바꿈으로 구분해 노트 경계를 가로지르는 허위 부분일치(가드 3)를 방지한다.
         blob = "\n".join(n.answer_text for n in notes)
-        if len(blob.strip()) < _MIN_NOTES_BLOB_LEN:
+        stripped = blob.strip()
+        if len(stripped) < _MIN_NOTES_BLOB_LEN:
             raise InvalidPatientNotesError(
                 f"메모 합본 글자 수가 부족합니다 (최소 {_MIN_NOTES_BLOB_LEN}자)"
+            )
+        if len(stripped) > _MAX_NOTES_BLOB_LEN:
+            raise InvalidPatientNotesError(
+                f"메모 합본 글자 수가 너무 깁니다 (최대 {_MAX_NOTES_BLOB_LEN}자)"
             )
         return blob
 
@@ -276,9 +285,14 @@ class QuizGeneratorService:
                 timeout=_CRITIQUE_TIMEOUT_SECONDS,
             )
             data = json.loads(self._strip_code_fence(raw))
-            verdicts = data.get("verdicts", [])
+            verdicts = data.get("verdicts", []) if isinstance(data, dict) else []
         except Exception as exc:  # noqa: BLE001 - 어떤 실패든 원문 유지(fail-open)
             logger.warning("자기검증 패스 실패, 원문 유지: %s", exc)
+            return questions
+
+        # verdicts가 리스트가 아니면(null·잘못된 형) 판정 불가 → 원문 유지(fail-open).
+        # 이 검사가 없으면 아래 루프가 try 밖에서 TypeError로 퀴즈 생성을 500으로 깨뜨린다.
+        if not isinstance(verdicts, list):
             return questions
 
         # 명시적으로 keep=false 판정된 인덱스만 폐기(누락/불명은 유지 = 안전).
