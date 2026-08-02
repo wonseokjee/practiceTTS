@@ -4,6 +4,8 @@ import {
   accuracyScore,
   isGradePass,
   evaluateSpeech,
+  evaluateFromAzure,
+  type AzurePronunciationScores,
 } from './pronunciationScore.js';
 
 describe('gradeFromErrorRate — 5단계 경계', () => {
@@ -77,6 +79,66 @@ describe('evaluateSpeech — 종합 평가', () => {
 
   it('빈 입력은 재시도 + 0점', () => {
     const r = evaluateSpeech('', '바다', 'word');
+    expect(r.grade).toBe('retry');
+    expect(r.score).toBe(0);
+    expect(r.isCorrect).toBe(false);
+  });
+});
+
+describe('evaluateFromAzure — 음소 단위 채점 정책', () => {
+  const scores = (o: Partial<AzurePronunciationScores>): AzurePronunciationScores => ({
+    accuracyScore: 0,
+    fluencyScore: 0,
+    completenessScore: 0,
+    pronunciationScore: 0,
+    prosodyScore: null,
+    ...o,
+  });
+
+  it('단어: 정확도가 전부다(완성도 무시)', () => {
+    const r = evaluateFromAzure(scores({ accuracyScore: 92, completenessScore: 0 }), '바다', 'word');
+    expect(r.grade).toBe('perfect');
+    expect(r.score).toBe(92);
+    expect(r.isCorrect).toBe(true);
+  });
+
+  it('단어: good 경계(60)는 정답 처리', () => {
+    const r = evaluateFromAzure(scores({ accuracyScore: 60 }), '바다', 'word');
+    expect(r.isCorrect).toBe(true);
+    expect(r.grade).toBe('good');
+  });
+
+  it('단어: 경계 미만(59)은 오답(close)', () => {
+    const r = evaluateFromAzure(scores({ accuracyScore: 59 }), '바다', 'word');
+    expect(r.isCorrect).toBe(false);
+    expect(r.grade).toBe('close');
+  });
+
+  it('문장: 정확도0.6 + 완성도0.4 가중 — 빠뜨림을 반영해 등급이 내려간다', () => {
+    // accuracy만 보면 90(great)이지만, 완성도 50이 섞여 round(90*0.6+50*0.4)=74 → good
+    const r = evaluateFromAzure(
+      scores({ accuracyScore: 90, completenessScore: 50 }),
+      '오늘 날씨가 좋아요',
+      'sentence',
+    );
+    expect(r.score).toBe(74);
+    expect(r.grade).toBe('good');
+    expect(r.isCorrect).toBe(true);
+  });
+
+  it('문장: 절반만 말하면(완성도 낮음) 정답 정확도라도 등급이 내려간다', () => {
+    // accuracy 100, completeness 20 → round(60+8)=68 → good (아직 정답이지만 great 미만)
+    const r = evaluateFromAzure(
+      scores({ accuracyScore: 100, completenessScore: 20 }),
+      '오늘 날씨가 좋아요',
+      'sentence',
+    );
+    expect(r.score).toBe(68);
+    expect(r.grade).toBe('good');
+  });
+
+  it('전사가 비면(NoMatch) 전 점수 무시하고 재시도·오답', () => {
+    const r = evaluateFromAzure(scores({ accuracyScore: 99 }), '', 'word');
     expect(r.grade).toBe('retry');
     expect(r.score).toBe(0);
     expect(r.isCorrect).toBe(false);

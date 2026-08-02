@@ -9,7 +9,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTTS } from '../../../../../shared/hooks/useTTS.js';
 import { createTtsService } from '../../../../../shared/infrastructure/ttsFactory.js';
-import { createSttService } from '../../infrastructure/sttFactory.js';
+import { createSpeechCaptureService } from '../../infrastructure/SpeechCaptureService.js';
+import type { AzurePronunciationScores } from '../../domain/pronunciationScore.js';
 
 interface SpeechCaptureItemProps {
   /** 보여줄/들려줄 내용 */
@@ -22,7 +23,8 @@ interface SpeechCaptureItemProps {
   showFeedback: boolean;
   /** 채점 결과 — 피드백 단계에서만 의미 */
   isCorrect: boolean | null;
-  onSubmit: (transcript: string) => void;
+  /** 채점 제출. azure는 음소 점수(가능할 때), 없으면 null(문자열 채점 폴백). */
+  onSubmit: (transcript: string, azure: AzurePronunciationScores | null) => void;
   /** 보호자 통과 처리(도움받음). 없으면 목표 텍스트 제출로 폴백. */
   onSkip?: () => void;
 }
@@ -42,17 +44,19 @@ export function SpeechCaptureItem({
 }: SpeechCaptureItemProps) {
   const [status, setStatus] = useState<CaptureStatus>('idle');
   const [transcript, setTranscript] = useState<string>('');
+  const [azure, setAzure] = useState<AzurePronunciationScores | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>('');
 
-  const stt = useMemo(() => createSttService(), []);
+  const stt = useMemo(() => createSpeechCaptureService(), []);
   const ttsService = useMemo(() => createTtsService(), []);
   const { isPlaying, speak } = useTTS(ttsService);
 
-  // STT 콜백 프로퍼티 할당(TrainingScreen 등과 동일한 코드베이스 공통 패턴).
+  // 캡처 콜백 프로퍼티 할당(TrainingScreen 등과 동일한 코드베이스 공통 패턴).
   /* eslint-disable react-hooks/immutability */
   useEffect(() => {
     stt.onResult = (result) => {
       setTranscript(result.transcript);
+      setAzure(result.azure);
       setStatus('recognized');
     };
     stt.onError = (message) => {
@@ -76,8 +80,8 @@ export function SpeechCaptureItem({
     if (!isSelectable) return;
     setErrorMessage('');
     setStatus('listening');
-    // 따라말하기/읽기 목표 텍스트를 phrase hint로 전달(서버 STT 제약 인식).
-    stt.start(text.length > 0 ? [text] : undefined);
+    // 목표 텍스트를 발음 평가 기준(reference) 겸 phrase hint로 전달.
+    stt.start(text);
   };
 
   // 서버 STT는 자동 종료되지 않으므로 사용자가 발화 종료를 알린다(→ 인식 실행).
@@ -88,7 +92,7 @@ export function SpeechCaptureItem({
 
   const handleSubmitTranscript = (): void => {
     if (transcript.trim().length === 0) return;
-    onSubmit(transcript.trim());
+    onSubmit(transcript.trim(), azure);
   };
 
   // "넘어가기": 보호자가 했다고 보고 통과 처리(도움받음).
@@ -98,7 +102,8 @@ export function SpeechCaptureItem({
       onSkip();
       return;
     }
-    onSubmit(text);
+    // 통과 처리는 목표 텍스트를 그대로 제출(문자열 채점 → 정답). 음소 점수는 없음.
+    onSubmit(text, null);
   };
 
   let resultBoxClass = 'border-[#D4D8D4] bg-white text-[#1F2A26]';

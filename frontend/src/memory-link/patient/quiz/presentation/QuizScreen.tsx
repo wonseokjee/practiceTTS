@@ -195,7 +195,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
           isSelectable={canAnswer}
           showFeedback={showFeedback}
           isCorrect={showFeedback ? (lastResult?.isCorrect ?? null) : null}
-          onSubmit={(transcript) => actions.submitSpeech(transcript)}
+          onSubmit={(transcript, azure) => actions.submitSpeech(transcript, azure)}
           onSkip={actions.skipCurrent}
         />
       ) : currentItem.kind === 'reading' ? (
@@ -207,7 +207,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
           isSelectable={canAnswer}
           showFeedback={showFeedback}
           isCorrect={showFeedback ? (lastResult?.isCorrect ?? null) : null}
-          onSubmit={(transcript) => actions.submitSpeech(transcript)}
+          onSubmit={(transcript, azure) => actions.submitSpeech(transcript, azure)}
           onSkip={actions.skipCurrent}
         />
       ) : currentItem.kind === 'ddk' ? (

@@ -21,7 +21,11 @@ import type {
   QabDdkItem,
 } from '../domain/MixedQuiz.js';
 import { isNameMatch } from '../domain/nameMatch.js';
-import { evaluateSpeech } from '../domain/pronunciationScore.js';
+import {
+  evaluateSpeech,
+  evaluateFromAzure,
+  type AzurePronunciationScores,
+} from '../domain/pronunciationScore.js';
 import { isDdkPass } from '../domain/ddkScore.js';
 import type { QabResultInput } from '../domain/QabResult.js';
 import { quizApi } from '../infrastructure/QuizApi.js';
@@ -65,8 +69,11 @@ export interface UseMixedQuizActions {
   submitQabChoice: (choiceId: string) => void;
   /** QAB 그림 이름대기 음성 제출 (로컬 STT 채점) */
   submitNaming: (transcript: string) => void;
-  /** QAB 따라말하기/소리내어읽기 음성 제출 (로컬 WER 채점) */
-  submitSpeech: (transcript: string) => void;
+  /** QAB 따라말하기/소리내어읽기 음성 제출. azure 점수 있으면 음소 채점, 없으면 WER 폴백. */
+  submitSpeech: (
+    transcript: string,
+    azure?: AzurePronunciationScores | null,
+  ) => void;
   /** QAB 말운동(DDK) 결과 제출 (감지된 음절 수, 로컬 채점) */
   submitDdk: (count: number) => void;
   /** 발화 문항을 보호자가 "넘어가기"로 통과 처리 (도움받음으로 기록, 정확도 집계 제외) */
@@ -353,14 +360,17 @@ export function useMixedQuizSession(
   );
 
   const submitSpeech = useCallback(
-    (transcript: string): void => {
+    (transcript: string, azure: AzurePronunciationScores | null = null): void => {
       if (phaseRef.current !== 'answering') return;
       const item = itemsRef.current[indexRef.current];
       if (!item) return;
 
       if (item.kind === 'repeat') {
         const mode = item.item.category === 'sentence' ? 'sentence' : 'word';
-        const evaluation = evaluateSpeech(transcript, item.item.text, mode);
+        // 음소 점수가 있으면 실조음 채점, 없으면 문자열 근접도로 폴백.
+        const evaluation = azure
+          ? evaluateFromAzure(azure, transcript, mode)
+          : evaluateSpeech(transcript, item.item.text, mode);
         qabResultsRef.current.push({
           subtest: 'repeat',
           itemRef: item.item.itemId,
@@ -379,7 +389,9 @@ export function useMixedQuizSession(
         return;
       }
       if (item.kind === 'reading') {
-        const evaluation = evaluateSpeech(transcript, item.item.text, 'sentence');
+        const evaluation = azure
+          ? evaluateFromAzure(azure, transcript, 'sentence')
+          : evaluateSpeech(transcript, item.item.text, 'sentence');
         qabResultsRef.current.push({
           subtest: 'reading',
           itemRef: item.item.itemId,
