@@ -287,6 +287,45 @@ describe('useMixedQuizSession', () => {
     expect(result.current[0].lastResult?.isCorrect).toBe(false);
   });
 
+  it('오답 후 answerAgain으로 다시 답하면 이전 오답을 되돌리고 점수를 이중 집계하지 않는다', async () => {
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi(),
+        pickQabItems: () => [],
+        generateSessionToken: () => 'tok-1',
+        dailyCount: 0,
+        qabCount: 0,
+        ...NO_SPEECH,
+        pickReadingItems: () => [
+          { itemId: 'rd1', text: '산 위에 해가 떠올라요', instruction: '읽어주세요' },
+        ],
+        readingCount: 1,
+      }),
+    );
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    // 1) 오답 → 피드백
+    act(() => result.current[1].submitSpeech('전혀 다른 말이에요'));
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    expect(result.current[0].lastResult?.isCorrect).toBe(false);
+
+    // 2) 다시 말하기 → answering 복귀 + attempt 증가 + 결과 초기화
+    act(() => result.current[1].answerAgain());
+    expect(result.current[0].phase).toBe('answering');
+    expect(result.current[0].attempt).toBe(1);
+    expect(result.current[0].lastResult).toBeNull();
+
+    // 3) 이번엔 정답 → 피드백
+    act(() => result.current[1].submitSpeech('산 위에 해가 떠올라요'));
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    expect(result.current[0].lastResult?.isCorrect).toBe(true);
+
+    // 4) 다음 → 결과. 1문항이 최종 정답이므로 100점(오답이 이중 집계됐다면 다른 값).
+    act(() => result.current[1].next());
+    await waitFor(() => expect(result.current[0].phase).toBe('result'));
+    expect(result.current[0].sessionScore).toBe(100);
+  });
+
   it('말운동(ddk)은 목표 횟수 이상이면 통과한다', async () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {

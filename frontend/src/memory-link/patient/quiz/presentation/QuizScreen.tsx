@@ -51,6 +51,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
     sessionScore,
     error,
     isSessionExpired,
+    attempt,
   } = state;
 
   // ── 로딩 ──────────────────────────────────────────────────────
@@ -178,7 +179,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
         />
       ) : currentItem.kind === 'naming' ? (
         <PictureNamingItem
-          key={currentItem.id}
+          key={`${currentItem.id}:${attempt}`}
           item={currentItem.item}
           isSelectable={canAnswer}
           showFeedback={showFeedback}
@@ -188,7 +189,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
         />
       ) : currentItem.kind === 'repeat' ? (
         <SpeechCaptureItem
-          key={currentItem.id}
+          key={`${currentItem.id}:${attempt}`}
           text={currentItem.item.text}
           instruction={currentItem.item.instruction}
           showModel
@@ -200,7 +201,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
         />
       ) : currentItem.kind === 'reading' ? (
         <SpeechCaptureItem
-          key={currentItem.id}
+          key={`${currentItem.id}:${attempt}`}
           text={currentItem.item.text}
           instruction={currentItem.item.instruction}
           showModel={false}
@@ -252,6 +253,22 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
             {lastResult.encouragement ??
               (lastResult.isCorrect ? '정답이에요!' : '아쉬워요')}
           </p>
+          {/* 발화/이름대기 오답이면 같은 문항을 다시 말할 수 있게 한다
+              (격려 문구 "다시 말해볼까요?"를 실제로 행동으로 이어준다). */}
+          {(currentItem.kind === 'naming' ||
+            currentItem.kind === 'repeat' ||
+            currentItem.kind === 'reading') &&
+            lastResult.isCorrect === false && (
+              <button
+                type="button"
+                onClick={actions.answerAgain}
+                className="mb-3 flex min-h-[56px] w-full items-center justify-center gap-2 rounded-full border-2 border-[#2D6A56] bg-white px-6 py-3 text-lg font-medium text-[#2D6A56] transition-colors duration-[180ms] ease-out hover:bg-[#EBF4F0]"
+                aria-label="다시 말하기"
+              >
+                <span aria-hidden="true" className="text-2xl">🎤</span>
+                다시 말하기
+              </button>
+            )}
           <button
             type="button"
             onClick={actions.next}

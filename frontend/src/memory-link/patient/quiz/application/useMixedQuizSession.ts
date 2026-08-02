@@ -60,6 +60,8 @@ export interface UseMixedQuizState {
   sessionScore: number | null;
   error: string | null;
   isSessionExpired: boolean;
+  /** 현재 문항 재응답 횟수 — 문항 컴포넌트 리마운트 key로 쓴다(재시도 시 상태 초기화). */
+  attempt: number;
 }
 
 export interface UseMixedQuizActions {
@@ -80,6 +82,8 @@ export interface UseMixedQuizActions {
   skipCurrent: () => void;
   /** 피드백 확인 → 다음 문항 또는 결과 */
   next: () => void;
+  /** 발화/이름대기 문항을 같은 문제로 다시 답한다(직전 결과는 되돌려 이중 집계 방지). */
+  answerAgain: () => void;
   /** 처음부터 다시 (새 세션 토큰 + 새 QAB 추출) */
   retry: () => Promise<void>;
 }
@@ -132,6 +136,7 @@ const INITIAL_STATE: UseMixedQuizState = Object.freeze({
   sessionScore: null,
   error: null,
   isSessionExpired: false,
+  attempt: 0,
 });
 
 function defaultGenerateToken(): string {
@@ -513,6 +518,26 @@ export function useMixedQuizSession(
     }));
   }, []);
 
+  // 같은 문항을 다시 답한다(발화/이름대기 재시도). 직전 결과를 되돌려
+  // 재시도가 점수를 이중 반영하지 않게 하고, attempt를 올려 문항 컴포넌트를
+  // 리마운트(내부 status/transcript 초기화)한다.
+  const answerAgain = useCallback((): void => {
+    if (phaseRef.current !== 'feedback') return;
+    const last = qabResultsRef.current.pop();
+    if (last?.isCorrect) {
+      correctCountRef.current = Math.max(0, correctCountRef.current - 1);
+    }
+    phaseRef.current = 'answering';
+    setState((prev) => ({
+      ...prev,
+      phase: 'answering',
+      isSelectable: true,
+      lastResult: null,
+      selectedChoiceId: null,
+      attempt: prev.attempt + 1,
+    }));
+  }, []);
+
   const retry = useCallback(async (): Promise<void> => {
     phaseRef.current = 'loading';
     setState({ ...INITIAL_STATE, phase: 'loading' });
@@ -529,6 +554,7 @@ export function useMixedQuizSession(
       submitDdk,
       skipCurrent,
       next,
+      answerAgain,
       retry,
     },
   ];
