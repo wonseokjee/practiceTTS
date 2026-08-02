@@ -101,6 +101,13 @@ export const WORD_CATEGORY: Record<string, string> = {
   toothbrush: 'object', toothpaste: 'object', towel: 'object',
   trumpet: 'object', umbrella: 'object', washing_machine: 'object',
   spine: 'body', student: 'person',
+  // Fluent 전면 교체 시 추가/교체된 단어(상업 라이선스). mirror는 위에 이미 있음.
+  candle: 'object', couch: 'object', spoon: 'object', rock: 'object',
+  television: 'object',
+  bear: 'animal', rabbit: 'animal', pig: 'animal',
+  corn: 'food', carrot: 'food', cake: 'food',
+  cactus: 'plant', mushroom: 'plant',
+  house: 'place', truck: 'vehicle',
 };
 
 interface MasterWord {
