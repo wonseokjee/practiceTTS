@@ -2,7 +2,7 @@
  * QAB 문항 분석 (item analysis) — 저장된 qab_results로 문항 타당성을 데이터로 검증한다.
  *
  * 문항별 정답률을 집계해, 검토가 필요한 문항을 자동 플래그한다:
- *   - insufficient : 표본 부족(n < MIN_N) — 통계적으로 판단 불가(그냥 더 모아야 함)
+ *   - insufficient : 표본 부족(고유 환자 < MIN_N) — 통계적으로 판단 불가(더 모아야 함)
  *   - too_easy     : 정답률 ≥ 0.95 — 변별력 없음(너무 쉬움)
  *   - suspect_miskey: 정답률 ≤ 0.10 — 오답키(정답 잘못 지정) 의심 또는 과도하게 어려움
  *   - near_chance  : 선택형에서 정답률이 우연 수준 — 유인지가 나빠 찍기와 구분 안 됨
@@ -20,20 +20,23 @@ import AppDataSource from '../src/database/data-source';
 interface Row {
   subtest: string;
   item_ref: string;
-  n: string; // pg COUNT → string
-  correct: string; // SUM(is_correct::int) → string
-  avg_score: string | null;
+  patients: string; // 고유 환자 수 (pg COUNT → string)
+  attempts: string; // 총 시도 수
+  correct_rate: string | null; // 환자별 정답률의 평균(시도 가중 아님)
+  avg_score: string | null; // 환자별 평균 점수의 평균
 }
 
 const CHANCE: Record<string, number> = { word: 0.25, sentence: 0.5 };
 
 function flagsFor(
   subtest: string,
-  n: number,
+  patients: number,
   rate: number,
   minN: number,
 ): string[] {
-  if (n < minN) return ['insufficient'];
+  // 표본 부족 판정은 '고유 환자 수' 기준. 한 환자가 같은 문항을 여러 번 풀어도
+  // 통계적 독립 표본이 늘어나는 게 아니므로 시도 수가 아닌 환자 수로 센다.
+  if (patients < minN) return ['insufficient'];
   const flags: string[] = [];
   if (rate >= 0.95) flags.push('too_easy');
   if (rate <= 0.1) flags.push('suspect_miskey');
@@ -59,14 +62,26 @@ async function main(): Promise<void> {
 
   await AppDataSource.initialize();
   try {
+    // 환자별로 먼저 집계(정답률·평균점수)한 뒤, 그 값들을 문항 단위로 평균낸다.
+    // 이렇게 하면 한 환자가 반복 응답해도 문항 통계를 좌우하지 못한다(환자 1인 1표).
     const rows: Row[] = await AppDataSource.query(`
       SELECT subtest,
              item_ref,
-             COUNT(*)                              AS n,
-             SUM((is_correct)::int)                AS correct,
-             AVG(score)                            AS avg_score
-      FROM qab_results
-      WHERE assisted = false
+             COUNT(*)              AS patients,
+             SUM(attempts)         AS attempts,
+             AVG(patient_rate)     AS correct_rate,
+             AVG(patient_score)    AS avg_score
+      FROM (
+        SELECT subtest,
+               item_ref,
+               patient_id,
+               COUNT(*)                AS attempts,
+               AVG((is_correct)::int)  AS patient_rate,
+               AVG(score)              AS patient_score
+        FROM qab_results
+        WHERE assisted = false
+        GROUP BY subtest, item_ref, patient_id
+      ) per_patient
       GROUP BY subtest, item_ref
     `);
 
@@ -78,14 +93,15 @@ async function main(): Promise<void> {
     }
 
     const analyzed = rows.map((r) => {
-      const n = Number(r.n);
-      const correct = Number(r.correct);
-      const rate = n > 0 ? correct / n : 0;
-      const flags = flagsFor(r.subtest, n, rate, minN);
+      const patients = Number(r.patients);
+      const attempts = Number(r.attempts);
+      const rate = r.correct_rate !== null ? Number(r.correct_rate) : 0;
+      const flags = flagsFor(r.subtest, patients, rate, minN);
       return {
         subtest: r.subtest,
         item_ref: r.item_ref,
-        n,
+        patients,
+        attempts,
         rate,
         avgScore: r.avg_score !== null ? Number(r.avg_score) : null,
         flags,
@@ -96,17 +112,20 @@ async function main(): Promise<void> {
     analyzed.sort((a, b) => a.sev - b.sev || a.rate - b.rate);
 
     const pct = (x: number) => `${(x * 100).toFixed(0)}%`;
-    console.log(`\nQAB 문항 분석 (min-n=${minN}, assisted 제외)\n`);
+    console.log(`\nQAB 문항 분석 (min-n=${minN} 환자, assisted 제외, 환자별 평균)\n`);
     console.log(
-      ['subtest', 'item_ref', 'n', '정답률', 'avg점수', 'flags'].join('\t'),
+      ['subtest', 'item_ref', '환자', '시도', '정답률', 'avg점수', 'flags'].join(
+        '\t',
+      ),
     );
-    console.log('-'.repeat(72));
+    console.log('-'.repeat(78));
     for (const a of analyzed) {
       console.log(
         [
           a.subtest,
           a.item_ref,
-          a.n,
+          a.patients,
+          a.attempts,
           pct(a.rate),
           a.avgScore !== null ? a.avgScore.toFixed(0) : '-',
           a.flags.join(','),
