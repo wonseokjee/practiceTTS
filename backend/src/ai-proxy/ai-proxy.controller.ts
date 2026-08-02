@@ -170,6 +170,73 @@ export class AiProxyController {
   }
 
   /**
+   * POST /ai/pronunciation — 녹음 WAV + 정답 텍스트를 ai-service로 넘겨
+   * 음소 단위 발음 점수를 돌려준다.
+   *
+   * STT와 같은 비용(Azure 음성)이라 같은 사용자별 한도를 쓴다. 정답을 아는
+   * 재활 과제(따라말하기·읽기)에서 reference_text로 목표 문장을 넘긴다.
+   */
+  @Post('pronunciation')
+  @RateLimit({
+    name: 'pronunciation',
+    limit: STT_PER_USER_PER_MIN,
+    windowMs: RATE_WINDOW_MS,
+  })
+  @UseInterceptors(
+    FileInterceptor('audio', { limits: { fileSize: MAX_AUDIO_BYTES } }),
+  )
+  async pronunciation(
+    @Req() _req: AuthenticatedRequest,
+    @UploadedFile() audio: Express.Multer.File | undefined,
+    @Body() body: { lang?: string; reference_text?: string },
+    @Res() res: Response,
+  ): Promise<void> {
+    if (!audio) {
+      res
+        .status(HttpStatus.BAD_REQUEST)
+        .json({ message: '오디오 파일이 필요합니다.' });
+      return;
+    }
+    const reference = (body.reference_text ?? '').trim();
+    if (reference.length === 0) {
+      res
+        .status(HttpStatus.BAD_REQUEST)
+        .json({ message: '정답 텍스트가 필요합니다.' });
+      return;
+    }
+
+    const form = new FormData();
+    form.append(
+      'audio',
+      new Blob([new Uint8Array(audio.buffer)], {
+        type: audio.mimetype || 'audio/wav',
+      }),
+      audio.originalname || 'speech.wav',
+    );
+    form.append('lang', body.lang ?? 'ko-KR');
+    form.append('reference_text', reference);
+
+    try {
+      const upstream = await firstValueFrom(
+        this.httpService.post<unknown>(`${this.baseUrl}/pronunciation`, form, {
+          timeout: STT_TIMEOUT_MS,
+          headers: aiServiceHeaders(this.configService),
+        }),
+      );
+      res.status(HttpStatus.OK).json(upstream.data);
+    } catch (error) {
+      this.logger.warn(`발음 평가 프록시 실패: ${this.describe(error)}`);
+      const status = this.upstreamStatus(error);
+      res.status(status).json({
+        message:
+          status === HttpStatus.TOO_MANY_REQUESTS
+            ? '요청이 너무 잦습니다. 잠시 후 다시 시도해주세요.'
+            : '발음 평가 서버에 연결하지 못했습니다.',
+      });
+    }
+  }
+
+  /**
    * GET /ai/tts — 합성된 오디오를 그대로 흘려보낸다.
    *
    * 프론트는 fetch로 받아 Blob URL로 재생한다(헤더를 붙이기 위해).

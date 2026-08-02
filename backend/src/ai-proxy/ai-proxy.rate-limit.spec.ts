@@ -86,9 +86,14 @@ describe('AiProxyController 레이트리밋', () => {
 
     const sttMeta = reflector.get(RATE_LIMIT_KEY, AiProxyController.prototype.stt);
     const ttsMeta = reflector.get(RATE_LIMIT_KEY, AiProxyController.prototype.tts);
+    const pronMeta = reflector.get(
+      RATE_LIMIT_KEY,
+      AiProxyController.prototype.pronunciation,
+    );
 
     expect(sttMeta).toMatchObject({ name: 'stt' });
     expect(ttsMeta).toMatchObject({ name: 'tts' });
+    expect(pronMeta).toMatchObject({ name: 'pronunciation' });
 
     // 컨트롤러 가드에 RateLimitGuard가 JwtAuthGuard **뒤에** 있어야
     // req.user.id로 버킷을 나눌 수 있다. 중간에 OnboardingGuard(온보딩 전
