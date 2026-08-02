@@ -19,7 +19,7 @@ app.add_middleware(
 )
 
 # 라우터 등록
-from routers import tagging, masking, scenario, chat, quiz, wish, stt, tts
+from routers import tagging, masking, scenario, chat, quiz, wish, stt, tts, pronunciation
 from dependencies import require_service_token
 
 # 모든 엔드포인트는 백엔드를 통해서만 호출된다 — 공유 토큰으로 막는다.
@@ -37,6 +37,7 @@ app.include_router(quiz.router, dependencies=_backend_only)
 app.include_router(wish.router, dependencies=_backend_only)
 app.include_router(stt.router, dependencies=_backend_only)
 app.include_router(tts.router, dependencies=_backend_only)
+app.include_router(pronunciation.router, dependencies=_backend_only)
 
 
 @app.get("/health")

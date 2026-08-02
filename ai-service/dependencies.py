@@ -10,6 +10,7 @@ import secrets
 
 from fastapi import Header, HTTPException, Request, status
 
+from infra.azure_pronunciation import AzurePronunciationAssessor
 from infra.azure_stt import AzureSttEngine
 from infra.azure_tts import AzureTtsEngine
 from infra.gemini_client import GeminiClient
@@ -18,6 +19,7 @@ from infra.in_memory_vector_store import InMemoryVectorStore
 from infra.rate_limiter import SlidingWindowRateLimiter
 from services.chat_service import ChatService
 from services.masking_service import MaskingService
+from services.pronunciation_service import PronunciationService
 from services.quiz_service import QuizGeneratorService
 from services.scenario_service import ScenarioService
 from services.stt_service import SttService
@@ -38,9 +40,11 @@ _quiz_generator_service: QuizGeneratorService | None = None
 _wish_service: WishToPracticeService | None = None
 _stt_service: SttService | None = None
 _tts_service: TtsService | None = None
+_pronunciation_service: PronunciationService | None = None
 
 _tts_rate_limiter: SlidingWindowRateLimiter | None = None
 _stt_rate_limiter: SlidingWindowRateLimiter | None = None
+_pronunciation_rate_limiter: SlidingWindowRateLimiter | None = None
 
 # 기본 캐시 상한 200MB. 재활 문장은 짧아(수 KB/개) 수만 개까지 캐시 가능.
 _DEFAULT_TTS_CACHE_MAX_BYTES = 200 * 1024 * 1024
@@ -207,6 +211,29 @@ def get_stt_service() -> SttService:
     return _stt_service
 
 
+def get_pronunciation_service() -> PronunciationService:
+    """PronunciationService 싱글턴 반환 (FastAPI Depends 용).
+
+    AZURE_SPEECH_KEY/REGION 미설정 시 503(PRONUNCIATION_NOT_CONFIGURED)으로
+    변환해, 상위(백엔드)가 '미구성'을 구분하고 기존 문자열 채점(nameMatch)으로
+    폴백할 수 있게 한다.
+    """
+    global _pronunciation_service
+    if _pronunciation_service is None:
+        try:
+            assessor = AzurePronunciationAssessor(
+                speech_key=os.getenv("AZURE_SPEECH_KEY", ""),
+                speech_region=os.getenv("AZURE_SPEECH_REGION", ""),
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"PRONUNCIATION_NOT_CONFIGURED: {exc}",
+            ) from exc
+        _pronunciation_service = PronunciationService(assessor=assessor)
+    return _pronunciation_service
+
+
 def get_tts_service() -> TtsService:
     """TtsService 싱글턴 반환 (FastAPI Depends 용).
 
@@ -305,3 +332,17 @@ def get_stt_rate_limiter() -> SlidingWindowRateLimiter:
             window_seconds=60.0,
         )
     return _stt_rate_limiter
+
+
+def get_pronunciation_rate_limiter() -> SlidingWindowRateLimiter:
+    """/pronunciation 전역 회로차단기 (기본 240회/분, 사용자별 아님).
+
+    STT와 마찬가지로 Azure 유료 호출이라 폭주를 전역에서 차단한다.
+    """
+    global _pronunciation_rate_limiter
+    if _pronunciation_rate_limiter is None:
+        _pronunciation_rate_limiter = SlidingWindowRateLimiter(
+            max_requests=_int_env("PRONUNCIATION_RATE_LIMIT_PER_MIN", 240),
+            window_seconds=60.0,
+        )
+    return _pronunciation_rate_limiter
