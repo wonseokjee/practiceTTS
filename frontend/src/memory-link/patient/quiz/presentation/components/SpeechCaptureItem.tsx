@@ -29,7 +29,9 @@ interface SpeechCaptureItemProps {
   onSkip?: () => void;
 }
 
-type CaptureStatus = 'idle' | 'listening' | 'recognized' | 'error';
+// 'processing' = 녹음 종료 후 서버 발음평가/인식 응답을 기다리는 구간(1~2초).
+// 이 상태가 없으면 "다 말했어요"를 눌러도 화면이 그대로라 무반응처럼 보인다.
+type CaptureStatus = 'idle' | 'listening' | 'processing' | 'recognized' | 'error';
 
 /** 따라말하기/소리내어읽기 음성 입력 */
 export function SpeechCaptureItem({
@@ -86,7 +88,10 @@ export function SpeechCaptureItem({
 
   // 서버 STT는 자동 종료되지 않으므로 사용자가 발화 종료를 알린다(→ 인식 실행).
   // Web Speech는 stop()이 최종 결과를 확정한다. 두 구현 모두에서 안전.
+  // stop() 직후 서버 응답까지 1~2초가 걸리므로 즉시 'processing'으로 바꿔
+  // 진행 중임을 보여준다(무반응 오해 방지). onResult/onError가 상태를 넘긴다.
   const handleStopRecord = (): void => {
+    setStatus('processing');
     stt.stop();
   };
 
@@ -171,6 +176,11 @@ export function SpeechCaptureItem({
           듣고 있어요… 또박또박 말씀해주세요.
         </p>
       )}
+      {!showFeedback && status === 'processing' && (
+        <p className="text-base text-[#2D6A56]" role="status">
+          발음을 확인하고 있어요…
+        </p>
+      )}
       {!showFeedback && status === 'error' && errorMessage.length > 0 && (
         <p className="text-base text-[#7A2E15]" role="alert">
           {errorMessage}
@@ -189,6 +199,16 @@ export function SpeechCaptureItem({
             >
               <span aria-hidden="true" className="text-2xl">✓</span>
               다 말했어요
+            </button>
+          ) : status === 'processing' ? (
+            <button
+              type="button"
+              disabled
+              className="flex min-h-[64px] items-center justify-center gap-2 rounded-md border-2 border-[#C5C8C5] bg-white px-6 py-4 text-xl font-medium text-[#A8AFA9]"
+              aria-label="발음 확인 중"
+            >
+              <span aria-hidden="true" className="animate-pulse text-2xl">⏳</span>
+              확인 중…
             </button>
           ) : (
             <button
