@@ -80,14 +80,21 @@ export class SpeechDataService {
       await fs.mkdir(path.dirname(abs), { recursive: true });
       await fs.writeFile(abs, params.audio);
 
-      await this.recordings.insert({
-        patientId: params.patientId,
-        task: params.task,
-        targetText: target,
-        audioPath: rel,
-        durationMs: params.durationMs ?? null,
-        score: params.score ?? null,
-      });
+      try {
+        await this.recordings.insert({
+          patientId: params.patientId,
+          task: params.task,
+          targetText: target,
+          audioPath: rel,
+          durationMs: params.durationMs ?? null,
+          score: params.score ?? null,
+        });
+      } catch (insertErr) {
+        // 메타 삽입이 실패하면 방금 쓴 파일은 DB 행 없는 고아가 된다(추적 불가한
+        // PII + 공간 낭비). 파일을 되돌리고 나서 원래 에러를 다시 던진다.
+        await fs.rm(abs, { force: true }).catch(() => undefined);
+        throw insertErr;
+      }
     } catch (err) {
       // 보존 실패가 환자 경험을 막아선 안 된다. 경고만 남긴다.
       this.logger.warn(
@@ -104,18 +111,17 @@ export class SpeechDataService {
       where: { patientId },
       select: { id: true },
     });
+    // 순서가 중요하다. **파일을 먼저** 지운다.
+    //  - 화자 폴더를 통째로 recursive 제거해, 삭제 처리 중 fire-and-forget
+    //    saveRecording이 늦게 쓴 파일까지 함께 없앤다.
+    //  - fs.rm이 실패하면(권한/잠금) 던진다. 그러면 DB 행을 지우지 않아 재시도
+    //    가능한 일관 상태가 남고, API도 거짓 "삭제됨" 대신 실패를 알린다.
+    //    (force:true라 폴더가 이미 없어도 던지지 않는다 — 진짜 오류만 던진다.)
+    await fs.rm(path.join(this.rootDir, patientId), {
+      recursive: true,
+      force: true,
+    });
     await this.recordings.delete({ patientId });
-    // 화자 폴더를 통째로 제거한다. 개별 audio_path만 지우면, 삭제 요청 처리 중에
-    // fire-and-forget saveRecording이 늦게 쓴 파일이 남아 "내 음성 전부 삭제" 이후에도
-    // 오디오가 디스크에 잔존할 수 있다. 폴더째 지우면 그 늦은 파일까지 함께 사라진다.
-    try {
-      await fs.rm(path.join(this.rootDir, patientId), {
-        recursive: true,
-        force: true,
-      });
-    } catch (err) {
-      this.logger.warn(`음성 폴더 삭제 실패(patient=${patientId}): ${String(err)}`);
-    }
     return { deleted: rows.length };
   }
 

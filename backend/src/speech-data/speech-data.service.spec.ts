@@ -68,6 +68,20 @@ describe('SpeechDataService', () => {
     expect(wav.length).toBeGreaterThan(0);
   });
 
+  it('insert 실패 시 방금 쓴 오디오 파일을 되돌린다(고아 파일 방지)', async () => {
+    users.findOne.mockResolvedValue({ speechDataConsent: true });
+    recordings.insert.mockRejectedValue(new Error('db down'));
+    await svc.saveRecording({
+      patientId: PID,
+      task: 'pronunciation',
+      targetText: '바다',
+      audio: Buffer.from('RIFFwav'),
+    });
+    // 파일 쓰기는 됐지만 insert가 깨졌으니, 화자 폴더에 남은 파일이 없어야 한다
+    const files = await fs.readdir(path.join(tmp, PID)).catch(() => []);
+    expect(files).toHaveLength(0);
+  });
+
   it('동의해도 라벨이 비면 저장하지 않는다', async () => {
     users.findOne.mockResolvedValue({ speechDataConsent: true });
     await svc.saveRecording({
@@ -98,5 +112,19 @@ describe('SpeechDataService', () => {
     expect(res.deleted).toBe(1);
     expect(recordings.delete).toHaveBeenCalledWith({ patientId: PID });
     await expect(fs.readFile(path.join(tmp, rel))).rejects.toBeDefined();
+  });
+
+  it('파일 삭제가 실패하면 던지고 DB 행을 지우지 않는다(거짓 성공 방지)', async () => {
+    recordings.find.mockResolvedValue([{ id: 'r1' }]);
+    const rmSpy = jest
+      .spyOn(fs, 'rm')
+      .mockRejectedValueOnce(new Error('EPERM: 파일 잠김'));
+
+    // 파일 제거 실패는 삼켜지지 않고 호출자에게 전파돼야 한다(API가 실패를 알린다)
+    await expect(svc.deleteAll(PID)).rejects.toThrow();
+    // 행을 지우지 않아 재시도 가능한 일관 상태로 남는다(오디오·행이 함께 존재)
+    expect(recordings.delete).not.toHaveBeenCalled();
+
+    rmSpy.mockRestore();
   });
 });
