@@ -24,7 +24,7 @@ export class AddSpeechDataConsent1784600000000 implements MigrationInterface {
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "speech_recordings" (
-        "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
+        "id" uuid NOT NULL DEFAULT gen_random_uuid(),
         "patient_id" uuid NOT NULL,
         "task" character varying(16) NOT NULL,
         "target_text" text NOT NULL,

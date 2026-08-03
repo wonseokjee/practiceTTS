@@ -102,21 +102,19 @@ export class SpeechDataService {
   async deleteAll(patientId: string): Promise<{ deleted: number }> {
     const rows = await this.recordings.find({
       where: { patientId },
-      select: { id: true, audioPath: true },
+      select: { id: true },
     });
-    for (const r of rows) {
-      try {
-        await fs.rm(path.join(this.rootDir, r.audioPath), { force: true });
-      } catch (err) {
-        this.logger.warn(`파일 삭제 실패(${r.audioPath}): ${String(err)}`);
-      }
-    }
     await this.recordings.delete({ patientId });
-    // 화자 폴더도 정리(비어 있으면).
+    // 화자 폴더를 통째로 제거한다. 개별 audio_path만 지우면, 삭제 요청 처리 중에
+    // fire-and-forget saveRecording이 늦게 쓴 파일이 남아 "내 음성 전부 삭제" 이후에도
+    // 오디오가 디스크에 잔존할 수 있다. 폴더째 지우면 그 늦은 파일까지 함께 사라진다.
     try {
-      await fs.rmdir(path.join(this.rootDir, patientId));
-    } catch {
-      // 남은 파일이 있거나 폴더가 없으면 무시.
+      await fs.rm(path.join(this.rootDir, patientId), {
+        recursive: true,
+        force: true,
+      });
+    } catch (err) {
+      this.logger.warn(`음성 폴더 삭제 실패(patient=${patientId}): ${String(err)}`);
     }
     return { deleted: rows.length };
   }
