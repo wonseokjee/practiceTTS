@@ -82,6 +82,19 @@ export class User {
   })
   patientModePinHash: string | null;
 
+  // 음성 데이터 보존 동의(opt-in). 자체 ASR 학습을 위해 환자 발화를 보존할지 여부.
+  // 미동의(기본)면 발화는 채점 후 즉시 폐기된다. 보호자가 설정에서 켜고 끌 수 있다.
+  @Column({ name: 'speech_data_consent', type: 'boolean', default: false })
+  speechDataConsent: boolean;
+
+  // 동의 시각(철회 시 NULL). 컴플라이언스 기록용.
+  @Column({
+    name: 'speech_data_consent_at',
+    type: 'timestamptz',
+    nullable: true,
+  })
+  speechDataConsentAt: Date | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }

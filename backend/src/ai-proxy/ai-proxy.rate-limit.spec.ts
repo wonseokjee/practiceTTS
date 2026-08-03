@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import * as request from 'supertest';
 import { AiProxyController } from './ai-proxy.controller';
+import { SpeechDataService } from '../speech-data/speech-data.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RATE_LIMIT_KEY, RateLimitGuard } from '../common/rate-limit.guard';
 
@@ -34,6 +35,10 @@ describe('AiProxyController 레이트리밋', () => {
         {
           provide: ConfigService,
           useValue: { get: (_k: string, d: string) => d },
+        },
+        {
+          provide: SpeechDataService,
+          useValue: { saveRecording: jest.fn() },
         },
       ],
     })

@@ -10,9 +10,10 @@ import { useState } from 'react';
 import { useAuth } from '../../shared/AuthContext.js';
 import { ProfileScreen } from './ProfileScreen.js';
 import { AccountLinkScreen } from './AccountLinkScreen.js';
+import { SpeechConsentScreen } from './SpeechConsentScreen.js';
 import type { AccountLinkNotice } from './AccountLinkScreen.js';
 
-type Section = 'menu' | 'patient' | 'account';
+type Section = 'menu' | 'patient' | 'account' | 'speech';
 
 interface SettingsScreenProps {
   /** 설정 메뉴에서 대시보드 목록으로 돌아가기. */
@@ -42,6 +43,9 @@ export function SettingsScreen({ onBack, accountNotice }: SettingsScreenProps) {
       />
     );
   }
+  if (section === 'speech') {
+    return <SpeechConsentScreen onBack={() => setSection('menu')} backLabel="설정" />;
+  }
 
   return (
     <div className="font-pretendard mx-auto w-full max-w-lg">
@@ -68,6 +72,11 @@ export function SettingsScreen({ onBack, accountNotice }: SettingsScreenProps) {
           title="계정"
           description="카카오·구글 로그인 연결 관리"
           onClick={() => setSection('account')}
+        />
+        <SettingCard
+          title="음성 데이터 제공"
+          description="발화 저장 동의·삭제 (음성 인식 개선용)"
+          onClick={() => setSection('speech')}
         />
         <SettingCard title="로그아웃" onClick={logout} danger />
       </div>
