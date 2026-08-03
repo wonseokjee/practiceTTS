@@ -81,27 +81,20 @@ export function SettingsScreen({ onBack, accountNotice }: SettingsScreenProps) {
         <SettingCard title="로그아웃" onClick={logout} danger />
       </div>
 
-      {/* 오픈소스 그림 출처 표기 — 단어이해 픽토그램에 OpenMoji(CC BY-SA) 사용.
-          라이선스가 저작자 표시를 요구하므로 앱 내에 노출한다. */}
+      {/* 오픈소스 그림 출처 — 단어이해 픽토그램에 Microsoft Fluent Emoji(MIT) 사용.
+          MIT는 앱 내 표기 의무가 없으나(라이선스 고지는 저장소 NOTICE로 충족),
+          출처를 밝히는 것은 예의라 가볍게 노출한다. */}
       <footer className="mt-8 border-t border-[#E8E4DC] pt-4 text-center text-xs text-[#9AA09B]">
         일부 그림:{' '}
         <a
-          href="https://openmoji.org"
+          href="https://github.com/microsoft/fluentui-emoji"
           target="_blank"
           rel="noreferrer"
           className="underline transition-colors hover:text-[#2D6A56]"
         >
-          OpenMoji
+          Fluent Emoji
         </a>
-        {' · '}
-        <a
-          href="https://creativecommons.org/licenses/by-sa/4.0/"
-          target="_blank"
-          rel="noreferrer"
-          className="underline transition-colors hover:text-[#2D6A56]"
-        >
-          CC BY-SA 4.0
-        </a>
+        {' · MIT'}
       </footer>
     </div>
   );
