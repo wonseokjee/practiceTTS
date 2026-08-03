@@ -84,6 +84,14 @@ def simulated_adapter(baseline_cer: float = 0.42, floor: float = 0.12, tau: floa
     return adapt_and_eval
 
 
+def _as_callable(adapter):
+    """어댑터를 (adapt, holdout, minutes)->CER 콜러블로 정규화.
+
+    Adapter 객체(.adapt_and_eval)든 순수 함수든 똑같이 받는다.
+    """
+    return getattr(adapter, "adapt_and_eval", adapter)
+
+
 def curve(
     rows: list[dict],
     minutes: list[float],
@@ -92,6 +100,7 @@ def curve(
     min_holdout: int = 1,
 ) -> dict:
     """화자별로 각 적응 분량에서 홀드아웃 CER을 재고, 분량별로 화자 평균."""
+    eval_fn = _as_callable(adapter)
     by_speaker = group_by_speaker(rows)
     per_point: dict[float, list[float]] = {m: [] for m in minutes}
     per_speaker: dict[str, dict[float, float]] = {}
@@ -102,7 +111,7 @@ def curve(
             adapt, holdout = split_adapt_holdout(utts, m)
             if len(holdout) < min_holdout:
                 continue
-            cer = adapter(adapt, holdout, m)
+            cer = eval_fn(adapt, holdout, m)
             if cer is not None:
                 row_curve[m] = cer
                 per_point[m].append(cer)
@@ -137,33 +146,73 @@ def _sparkline(values: list[float | None]) -> str:
     return "".join(out)
 
 
+def _build_prompt_adapter(audio_root: Path, model: str):
+    """PromptBiasingAdapter(학습 불필요, 오디오 필요)를 조립한다."""
+    from adapters import PromptBiasingAdapter
+    from baseline_asr import _resolve_audio
+    import whisper  # 지연 임포트
+
+    loaded = {"model": None}
+
+    def recognize(audio_path: Path, initial_prompt: str) -> str:
+        if loaded["model"] is None:
+            loaded["model"] = whisper.load_model(model)
+        res = loaded["model"].transcribe(
+            str(audio_path),
+            language="ko",
+            fp16=False,
+            initial_prompt=initial_prompt or None,
+        )
+        return str(res.get("text", "")).strip()
+
+    return PromptBiasingAdapter(
+        recognize=recognize,
+        resolve_audio=lambda r: _resolve_audio(r, audio_root),
+    )
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="개인화 커브(적응 분량↑ → CER)")
     ap.add_argument("--test-split", required=True, type=Path)
     ap.add_argument("--minutes", default="0,1,3,5,10", help="적응 분량 지점(쉼표)")
-    ap.add_argument("--sim", action="store_true", help="가상 적응기로 커브 형태 예시")
+    ap.add_argument(
+        "--adapter",
+        choices=["sim", "prompt"],
+        default="sim",
+        help="sim=가상 형태, prompt=whisper initial_prompt 바이어싱(학습 불필요, 오디오 필요)",
+    )
+    ap.add_argument("--audio-root", type=Path, help="prompt 어댑터용 오디오 루트")
+    ap.add_argument("--model", default="small", help="whisper 모델 크기")
+    ap.add_argument("--sim", action="store_true", help="(호환) --adapter sim 과 동일")
     ap.add_argument("--out", type=Path, help="커브 JSON 저장 경로")
     args = ap.parse_args()
 
     minutes = [float(x) for x in args.minutes.split(",")]
     rows = _load(args.test_split)
+    use_sim = args.sim or args.adapter == "sim"
 
-    if not args.sim:
-        print("실제 적응 백엔드가 아직 없습니다. 지금은 --sim 으로 커브 형태·리포트를")
-        print("검증할 수 있습니다. 실측하려면 오디오 + 적응기(파인튜닝/LoRA)를 붙여")
-        print("simulated_adapter 자리를 실제 adapt_and_eval 로 교체하세요.")
-        sys.exit(2)
+    if use_sim:
+        adapter = simulated_adapter()
+        tag = "[SIM]"
+    else:
+        if not args.audio_root:
+            print("prompt 어댑터는 오디오가 필요합니다. --audio-root 로 608 원천데이터")
+            print("압축해제 경로를 주세요. 오디오 없이 형태만 보려면 --adapter sim.")
+            sys.exit(2)
+        adapter = _build_prompt_adapter(args.audio_root, args.model)
+        tag = f"[PROMPT-{args.model}]"
 
-    result = curve(rows, minutes, simulated_adapter())
+    result = curve(rows, minutes, adapter)
 
-    print(f"[SIM] test 화자 {len(result['per_speaker'])}명 · 적응지점 {minutes}(분)")
+    print(f"{tag} test 화자 {len(result['per_speaker'])}명 · 적응지점 {minutes}(분)")
     mean_vals = [result["mean_cer"][m] for m in minutes]
     print("  평균 CER:", {m: (round(v, 3) if v is not None else None) for m, v in result["mean_cer"].items()})
     print("  커브     :", _sparkline(mean_vals), "(왼쪽=0분, 오른쪽 갈수록 적응↑)")
     print("  지점별 화자수:", result["n_speakers_per_point"])
     if len(minutes) >= 2 and mean_vals[0] and mean_vals[-1]:
         drop = (mean_vals[0] - mean_vals[-1]) / mean_vals[0] * 100
-        print(f"  0분→{minutes[-1]:.0f}분 CER {drop:.0f}% 감소(가상)")
+        kind = "가상" if use_sim else "실측"
+        print(f"  0분→{minutes[-1]:.0f}분 CER {drop:.0f}% 감소({kind})")
 
     if args.out:
         args.out.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")

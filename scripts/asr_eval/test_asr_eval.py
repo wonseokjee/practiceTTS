@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 import metrics as M
 import split_speakers as S
 import personalization_curve as P
+import adapters as A
 
 
 # ─── metrics ─────────────────────────────────────────────────────
@@ -146,3 +147,78 @@ def test_curve_is_monotone_decreasing_with_sim_adapter():
     res = P.curve(rows, [0, 1, 3, 5], P.simulated_adapter())
     vals = [res["mean_cer"][m] for m in [0, 1, 3, 5]]
     assert all(a >= b for a, b in zip(vals, vals[1:]))
+
+
+# ─── adapters (오디오 없이 검증 가능한 부분) ──────────────────────
+
+
+def test_build_bias_prompt_prefers_latest_within_budget():
+    # 예산을 넘으면 오래된(앞) 전사를 버리고 최신(뒤)을 남긴다
+    adapt = [
+        {"transcript": "가" * 300},
+        {"transcript": "나" * 300},
+    ]
+    prompt = A.build_bias_prompt(adapt, char_budget=350)
+    assert "나" in prompt and "가" not in prompt  # 최신만 살아남음
+
+
+def test_build_bias_prompt_joins_when_fits():
+    adapt = [{"transcript": "바다"}, {"transcript": "하늘"}]
+    prompt = A.build_bias_prompt(adapt, char_budget=100)
+    assert "바다" in prompt and "하늘" in prompt
+
+
+def test_prompt_adapter_no_prompt_at_zero_minutes():
+    # 0분(적응 없음)에서는 initial_prompt를 비운 채 인식해야 한다(베이스라인 지점)
+    seen = {}
+
+    def fake_recognize(path, initial_prompt):
+        seen["prompt"] = initial_prompt
+        return "바다"  # 정답과 동일 → CER 0
+
+    ad = A.PromptBiasingAdapter(
+        recognize=fake_recognize, resolve_audio=lambda r: Path("x.wav")
+    )
+    holdout = [{"transcript": "바다", "file_id": "ID-01-11-N-AAA-01-M-50-SU.wav"}]
+    cer = ad.adapt_and_eval([{"transcript": "무시"}], holdout, minutes=0)
+    assert cer == 0.0
+    assert seen["prompt"] == ""  # 0분에서는 프롬프트 비움
+
+
+def test_prompt_adapter_biases_with_adapt_text_when_minutes_positive():
+    seen = {}
+
+    def fake_recognize(path, initial_prompt):
+        seen["prompt"] = initial_prompt
+        return "바다"
+
+    ad = A.PromptBiasingAdapter(
+        recognize=fake_recognize, resolve_audio=lambda r: Path("x.wav")
+    )
+    holdout = [{"transcript": "바다", "file_id": "ID-01-11-N-AAA-02-M-50-SU.wav"}]
+    ad.adapt_and_eval([{"transcript": "하늘"}], holdout, minutes=3)
+    assert "하늘" in seen["prompt"]  # 적응 전사가 프롬프트로 편향
+
+
+def test_prompt_adapter_skips_missing_audio():
+    # 오디오를 못 찾으면 그 발화는 채점에서 빠지고, 전부 없으면 None
+    ad = A.PromptBiasingAdapter(
+        recognize=lambda p, ip: "x", resolve_audio=lambda r: None
+    )
+    holdout = [{"transcript": "바다", "file_id": "ID-01-11-N-AAA-03-M-50-SU.wav"}]
+    assert ad.adapt_and_eval([], holdout, minutes=0) is None
+
+
+def test_curve_accepts_adapter_object():
+    # curve는 Adapter 객체(.adapt_and_eval)도 콜러블처럼 받는다
+    ad = A.PromptBiasingAdapter(
+        recognize=lambda p, ip: "가", resolve_audio=lambda r: Path("x.wav")
+    )
+    rows = _utts(4, sec=30.0)  # transcript "가"
+    res = P.curve(rows, [0], ad)
+    assert res["mean_cer"][0] == 0.0  # 인식="가"=정답 → CER 0
+
+
+def test_finetune_adapter_is_explicit_not_silent():
+    with __import__("pytest").raises(NotImplementedError):
+        A.FinetuneAdapter().adapt_and_eval([], [{"transcript": "x"}], 1)
