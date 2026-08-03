@@ -41,13 +41,20 @@ class PhotoTagsIn(BaseModel):
 
 
 class QuizDistribution(BaseModel):
-    """문제 유형별 개수. 기본 4지선다 2 + 예/아니오 2 + 빈칸 1 = 5."""
+    """문제 유형별 개수. 기본 4지선다 3 + 빈칸 2 = 5.
+
+    yes_no는 기본 0이다. 프롬프트가 예/아니오 문항을 금지하는데(50% 찍기라
+    변별력이 낮다) 예전 기본값이 yes_no 2였다 — 그 2슬롯이 매 생성마다 폐기되고
+    규칙 기반 빈칸으로 백필돼 fallback_used가 상시 True였다. 기본 분포를 실제
+    생성되는 유형(4지선다·빈칸)으로 맞춰 백필 낭비를 없앤다. yes_no 채점 경로는
+    호출자가 명시적으로 yes_no>0을 요청하면 여전히 동작한다.
+    """
 
     model_config = ConfigDict(extra="ignore")
 
-    multiple_choice: int = 2
-    yes_no: int = 2
-    fill_blank: int = 1
+    multiple_choice: int = 3
+    yes_no: int = 0
+    fill_blank: int = 2
 
     @property
     def total(self) -> int:

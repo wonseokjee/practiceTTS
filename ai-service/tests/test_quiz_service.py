@@ -91,10 +91,11 @@ def make_request(**overrides) -> QuizGenerateRequest:
 
 
 def valid_five_questions_json() -> str:
-    """mc2 + yn2 + fb1 = 5문제 유효 JSON.
+    """mc3 + fb2 = 5문제 유효 JSON (기본 분포와 일치, yes_no 없음).
 
     correct_answer 들은 make_request() 의 patient_notes 합본에 부분 일치하도록 구성
-    (가드 3 부분일치 검사 통과 보장).
+    (가드 3 부분일치 검사 통과 보장). 오답지는 메모에 없는 같은 범주로 구성한다
+    (Tier1의 '오답 메모 실재 폐기' 통과 보장).
     """
     payload = {
         "questions": [
@@ -111,14 +112,10 @@ def valid_five_questions_json() -> str:
                 "correct_answer": "사과",
             },
             {
-                "type": "yes_no",
-                "prompt": "산책을 했나요?",
-                "correct_answer": "yes",
-            },
-            {
-                "type": "yes_no",
-                "prompt": "비가 왔나요?",
-                "correct_answer": "no",
+                "type": "multiple_choice",
+                "prompt": "누구와 먹었나요?",
+                "choices": ["손녀", "아들", "이모", "삼촌"],
+                "correct_answer": "손녀",
             },
             {
                 "type": "fill_blank",
@@ -126,6 +123,23 @@ def valid_five_questions_json() -> str:
                 "correct_answer": "사과",
                 "hint_first_char": "사",
             },
+            {
+                "type": "fill_blank",
+                "prompt": "___에서 산책했어요.",
+                "correct_answer": "공원",
+                "hint_first_char": "공",
+            },
+        ]
+    }
+    return json.dumps(payload, ensure_ascii=False)
+
+
+def yes_no_two_json() -> str:
+    """yes_no 2문제 JSON — yes_no를 명시적으로 요청할 때의 채점 경로 테스트용."""
+    payload = {
+        "questions": [
+            {"type": "yes_no", "prompt": "산책을 했나요?", "correct_answer": "yes"},
+            {"type": "yes_no", "prompt": "비가 왔나요?", "correct_answer": "no"},
         ]
     }
     return json.dumps(payload, ensure_ascii=False)
@@ -181,7 +195,7 @@ class TestTCQ1정상생성:
 
         # Assert
         mc_questions = [q for q in response.questions if q.type == "multiple_choice"]
-        assert len(mc_questions) == 2
+        assert len(mc_questions) == 3
         for q in mc_questions:
             assert q.choices is not None
             assert len(q.choices) == 4
@@ -201,17 +215,40 @@ class TestTCQ1정상생성:
             assert q.hint_first_char == q.correct_answer.replace(" ", "")[0]
 
     async def test_yes_no_문제의_정답은_yes_또는_no다(self):
-        # Arrange
-        service = QuizGeneratorService(FakeLlmClient(raw=valid_five_questions_json()))
+        # yes_no는 기본 분포에서 0이므로, 명시적으로 요청할 때만 생성된다.
+        # Arrange: yes_no 2개를 명시 요청 + yes_no 응답
+        service = QuizGeneratorService(FakeLlmClient(raw=yes_no_two_json()))
 
         # Act
-        response = await service.generate_quiz(make_request())
+        response = await service.generate_quiz(
+            make_request(
+                distribution={"multiple_choice": 0, "yes_no": 2, "fill_blank": 0}
+            )
+        )
 
         # Assert
         yn_questions = [q for q in response.questions if q.type == "yes_no"]
+        assert len(yn_questions) == 2
         for q in yn_questions:
             assert q.correct_answer in {"yes", "no"}
             assert q.choices is None
+
+    async def test_기본분포는_yes_no없이_5문제라_강제폴백이_없다(self):
+        # 회귀: 예전엔 기본 yes_no 2가 프롬프트 금지와 충돌해 매번 백필됐다.
+        # 기본 분포(mc3/fb2)로 유효 5문제면 fallback_used가 False여야 한다.
+        fake = FakeLlmClient(raw=valid_five_questions_json())
+        service = QuizGeneratorService(fake)
+        # 자기검증 비활성(생성 결과만 검증)
+        import services.quiz_service as _qs
+
+        _orig = _qs._CRITIQUE_ENABLED
+        _qs._CRITIQUE_ENABLED = False
+        try:
+            response = await service.generate_quiz(make_request())
+        finally:
+            _qs._CRITIQUE_ENABLED = _orig
+        assert len(response.questions) == 5
+        assert response.fallback_used is False
 
 
 # ======================================================================
