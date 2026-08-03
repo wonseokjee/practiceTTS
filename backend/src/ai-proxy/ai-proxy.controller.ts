@@ -22,6 +22,8 @@ import { OnboardingGuard } from '../auth/onboarding.guard';
 import type { User } from '../auth/entities/user.entity';
 import { aiServiceHeaders } from '../common/ai-service-auth';
 import { RateLimit, RateLimitGuard } from '../common/rate-limit.guard';
+import { EffectivePatientId } from '../auth/decorators/effective-patient-id.decorator';
+import { SpeechDataService } from '../speech-data/speech-data.service';
 
 /** JwtAuthGuard가 주입한 사용자. 레이트리밋 키로 쓴다. */
 interface AuthenticatedRequest {
@@ -93,6 +95,7 @@ export class AiProxyController {
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
+    private readonly speechData: SpeechDataService,
   ) {
     this.baseUrl = this.configService.get<string>(
       'AI_SERVICE_URL',
@@ -117,6 +120,7 @@ export class AiProxyController {
   )
   async stt(
     @Req() req: AuthenticatedRequest,
+    @EffectivePatientId() patientId: string,
     @UploadedFile() audio: Express.Multer.File | undefined,
     @Body() body: { lang?: string; candidates?: string | string[] },
     @Res() res: Response,
@@ -126,6 +130,20 @@ export class AiProxyController {
         .status(HttpStatus.BAD_REQUEST)
         .json({ message: '오디오 파일이 필요합니다.' });
       return;
+    }
+
+    // 동의 시 발화 보존(ASR 학습용). 라벨 = 정답 후보 첫 항목(과제 목표 단어).
+    // 후보가 없으면(자유 인식) 라벨이 없어 보존 대상이 아니다.
+    const firstCandidate = Array.isArray(body.candidates)
+      ? body.candidates[0]
+      : body.candidates;
+    if (firstCandidate) {
+      void this.speechData.saveRecording({
+        patientId,
+        task: 'stt',
+        targetText: firstCandidate,
+        audio: audio.buffer,
+      });
     }
 
     const form = new FormData();
@@ -187,6 +205,7 @@ export class AiProxyController {
   )
   async pronunciation(
     @Req() _req: AuthenticatedRequest,
+    @EffectivePatientId() patientId: string,
     @UploadedFile() audio: Express.Multer.File | undefined,
     @Body() body: { lang?: string; reference_text?: string },
     @Res() res: Response,
@@ -204,6 +223,15 @@ export class AiProxyController {
         .json({ message: '정답 텍스트가 필요합니다.' });
       return;
     }
+
+    // 동의한 환자면 (오디오 + 정답 텍스트)를 ASR 학습용으로 보존. 채점 흐름을
+    // 막지 않도록 fire-and-forget. 서비스 내부에서 동의 여부를 확인한다.
+    void this.speechData.saveRecording({
+      patientId,
+      task: 'pronunciation',
+      targetText: reference,
+      audio: audio.buffer,
+    });
 
     const form = new FormData();
     form.append(
