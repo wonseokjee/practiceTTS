@@ -28,8 +28,20 @@ ASR 평가의 1번 실수는 **같은 화자가 train과 test에 함께 들어�
 | `metrics.py` | CER/WER (마이크로평균, 한국어 기본 CER) | ✕ 순수함수 |
 | `split_speakers.py` | 화자 분리 스플릿 + 누수 감사 + 예산 분석 | ✕ 매니페스트만 |
 | `baseline_asr.py` | 스플릿을 whisper로 인식 → CER/WER | ○ (`--smoke`는 ✕) |
-| `personalization_curve.py` | 적응 분량↑ → 홀드아웃 CER 커브 | ○ (`--sim`은 ✕) |
-| `test_asr_eval.py` | 지표·스플릿·커브 불변식 16개 | ✕ |
+| `personalization_curve.py` | 적응 분량↑ → 홀드아웃 CER 커브 | ○ (`--adapter sim`은 ✕) |
+| `adapters.py` | 교체 가능한 개인화 적응기(프롬프트 바이어싱/LoRA/가상) | 구현별 |
+| `test_asr_eval.py` | 지표·스플릿·커브·어댑터 불변식 23개 | ✕ |
+
+### 개인화 적응기(`adapters.py`)
+
+`adapt_and_eval(adapt, holdout, minutes) -> CER` 하나만 구현하면 커브에 꽂힌다.
+adapt/holdout은 절대 겹치지 않는다(누수 방지, curve가 보장).
+
+- **PromptBiasingAdapter** — **학습 불필요.** whisper `initial_prompt`에 그 화자의
+  적응 전사를 넣어 디코딩을 화자 어휘 쪽으로 편향. GPU·파인튜닝 없이 오늘 되는
+  1차 개인화. `--adapter prompt --audio-root <오디오>` 로 실행(오디오 필요).
+- **FinetuneAdapter** — LoRA/파인튜닝 스캐폴드(학습 백엔드 필요, 명시적 미구현).
+- **SimAdapter**(`simulated_adapter`) — 오디오 없이 커브 형태만(`--adapter sim`, 기본).
 
 ## 실행
 
@@ -39,9 +51,14 @@ python scripts/asr_eval/split_speakers.py \
   --manifest ".../608-labels/manifest608_all.jsonl" \
   --out-dir  ".../608-labels/_splits" --seed 42
 
-# 2) 파이프라인 스모크 (오디오 불필요, 합성 인식기)
+# 2) 파이프라인 스모크 (오디오 불필요)
 python scripts/asr_eval/baseline_asr.py --split ".../_splits/test.jsonl" --smoke
-python scripts/asr_eval/personalization_curve.py --test-split ".../_splits/test.jsonl" --sim
+python scripts/asr_eval/personalization_curve.py --test-split ".../_splits/test.jsonl" --adapter sim
+
+# 2b) 실제 개인화(학습 불필요, 오디오 필요): whisper initial_prompt 바이어싱
+python scripts/asr_eval/personalization_curve.py \
+  --test-split ".../_splits/test.jsonl" --adapter prompt \
+  --audio-root ".../608-audio" --model small --minutes 0,1,3,5,10
 
 # 3) 테스트
 python -m pytest scripts/asr_eval/test_asr_eval.py
@@ -55,10 +72,11 @@ python -m pytest scripts/asr_eval/test_asr_eval.py
 1. **608 원천데이터(오디오, VS01/TS01 등) 다운로드 → 압축해제** → `--audio-root` 지정
 2. (권장) `scripts/align_608.py`로 긴 낭독 wav을 문장 세그먼트로 정렬
 3. `baseline_asr.py`에서 `--smoke` 제거 → whisper 실측 CER
-4. `personalization_curve.py`의 `simulated_adapter`를 **실제 적응기**(whisper 파인튜닝/LoRA
-   또는 얕은 융합)로 교체 → 실측 커브
+4. 개인화 커브:
+   - **바로 가능**: `--adapter prompt --audio-root <오디오>` (학습 불필요, initial_prompt 바이어싱)
+   - **더 강한 개인화**: `adapters.FinetuneAdapter`에 LoRA/파인튜닝 학습 루프 구현
 
-`--smoke`/`--sim`은 오디오·적응기 없이 **집계·스플릿·리포트 경로가 도는지**만
+`--smoke`/`--adapter sim`은 오디오·적응기 없이 **집계·스플릿·리포트 경로가 도는지**만
 검증한다(숫자는 가상).
 
 ## 프라이버시
