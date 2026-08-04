@@ -66,6 +66,7 @@ export class SpeechDataService {
     task: SpeechTask;
     targetText: string;
     audio: Buffer;
+    recognizedText?: string | null;
     score?: number | null;
     durationMs?: number | null;
   }): Promise<void> {
@@ -85,6 +86,7 @@ export class SpeechDataService {
           patientId: params.patientId,
           task: params.task,
           targetText: target,
+          recognizedText: params.recognizedText ?? null,
           audioPath: rel,
           durationMs: params.durationMs ?? null,
           score: params.score ?? null,
