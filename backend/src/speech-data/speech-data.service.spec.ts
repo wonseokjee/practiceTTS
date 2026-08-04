@@ -63,9 +63,24 @@ describe('SpeechDataService', () => {
     expect(row.patientId).toBe(PID);
     expect(row.targetText).toBe('바다');
     expect(row.score).toBe(91);
+    expect(row.recognizedText).toBeNull();
     // 파일이 화자 폴더 아래 실제로 생성됨
     const wav = await fs.readFile(path.join(tmp, row.audioPath));
     expect(wav.length).toBeGreaterThan(0);
+  });
+
+  it('인식 가설(recognizedText)을 함께 저장한다(오염 필터용)', async () => {
+    users.findOne.mockResolvedValue({ speechDataConsent: true });
+    await svc.saveRecording({
+      patientId: PID,
+      task: 'stt',
+      targetText: '사과', // 목표
+      recognizedText: '아과', // 환자가 실제로 낸 소리(오염 신호)
+      audio: Buffer.from('RIFFwav'),
+    });
+    const row = recordings.insert.mock.calls[0][0];
+    expect(row.targetText).toBe('사과');
+    expect(row.recognizedText).toBe('아과');
   });
 
   it('insert 실패 시 방금 쓴 오디오 파일을 되돌린다(고아 파일 방지)', async () => {

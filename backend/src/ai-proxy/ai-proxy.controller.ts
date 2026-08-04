@@ -132,19 +132,12 @@ export class AiProxyController {
       return;
     }
 
-    // 동의 시 발화 보존(ASR 학습용). 라벨 = 정답 후보 첫 항목(과제 목표 단어).
-    // 후보가 없으면(자유 인식) 라벨이 없어 보존 대상이 아니다.
+    // 라벨 = 정답 후보 첫 항목(과제 목표 단어). 후보가 없으면(자유 인식) 라벨이
+    // 없어 보존 대상이 아니다. 실제 보존은 인식 결과(가설)를 함께 남기려고
+    // 상류 응답 이후에 한다(아래).
     const firstCandidate = Array.isArray(body.candidates)
       ? body.candidates[0]
       : body.candidates;
-    if (firstCandidate) {
-      void this.speechData.saveRecording({
-        patientId,
-        task: 'stt',
-        targetText: firstCandidate,
-        audio: audio.buffer,
-      });
-    }
 
     const form = new FormData();
     form.append(
@@ -175,6 +168,19 @@ export class AiProxyController {
         }),
       );
       res.status(HttpStatus.OK).json(upstream.data);
+
+      // 응답 후 보존(fire-and-forget). 목표(candidates[0])와 함께 ASR이 실제로
+      // 들은 전사(recognized)를 남겨, 학습셋 빌드 시 오염 라벨을 걸러낼 수 있게 한다.
+      if (firstCandidate) {
+        const recognized = this.readString(upstream.data, 'transcript');
+        void this.speechData.saveRecording({
+          patientId,
+          task: 'stt',
+          targetText: firstCandidate,
+          audio: audio.buffer,
+          recognizedText: recognized,
+        });
+      }
     } catch (error) {
       this.logger.warn(`STT 프록시 실패: ${this.describe(error)}`);
       const status = this.upstreamStatus(error);
@@ -224,15 +230,6 @@ export class AiProxyController {
       return;
     }
 
-    // 동의한 환자면 (오디오 + 정답 텍스트)를 ASR 학습용으로 보존. 채점 흐름을
-    // 막지 않도록 fire-and-forget. 서비스 내부에서 동의 여부를 확인한다.
-    void this.speechData.saveRecording({
-      patientId,
-      task: 'pronunciation',
-      targetText: reference,
-      audio: audio.buffer,
-    });
-
     const form = new FormData();
     form.append(
       'audio',
@@ -252,6 +249,18 @@ export class AiProxyController {
         }),
       );
       res.status(HttpStatus.OK).json(upstream.data);
+
+      // 응답 후 보존(fire-and-forget). 목표 문장 + Azure가 실제로 들은 전사 +
+      // 발음 점수(0~100)를 함께 남긴다. 점수/가설로 라벨 신뢰도를 판단해 오염 쌍을
+      // 학습에서 배제할 수 있다. 동의 여부는 서비스 내부에서 확인한다.
+      void this.speechData.saveRecording({
+        patientId,
+        task: 'pronunciation',
+        targetText: reference,
+        audio: audio.buffer,
+        recognizedText: this.readString(upstream.data, 'recognized_text'),
+        score: this.readScore(upstream.data, 'pronunciation_score'),
+      });
     } catch (error) {
       this.logger.warn(`발음 평가 프록시 실패: ${this.describe(error)}`);
       const status = this.upstreamStatus(error);
@@ -331,6 +340,19 @@ export class AiProxyController {
     if (status === HttpStatus.TOO_MANY_REQUESTS) return status;
     if (status === HttpStatus.PAYLOAD_TOO_LARGE) return status;
     return HttpStatus.BAD_GATEWAY;
+  }
+
+  /** 상류 JSON에서 문자열 필드를 안전하게 뽑는다(없으면 null). */
+  private readString(data: unknown, key: string): string | null {
+    const v = (data as Record<string, unknown> | null)?.[key];
+    return typeof v === 'string' && v.length > 0 ? v : null;
+  }
+
+  /** 상류 JSON에서 0~100 점수를 정수로 뽑는다(범위 밖/비수치면 null). */
+  private readScore(data: unknown, key: string): number | null {
+    const v = (data as Record<string, unknown> | null)?.[key];
+    if (typeof v !== 'number' || Number.isNaN(v)) return null;
+    return Math.max(0, Math.min(100, Math.round(v)));
   }
 
   private describe(error: unknown): string {
