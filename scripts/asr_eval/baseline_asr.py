@@ -53,6 +53,17 @@ def _resolve_audio(row: dict, audio_root: Path) -> Path | None:
     return None
 
 
+def task_type(transcript: str) -> str:
+    """전사를 과제 유형으로 분류: 'narrative'(서술문) | 'wordlist'(단어나열).
+
+    이 코퍼스는 test_method가 전부 'Read aloud scripts'로 동일해 무용하다. 대신
+    전사 구조로 나눈다 — 문장부호(.?!)가 3개 이상이면 서술문, 아니면 단어나열.
+    과제 유형이 CER을 크게 가른다(문맥 없는 단어나열이 ASR에 훨씬 불리).
+    """
+    enders = sum(transcript.count(c) for c in ".?!")
+    return "narrative" if enders >= 3 else "wordlist"
+
+
 class WhisperRecognizer:
     """whisper 지연 로딩 래퍼. 첫 인식 때 모델을 올린다."""
 
@@ -66,7 +77,16 @@ class WhisperRecognizer:
             import whisper  # 지연 임포트(설치돼 있어야 함)
 
             self._model = whisper.load_model(self.model_name)
-        result = self._model.transcribe(str(audio_path), language=self.language, fp16=False)
+        # condition_on_previous_text=False: 앞 구간 텍스트를 다음 디코딩에 물려주지
+        # 않는다. 병리 발화·짧은 구간에서 whisper가 같은 구절을 무한 반복하는 환각
+        # (예: "…알라도 …알라도 …알라도")을 크게 줄인다. compression_ratio_threshold는
+        # 기본(2.4)으로 두어 반복이 심한 세그먼트는 whisper가 스스로 폐기하게 한다.
+        result = self._model.transcribe(
+            str(audio_path),
+            language=self.language,
+            fp16=False,
+            condition_on_previous_text=False,
+        )
         return str(result.get("text", "")).strip()
 
 
@@ -98,6 +118,7 @@ def evaluate(
     overall = M.ErrorStat(0, 0)
     overall_w = M.ErrorStat(0, 0)
     by_cat: dict[str, M.ErrorStat] = defaultdict(lambda: M.ErrorStat(0, 0))
+    by_task: dict[str, M.ErrorStat] = defaultdict(lambda: M.ErrorStat(0, 0))
     n_scored = 0
     n_missing_audio = 0
 
@@ -119,6 +140,7 @@ def evaluate(
         overall = overall + c
         overall_w = overall_w + w
         by_cat[r.get("category_code", "?")] += c
+        by_task[task_type(ref)] += c
         n_scored += 1
 
     return {
@@ -127,6 +149,7 @@ def evaluate(
         "cer": overall.rate,
         "wer": overall_w.rate,
         "by_category": {k: v.rate for k, v in sorted(by_cat.items())},
+        "by_task": {k: v.rate for k, v in sorted(by_task.items())},
     }
 
 
@@ -155,6 +178,7 @@ def main() -> None:
     tag = "[SMOKE-합성]" if args.smoke else f"[whisper-{args.model}]"
     print(f"{tag} 채점 {res['scored']}발화" + (f" · 오디오없음 {res['missing_audio']}" if res["missing_audio"] else ""))
     print(f"  전체 CER {res['cer']:.3f} · WER {res['wer']:.3f}")
+    print("  과제유형별 CER:", {k: round(v, 3) for k, v in res["by_task"].items()})
     print("  질환별 CER:", {k: round(v, 3) for k, v in res["by_category"].items()})
     if not args.smoke and res["scored"] == 0:
         print("  ⚠ 채점된 발화가 0 — 오디오 경로 매칭 실패(파일명/relpath 확인).")
