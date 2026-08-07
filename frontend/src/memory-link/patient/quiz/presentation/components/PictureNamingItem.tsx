@@ -26,6 +26,9 @@ interface PictureNamingItemProps {
   onSubmit: (transcript: string, azure: AzurePronunciationScores | null) => void;
   /** 보호자 통과 처리(도움받음). 없으면 목표 이름 제출로 폴백. */
   onSkip?: () => void;
+  /** 보호자가 자동 채점을 정정(피드백 단계). 발음 평가는 '무슨 단어인지'는 못
+   *  가리므로 경계 사례에서 옆의 보호자가 최종 판정한다. */
+  onOverride?: (isCorrect: boolean) => void;
 }
 
 // 'processing' = 녹음 종료 후 서버 인식 응답 대기(1~2초). 무반응 오해 방지용.
@@ -44,6 +47,7 @@ export function PictureNamingItem({
   isCorrect,
   onSubmit,
   onSkip,
+  onOverride,
 }: PictureNamingItemProps) {
   const [status, setStatus] = useState<NamingStatus>('idle');
   const [transcript, setTranscript] = useState<string>('');
@@ -160,6 +164,24 @@ export function PictureNamingItem({
           정답:{' '}
           <span className="font-bold text-[#2D6A56]">{item.targetWord}</span>
         </p>
+      )}
+
+      {/* 보호자 정정 — 발음 평가는 '무슨 단어인지'는 못 가리므로 경계 사례에서
+          옆의 보호자가 최종 판정한다. 현재 판정의 반대만 한 번에 뒤집는다. */}
+      {showFeedback && onOverride && isCorrect !== null && (
+        <div className="flex items-center justify-between gap-3 rounded-md bg-[#F2F1ED] px-4 py-2.5">
+          <span className="text-sm text-[#5C6661]">
+            보호자님, 자동 채점이 맞나요?
+          </span>
+          <button
+            type="button"
+            onClick={() => onOverride(!isCorrect)}
+            className="shrink-0 rounded-md bg-white px-4 py-2 text-sm font-medium text-[#5C6661] ring-1 ring-inset ring-[#D4D8D4] transition-colors duration-[180ms] ease-out hover:bg-[#EBEAE6]"
+            aria-label={isCorrect ? '오답으로 정정' : '정답으로 정정'}
+          >
+            {isCorrect ? '✗ 오답으로 정정' : '✓ 정답으로 정정'}
+          </button>
+        </div>
       )}
 
       {/* 안내/에러 메시지 (피드백 단계 제외) */}

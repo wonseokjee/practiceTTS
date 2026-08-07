@@ -188,6 +188,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
             actions.submitNaming(transcript, azure)
           }
           onSkip={actions.skipCurrent}
+          onOverride={actions.overrideNamingVerdict}
         />
       ) : currentItem.kind === 'repeat' ? (
         <SpeechCaptureItem
