@@ -70,7 +70,10 @@ export interface UseMixedQuizActions {
   /** QAB 단어이해 선택 (로컬 채점) */
   submitQabChoice: (choiceId: string) => void;
   /** QAB 그림 이름대기 음성 제출 (로컬 STT 채점) */
-  submitNaming: (transcript: string) => void;
+  submitNaming: (
+    transcript: string,
+    azure?: AzurePronunciationScores | null,
+  ) => void;
   /** QAB 따라말하기/소리내어읽기 음성 제출. azure 점수 있으면 음소 채점, 없으면 WER 폴백. */
   submitSpeech: (
     transcript: string,
@@ -345,19 +348,33 @@ export function useMixedQuizSession(
   );
 
   const submitNaming = useCallback(
-    (transcript: string): void => {
+    (transcript: string, azure: AzurePronunciationScores | null = null): void => {
       if (phaseRef.current !== 'answering') return;
       const item = itemsRef.current[indexRef.current];
       if (!item || item.kind !== 'naming') return;
 
-      const correct = isNameMatch(transcript, item.item.targetWord);
+      // 음소 점수가 있으면 실조음 채점(단어 모드), 없으면 문자열 근접도(isNameMatch)로
+      // 폴백. 단어 STT는 매우 불신뢰라, 발음 평가가 있으면 그쪽이 훨씬 공정하다.
+      const evaluation = azure
+        ? evaluateFromAzure(azure, transcript, 'word')
+        : null;
+      const correct = evaluation
+        ? evaluation.isCorrect
+        : isNameMatch(transcript, item.item.targetWord);
       qabResultsRef.current.push({
         subtest: 'naming',
         itemRef: item.item.itemId,
         isCorrect: correct,
+        ...(evaluation ? { score: evaluation.score } : {}),
       });
       applyResult(
-        { isCorrect: correct, correctLabel: item.item.targetWord },
+        {
+          isCorrect: correct,
+          correctLabel: item.item.targetWord,
+          ...(evaluation
+            ? { grade: evaluation.grade, encouragement: evaluation.encouragement }
+            : {}),
+        },
         null,
       );
     },

@@ -231,6 +231,36 @@ describe('useMixedQuizSession', () => {
     expect(result.current[0].lastResult?.isCorrect).toBe(false);
   });
 
+  it('발음 점수가 좋으면 STT 전사가 어긋나도 정답 처리한다(단어 STT 불신뢰 보정)', async () => {
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi(),
+        pickQabItems: () => [],
+        generateSessionToken: () => 'tok-1',
+        dailyCount: 0,
+        qabCount: 0,
+        ...NO_SPEECH,
+        pickNamingItems: () => makeNamingItems(),
+        namingCount: 1,
+      }),
+    );
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    // 단어 STT는 '바나나'로 완전히 어긋났지만(단어 CER 실측 ≈ 0.70), 음소 정확도는
+    // 높다 → 발음 평가로 채점해 정답 처리(자유 STT였다면 억울한 오답이 됐을 상황).
+    act(() =>
+      result.current[1].submitNaming('바나나', {
+        accuracyScore: 85,
+        fluencyScore: 90,
+        completenessScore: 100,
+        pronunciationScore: 86,
+        prosodyScore: null,
+      }),
+    );
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    expect(result.current[0].lastResult?.isCorrect).toBe(true);
+  });
+
   it('따라말하기(repeat)는 WER로 로컬 채점한다', async () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
