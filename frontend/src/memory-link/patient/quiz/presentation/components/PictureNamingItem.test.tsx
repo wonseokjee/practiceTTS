@@ -60,6 +60,7 @@ interface Overrides {
 
 function renderItem(overrides?: Overrides) {
   const onSubmit = vi.fn();
+  const onOverride = vi.fn();
   render(
     <PictureNamingItem
       item={ITEM}
@@ -67,9 +68,10 @@ function renderItem(overrides?: Overrides) {
       showFeedback={overrides?.showFeedback ?? false}
       isCorrect={overrides?.isCorrect ?? null}
       onSubmit={onSubmit}
+      onOverride={onOverride}
     />,
   );
-  return { onSubmit };
+  return { onSubmit, onOverride };
 }
 
 describe('PictureNamingItem', () => {
@@ -136,5 +138,17 @@ describe('PictureNamingItem', () => {
     renderItem({ showFeedback: true, isCorrect: false });
     expect(screen.getByText('✗')).toBeInTheDocument();
     expect(screen.getByText('사과')).toBeInTheDocument();
+  });
+
+  it('보호자 정정: 오답 판정을 정답으로 뒤집는다', () => {
+    const { onOverride } = renderItem({ showFeedback: true, isCorrect: false });
+    fireEvent.click(screen.getByRole('button', { name: '정답으로 정정' }));
+    expect(onOverride).toHaveBeenCalledWith(true);
+  });
+
+  it('보호자 정정: 정답 판정을 오답으로 뒤집는다', () => {
+    const { onOverride } = renderItem({ showFeedback: true, isCorrect: true });
+    fireEvent.click(screen.getByRole('button', { name: '오답으로 정정' }));
+    expect(onOverride).toHaveBeenCalledWith(false);
   });
 });

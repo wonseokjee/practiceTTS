@@ -261,6 +261,60 @@ describe('useMixedQuizSession', () => {
     expect(result.current[0].lastResult?.isCorrect).toBe(true);
   });
 
+  it('보호자 정정: 자동 오답을 정답으로 뒤집으면 판정·점수가 반영된다', async () => {
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi(),
+        pickQabItems: () => [],
+        generateSessionToken: () => 'tok-1',
+        dailyCount: 0,
+        qabCount: 0,
+        ...NO_SPEECH,
+        pickNamingItems: () => makeNamingItems(),
+        namingCount: 1,
+      }),
+    );
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    // 자동 채점: 완전히 다른 전사 + azure 없음 → 오답
+    act(() => result.current[1].submitNaming('바나나'));
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    expect(result.current[0].lastResult?.isCorrect).toBe(false);
+
+    // 보호자가 "실제론 맞게 말했다"며 정답으로 정정
+    act(() => result.current[1].overrideNamingVerdict(true));
+    expect(result.current[0].lastResult?.isCorrect).toBe(true);
+
+    // 마지막 문항 → 결과로 이동, 점수에 정정이 반영(1/1 = 100)
+    act(() => result.current[1].next());
+    await waitFor(() => expect(result.current[0].phase).toBe('result'));
+    expect(result.current[0].sessionScore).toBe(100);
+  });
+
+  it('보호자 정정: 같은 판정으로는 점수를 이중 반영하지 않는다', async () => {
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi(),
+        pickQabItems: () => [],
+        generateSessionToken: () => 'tok-1',
+        dailyCount: 0,
+        qabCount: 0,
+        ...NO_SPEECH,
+        pickNamingItems: () => makeNamingItems(),
+        namingCount: 1,
+      }),
+    );
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    act(() => result.current[1].submitNaming('사과요')); // 자동 정답
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    // 이미 정답인데 또 정답으로 정정 → 무변화(이중 가산 없음)
+    act(() => result.current[1].overrideNamingVerdict(true));
+    act(() => result.current[1].next());
+    await waitFor(() => expect(result.current[0].phase).toBe('result'));
+    expect(result.current[0].sessionScore).toBe(100);
+  });
+
   it('따라말하기(repeat)는 WER로 로컬 채점한다', async () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {

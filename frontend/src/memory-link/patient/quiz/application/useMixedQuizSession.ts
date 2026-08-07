@@ -87,6 +87,8 @@ export interface UseMixedQuizActions {
   next: () => void;
   /** 발화/이름대기 문항을 같은 문제로 다시 답한다(직전 결과는 되돌려 이중 집계 방지). */
   answerAgain: () => void;
+  /** 보호자가 이름대기 자동 채점을 정정한다(피드백 단계, 경계 사례 최종 판정). */
+  overrideNamingVerdict: (isCorrect: boolean) => void;
   /** 처음부터 다시 (새 세션 토큰 + 새 QAB 추출) */
   retry: () => Promise<void>;
 }
@@ -555,6 +557,31 @@ export function useMixedQuizSession(
     }));
   }, []);
 
+  // 보호자가 이름대기 자동 채점을 정정한다(피드백 단계). 발음 평가는 '목표어를
+  // 얼마나 잘 발음했나'만 재고 '무슨 단어인지'는 못 가리므로, 경계 사례(음운적으로
+  // 가까운 다른 단어 등)에서 옆에 있는 보호자가 최종 판정한다. 직전 naming 결과의
+  // isCorrect를 바꾸고 정확도 집계를 보정한다(assisted로 기록).
+  const overrideNamingVerdict = useCallback((isCorrect: boolean): void => {
+    if (phaseRef.current !== 'feedback') return;
+    const item = itemsRef.current[indexRef.current];
+    if (!item || item.kind !== 'naming') return;
+    const last = qabResultsRef.current[qabResultsRef.current.length - 1];
+    if (!last || last.subtest !== 'naming') return;
+    if (last.isCorrect === isCorrect) return; // 변화 없음
+    correctCountRef.current = Math.max(
+      0,
+      correctCountRef.current + (isCorrect ? 1 : -1),
+    );
+    last.isCorrect = isCorrect;
+    last.assisted = true;
+    setState((prev) => ({
+      ...prev,
+      lastResult: prev.lastResult
+        ? { ...prev.lastResult, isCorrect }
+        : prev.lastResult,
+    }));
+  }, []);
+
   const retry = useCallback(async (): Promise<void> => {
     phaseRef.current = 'loading';
     setState({ ...INITIAL_STATE, phase: 'loading' });
@@ -572,6 +599,7 @@ export function useMixedQuizSession(
       skipCurrent,
       next,
       answerAgain,
+      overrideNamingVerdict,
       retry,
     },
   ];
