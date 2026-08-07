@@ -261,10 +261,11 @@ describe('useMixedQuizSession', () => {
     expect(result.current[0].lastResult?.isCorrect).toBe(true);
   });
 
-  it('보호자 정정: 자동 오답을 정답으로 뒤집으면 판정·점수가 반영된다', async () => {
+  it('보호자 정정: 자동 오답을 정답으로 뒤집으면 판정·점수가 반영되고, 미보조 정답으로 기록된다', async () => {
+    const submitQabResults = vi.fn().mockResolvedValue({ saved: 1 });
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
-        quizApi: makeApi(),
+        quizApi: makeApi({ submitQabResults }),
         pickQabItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
@@ -289,6 +290,11 @@ describe('useMixedQuizSession', () => {
     act(() => result.current[1].next());
     await waitFor(() => expect(result.current[0].phase).toBe('result'));
     expect(result.current[0].sessionScore).toBe(100);
+    // 정정은 '도움'이 아니다 — 환자가 독립적으로 맞혔으므로 assisted로 찍히면 안 됨
+    // (회복추적에서 빠져 실력이 과소평가되는 것 방지).
+    expect(submitQabResults).toHaveBeenCalledWith('tok-1', [
+      { subtest: 'naming', itemRef: 'naming_n1', isCorrect: true },
+    ]);
   });
 
   it('보호자 정정: 같은 판정으로는 점수를 이중 반영하지 않는다', async () => {
