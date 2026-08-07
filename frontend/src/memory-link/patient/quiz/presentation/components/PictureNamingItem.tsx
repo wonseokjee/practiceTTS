@@ -2,12 +2,18 @@
 //
 // QAB 검사5: 그림 한 장을 보여주고 환자가 "말로" 이름을 답한다(회상·이름대기 훈련).
 //  - 정답을 들려주면 과제가 무의미해지므로 TTS 발음 단서는 제공하지 않는다.
-//  - 흐름: 그림 표시 → 🎤 말하기 → 관대한 STT 채점.
+//  - 흐름: 그림 표시 → 🎤 말하기 → 발음 평가 채점.
 //  - 막히면 "넘어가기"로 보호자가 통과 처리(정답 이름을 제출 → 정답 처리).
-// STT는 훈련 기능에서 검증된 WebSpeechSttService를 재사용한다.
+//
+// 채점 경로: repeat/reading과 동일하게 서버 발음 평가(/pronunciation)를 쓴다.
+// 예전엔 자유 STT 전사를 목표어와 문자열 매칭했는데, 단어 수준 구음장애 발화는
+// STT가 매우 불신뢰(608 실측 CER ≈ 0.70)라 맞게 말해도 오답 처리되는 문제가 있었다.
+// 발음 평가는 목표 음소에 정렬해 채점하므로 자유 STT보다 훨씬 견고하다. 발음 평가가
+// 불가한 환경에서는 azure=null로 와서 상위가 문자열 채점(isNameMatch)으로 폴백한다.
 
 import { useEffect, useMemo, useState } from 'react';
-import { createSttService } from '../../infrastructure/sttFactory.js';
+import { createSpeechCaptureService } from '../../infrastructure/SpeechCaptureService.js';
+import type { AzurePronunciationScores } from '../../domain/pronunciationScore.js';
 import type { QabNamingItem } from '../../domain/MixedQuiz.js';
 
 interface PictureNamingItemProps {
@@ -16,7 +22,8 @@ interface PictureNamingItemProps {
   showFeedback: boolean;
   /** 채점 결과 — 피드백 단계에서만 의미 */
   isCorrect: boolean | null;
-  onSubmit: (transcript: string) => void;
+  /** azure는 음소 점수(가능할 때), 없으면 null(문자열 채점 폴백). */
+  onSubmit: (transcript: string, azure: AzurePronunciationScores | null) => void;
   /** 보호자 통과 처리(도움받음). 없으면 목표 이름 제출로 폴백. */
   onSkip?: () => void;
 }
@@ -40,16 +47,18 @@ export function PictureNamingItem({
 }: PictureNamingItemProps) {
   const [status, setStatus] = useState<NamingStatus>('idle');
   const [transcript, setTranscript] = useState<string>('');
+  const [azure, setAzure] = useState<AzurePronunciationScores | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>('');
 
-  // STT 인스턴스 (컴포넌트 생명주기와 동일). 문제 전환 시 부모가 key로 리마운트.
-  const stt = useMemo(() => createSttService(), []);
+  // 캡처 인스턴스 (컴포넌트 생명주기와 동일). 문제 전환 시 부모가 key로 리마운트.
+  const stt = useMemo(() => createSpeechCaptureService(), []);
 
-  // STT 콜백 프로퍼티 할당(TrainingScreen 등과 동일한 코드베이스 공통 패턴).
+  // 콜백 프로퍼티 할당(SpeechCaptureItem 등과 동일한 공통 패턴).
   /* eslint-disable react-hooks/immutability */
   useEffect(() => {
     stt.onResult = (result) => {
       setTranscript(result.transcript);
+      setAzure(result.azure);
       setStatus('recognized');
     };
     stt.onError = (message) => {
@@ -69,8 +78,8 @@ export function PictureNamingItem({
     if (!isSelectable) return;
     setErrorMessage('');
     setStatus('listening');
-    // 정답 이름을 phrase hint로 전달(서버 STT 제약 인식).
-    stt.start(item.targetWord.length > 0 ? [item.targetWord] : undefined);
+    // 정답 이름을 발음 평가 기준(reference) 겸 STT 폴백 phrase hint로 전달.
+    stt.start(item.targetWord);
   };
 
   // 서버 STT는 자동 종료되지 않으므로 사용자가 발화 종료를 알린다(→ 인식 실행).
@@ -82,7 +91,7 @@ export function PictureNamingItem({
 
   const handleSubmitTranscript = (): void => {
     if (transcript.trim().length === 0) return;
-    onSubmit(transcript.trim());
+    onSubmit(transcript.trim(), azure);
   };
 
   // "넘어가기": 보호자가 답했다고 보고 통과 처리(도움받음).
@@ -92,7 +101,7 @@ export function PictureNamingItem({
       onSkip();
       return;
     }
-    onSubmit(item.targetWord);
+    onSubmit(item.targetWord, null);
   };
 
   // 인식 결과 박스 색상 (피드백 단계).

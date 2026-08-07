@@ -184,7 +184,9 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
           isSelectable={canAnswer}
           showFeedback={showFeedback}
           isCorrect={showFeedback ? (lastResult?.isCorrect ?? null) : null}
-          onSubmit={(transcript) => actions.submitNaming(transcript)}
+          onSubmit={(transcript, azure) =>
+            actions.submitNaming(transcript, azure)
+          }
           onSkip={actions.skipCurrent}
         />
       ) : currentItem.kind === 'repeat' ? (
