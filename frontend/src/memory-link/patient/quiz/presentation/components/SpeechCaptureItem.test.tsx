@@ -59,6 +59,7 @@ interface Overrides {
 
 function renderItem(overrides?: Overrides) {
   const onSubmit = vi.fn();
+  const onOverride = vi.fn();
   render(
     <SpeechCaptureItem
       text={overrides?.text ?? '오늘 날씨가 좋아요'}
@@ -68,9 +69,10 @@ function renderItem(overrides?: Overrides) {
       showFeedback={overrides?.showFeedback ?? false}
       isCorrect={overrides?.isCorrect ?? null}
       onSubmit={onSubmit}
+      onOverride={onOverride}
     />,
   );
-  return { onSubmit };
+  return { onSubmit, onOverride };
 }
 
 describe('SpeechCaptureItem', () => {
@@ -118,5 +120,17 @@ describe('SpeechCaptureItem', () => {
     expect(
       screen.queryByRole('button', { name: '말하기' }),
     ).not.toBeInTheDocument();
+  });
+
+  it('보호자 정정: 오답 판정을 정답으로 뒤집는다', () => {
+    const { onOverride } = renderItem({ showFeedback: true, isCorrect: false });
+    fireEvent.click(screen.getByRole('button', { name: '정답으로 정정' }));
+    expect(onOverride).toHaveBeenCalledWith(true);
+  });
+
+  it('보호자 정정: 정답 판정을 오답으로 뒤집는다', () => {
+    const { onOverride } = renderItem({ showFeedback: true, isCorrect: true });
+    fireEvent.click(screen.getByRole('button', { name: '오답으로 정정' }));
+    expect(onOverride).toHaveBeenCalledWith(false);
   });
 });

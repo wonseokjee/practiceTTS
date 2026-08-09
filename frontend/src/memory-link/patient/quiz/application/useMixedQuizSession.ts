@@ -87,8 +87,8 @@ export interface UseMixedQuizActions {
   next: () => void;
   /** 발화/이름대기 문항을 같은 문제로 다시 답한다(직전 결과는 되돌려 이중 집계 방지). */
   answerAgain: () => void;
-  /** 보호자가 이름대기 자동 채점을 정정한다(피드백 단계, 경계 사례 최종 판정). */
-  overrideNamingVerdict: (isCorrect: boolean) => void;
+  /** 보호자가 발화 과제(이름대기·따라말하기·읽기) 자동 채점을 정정한다(피드백 단계). */
+  overrideSpeechVerdict: (isCorrect: boolean) => void;
   /** 처음부터 다시 (새 세션 토큰 + 새 QAB 추출) */
   retry: () => Promise<void>;
 }
@@ -557,22 +557,25 @@ export function useMixedQuizSession(
     }));
   }, []);
 
-  // 보호자가 이름대기 자동 채점을 정정한다(피드백 단계). 발음 평가는 '목표어를
-  // 얼마나 잘 발음했나'만 재고 '무슨 단어인지'는 못 가리므로, 경계 사례(음운적으로
-  // 가까운 다른 단어 등)에서 옆에 있는 보호자가 최종 판정한다. 직전 naming 결과의
-  // isCorrect를 바꾸고 정확도 집계를 보정한다.
+  // 보호자가 발화 과제(이름대기·따라말하기·읽기) 자동 채점을 정정한다(피드백 단계).
+  // 이유:
+  //  - 이름대기: 발음 평가는 '얼마나 잘 발음했나'만 재고 '무슨 단어인지'는 못 가림.
+  //  - 따라말하기·읽기: 발음 평가 불가 시 문자열 채점(불신뢰 STT)으로 폴백함.
+  // 두 경우 모두 옆의 보호자가 경계 사례를 최종 판정한다. 직전 결과의 isCorrect를
+  // 바꾸고 정확도 집계를 보정한다.
   //
   // assisted는 건드리지 않는다. assisted는 '도움받음(정확도 집계 제외)'을 뜻하는데,
   // 정정은 도움이 아니라 기계 오채점을 사람이 바로잡은 것이다. 특히 거짓 오답을
   // 정답으로 정정하면 환자는 독립적으로 맞힌 것이므로 미보조 정답으로 남아야 한다
   // (assisted로 찍으면 회복추적에서 빠져 실력이 과소평가된다). 넘어가기로 이미
   // assisted였던 항목은 그 값을 그대로 보존한다.
-  const overrideNamingVerdict = useCallback((isCorrect: boolean): void => {
+  const overrideSpeechVerdict = useCallback((isCorrect: boolean): void => {
     if (phaseRef.current !== 'feedback') return;
     const item = itemsRef.current[indexRef.current];
-    if (!item || item.kind !== 'naming') return;
+    const SPEECH_KINDS = ['naming', 'repeat', 'reading'];
+    if (!item || !SPEECH_KINDS.includes(item.kind)) return;
     const last = qabResultsRef.current[qabResultsRef.current.length - 1];
-    if (!last || last.subtest !== 'naming') return;
+    if (!last || !SPEECH_KINDS.includes(last.subtest)) return;
     if (last.isCorrect === isCorrect) return; // 변화 없음
     correctCountRef.current = Math.max(
       0,
@@ -604,7 +607,7 @@ export function useMixedQuizSession(
       skipCurrent,
       next,
       answerAgain,
-      overrideNamingVerdict,
+      overrideSpeechVerdict,
       retry,
     },
   ];
