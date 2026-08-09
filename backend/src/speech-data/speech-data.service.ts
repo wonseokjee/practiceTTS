@@ -21,6 +21,8 @@ import {
 export class SpeechDataService {
   private readonly logger = new Logger(SpeechDataService.name);
   private readonly rootDir: string;
+  /** 화자당 보존 상한. 초과분은 가장 오래된 것부터 지운다. 0/음수면 무제한. */
+  private readonly maxPerPatient: number;
 
   constructor(
     @InjectRepository(SpeechRecording)
@@ -30,6 +32,9 @@ export class SpeechDataService {
     config: ConfigService,
   ) {
     this.rootDir = config.get<string>('SPEECH_DATA_DIR', '../speech-data');
+    this.maxPerPatient = Number(
+      config.get<string>('SPEECH_DATA_MAX_PER_PATIENT', '500'),
+    );
   }
 
   /** 환자의 보존 동의 상태를 반환한다. */
@@ -97,6 +102,9 @@ export class SpeechDataService {
         await fs.rm(abs, { force: true }).catch(() => undefined);
         throw insertErr;
       }
+
+      // 화자당 보존 상한 초과분을 오래된 것부터 정리(무제한 PII 누적 방지).
+      await this.pruneOldest(params.patientId);
     } catch (err) {
       // 보존 실패가 환자 경험을 막아선 안 된다. 경고만 남긴다.
       this.logger.warn(
@@ -105,6 +113,28 @@ export class SpeechDataService {
         }`,
       );
     }
+  }
+
+  /**
+   * 화자당 보존 상한을 넘긴 만큼 **가장 오래된** 발화를 지운다(파일 + 행).
+   * 스케줄러 없이 쓰기 시점에 정리해 무제한 누적을 막는다(데이터 최소화).
+   */
+  private async pruneOldest(patientId: string): Promise<void> {
+    if (!Number.isFinite(this.maxPerPatient) || this.maxPerPatient <= 0) return;
+    const total = await this.recordings.count({ where: { patientId } });
+    if (total <= this.maxPerPatient) return;
+    const old = await this.recordings.find({
+      where: { patientId },
+      order: { createdAt: 'ASC' },
+      take: total - this.maxPerPatient,
+      select: { id: true, audioPath: true },
+    });
+    for (const r of old) {
+      await fs
+        .rm(path.join(this.rootDir, r.audioPath), { force: true })
+        .catch(() => undefined);
+    }
+    await this.recordings.delete(old.map((r) => r.id));
   }
 
   /** 환자의 보존 데이터를 전부 삭제한다(파일 + 행). 컴플라이언스 삭제 경로. */
