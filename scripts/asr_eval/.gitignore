@@ -4,4 +4,5 @@
 *.csv
 _splits/
 _segments/
+_trainset/
 curve*.json

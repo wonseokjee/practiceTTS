@@ -13,6 +13,7 @@ import metrics as M
 import split_speakers as S
 import personalization_curve as P
 import adapters as A
+import build_training_set as B
 
 
 # ─── metrics ─────────────────────────────────────────────────────
@@ -222,3 +223,55 @@ def test_curve_accepts_adapter_object():
 def test_finetune_adapter_is_explicit_not_silent():
     with __import__("pytest").raises(NotImplementedError):
         A.FinetuneAdapter().adapt_and_eval([], [{"transcript": "x"}], 1)
+
+
+# ─── training-set builder (라벨 품질 필터) ────────────────────────
+
+
+def _clf(row):
+    return B.classify_label(row, min_score=70, max_label_cer=0.2)
+
+
+def test_pronunciation_clean_when_score_high():
+    assert _clf({"task": "pronunciation", "target_text": "사과", "score": 85}) == "clean"
+
+
+def test_pronunciation_weak_when_score_low_or_missing():
+    # 점수가 낮으면(목표에서 멂) 오염 가능 → weak
+    assert _clf({"task": "pronunciation", "target_text": "사과", "score": 40}) == "weak"
+    # 점수 자체가 없으면 판단 불가 → weak
+    assert _clf({"task": "pronunciation", "target_text": "사과"}) == "weak"
+
+
+def test_stt_clean_when_hypothesis_matches_target():
+    # 가설이 목표와 일치 → 라벨 신뢰
+    assert _clf({"task": "stt", "target_text": "바다", "recognized_text": "바다"}) == "clean"
+
+
+def test_stt_weak_when_hypothesis_far_from_target():
+    # 목표 "사과"인데 "바나나"로 인식 → 오염 라벨 → weak
+    assert (
+        _clf({"task": "stt", "target_text": "사과", "recognized_text": "바나나"}) == "weak"
+    )
+
+
+def test_weak_when_no_hypothesis_or_no_target():
+    assert _clf({"task": "naming", "target_text": "사과", "recognized_text": ""}) == "weak"
+    assert _clf({"task": "stt", "target_text": "", "recognized_text": "사과"}) == "weak"
+
+
+def test_get_supports_snake_and_camel():
+    # DB export(snake) / TypeORM(camel) 어느 쪽 키든 읽는다
+    assert B._get({"target_text": "가"}, "target_text", "targetText") == "가"
+    assert B._get({"targetText": "나"}, "target_text", "targetText") == "나"
+
+
+def test_build_split_is_speaker_disjoint():
+    speakers = [f"p{i}" for i in range(20)]
+    for seed in range(10):
+        sp = B.build_split(speakers, test_frac=0.2, dev_frac=0.1, seed=seed)
+        assert not (sp["train"] & sp["dev"])
+        assert not (sp["train"] & sp["test"])
+        assert not (sp["dev"] & sp["test"])
+        # 모든 화자가 정확히 한 split에
+        assert len(sp["train"]) + len(sp["dev"]) + len(sp["test"]) == 20

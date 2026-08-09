@@ -69,7 +69,19 @@ ASR 평가의 1번 실수는 **같은 화자가 train과 test에 함께 들어�
 | `baseline_asr.py` | 스플릿을 whisper로 인식 → CER/WER | ○ (`--smoke`는 ✕) |
 | `personalization_curve.py` | 적응 분량↑ → 홀드아웃 CER 커브 | ○ (`--adapter sim`은 ✕) |
 | `adapters.py` | 교체 가능한 개인화 적응기(프롬프트 바이어싱/LoRA/가상) | 구현별 |
-| `test_asr_eval.py` | 지표·스플릿·커브·어댑터 불변식 23개 | ✕ |
+| `build_training_set.py` | 보존 발화(app) → 라벨 품질 필터 → 화자 분리 학습셋 | 오디오 존재확인만 |
+| `test_asr_eval.py` | 지표·스플릿·커브·어댑터·학습셋 불변식 30개 | ✕ |
+
+### 학습셋 빌더(`build_training_set.py`)
+
+동의로 모인 앱 발화(`speech_recordings`)를 자체 ASR 학습셋으로 만든다. 핵심은
+**라벨 오염 제거**(target_text는 '목표'라, 환자가 다르게 발화하면 오디오≠라벨):
+- pronunciation: `score ≥ --min-score`(기본 70)면 clean.
+- stt/naming/repeat/reading: `CER(recognized_text, target) ≤ --max-label-cer`(기본 0.2)면 clean.
+- 그 외는 `weak.jsonl`로(버리지 않고 사람 검수/후처리). clean만 화자 분리 train/dev/test.
+
+입력은 `speech_recordings`의 JSONL export(DB 결합 없이 오프라인). 출력 전사는 PII라
+`_trainset/`은 커밋 금지(.gitignore).
 
 ### 개인화 적응기(`adapters.py`)
 
