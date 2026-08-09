@@ -108,6 +108,49 @@ describe('SpeechDataService', () => {
     expect(recordings.insert).not.toHaveBeenCalled();
   });
 
+  it('보존 상한을 넘기면 가장 오래된 발화를 지운다(무제한 누적 방지)', async () => {
+    const config = {
+      get: (k: string, d: string) =>
+        k === 'SPEECH_DATA_DIR'
+          ? tmp
+          : k === 'SPEECH_DATA_MAX_PER_PATIENT'
+            ? '2'
+            : d,
+    };
+    const capSvc = new SpeechDataService(
+      recordings as never,
+      users as never,
+      config as never,
+    );
+    users.findOne.mockResolvedValue({ speechDataConsent: true });
+    recordings.count.mockResolvedValue(3); // 저장 직후 3건 = 상한 2 초과
+    recordings.find.mockResolvedValue([
+      { id: 'oldest', audioPath: `${PID}/old.wav` },
+    ]);
+
+    await capSvc.saveRecording({
+      patientId: PID,
+      task: 'stt',
+      targetText: '바다',
+      audio: Buffer.from('x'),
+    });
+
+    // 초과분(3-2=1)만큼 오래된 것부터 행 삭제
+    expect(recordings.delete).toHaveBeenCalledWith(['oldest']);
+  });
+
+  it('상한 이하이면 아무것도 지우지 않는다', async () => {
+    users.findOne.mockResolvedValue({ speechDataConsent: true });
+    recordings.count.mockResolvedValue(1); // 상한(기본 500) 이하
+    await svc.saveRecording({
+      patientId: PID,
+      task: 'stt',
+      targetText: '바다',
+      audio: Buffer.from('x'),
+    });
+    expect(recordings.delete).not.toHaveBeenCalled();
+  });
+
   it('setConsent(true)는 동의 시각을 기록한다', async () => {
     await svc.setConsent(PID, true);
     const arg = users.update.mock.calls[0][1];
