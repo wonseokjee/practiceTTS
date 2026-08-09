@@ -188,7 +188,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
             actions.submitNaming(transcript, azure)
           }
           onSkip={actions.skipCurrent}
-          onOverride={actions.overrideNamingVerdict}
+          onOverride={actions.overrideSpeechVerdict}
         />
       ) : currentItem.kind === 'repeat' ? (
         <SpeechCaptureItem
@@ -201,6 +201,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
           isCorrect={showFeedback ? (lastResult?.isCorrect ?? null) : null}
           onSubmit={(transcript, azure) => actions.submitSpeech(transcript, azure)}
           onSkip={actions.skipCurrent}
+          onOverride={actions.overrideSpeechVerdict}
         />
       ) : currentItem.kind === 'reading' ? (
         <SpeechCaptureItem
@@ -213,6 +214,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
           isCorrect={showFeedback ? (lastResult?.isCorrect ?? null) : null}
           onSubmit={(transcript, azure) => actions.submitSpeech(transcript, azure)}
           onSkip={actions.skipCurrent}
+          onOverride={actions.overrideSpeechVerdict}
         />
       ) : currentItem.kind === 'ddk' ? (
         <DdkItem

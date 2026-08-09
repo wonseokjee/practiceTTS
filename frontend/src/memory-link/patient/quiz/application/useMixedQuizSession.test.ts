@@ -283,7 +283,7 @@ describe('useMixedQuizSession', () => {
     expect(result.current[0].lastResult?.isCorrect).toBe(false);
 
     // 보호자가 "실제론 맞게 말했다"며 정답으로 정정
-    act(() => result.current[1].overrideNamingVerdict(true));
+    act(() => result.current[1].overrideSpeechVerdict(true));
     expect(result.current[0].lastResult?.isCorrect).toBe(true);
 
     // 마지막 문항 → 결과로 이동, 점수에 정정이 반영(1/1 = 100)
@@ -315,7 +315,7 @@ describe('useMixedQuizSession', () => {
     act(() => result.current[1].submitNaming('사과요')); // 자동 정답
     await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
     // 이미 정답인데 또 정답으로 정정 → 무변화(이중 가산 없음)
-    act(() => result.current[1].overrideNamingVerdict(true));
+    act(() => result.current[1].overrideSpeechVerdict(true));
     act(() => result.current[1].next());
     await waitFor(() => expect(result.current[0].phase).toBe('result'));
     expect(result.current[0].sessionScore).toBe(100);
@@ -347,6 +347,45 @@ describe('useMixedQuizSession', () => {
     act(() => result.current[1].submitSpeech('오늘 날씨가 좋아요'));
     await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
     expect(result.current[0].lastResult?.isCorrect).toBe(true);
+  });
+
+  it('보호자 정정은 따라말하기(repeat)에도 적용된다(발음평가 폴백 보정)', async () => {
+    const submitQabResults = vi.fn().mockResolvedValue({ saved: 1 });
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi({ submitQabResults }),
+        pickQabItems: () => [],
+        generateSessionToken: () => 'tok-1',
+        dailyCount: 0,
+        qabCount: 0,
+        ...NO_SPEECH,
+        pickRepeatItems: () => [
+          {
+            itemId: 'rp1',
+            category: 'word',
+            text: '바다',
+            instruction: '따라 말해주세요',
+          },
+        ],
+        repeatCount: 1,
+      }),
+    );
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    // 발음평가 없이 문자열 폴백 → 완전히 다른 전사라 오답
+    act(() => result.current[1].submitSpeech('바나나'));
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    expect(result.current[0].lastResult?.isCorrect).toBe(false);
+
+    // 보호자가 정답으로 정정 → 판정·점수 반영, 미보조 정답으로 기록(assisted 없음)
+    act(() => result.current[1].overrideSpeechVerdict(true));
+    expect(result.current[0].lastResult?.isCorrect).toBe(true);
+    act(() => result.current[1].next());
+    await waitFor(() => expect(result.current[0].phase).toBe('result'));
+    expect(result.current[0].sessionScore).toBe(100);
+    expect(submitQabResults).toHaveBeenCalledWith('tok-1', [
+      { subtest: 'repeat', itemRef: 'rp1', isCorrect: true, score: expect.any(Number) },
+    ]);
   });
 
   it('소리 내어 읽기(reading)는 어절 단위 WER로 채점한다', async () => {
