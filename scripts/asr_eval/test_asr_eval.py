@@ -14,6 +14,7 @@ import split_speakers as S
 import personalization_curve as P
 import adapters as A
 import build_training_set as B
+import prepare_colab_trainset as PC
 
 
 # ─── metrics ─────────────────────────────────────────────────────
@@ -275,3 +276,29 @@ def test_build_split_is_speaker_disjoint():
         assert not (sp["dev"] & sp["test"])
         # 모든 화자가 정확히 한 split에
         assert len(sp["train"]) + len(sp["dev"]) + len(sp["test"]) == 20
+
+
+# ─── Colab 학습셋 준비 ────────────────────────────────────────────
+
+
+def test_keep_filters_empty_and_out_of_range():
+    ok = {"reference_text": "가", "segment_wav_relpath": "a.wav", "start": 0, "end": 5}
+    assert PC.keep(ok, min_sec=1, max_sec=30)
+    # 전사 없음
+    assert not PC.keep({**ok, "reference_text": " "}, min_sec=1, max_sec=30)
+    # wav 없음
+    assert not PC.keep({**ok, "segment_wav_relpath": ""}, min_sec=1, max_sec=30)
+    # 너무 짧음 / 너무 김(whisper 30초 초과)
+    assert not PC.keep({**ok, "end": 0.5}, min_sec=1, max_sec=30)
+    assert not PC.keep({**ok, "end": 40}, min_sec=1, max_sec=30)
+
+
+def test_colab_split_disjoint_and_deterministic():
+    speakers = [f"s{i}" for i in range(10)]
+    a1 = PC.split_speakers(speakers, test_frac=0.2, dev_frac=0.0, seed=7)
+    a2 = PC.split_speakers(speakers, test_frac=0.2, dev_frac=0.0, seed=7)
+    assert a1 == a2  # 결정적
+    tests = {s for s, v in a1.items() if v == "test"}
+    trains = {s for s, v in a1.items() if v == "train"}
+    assert not (tests & trains)  # 한 화자는 한 split만
+    assert len(tests) == 2  # round(10*0.2)
