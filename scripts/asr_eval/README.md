@@ -70,7 +70,9 @@ ASR 평가의 1번 실수는 **같은 화자가 train과 test에 함께 들어�
 | `personalization_curve.py` | 적응 분량↑ → 홀드아웃 CER 커브 | ○ (`--adapter sim`은 ✕) |
 | `adapters.py` | 교체 가능한 개인화 적응기(프롬프트 바이어싱/LoRA/가상) | 구현별 |
 | `build_training_set.py` | 보존 발화(app) → 라벨 품질 필터 → 화자 분리 학습셋 | 오디오 존재확인만 |
-| `test_asr_eval.py` | 지표·스플릿·커브·어댑터·학습셋 불변식 30개 | ✕ |
+| `prepare_colab_trainset.py` | align_608 세그먼트 → Colab 파인튜닝 패키지(zip) | 세그먼트 wav |
+| `COLAB_FINETUNE.md` | 무료 Colab T4로 whisper LoRA 파인튜닝 가이드(셀 전체) | — |
+| `test_asr_eval.py` | 지표·스플릿·커브·어댑터·학습셋·Colab 불변식 32개 | ✕ |
 
 ### 학습셋 빌더(`build_training_set.py`)
 
