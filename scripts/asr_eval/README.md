@@ -53,6 +53,25 @@ ASR 평가의 1번 실수는 **같은 화자가 train과 test에 함께 들어�
 불충분·유해). 진짜 개인화는 음향 fine-tuning(`adapters.FinetuneAdapter`, 미구현)이
 필요하다. 이 커브는 그 결론을 실측으로 고정한다.
 
+### 파인튜닝 실측 (Colab T4, whisper-small LoRA) — 음성 결과
+
+`align_608` 세그먼트 → `prepare_colab_trainset` 패키지(20화자, 40분, 178 train
+세그먼트)로 T4에서 LoRA 파인튜닝(`finetune_whisper_608_colab.ipynb`).
+
+- **파이프라인은 T4에서 end-to-end 정상 작동**(설치·LoRA·학습·평가).
+- 그러나 **40분은 whisper 파인튜닝엔 턱없이 부족 → 과적합(암기)**. train loss가
+  0.003까지 떨어지고, 모델은 test 오디오를 무시한 채 학습 문장을 그대로 뱉었다
+  (서로 다른 오디오에 동일 출력 "엄마에게 전화를 합니다"). test CER 개선 없음.
+- 주의: HF Trainer의 generate 평가가 CER을 부풀린다(같은 KYG/JCJ 화자를
+  openai-whisper로 재면 0.12~0.19인데 HF eval은 2.0+). 생성 설정(언어 강제·반복
+  억제)을 맞춰야 공정. 그래서 이 실험의 절대 CER은 신뢰 불가, "암기했다"는 정성적
+  결론만 유효.
+
+**결론: whisper 파인튜닝은 수십 시간 규모가 필수. 40분은 학습이 아니라 암기.**
+prompt-biasing 부적합과 같은 방향 — 구음장애 개선엔 대규모 음향 학습이 필요하다.
+파이프라인(align→패키지→노트북)은 검증됐으니, 다음은 데이터 규모를 키워
+Colab Pro/자체 GPU로 실제 학습.
+
 ## 데이터 예산 (매니페스트 기준, 오디오 라벨)
 
 - 발화(파일) **1,632** · 고유 화자 **188**
