@@ -45,7 +45,7 @@ wav/<화자>/*.wav   (16kHz mono, 짧은 클립)
 ```python
 !pip install -q -U transformers datasets peft accelerate evaluate jiwer librosa
 !pip uninstall -y torchao   # peft 버전검사와 충돌, LoRA엔 불필요
-!pip install -q --force-reinstall numpy   # pip -U가 섞어놓은 numpy 정리(_center 에러 방지)
+!pip install -q --force-reinstall --no-cache-dir "numpy==2.0.2"  # Colab 기준 버전 고정(_center 에러 방지)
 print("설치 완료 → 런타임 재시작 후 셀 3부터")
 ```
 
@@ -145,6 +145,6 @@ print(f"파인튜닝 후 test CER {m['eval_cer']:.3f} (baseline 0.70과 비교)"
 ## 흔한 에러
 - `torchao ... only versions above 0.16.0` → 셀 2에서 `!pip uninstall -y torchao` + 재시작
 - `cannot import name '_center' from numpy._core.umath` → pip -U가 numpy를 섞어 깨뜨림.
-  `!pip install -q --force-reinstall numpy` + 재시작(셀 2에 이미 포함). **재시작 필수**.
+  `!pip install -q --force-reinstall --no-cache-dir "numpy==2.0.2"` + **재시작 필수**(셀 2에 포함). 최신 numpy로 재설치하면 또 어긋나니 버전을 고정한다.
 - 라벨 못 찾음 / 학습 안 돎 → 셀 8의 `remove_unused_columns=False`, `label_names=["labels"]` 확인
 - `tokenizer=` deprecated 경고 → 최신 transformers는 `processing_class=processor`
