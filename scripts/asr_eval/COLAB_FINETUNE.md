@@ -69,6 +69,11 @@ model.config.use_cache = False
 model = get_peft_model(model, LoraConfig(r=16, lora_alpha=32,
         target_modules=["q_proj","v_proj"], lora_dropout=0.05))
 model.print_trainable_parameters()
+# 생성(평가) 설정 — 없으면 whisper 반복 환각으로 CER이 2.0+로 부풀려진다
+model.generation_config.language = "ko"
+model.generation_config.task = "transcribe"
+model.generation_config.no_repeat_ngram_size = 3
+model.generation_config.max_new_tokens = 100
 ```
 
 **셀 5 — 데이터셋**
@@ -119,7 +124,7 @@ def compute_metrics(p):
 from transformers import Seq2SeqTrainer, Seq2SeqTrainingArguments
 args = Seq2SeqTrainingArguments(
     output_dir=f"{BASE}/whisper-608-lora",
-    per_device_train_batch_size=8, learning_rate=1e-3, warmup_steps=50,
+    per_device_train_batch_size=8, learning_rate=1e-4, warmup_steps=20,
     num_train_epochs=5, fp16=True,
     eval_strategy="steps", eval_steps=200, save_steps=200, logging_steps=25,
     predict_with_generate=True, generation_max_length=225,
@@ -144,6 +149,7 @@ print(f"파인튜닝 후 test CER {m['eval_cer']:.3f} (baseline 0.70과 비교)"
 
 ## 흔한 에러
 - `torchao ... only versions above 0.16.0` → 셀 2에서 `!pip uninstall -y torchao` + 재시작
+- **CER이 2.0+ (100% 초과)** → whisper 생성이 반복 환각. 셀 4에 `generation_config`(언어 강제 + `no_repeat_ngram_size=3`) 추가. LR도 1e-4로(1e-3은 과학습).
 - `cannot import name '_center' from numpy._core.umath` → pip -U가 numpy를 섞어 깨뜨림.
   `!pip install -q --force-reinstall --no-cache-dir "numpy==2.0.2"` + **재시작 필수**(셀 2에 포함). 최신 numpy로 재설치하면 또 어긋나니 버전을 고정한다.
 - 라벨 못 찾음 / 학습 안 돎 → 셀 8의 `remove_unused_columns=False`, `label_names=["labels"]` 확인
