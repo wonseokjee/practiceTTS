@@ -33,6 +33,7 @@ import {
   QuizSetDetail,
   RequestGenerationResult,
   SaveQabResultsResult,
+  SkillLevelsResult,
   SubmitAttemptsResult,
   QuizService,
 } from './quiz.service';
@@ -203,6 +204,23 @@ export class QuizController {
     const effectivePatientId = resolveEffectivePatientId(req.user);
     try {
       return await this.quizService.getQabSummary(effectivePatientId);
+    } catch (error) {
+      throw this.mapError(error);
+    }
+  }
+
+  /**
+   * GET /quiz/skill-levels
+   * 환자 스킬별 현재 난이도 레벨(1~5, 콜드스타트 2 채움) + 매니페스트 버전.
+   * 프론트가 문항 선택 난이도를 정하는 데 쓴다. 레벨은 환자에게 노출하지 않는다.
+   */
+  @Get('quiz/skill-levels')
+  async getSkillLevels(
+    @Req() req: AuthenticatedRequest,
+  ): Promise<SkillLevelsResult> {
+    const effectivePatientId = resolveEffectivePatientId(req.user);
+    try {
+      return await this.quizService.getSkillLevels(effectivePatientId);
     } catch (error) {
       throw this.mapError(error);
     }

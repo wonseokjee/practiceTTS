@@ -203,3 +203,25 @@ score만 받아 **영역 외 터치도 '무반응'으로 기록**했다. 라벨�
 빈 프로필을 200으로 반환.
 **Context:** `/qa` 2026-07-20 발견(ISSUE-003).
 **Depends on:** 독립적.
+
+---
+
+## 적응형 일일 학습 플로우 리뷰 (2026-08-13, plan-eng-review + Codex)
+
+### TODO-ADP-001: 세션 중단 점진 제출(이탈 지점 포착)
+
+**What:** QAB 결과를 세션 끝 1회 배치 제출 대신 문항별/주기적 점진 제출로 전환.
+**Why:** 혼자 하는 고령 사용자는 중도 이탈이 핵심 실패 양상인데, 현재 세션끝 fire-and-forget 제출(useMixedQuizSession.ts:514)은 "3문항 하고 이탈"과 "시작 안 함"을 구분 못 한다 — 관측성(이탈 지표)이 하필 재야 할 신호를 놓친다. 적응형 플로우의 프록시 위험(참여≠치료) 감지에 직결.
+**Pros:** 이탈 지표 정확도↑. 크래시·연결끊김 시 부분 데이터 보존. qab_results가 이미 배그라운드·멱등이라 점진 제출과 자연스럽게 맞음.
+**Cons:** submit 계약·프론트 세션훅 변경 범위 증가, 요청 빈도 증가(배치→N회).
+**Context:** `frontend/.../useMixedQuizSession.ts` next()의 세션끝 submitQabResults를 문항별/주기 플러시로. 백엔드 `qab_results` dedup 유니크 인덱스가 멱등 보장. Phase 1 관측성 정확도 확보 후 다음 스프린트 1순위.
+**Depends on:** 적응형 Phase 1 착수.
+
+### TODO-ADP-002: 보호자 effectivePatientId 레벨 오염 가드
+
+**What:** 보호자가 환자 대신 세션을 돌릴 때 그 결과가 환자 skill_levels를 움직이지 않도록 구분(보호자 "시험 삼기" 격리, 또는 명시적 환자 모드에서만 레벨 반영).
+**Why:** `resolveEffectivePatientId`로 보호자가 환자 대리 제출 가능. 보호자가 앱을 시연/테스트하면 환자 레벨이 실제 실력과 무관하게 이동해 적응이 오염된다.
+**Pros:** 레벨 신뢰성. 콜드스타트 레벨2 가정이 보호자 시연으로 깨지는 것 방지.
+**Cons:** 세션 출처(환자 vs 보호자 대리) 태깅 필요 — 약간의 컨텍스트 전파.
+**Context:** `backend/src/auth/effective-patient-id.util.ts` + saveQabResults. 레벨 재계산 시 세션 출처 플래그를 보고 patient-origin 결과만 반영. 관측성으로 오염 빈도 먼저 실측 후 결정 가능.
+**Depends on:** skill_levels + 레벨 재계산 구현.

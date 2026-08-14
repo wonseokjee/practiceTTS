@@ -9,6 +9,7 @@ import { QuizBestScore } from './entities/quiz-best-score.entity';
 import { QabResult } from './entities/qab-result.entity';
 import { QuizQuestion } from './entities/quiz-question.entity';
 import { QuizSet } from './entities/quiz-set.entity';
+import { SkillLevel } from './entities/skill-level.entity';
 import { QUIZ_GENERATION_CLIENT } from './interfaces/IQuizGenerationClient';
 import { QUIZ_SCORER } from './interfaces/IQuizScorer';
 import { WISH_CONVERSION_CLIENT } from './interfaces/IWishConversionClient';
@@ -62,6 +63,7 @@ describe('Quiz Phase 3 와이어링', () => {
           useValue: buildRepoMock(),
         },
         { provide: getRepositoryToken(QabResult), useValue: buildRepoMock() },
+        { provide: getRepositoryToken(SkillLevel), useValue: buildRepoMock() },
         { provide: getDataSourceToken(), useValue: { transaction: jest.fn() } },
         { provide: QUIZ_GENERATION_CLIENT, useValue: { generate: jest.fn() } },
         {

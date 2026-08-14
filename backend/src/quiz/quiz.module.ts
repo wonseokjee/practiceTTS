@@ -10,6 +10,7 @@ import { QuizAttempt } from './entities/quiz-attempt.entity';
 import { QuizBestScore } from './entities/quiz-best-score.entity';
 import { QuizQuestion } from './entities/quiz-question.entity';
 import { QuizSet } from './entities/quiz-set.entity';
+import { SkillLevel } from './entities/skill-level.entity';
 import { QUIZ_GENERATION_CLIENT } from './interfaces/IQuizGenerationClient';
 import { QUIZ_SCORER } from './interfaces/IQuizScorer';
 import { WISH_CONVERSION_CLIENT } from './interfaces/IWishConversionClient';
@@ -41,6 +42,7 @@ import { WishConversionClient } from './services/wish-conversion.client';
       QuizAttempt,
       QuizBestScore,
       QabResult,
+      SkillLevel,
       MemoryEntry,
       PatientMemoryNote,
     ]),

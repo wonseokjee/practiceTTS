@@ -46,6 +46,14 @@ export class QabResultItemDto {
   @Min(0)
   @Max(100)
   score?: number;
+
+  // 이 항목이 제시된 난이도 레벨(1~5). 적응형 레벨링 윈도우를 현재 레벨 항목으로
+  // 한정하는 데 쓴다. 구클라이언트는 생략(null 저장 → 레벨링에서 제외).
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  presentedLevel?: number;
 }
 
 /**
@@ -63,4 +71,11 @@ export class SubmitQabResultsDto {
   @ValidateNested({ each: true })
   @Type(() => QabResultItemDto)
   results: QabResultItemDto[];
+
+  // 정적 문항 풀 매니페스트 버전. presented_level 해석의 감사 추적용.
+  // 현재 버전과 다르면 백엔드는 기록만(경고 로그), 거부하지 않는다.
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  manifestVersion?: number;
 }
