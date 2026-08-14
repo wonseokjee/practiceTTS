@@ -83,6 +83,12 @@ function makeApi(overrides?: Partial<IQuizApi>): IQuizApi {
     getWishPractice: vi.fn(),
     submitQabResults: vi.fn().mockResolvedValue({ saved: 0 }),
     getQabSummary: vi.fn().mockResolvedValue([]),
+    getSkillLevels: vi.fn().mockResolvedValue({
+      levels: {
+        word: 2, sentence: 2, naming: 2, repeat: 2, reading: 2, ddk: 2, loc: 2,
+      },
+      manifestVersion: 1,
+    }),
     ...overrides,
   } as IQuizApi;
 }
@@ -292,9 +298,11 @@ describe('useMixedQuizSession', () => {
     expect(result.current[0].sessionScore).toBe(100);
     // 정정은 '도움'이 아니다 — 환자가 독립적으로 맞혔으므로 assisted로 찍히면 안 됨
     // (회복추적에서 빠져 실력이 과소평가되는 것 방지).
-    expect(submitQabResults).toHaveBeenCalledWith('tok-1', [
-      { subtest: 'naming', itemRef: 'naming_n1', isCorrect: true },
-    ]);
+    expect(submitQabResults).toHaveBeenCalledWith(
+      'tok-1',
+      [{ subtest: 'naming', itemRef: 'naming_n1', isCorrect: true }],
+      1,
+    );
   });
 
   it('보호자 정정: 같은 판정으로는 점수를 이중 반영하지 않는다', async () => {
@@ -383,9 +391,11 @@ describe('useMixedQuizSession', () => {
     act(() => result.current[1].next());
     await waitFor(() => expect(result.current[0].phase).toBe('result'));
     expect(result.current[0].sessionScore).toBe(100);
-    expect(submitQabResults).toHaveBeenCalledWith('tok-1', [
-      { subtest: 'repeat', itemRef: 'rp1', isCorrect: true, score: expect.any(Number) },
-    ]);
+    expect(submitQabResults).toHaveBeenCalledWith(
+      'tok-1',
+      [{ subtest: 'repeat', itemRef: 'rp1', isCorrect: true, score: expect.any(Number) }],
+      1,
+    );
   });
 
   it('소리 내어 읽기(reading)는 어절 단위 WER로 채점한다', async () => {
@@ -516,9 +526,11 @@ describe('useMixedQuizSession', () => {
     act(() => result.current[1].next());
 
     expect(result.current[0].phase).toBe('result');
-    expect(submitQabResults).toHaveBeenCalledWith('tok-1', [
-      { subtest: 'ddk', itemRef: 'ddk_0', isCorrect: true, metric: 11 },
-    ]);
+    expect(submitQabResults).toHaveBeenCalledWith(
+      'tok-1',
+      [{ subtest: 'ddk', itemRef: 'ddk_0', isCorrect: true, metric: 11 }],
+      1,
+    );
   });
 
   it('넘어가기(skipCurrent)는 도움받음(assisted)으로 기록하고 긍정 피드백을 준다', async () => {
@@ -546,8 +558,10 @@ describe('useMixedQuizSession', () => {
     act(() => result.current[1].next());
     expect(result.current[0].phase).toBe('result');
     // 추세 기록은 assisted=true
-    expect(submitQabResults).toHaveBeenCalledWith('tok-1', [
-      { subtest: 'naming', itemRef: 'naming_n1', isCorrect: true, assisted: true },
-    ]);
+    expect(submitQabResults).toHaveBeenCalledWith(
+      'tok-1',
+      [{ subtest: 'naming', itemRef: 'naming_n1', isCorrect: true, assisted: true }],
+      1,
+    );
   });
 });

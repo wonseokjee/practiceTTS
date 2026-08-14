@@ -31,6 +31,21 @@ export interface QabResultInput {
    * 집계가 GROUP BY subtest라 서로 섞이지 않는다.
    */
   score?: number;
+  /**
+   * 이 항목이 제시된 난이도 레벨(1~5). 백엔드 적응형 레벨링이 "현재 레벨에서
+   * 제시된 항목"만 윈도우로 세도록 함께 보낸다. 미지정이면 레벨링에서 제외.
+   */
+  presentedLevel?: number;
+}
+
+/**
+ * GET /quiz/skill-levels 응답 — 스킬별 현재 난이도 레벨(콜드스타트 2 채움) +
+ * 정적 문항 풀 매니페스트 버전. 프론트가 이 레벨로 문항 선택 난이도를 정한다.
+ * 레벨은 환자에게 노출하지 않는다(강등 비가시).
+ */
+export interface SkillLevels {
+  levels: Record<QabSubtest, number>;
+  manifestVersion: number;
 }
 
 /** 검사별 회복 추적 요약 (보호자용) */

@@ -166,6 +166,63 @@ describe('quizApi', () => {
         '서버 응답 형식이 올바르지 않습니다.',
       );
     });
+
+    it('manifestVersion을 주면 바디에 포함하고, 안 주면 생략한다', async () => {
+      postMock.mockResolvedValue({ data: { saved: 1 } });
+      const results = [
+        {
+          subtest: 'word' as const,
+          itemRef: 'qw_001',
+          isCorrect: true,
+          presentedLevel: 3,
+        },
+      ];
+
+      await quizApi.submitQabResults('tok-1', results, 1);
+      expect(postMock).toHaveBeenCalledWith('/quiz/qab-results', {
+        sessionToken: 'tok-1',
+        results,
+        manifestVersion: 1,
+      });
+
+      postMock.mockClear();
+      await quizApi.submitQabResults('tok-2', results);
+      expect(postMock).toHaveBeenCalledWith('/quiz/qab-results', {
+        sessionToken: 'tok-2',
+        results,
+      });
+    });
+  });
+
+  describe('getSkillLevels', () => {
+    it('GET /quiz/skill-levels를 호출하고 levels/manifestVersion을 반환한다', async () => {
+      const data = {
+        levels: { word: 3, sentence: 2, naming: 2, repeat: 2, reading: 2, ddk: 2, loc: 2 },
+        manifestVersion: 1,
+      };
+      getMock.mockResolvedValue({ data });
+
+      const res = await quizApi.getSkillLevels();
+
+      expect(getMock).toHaveBeenCalledWith('/quiz/skill-levels');
+      expect(res).toEqual(data);
+    });
+
+    it('레벨 값이 숫자가 아니면 형식 오류를 던진다', async () => {
+      getMock.mockResolvedValue({
+        data: { levels: { word: 'x' }, manifestVersion: 1 },
+      });
+      await expect(quizApi.getSkillLevels()).rejects.toThrow(
+        '서버 응답 형식이 올바르지 않습니다.',
+      );
+    });
+
+    it('manifestVersion이 없으면 형식 오류를 던진다', async () => {
+      getMock.mockResolvedValue({ data: { levels: {} } });
+      await expect(quizApi.getSkillLevels()).rejects.toThrow(
+        '서버 응답 형식이 올바르지 않습니다.',
+      );
+    });
   });
 
   describe('getQabSummary', () => {

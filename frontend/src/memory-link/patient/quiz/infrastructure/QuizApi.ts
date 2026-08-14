@@ -20,7 +20,12 @@ import type {
   SubmitAttemptsResult,
   WishPractice,
 } from '../domain/Quiz.js';
-import type { QabResultInput, QabSubtestSummary } from '../domain/QabResult.js';
+import type {
+  QabResultInput,
+  QabSubtest,
+  QabSubtestSummary,
+  SkillLevels,
+} from '../domain/QabResult.js';
 
 /** 목록 조회 옵션 */
 export interface ListQuizSetsParams {
@@ -59,11 +64,14 @@ export interface IQuizApi {
   submitQabResults(
     sessionToken: string,
     results: QabResultInput[],
+    manifestVersion?: number,
   ): Promise<{ saved: number }>;
   /** GET /quiz/qab-summary — QAB 검사별 회복 추세 (보호자용) */
   getQabSummary(): Promise<QabSubtestSummary[]>;
   /** GET /quiz/qab-trend — 검사별 주차 추이 (보호자용) */
   getQabTrend(weeks?: number): Promise<QabTrendSeries[]>;
+  /** GET /quiz/skill-levels — 스킬별 현재 난이도 레벨 + 매니페스트 버전 */
+  getSkillLevels(): Promise<SkillLevels>;
 }
 
 // ─── 런타임 타입가드 ──────────────────────────────────────────────
@@ -290,10 +298,12 @@ export const quizApi: IQuizApi = {
   async submitQabResults(
     sessionToken: string,
     results: QabResultInput[],
+    manifestVersion?: number,
   ): Promise<{ saved: number }> {
     const res = await memoryLinkApi.post<unknown>('/quiz/qab-results', {
       sessionToken,
       results,
+      ...(manifestVersion === undefined ? {} : { manifestVersion }),
     });
     const obj = asRecord(res.data);
     if (obj === null || typeof obj.saved !== 'number') {
@@ -322,5 +332,23 @@ export const quizApi: IQuizApi = {
       throw new Error(INVALID_RESPONSE_MESSAGE);
     }
     return series as QabTrendSeries[];
+  },
+
+  async getSkillLevels(): Promise<SkillLevels> {
+    const res = await memoryLinkApi.get<unknown>('/quiz/skill-levels');
+    const obj = asRecord(res.data);
+    const levels = asRecord(obj?.levels);
+    if (
+      obj === null ||
+      levels === null ||
+      typeof obj.manifestVersion !== 'number' ||
+      !Object.values(levels).every((v) => typeof v === 'number')
+    ) {
+      throw new Error(INVALID_RESPONSE_MESSAGE);
+    }
+    return {
+      levels: levels as Record<QabSubtest, number>,
+      manifestVersion: obj.manifestVersion,
+    };
   },
 };
