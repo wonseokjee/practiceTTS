@@ -47,8 +47,9 @@ export class QabResultItemDto {
   @Max(100)
   score?: number;
 
-  // 이 항목이 제시된 난이도 레벨(1~5). 적응형 레벨링 윈도우를 현재 레벨 항목으로
-  // 한정하는 데 쓴다. 구클라이언트는 생략(null 저장 → 레벨링에서 제외).
+  // 이 항목이 제시된 난이도 레벨(1~5). 참고용/관측용일 뿐 신뢰하지 않는다 —
+  // 저장되는 실제 presented_level은 서버가 skill_levels 현재 레벨로 확정한다
+  // (quiz.service.ts saveQabResults). 서버값과 다르면 경고 로그만 남긴다.
   @IsOptional()
   @IsInt()
   @Min(1)
