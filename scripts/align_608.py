@@ -304,6 +304,7 @@ def main() -> int:
                 out.write(json.dumps({
                     "parent_file_id": r["file_id"],
                     "category": r.get("category", ""),
+                    "task_type": "wordlist" if is_wordlist else "narrative",
                     "sent_index": s["sent_index"],
                     "start": s["start"],
                     "end": s["end"],

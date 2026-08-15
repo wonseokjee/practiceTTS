@@ -202,7 +202,12 @@ def main() -> None:
         shutil.copyfile(src, dst)
         copied += 1
         buckets[split].append(
-            {"audio": rel.as_posix(), "text": s["reference_text"].strip()}
+            {
+                "audio": rel.as_posix(),
+                "text": s["reference_text"].strip(),
+                # 구 배치(task_type 필드 도입 전, 전부 문장 모드였음)는 narrative로 채운다.
+                "task_type": s.get("task_type", "narrative"),
+            }
         )
 
     for split in ("train", "dev", "test"):
@@ -214,7 +219,11 @@ def main() -> None:
             for it in items:
                 f.write(json.dumps(it, ensure_ascii=False) + "\n")
         spk = len({speaker_of_from_audio(it["audio"]) for it in items})
-        print(f"  {split}: {len(items)}개 · 화자 {spk} → {fp.name}")
+        n_word = sum(1 for it in items if it["task_type"] == "wordlist")
+        print(
+            f"  {split}: {len(items)}개(단어 {n_word}·문장 {len(items) - n_word}) "
+            f"· 화자 {spk} → {fp.name}"
+        )
 
     print(f"wav 복사: {copied} → {out/'wav'}")
 
