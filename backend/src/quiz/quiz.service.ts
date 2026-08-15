@@ -152,6 +152,13 @@ export interface SessionStatsResult {
   completed: number;
   /** 0..100. started가 0이면 null(비율을 지어내지 않는다). */
   completionRate: number | null;
+  /**
+   * 미완료(이탈) 세션이 평균 몇 문항까지 갔는지(소수 1자리). 이탈이 없으면 null.
+   *
+   * 완료율만으로는 "대부분 끝까지 가다 지쳐서 남긴 것"과 "시작하자마자 나간 것"이
+   * 같은 숫자로 보이는데, 대응은 정반대다(전자=세션이 길다, 후자=초반이 어렵다).
+   */
+  avgItemsBeforeDropoff: number | null;
 }
 
 /** GET /quiz/skill-levels 반환 타입 — 스킬별 현재 레벨(콜드스타트 채움) + 매니페스트 버전. */
@@ -1170,11 +1177,34 @@ export class QuizService {
 
     const started = Number(raw?.started ?? 0);
     const completed = Number(raw?.completed ?? 0);
+
+    // 이탈 지점: 완료 마커가 없는 세션들이 각각 몇 문항까지 갔는지. 세션 수가
+    // (환자 1명 × 최근 N일이라) 적으므로 행을 받아 평균은 앱에서 낸다 — SQL
+    // 서브쿼리보다 읽기 쉽고, 이탈 세션 수도 함께 얻는다.
+    const droppedRows = await this.qabResultRepository
+      .createQueryBuilder('r')
+      .select('r.session_token', 'token')
+      .addSelect('COUNT(*)', 'items')
+      .leftJoin(QabSessionCompletion, 'c', 'c.session_token = r.session_token')
+      .where('r.patient_id = :pid', { pid: effectivePatientId })
+      .andWhere('r.created_at >= now() - make_interval(days => :days)', {
+        days,
+      })
+      .andWhere('c.session_token IS NULL')
+      .groupBy('r.session_token')
+      .getRawMany<{ token: string; items: string }>();
+
+    const totalItems = droppedRows.reduce((sum, r) => sum + Number(r.items), 0);
+
     return {
       started,
       completed,
       completionRate:
         started > 0 ? Math.round((completed / started) * 100) : null,
+      avgItemsBeforeDropoff:
+        droppedRows.length > 0
+          ? Math.round((totalItems / droppedRows.length) * 10) / 10
+          : null,
     };
   }
 

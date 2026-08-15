@@ -1762,15 +1762,24 @@ describe('QuizService', () => {
   });
 
   describe('getSessionStats', () => {
-    /** getSessionStats가 쓰는 쿼리빌더 mock. raw 집계 결과를 주입한다. */
-    function arrangeStats(raw: { started: string; completed: string } | undefined) {
+    /**
+     * getSessionStats가 쓰는 쿼리빌더 mock.
+     * @param raw     시작/완료 집계(getRawOne)
+     * @param dropped 이탈 세션별 문항 수(getRawMany)
+     */
+    function arrangeStats(
+      raw: { started: string; completed: string } | undefined,
+      dropped: Array<{ token: string; items: string }> = [],
+    ) {
       const qb = {
         select: jest.fn().mockReturnThis(),
         addSelect: jest.fn().mockReturnThis(),
         leftJoin: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
         getRawOne: jest.fn().mockResolvedValue(raw),
+        getRawMany: jest.fn().mockResolvedValue(dropped),
       };
       qabResultRepo.createQueryBuilder.mockReturnValue(qb);
       return qb;
@@ -1778,19 +1787,56 @@ describe('QuizService', () => {
 
     it('시작·완료 세션 수와 완료율(0..100)을 반환한다', async () => {
       // 카운트는 postgres가 문자열로 돌려준다(bigint) — 숫자로 변환돼야 한다.
-      arrangeStats({ started: '10', completed: '7' });
+      arrangeStats({ started: '10', completed: '7' }, [
+        { token: 's1', items: '9' },
+        { token: 's2', items: '2' },
+        { token: 's3', items: '1' },
+      ]);
 
       const res = await service.getSessionStats(PATIENT_ID, 30);
 
-      expect(res).toEqual({ started: 10, completed: 7, completionRate: 70 });
+      expect(res).toEqual({
+        started: 10,
+        completed: 7,
+        completionRate: 70,
+        avgItemsBeforeDropoff: 4, // (9+2+1)/3
+      });
+    });
+
+    it('이탈 세션이 없으면 이탈 지점은 null이다', async () => {
+      arrangeStats({ started: '5', completed: '5' }, []);
+
+      const res = await service.getSessionStats(PATIENT_ID, 30);
+
+      expect(res).toMatchObject({
+        completionRate: 100,
+        avgItemsBeforeDropoff: null,
+      });
+    });
+
+    it('이탈 지점 평균은 소수 1자리로 반올림한다', async () => {
+      // (1+2)/2 = 1.5 — 정수로 뭉개면 "1문항"과 "2문항"이 구분되지 않는다.
+      arrangeStats({ started: '2', completed: '0' }, [
+        { token: 's1', items: '1' },
+        { token: 's2', items: '2' },
+      ]);
+
+      const res = await service.getSessionStats(PATIENT_ID, 30);
+
+      expect(res.avgItemsBeforeDropoff).toBe(1.5);
     });
 
     it('시작한 세션이 없으면 완료율은 null이다(비율을 지어내지 않는다)', async () => {
-      arrangeStats({ started: '0', completed: '0' });
+      arrangeStats({ started: '0', completed: '0' }, []);
 
       const res = await service.getSessionStats(PATIENT_ID, 30);
 
-      expect(res).toEqual({ started: 0, completed: 0, completionRate: null });
+      expect(res).toEqual({
+        started: 0,
+        completed: 0,
+        completionRate: null,
+        avgItemsBeforeDropoff: null,
+      });
     });
   });
 
