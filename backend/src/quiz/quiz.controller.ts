@@ -33,6 +33,7 @@ import {
   QuizSetDetail,
   RequestGenerationResult,
   SaveQabResultsResult,
+  SessionStatsResult,
   SkillLevelsResult,
   SubmitAttemptsResult,
   QuizService,
@@ -245,6 +246,29 @@ export class QuizController {
         safeDays,
       );
       return { days: result };
+    } catch (error) {
+      throw this.mapError(error);
+    }
+  }
+
+  /**
+   * GET /quiz/session-stats
+   * 최근 N일 세션 완료율(보호자용) — 시작한 세션 중 끝까지 마친 비율.
+   */
+  @Get('quiz/session-stats')
+  async getSessionStats(
+    @Req() req: AuthenticatedRequest,
+    @Query('days') days?: string,
+  ): Promise<SessionStatsResult> {
+    const effectivePatientId = resolveEffectivePatientId(req.user);
+    const parsed = Number(days);
+    const safeDays =
+      Number.isInteger(parsed) && parsed >= 1 && parsed <= 180 ? parsed : 30;
+    try {
+      return await this.quizService.getSessionStats(
+        effectivePatientId,
+        safeDays,
+      );
     } catch (error) {
       throw this.mapError(error);
     }

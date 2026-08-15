@@ -1761,6 +1761,39 @@ describe('QuizService', () => {
     });
   });
 
+  describe('getSessionStats', () => {
+    /** getSessionStats가 쓰는 쿼리빌더 mock. raw 집계 결과를 주입한다. */
+    function arrangeStats(raw: { started: string; completed: string } | undefined) {
+      const qb = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        leftJoin: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getRawOne: jest.fn().mockResolvedValue(raw),
+      };
+      qabResultRepo.createQueryBuilder.mockReturnValue(qb);
+      return qb;
+    }
+
+    it('시작·완료 세션 수와 완료율(0..100)을 반환한다', async () => {
+      // 카운트는 postgres가 문자열로 돌려준다(bigint) — 숫자로 변환돼야 한다.
+      arrangeStats({ started: '10', completed: '7' });
+
+      const res = await service.getSessionStats(PATIENT_ID, 30);
+
+      expect(res).toEqual({ started: 10, completed: 7, completionRate: 70 });
+    });
+
+    it('시작한 세션이 없으면 완료율은 null이다(비율을 지어내지 않는다)', async () => {
+      arrangeStats({ started: '0', completed: '0' });
+
+      const res = await service.getSessionStats(PATIENT_ID, 30);
+
+      expect(res).toEqual({ started: 0, completed: 0, completionRate: null });
+    });
+  });
+
   describe('getQabSummary', () => {
     it('검사별 정확도/지표를 집계해 반환한다', async () => {
       const qb = {

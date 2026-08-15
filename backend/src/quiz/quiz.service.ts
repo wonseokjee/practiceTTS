@@ -140,6 +140,20 @@ export interface SaveQabResultsResult {
   saved: number;
 }
 
+/**
+ * GET /quiz/session-stats 반환 타입 — 세션 완료율(보호자용).
+ *
+ * started는 "결과가 한 문항이라도 남은 세션"이다. 세션을 열기만 하고 한 문항도
+ * 안 푼 경우는 qab_results에 행이 없어 분모에 들어가지 않는다 — 우연한 진입을
+ * 이탈로 세지 않기 위함이다.
+ */
+export interface SessionStatsResult {
+  started: number;
+  completed: number;
+  /** 0..100. started가 0이면 null(비율을 지어내지 않는다). */
+  completionRate: number | null;
+}
+
 /** GET /quiz/skill-levels 반환 타입 — 스킬별 현재 레벨(콜드스타트 채움) + 매니페스트 버전. */
 export interface SkillLevelsResult {
   levels: Record<QabSubtest, number>;
@@ -1126,6 +1140,42 @@ export class QuizService {
       .orderBy('day', 'DESC')
       .getRawMany<{ day: string }>();
     return raw.map((x) => x.day);
+  }
+
+  /**
+   * 세션 완료율 (보호자용). "며칠째 하고 있나"(스트릭)와 달리 "시작한 걸 끝까지
+   * 하고 있나"를 본다 — 중도 이탈이 잦으면 세션이 길거나 어렵다는 신호다.
+   *
+   * 분모(started)는 결과가 한 문항이라도 남은 세션만 센다. 완료 마커
+   * (qab_session_completions)가 없는 세션이 곧 이탈이다.
+   */
+  async getSessionStats(
+    effectivePatientId: string,
+    days = 30,
+  ): Promise<SessionStatsResult> {
+    const raw = await this.qabResultRepository
+      .createQueryBuilder('r')
+      .select('COUNT(DISTINCT r.session_token)', 'started')
+      .addSelect('COUNT(DISTINCT c.session_token)', 'completed')
+      .leftJoin(
+        QabSessionCompletion,
+        'c',
+        'c.session_token = r.session_token',
+      )
+      .where('r.patient_id = :pid', { pid: effectivePatientId })
+      .andWhere('r.created_at >= now() - make_interval(days => :days)', {
+        days,
+      })
+      .getRawOne<{ started: string; completed: string }>();
+
+    const started = Number(raw?.started ?? 0);
+    const completed = Number(raw?.completed ?? 0);
+    return {
+      started,
+      completed,
+      completionRate:
+        started > 0 ? Math.round((completed / started) * 100) : null,
+    };
   }
 
   /**
