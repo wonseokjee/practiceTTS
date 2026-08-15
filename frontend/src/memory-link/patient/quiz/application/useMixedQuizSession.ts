@@ -199,9 +199,13 @@ export function useMixedQuizSession(
   const itemsRef = useRef<PlayableItem[]>([]);
   const phaseRef = useRef<MixedPhase>('loading');
   const indexRef = useRef<number>(0);
-  const correctCountRef = useRef<number>(0);
-  /** 연속 오답 수(정답 시 0으로 리셋). 피로 탈출 판정에 쓴다. */
-  const consecutiveWrongRef = useRef<number>(0);
+  /**
+   * 답한 문항의 정오답 로그(종류 무관, 답한 순서대로). 정답수·연속오답을 여기서
+   * 파생한다 — 정정(overrideSpeechVerdict)·재시도(answerAgain)가 이 로그만 고치면
+   * 점수와 피로 탈출 판정이 자동으로 일관되게 맞는다(각 지점을 따로 갱신하다
+   * 어긋나는 버그 방지).
+   */
+  const recentCorrectRef = useRef<boolean[]>([]);
   /** QAB 항목 결과 누적 (세션 완료 시 백엔드 일괄 저장용) */
   const qabResultsRef = useRef<QabResultInput[]>([]);
   /** 이미 백엔드에 제출한 결과 수. 점진 제출에서 미전송 tail만 보낸다. */
@@ -267,8 +271,7 @@ export function useMixedQuizSession(
       const merged = moveEasiestLast(shuffled, (it) => SUCCESS_RANK[it.kind]);
       itemsRef.current = merged;
       sessionTokenRef.current = tokenGenRef.current();
-      correctCountRef.current = 0;
-      consecutiveWrongRef.current = 0;
+      recentCorrectRef.current = [];
       qabResultsRef.current = [];
       submittedCountRef.current = 0;
 
@@ -319,14 +322,17 @@ export function useMixedQuizSession(
   }, [fetchAndApply]);
 
   /** 채점 결과를 반영해 feedback 단계로 전이 (공통). */
+  /** 로그 끝에서부터 연속 오답 수(피로 탈출 판정용). */
+  const trailingWrong = (): number => {
+    const log = recentCorrectRef.current;
+    let n = 0;
+    for (let i = log.length - 1; i >= 0 && !log[i]; i -= 1) n += 1;
+    return n;
+  };
+
   const applyResult = useCallback(
     (result: PlayResult, selectedChoiceId: string | null): void => {
-      if (result.isCorrect) {
-        correctCountRef.current += 1;
-        consecutiveWrongRef.current = 0; // 정답이면 연속 오답 리셋
-      } else {
-        consecutiveWrongRef.current += 1;
-      }
+      recentCorrectRef.current.push(result.isCorrect);
       phaseRef.current = 'feedback';
       setState((prev) => ({
         ...prev,
@@ -589,11 +595,14 @@ export function useMixedQuizSession(
     flushPending();
     // 피로 탈출: 연속 오답이 임계에 닿으면 남은 문항이 있어도 그날 세션을 조기
     // 종료한다. 좌절을 누적시키지 않는 게 순응도에 낫다(성공 경험 원칙).
-    const fatigued = shouldFatigueExit(consecutiveWrongRef.current);
+    const fatigued = shouldFatigueExit(trailingWrong());
     if (nextIndex >= items.length || fatigued) {
-      const total = items.length;
+      // 점수 분모는 **실제로 푼 문항 수**다. 피로 탈출 시 안 푼 문항까지 오답으로
+      // 세면(0/10) 배려로 끝낸 세션이 되레 좌절을 준다 — 조기 종료의 목적과 반대.
+      const attempted = recentCorrectRef.current.length;
+      const correct = recentCorrectRef.current.filter(Boolean).length;
       const score =
-        total > 0 ? Math.round((correctCountRef.current / total) * 100) : 0;
+        attempted > 0 ? Math.round((correct / attempted) * 100) : 0;
       phaseRef.current = 'result';
       setState((prev) => ({ ...prev, phase: 'result', sessionScore: score }));
       return;
@@ -625,13 +634,10 @@ export function useMixedQuizSession(
   // 리마운트(내부 status/transcript 초기화)한다.
   const answerAgain = useCallback((): void => {
     if (phaseRef.current !== 'feedback') return;
-    const last = qabResultsRef.current.pop();
-    if (last?.isCorrect) {
-      correctCountRef.current = Math.max(0, correctCountRef.current - 1);
-    } else if (last && !last.isCorrect) {
-      // 방금 오답이 applyResult에서 올린 연속오답을 되돌린다 — 재시도가 새로 집계되게.
-      consecutiveWrongRef.current = Math.max(0, consecutiveWrongRef.current - 1);
-    }
+    // 직전 결과를 로그에서 되돌린다 — 재시도가 새 결과로 다시 집계되게(점수·연속오답
+    // 모두 recentCorrect에서 파생되므로 이 pop 하나로 일관 유지).
+    qabResultsRef.current.pop();
+    recentCorrectRef.current.pop();
     phaseRef.current = 'answering';
     setState((prev) => ({
       ...prev,
@@ -663,11 +669,11 @@ export function useMixedQuizSession(
     const last = qabResultsRef.current[qabResultsRef.current.length - 1];
     if (!last || !SPEECH_KINDS.includes(last.subtest)) return;
     if (last.isCorrect === isCorrect) return; // 변화 없음
-    correctCountRef.current = Math.max(
-      0,
-      correctCountRef.current + (isCorrect ? 1 : -1),
-    );
     last.isCorrect = isCorrect;
+    // 로그의 마지막 항목도 함께 뒤집는다 — 점수·연속오답이 정정을 반영하게.
+    // (안 고치면 정정된 정답인데도 연속오답으로 남아 피로 탈출이 잘못 발동.)
+    const log = recentCorrectRef.current;
+    if (log.length > 0) log[log.length - 1] = isCorrect;
     setState((prev) => ({
       ...prev,
       lastResult: prev.lastResult

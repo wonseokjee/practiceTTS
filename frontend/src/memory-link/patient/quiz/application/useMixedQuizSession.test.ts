@@ -406,6 +406,41 @@ describe('useMixedQuizSession', () => {
     expect(result.current[0].sessionScore).toBe(25);
   });
 
+  it('보호자가 오채점을 정답으로 정정하면 피로 탈출이 발동하지 않는다', async () => {
+    // STT가 3연속 오답으로 잘못 채점했지만 보호자가 매번 정답으로 정정 → 실제론
+    // 다 맞은 것이므로 조기 종료되면 안 된다(정정이 연속오답 로그를 뒤집어야 함).
+    const fourNaming: QabNamingItem[] = [1, 2, 3, 4].map((n) => ({
+      itemId: `naming_${n}`,
+      imageUrl: `/${n}.svg`,
+      targetWord: '사과',
+      instruction: 'x',
+    }));
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi(),
+        pickQabItems: () => [],
+        generateSessionToken: () => 'tok-1',
+        dailyCount: 0,
+        qabCount: 0,
+        ...NO_SPEECH,
+        pickNamingItems: () => fourNaming,
+        namingCount: 4,
+      }),
+    );
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    for (let i = 0; i < 3; i += 1) {
+      act(() => result.current[1].submitNaming('전혀다른말')); // 오채점(오답)
+      await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+      act(() => result.current[1].overrideSpeechVerdict(true)); // 보호자 정정
+      act(() => result.current[1].next());
+    }
+
+    // 3연속이 전부 정정됐으므로 피로 탈출 없이 4번째 문항을 진행 중이어야 한다
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+    expect(result.current[0].currentIndex).toBe(3);
+  });
+
   it('보호자 정정: 같은 판정으로는 점수를 이중 반영하지 않는다', async () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {

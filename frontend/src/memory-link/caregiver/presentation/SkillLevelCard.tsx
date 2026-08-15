@@ -86,17 +86,25 @@ export function SkillLevelCard({ fetchLevels }: SkillLevelCardProps) {
       </p>
 
       <ul className="flex flex-col gap-3">
-        {LEVELED_SKILLS.map(({ key, label }) => (
-          <li key={key} className="flex items-center justify-between">
-            <span className="text-sm font-medium text-[#1F2A26]">{label}</span>
-            <span className="flex items-center gap-2">
-              <LevelDots level={levels[key] ?? 2} label={label} />
-              <span className="w-14 text-right text-sm tabular-nums text-[#5C6661]">
-                {levels[key] ?? 2}단계
+        {LEVELED_SKILLS.map(({ key, label }) => {
+          // 백엔드가 모든 스킬을 콜드스타트로 채워 보내므로 값은 항상 있다. 혹시
+          // 누락되면 없는 레벨을 지어내지 않고 그 줄을 건너뛴다(조작 방지). 표시값은
+          // 점·숫자·aria가 어긋나지 않게 한 번만 클램프한다.
+          const raw = levels[key];
+          if (raw === undefined) return null;
+          const lvl = Math.max(1, Math.min(MAX_LEVEL, raw));
+          return (
+            <li key={key} className="flex items-center justify-between">
+              <span className="text-sm font-medium text-[#1F2A26]">{label}</span>
+              <span className="flex items-center gap-2">
+                <LevelDots level={lvl} label={label} />
+                <span className="w-14 text-right text-sm tabular-nums text-[#5C6661]">
+                  {lvl}단계
+                </span>
               </span>
-            </span>
-          </li>
-        ))}
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
