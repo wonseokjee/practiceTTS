@@ -241,26 +241,45 @@ def main() -> int:
 
     seg_manifest = out_dir / "segments.jsonl"
 
-    # 재개: 이미 세그먼트가 기록된 parent_file_id는 건너뛴다. align은 파일을 통째로
-    # 전사한 뒤에야 세그먼트를 쓰므로, manifest에 나타난 파일 = 완료된 파일이다.
-    # 중단(컴퓨터 종료) 후 같은 명령을 다시 실행하면 이어서 진행한다.
+    # 재개: 이미 처리한 parent_file_id는 건너뛴다. 세그먼트를 낸 파일(segments.jsonl의
+    # parent)과 세그먼트 0개였던 파일(_attempted.txt) 모두 완료로 본다 — 0세그 파일이
+    # 매 재개마다 다시 전사(가장 비싼 단계)되지 않게. 손상된 줄(중단 중 부분 flush로
+    # 잘린 마지막 줄)은 건너뛴다 — 그 한 줄 때문에 재개가 영영 죽지 않게 한다.
+    attempted_log = out_dir / "_attempted.txt"
     done_parents: set[str] = set()
     if seg_manifest.exists():
         for line in seg_manifest.read_text(encoding="utf-8").splitlines():
-            if line.strip():
+            if not line.strip():
+                continue
+            try:
                 done_parents.add(json.loads(line)["parent_file_id"])
-        if done_parents:
-            print(f"재개: 이미 완료 {len(done_parents)}파일 건너뜀")
+            except (json.JSONDecodeError, KeyError):
+                continue  # 부분 기록/손상된 줄은 무시하고 계속
+    if attempted_log.exists():
+        for line in attempted_log.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                done_parents.add(line.strip())
+    if done_parents:
+        print(f"재개: 이미 처리 {len(done_parents)}파일 건너뜀")
 
     total_segs = 0
     open_mode = "a" if done_parents else "w"
-    with seg_manifest.open(open_mode, encoding="utf-8") as out:
+    with seg_manifest.open(open_mode, encoding="utf-8") as out, attempted_log.open(
+        "a", encoding="utf-8"
+    ) as att:
         for i, r in enumerate(present, 1):
             if r["file_id"] in done_parents:
                 print(f"[{i}/{len(present)}] {r['file_id']} 건너뜀(완료됨)")
                 continue
             src = audio_root / r["expected_audio_relpath"]
-            is_wordlist = classify is not None and classify(r["transcript"]) == "wordlist"
+            # wordlist 모드는 문장 구조가 실제로 없을 때만(문장부호로 나뉜 문장이 1개).
+            # task_type만 믿으면 문장 1~2개짜리 짧은 서술문도 wordlist로 분류돼 단어로
+            # 잘리는데(오분류), _sentences로 이중 확인해 그런 파일은 문장 모드로 남긴다.
+            is_wordlist = (
+                classify is not None
+                and classify(r["transcript"]) == "wordlist"
+                and len(_sentences(r["transcript"])) == 1
+            )
             mode = "단어" if is_wordlist else "문장"
             print(f"[{i}/{len(present)}] {r['file_id']} 정렬 중({mode})...")
             try:
@@ -272,6 +291,7 @@ def main() -> int:
                 else:
                     segs = segment_file(r["transcript"], hyp)
             except Exception as exc:  # noqa: BLE001
+                # 정렬 실패는 attempted에 기록하지 않는다 — 일시적 실패면 다음 재개에서 재시도.
                 print(f"   [skip] 정렬 실패: {exc}", file=sys.stderr)
                 continue
             stem = Path(r["file_id"]).stem
@@ -292,6 +312,9 @@ def main() -> int:
                 }, ensure_ascii=False) + "\n")
                 total_segs += 1
             out.flush()  # 파일 단위로 디스크 반영 → 중단(종료)해도 진행분 보존·재개 가능
+            # 세그먼트 0개여도 "처리함"으로 기록 → 다음 재개에서 재전사하지 않는다.
+            att.write(r["file_id"] + "\n")
+            att.flush()
             print(f"   → 세그먼트 {len(segs)}개")
 
     print(f"\n✅ 완료: 파일 {len(present)}건 → 세그먼트 {total_segs}개")

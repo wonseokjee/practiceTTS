@@ -61,11 +61,11 @@ def main() -> None:
     ap.add_argument("--out-manifest", default="align_manifest_big2.jsonl")
     args = ap.parse_args()
 
-    man = {
-        json.loads(l)["file_id"]: json.loads(l)
-        for l in args.manifest.read_text(encoding="utf-8").splitlines()
-        if l.strip()
-    }
+    man = {}
+    for l in args.manifest.read_text(encoding="utf-8").splitlines():
+        if l.strip():
+            row = json.loads(l)  # 줄당 1회만 파싱(키·값에 두 번 파싱하지 않게)
+            man[row["file_id"]] = row
     zip_ids = _zip_wav_ids(args.zip)
     done = _load_fids(args.exclude)
     print(f"전체 매니페스트 {len(man)} · zip wav {len(zip_ids)} · 기존 정렬 {len(done)}")
