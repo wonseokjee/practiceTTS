@@ -27,3 +27,11 @@ export const QAB_SUBTESTS = [
 ] as const;
 
 export type QabSubtest = (typeof QAB_SUBTESTS)[number];
+
+/**
+ * 정적 QAB 문항 풀 매니페스트 버전. 프론트가 이 버전을 제출에 실어 보내고,
+ * 백엔드는 GET /quiz/skill-levels로 현재 버전을 알린다. presented_level 해석이
+ * 어느 문항 풀 기준인지 추적하기 위한 것으로, 풀(단어·문장·오답거리 등)이
+ * 바뀔 때 수동으로 올린다.
+ */
+export const QAB_MANIFEST_VERSION = 1;

@@ -114,4 +114,60 @@ describe('QabItemBank', () => {
   it('pickNamingItems: 0개 요청 시 빈 배열', () => {
     expect(pickNamingItems(0)).toEqual([]);
   });
+
+  // ── 레벨별 렌더 난이도 ──────────────────────────────────────
+  describe('레벨 파라미터', () => {
+    it('레벨이 낮을수록 선택지가 적고 높을수록 많다', () => {
+      expect(pickWordItems(5, 1).every((i) => i.choices.length === 2)).toBe(true);
+      expect(pickWordItems(5, 2).every((i) => i.choices.length === 3)).toBe(true);
+      expect(pickWordItems(5, 3).every((i) => i.choices.length === 4)).toBe(true);
+      expect(pickWordItems(5, 4).every((i) => i.choices.length === 4)).toBe(true);
+      expect(pickWordItems(5, 5).every((i) => i.choices.length === 5)).toBe(true);
+    });
+
+    it('각 레벨에서도 정답은 정확히 1개다', () => {
+      for (const lv of [1, 2, 3, 4, 5]) {
+        for (const item of pickWordItems(10, lv)) {
+          expect(item.choices.filter((c) => c.isCorrect)).toHaveLength(1);
+          const urls = new Set(item.choices.map((c) => c.imageUrl));
+          expect(urls.size).toBe(item.choices.length); // 중복 유인지 없음
+        }
+      }
+    });
+
+    it('높은 레벨(4)일수록 큰 범주 정답의 같은 범주 오답이 많다(변별↑)', () => {
+      const big = new Set(['animal', 'food', 'object']);
+      for (const item of pickWordItems(60, 4)) {
+        const correct = item.choices.find((c) => c.isCorrect)!;
+        const cat = WORD_CATEGORY[slugOf(correct.imageUrl)] ?? 'object';
+        if (!big.has(cat)) continue;
+        const sameCat = item.choices.filter(
+          (c) =>
+            !c.isCorrect &&
+            (WORD_CATEGORY[slugOf(c.imageUrl)] ?? 'object') === cat,
+        );
+        // 레벨4 = 오답 3개 전부 같은 범주
+        expect(sameCat.length).toBeGreaterThanOrEqual(3);
+      }
+    });
+
+    it('presentedLevel을 항목에 스탬핑한다', () => {
+      expect(pickWordItems(3, 4).every((i) => i.presentedLevel === 4)).toBe(true);
+      expect(pickSentItems(3, 2).every((i) => i.presentedLevel === 2)).toBe(true);
+      expect(pickNamingItems(3, 5).every((i) => i.presentedLevel === 5)).toBe(true);
+    });
+
+    it('레벨 미지정이면 기존 동작(4보기) + presentedLevel undefined', () => {
+      const items = pickWordItems(5);
+      expect(items.every((i) => i.choices.length === 4)).toBe(true);
+      expect(items.every((i) => i.presentedLevel === undefined)).toBe(true);
+    });
+
+    it('pickQabItems: 단어/문장 레벨을 각각 스탬핑한다', () => {
+      const items = pickQabItems(qabItemCount(), { word: 1, sentence: 5 });
+      for (const it of items) {
+        expect(it.presentedLevel).toBe(it.category === 'word' ? 1 : 5);
+      }
+    });
+  });
 });

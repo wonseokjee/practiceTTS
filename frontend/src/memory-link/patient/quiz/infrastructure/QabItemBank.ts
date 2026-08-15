@@ -135,8 +135,43 @@ const MASTER_WORDS: MasterWord[] = (() => {
   return [...bySlug.values()];
 })();
 
-/** 통제된 유인지 3개를 골라 정답과 함께 4보기를 만든다(같은 범주 2 + 무관 1). */
-function buildControlledChoices(target: MasterWord) {
+// ── 레벨별 렌더 난이도 스펙 ─────────────────────────────────────
+//
+// 그림선택 난이도는 항목 자체가 아니라 "렌더 시점의 오답 구성"으로 정한다.
+// 같은 항목도 환자의 현재 레벨에 따라 다르게 제시한다. 두 축으로 단조 증가:
+//   - total  : 선택지 총 개수(많을수록 부담↑, 소거 어려움↑)
+//   - sameCat: 같은 의미 범주 오답 수(많을수록 범주만으론 못 맞춤 → 변별↑)
+// 낮은 레벨은 선택지 적고 오답이 무관(먼) 단어라 쉽고, 높은 레벨은 선택지 많고
+// 오답이 전부 같은 범주(근접)라 어렵다.
+export interface ChoiceSpec {
+  total: number;
+  sameCat: number;
+}
+export const LEVEL_CHOICE_SPEC: Record<number, ChoiceSpec> = {
+  1: { total: 2, sameCat: 0 }, // 정답 + 무관 1
+  2: { total: 3, sameCat: 1 }, // 정답 + 같은범주1 + 무관1
+  3: { total: 4, sameCat: 2 }, // 정답 + 같은범주2 + 무관1 (기존 기본)
+  4: { total: 4, sameCat: 3 }, // 정답 + 같은범주3 (전부 근접)
+  5: { total: 5, sameCat: 4 }, // 선택지 늘고 전부 근접
+};
+
+/** 레벨을 [1..5]로 클램프하고 해당 스펙을 돌려준다(미지정/범위밖은 3=기본). */
+function choiceSpecForLevel(level?: number): ChoiceSpec {
+  const lv = level == null ? 3 : Math.max(1, Math.min(5, Math.round(level)));
+  return LEVEL_CHOICE_SPEC[lv];
+}
+
+/**
+ * 통제된 유인지를 골라 정답과 함께 레벨별 보기를 만든다.
+ * spec.total개(정답 1 + 오답 total-1)를 만들되, 오답 중 spec.sameCat개는 같은
+ * 의미 범주, 나머지는 무관 범주에서 뽑는다. 풀이 모자라면 가능한 만큼만 채운다.
+ * level 미지정 시 레벨 3(같은범주2+무관1) — 기존 동작 보존. (테스트 노출)
+ */
+export function buildControlledChoices(target: MasterWord, level?: number) {
+  const spec = choiceSpecForLevel(level);
+  const foilTotal = Math.max(0, spec.total - 1);
+  const sameCatWanted = Math.min(spec.sameCat, foilTotal);
+
   const sameCat = shuffle(
     MASTER_WORDS.filter(
       (w) => w.slug !== target.slug && w.category === target.category,
@@ -147,16 +182,16 @@ function buildControlledChoices(target: MasterWord) {
   );
 
   const foils: MasterWord[] = [];
-  foils.push(...sameCat.slice(0, 2)); // 같은 범주 2 (부족하면 그만큼만)
+  foils.push(...sameCat.slice(0, sameCatWanted)); // 같은 범주(부족하면 그만큼만)
   for (const w of otherCat) {
-    // 무관 1 + 같은 범주가 모자랄 때 추가 보충
-    if (foils.length >= 3) break;
+    // 무관 오답으로 나머지를 채운다(같은 범주가 모자랄 때도 여기서 보충).
+    if (foils.length >= foilTotal) break;
     if (!foils.some((f) => f.slug === w.slug)) foils.push(w);
   }
-  // 그래도 3개가 안 되면(풀이 아주 작을 때) 아무거나 채운다.
-  if (foils.length < 3) {
+  // 그래도 부족하면(풀이 아주 작을 때) 아무거나 채운다.
+  if (foils.length < foilTotal) {
     for (const w of shuffle(MASTER_WORDS)) {
-      if (foils.length >= 3) break;
+      if (foils.length >= foilTotal) break;
       if (w.slug !== target.slug && !foils.some((f) => f.slug === w.slug)) {
         foils.push(w);
       }
@@ -165,7 +200,7 @@ function buildControlledChoices(target: MasterWord) {
 
   const raw = [
     { slug: target.slug, label: target.label, imageUrl: target.imageUrl, isCorrect: true },
-    ...foils.slice(0, 3).map((f) => ({
+    ...foils.slice(0, foilTotal).map((f) => ({
       slug: f.slug, label: f.label, imageUrl: f.imageUrl, isCorrect: false,
     })),
   ];
@@ -177,13 +212,13 @@ function buildControlledChoices(target: MasterWord) {
   }));
 }
 
-function toWordItem(it: RawWordItem): QabImageItem {
+function toWordItem(it: RawWordItem, level?: number): QabImageItem {
   const correct = it.choices.find((c) => c.isCorrect);
   const slug = correct ? slugFromUrl(correct.imageUrl) : '';
   const target = MASTER_WORDS.find((w) => w.slug === slug);
   // 마스터 풀에 없으면(예외) 기존 JSON 보기로 폴백해 안전하게 렌더.
   const choices = target
-    ? buildControlledChoices(target)
+    ? buildControlledChoices(target, level)
     : shuffle(it.choices).map((c) => ({
         choiceId: c.choiceId,
         label: c.label,
@@ -196,10 +231,13 @@ function toWordItem(it: RawWordItem): QabImageItem {
     promptText: it.targetWord,
     instruction: WORD_INSTRUCTION,
     choices,
+    presentedLevel: level,
   };
 }
 
-function toSentItem(it: RawSentItem): QabImageItem {
+function toSentItem(it: RawSentItem, level?: number): QabImageItem {
+  // 문장이해 선택지는 원본 JSON의 고정 쌍이라 레벨로 오답거리를 바꾸지 않는다.
+  // presentedLevel은 스탬핑해 정오답 기반 레벨링은 동작하게 한다(변별 난이도는 추후).
   return {
     itemId: it.itemId,
     category: 'sentence',
@@ -214,6 +252,7 @@ function toSentItem(it: RawSentItem): QabImageItem {
         isCorrect: c.isCorrect,
       })),
     ),
+    presentedLevel: level,
   };
 }
 
@@ -242,7 +281,7 @@ function slugFromUrl(url: string): string {
  * 구현: 사진이 준비된 단어는 /assets/images/naming/<slug>.png를, 아직 없는
  * 단어는 단어이해 SVG를 그대로 쓴다(폴백). 정답 선택지가 없으면 null.
  */
-function toNamingItem(it: RawWordItem): QabNamingItem | null {
+function toNamingItem(it: RawWordItem, level?: number): QabNamingItem | null {
   const correct = it.choices.find((c) => c.isCorrect);
   if (!correct) return null;
   const slug = slugFromUrl(correct.imageUrl);
@@ -254,35 +293,44 @@ function toNamingItem(it: RawWordItem): QabNamingItem | null {
     imageUrl,
     targetWord: it.targetWord,
     instruction: NAMING_INSTRUCTION,
+    presentedLevel: level,
   };
 }
 
-/** 그림 이름대기 문항을 무작위 count개 추출. */
-export function pickNamingItems(count: number): QabNamingItem[] {
+/** 그림 이름대기 문항을 무작위 count개 추출. level은 제시 레벨로 스탬핑된다. */
+export function pickNamingItems(count: number, level?: number): QabNamingItem[] {
   return shuffle(WORD_ITEMS)
-    .map(toNamingItem)
+    .map((it) => toNamingItem(it, level))
     .filter((x): x is QabNamingItem => x !== null)
     .slice(0, Math.max(0, count));
 }
 
-/** 단어이해 문항을 무작위 count개 추출. */
-export function pickWordItems(count: number): QabImageItem[] {
-  return shuffle(WORD_ITEMS).slice(0, Math.max(0, count)).map(toWordItem);
+/** 단어이해 문항을 무작위 count개 추출. level로 선택지 난이도를 정한다. */
+export function pickWordItems(count: number, level?: number): QabImageItem[] {
+  return shuffle(WORD_ITEMS)
+    .slice(0, Math.max(0, count))
+    .map((it) => toWordItem(it, level));
 }
 
 /** 문장이해 문항을 무작위 count개 추출. */
-export function pickSentItems(count: number): QabImageItem[] {
-  return shuffle(SENT_ITEMS).slice(0, Math.max(0, count)).map(toSentItem);
+export function pickSentItems(count: number, level?: number): QabImageItem[] {
+  return shuffle(SENT_ITEMS)
+    .slice(0, Math.max(0, count))
+    .map((it) => toSentItem(it, level));
 }
 
 /**
  * 단어/문장 이해를 섞어 count개를 추출한다(질문형 슬롯 채우기).
  * 두 뱅크를 합쳐 셔플 → count개. 한쪽이 부족하면 다른 쪽에서 더 채워진다.
+ * levels로 단어/문장 각각의 제시 레벨을 지정한다(미지정 시 기존 동작=레벨 3).
  */
-export function pickQabItems(count: number): QabImageItem[] {
+export function pickQabItems(
+  count: number,
+  levels?: { word?: number; sentence?: number },
+): QabImageItem[] {
   const pool: QabImageItem[] = [
-    ...WORD_ITEMS.map(toWordItem),
-    ...SENT_ITEMS.map(toSentItem),
+    ...WORD_ITEMS.map((it) => toWordItem(it, levels?.word)),
+    ...SENT_ITEMS.map((it) => toSentItem(it, levels?.sentence)),
   ];
   return shuffle(pool).slice(0, Math.max(0, count));
 }

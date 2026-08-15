@@ -33,6 +33,7 @@ import {
   QuizSetDetail,
   RequestGenerationResult,
   SaveQabResultsResult,
+  SkillLevelsResult,
   SubmitAttemptsResult,
   QuizService,
 } from './quiz.service';
@@ -203,6 +204,47 @@ export class QuizController {
     const effectivePatientId = resolveEffectivePatientId(req.user);
     try {
       return await this.quizService.getQabSummary(effectivePatientId);
+    } catch (error) {
+      throw this.mapError(error);
+    }
+  }
+
+  /**
+   * GET /quiz/skill-levels
+   * 환자 스킬별 현재 난이도 레벨(1~5, 콜드스타트 2 채움) + 매니페스트 버전.
+   * 프론트가 문항 선택 난이도를 정하는 데 쓴다. 레벨은 환자에게 노출하지 않는다.
+   */
+  @Get('quiz/skill-levels')
+  async getSkillLevels(
+    @Req() req: AuthenticatedRequest,
+  ): Promise<SkillLevelsResult> {
+    const effectivePatientId = resolveEffectivePatientId(req.user);
+    try {
+      return await this.quizService.getSkillLevels(effectivePatientId);
+    } catch (error) {
+      throw this.mapError(error);
+    }
+  }
+
+  /**
+   * GET /quiz/activity-days
+   * 환자가 연습 완료한 날짜(최근 N일, YYYY-MM-DD) — 솔로 홈 스트릭용.
+   */
+  @Get('quiz/activity-days')
+  async getActivityDays(
+    @Req() req: AuthenticatedRequest,
+    @Query('days') days?: string,
+  ): Promise<{ days: string[] }> {
+    const effectivePatientId = resolveEffectivePatientId(req.user);
+    const parsed = Number(days);
+    const safeDays =
+      Number.isInteger(parsed) && parsed >= 1 && parsed <= 60 ? parsed : 14;
+    try {
+      const result = await this.quizService.getActivityDays(
+        effectivePatientId,
+        safeDays,
+      );
+      return { days: result };
     } catch (error) {
       throw this.mapError(error);
     }

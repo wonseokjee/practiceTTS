@@ -28,6 +28,12 @@ export interface QabImageItem {
   /** 화면 안내 문구 */
   instruction: string;
   choices: QabImageChoice[];
+  /**
+   * 이 문항이 제시된 난이도 레벨(1~5). 적응형 레벨링이 "현재 레벨에서 제시된
+   * 항목"만 윈도우로 세도록 결과 제출 시 백엔드에 함께 보낸다. 미지정(레거시)
+   * 이면 백엔드가 레벨링 윈도우에서 제외한다.
+   */
+  presentedLevel?: number;
 }
 
 /**
@@ -43,6 +49,8 @@ export interface QabNamingItem {
   targetWord: string;
   /** 화면 안내 문구 */
   instruction: string;
+  /** 제시된 난이도 레벨(1~5). 결과 제출 시 백엔드 레벨링 윈도우에 사용. */
+  presentedLevel?: number;
 }
 
 /**

@@ -9,6 +9,8 @@ import { QuizAttempt } from './entities/quiz-attempt.entity';
 import { QuizBestScore } from './entities/quiz-best-score.entity';
 import { QuizQuestion } from './entities/quiz-question.entity';
 import { QuizSet } from './entities/quiz-set.entity';
+import { SkillLevel } from './entities/skill-level.entity';
+import { QAB_SUBTESTS } from './constants/qab-subtest';
 import { QuizError, QuizErrorCode } from './errors/quiz.errors';
 import { QUIZ_GENERATION_CLIENT } from './interfaces/IQuizGenerationClient';
 import { QUIZ_SCORER } from './interfaces/IQuizScorer';
@@ -48,6 +50,7 @@ describe('QuizService', () => {
   let quizAttemptRepo: ReturnType<typeof buildRepoMock>;
   let quizBestScoreRepo: ReturnType<typeof buildRepoMock>;
   let qabResultRepo: ReturnType<typeof buildRepoMock>;
+  let skillLevelRepo: ReturnType<typeof buildRepoMock>;
   let memoryEntryRepo: ReturnType<typeof buildRepoMock>;
   let patientMemoryNoteRepo: ReturnType<typeof buildRepoMock>;
   let generationClientMock: { generate: jest.Mock };
@@ -71,6 +74,7 @@ describe('QuizService', () => {
       update: jest.fn(),
       delete: jest.fn(),
       increment: jest.fn(),
+      upsert: jest.fn(),
       createQueryBuilder: jest.fn(),
     };
   }
@@ -151,6 +155,7 @@ describe('QuizService', () => {
     quizAttemptRepo = buildRepoMock();
     quizBestScoreRepo = buildRepoMock();
     qabResultRepo = buildRepoMock();
+    skillLevelRepo = buildRepoMock();
     memoryEntryRepo = buildRepoMock();
     patientMemoryNoteRepo = buildRepoMock();
     generationClientMock = { generate: jest.fn() };
@@ -178,6 +183,7 @@ describe('QuizService', () => {
           useValue: quizBestScoreRepo,
         },
         { provide: getRepositoryToken(QabResult), useValue: qabResultRepo },
+        { provide: getRepositoryToken(SkillLevel), useValue: skillLevelRepo },
         { provide: getRepositoryToken(MemoryEntry), useValue: memoryEntryRepo },
         {
           provide: getRepositoryToken(PatientMemoryNote),
@@ -189,9 +195,7 @@ describe('QuizService', () => {
             // 트랜잭션 콜백을 실제로 실행하고, manager.getRepository(QuizSet)는
             // 동일한 quizSetRepo mock을 반환하여 기존 assertion(save/create/delete)을 유지한다.
             transaction: jest.fn(
-              <T>(
-                cb: (m: { getRepository: (e: unknown) => unknown }) => T,
-              ): T =>
+              <T>(cb: (m: Record<string, unknown>) => T): T =>
                 cb({
                   getRepository: (entity: unknown) => {
                     if (entity === QuizSet) {
@@ -202,6 +206,32 @@ describe('QuizService', () => {
                     }
                     throw new Error('예상치 못한 엔티티: 트랜잭션 mock');
                   },
+                  // saveQabResults 경로: manager.save(QabResult, rows)는 동일한
+                  // qabResultRepo mock으로 위임해 기존 assertion을 유지한다.
+                  save: (entity: unknown, rows: unknown) => {
+                    if (entity === QabResult) {
+                      return qabResultRepo.save(rows);
+                    }
+                    throw new Error('예상치 못한 엔티티: 트랜잭션 save mock');
+                  },
+                  // 레벨 재계산: 기본은 행 없음(콜드스타트) + 빈 윈도우 → 레벨 불변.
+                  findOne: (entity: unknown, opts: unknown) => {
+                    if (entity === SkillLevel) {
+                      return skillLevelRepo.findOne(opts);
+                    }
+                    throw new Error('예상치 못한 엔티티: 트랜잭션 findOne mock');
+                  },
+                  createQueryBuilder: () => ({
+                    select: jest.fn().mockReturnThis(),
+                    where: jest.fn().mockReturnThis(),
+                    andWhere: jest.fn().mockReturnThis(),
+                    orderBy: jest.fn().mockReturnThis(),
+                    addOrderBy: jest.fn().mockReturnThis(),
+                    limit: jest.fn().mockReturnThis(),
+                    getRawMany: jest.fn().mockResolvedValue([]),
+                  }),
+                  upsert: (_entity: unknown, values: unknown, conflict: unknown) =>
+                    skillLevelRepo.upsert(values, conflict),
                 }),
             ),
           },
@@ -1611,6 +1641,74 @@ describe('QuizService', () => {
       await expect(
         service.saveQabResults(PATIENT_ID, dto),
       ).rejects.toMatchObject({ code: '08006' });
+    });
+
+    it('제출 항목의 presentedLevel을 그대로 영속화한다', async () => {
+      qabResultRepo.save.mockResolvedValue([]);
+      const dto: SubmitQabResultsDto = {
+        sessionToken: SESSION_TOKEN,
+        results: [
+          { subtest: 'word', itemRef: 'qw_001', isCorrect: true, presentedLevel: 3 },
+          { subtest: 'naming', itemRef: 'nm_001', isCorrect: false },
+        ],
+        manifestVersion: 1,
+      };
+
+      await service.saveQabResults(PATIENT_ID, dto);
+
+      const savedRows = qabResultRepo.create.mock.calls.map((c) => c[0]);
+      expect(savedRows[0]).toMatchObject({ subtest: 'word', presentedLevel: 3 });
+      // presentedLevel 미전송 항목은 null(레벨링 윈도우에서 제외됨)
+      expect(savedRows[1]).toMatchObject({ subtest: 'naming', presentedLevel: null });
+    });
+  });
+
+  describe('getSkillLevels', () => {
+    it('이력이 없으면 전 스킬을 콜드스타트 레벨 2로 채운다', async () => {
+      skillLevelRepo.find.mockResolvedValue([]);
+
+      const res = await service.getSkillLevels(PATIENT_ID);
+
+      expect(res.manifestVersion).toBe(1);
+      for (const subtest of QAB_SUBTESTS) {
+        expect(res.levels[subtest]).toBe(2);
+      }
+    });
+
+    it('저장된 레벨은 반영하고 나머지는 콜드스타트로 채운다', async () => {
+      skillLevelRepo.find.mockResolvedValue([
+        { subtest: 'word', level: 4 },
+        { subtest: 'ddk', level: 1 },
+      ]);
+
+      const res = await service.getSkillLevels(PATIENT_ID);
+
+      expect(res.levels.word).toBe(4);
+      expect(res.levels.ddk).toBe(1);
+      expect(res.levels.naming).toBe(2); // 이력 없음 → 콜드스타트
+    });
+  });
+
+  describe('getActivityDays', () => {
+    it('완료 날짜 배열(YYYY-MM-DD)을 반환한다', async () => {
+      const qb = {
+        select: jest.fn().mockReturnThis(),
+        distinct: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([{ day: '2026-08-12' }, { day: '2026-08-10' }]),
+      };
+      qabResultRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const res = await service.getActivityDays(PATIENT_ID, 14);
+
+      expect(res).toEqual(['2026-08-12', '2026-08-10']);
+      expect(qb.where).toHaveBeenCalledWith('r.patient_id = :pid', {
+        pid: PATIENT_ID,
+      });
     });
   });
 

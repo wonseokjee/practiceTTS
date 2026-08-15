@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, LessThan, Repository } from 'typeorm';
+import { DataSource, EntityManager, LessThan, Repository } from 'typeorm';
 import { MemoryEntry } from '../memory/entities/memory-entry.entity';
 import { PatientMemoryNote } from '../memory/entities/patient-memory-note.entity';
 import { FastApiClientService } from '../memory/services/fast-api-client.service';
@@ -18,6 +18,19 @@ import { QuizAttempt } from './entities/quiz-attempt.entity';
 import { QuizBestScore } from './entities/quiz-best-score.entity';
 import { QuizQuestion } from './entities/quiz-question.entity';
 import { QuizSet } from './entities/quiz-set.entity';
+import { SkillLevel } from './entities/skill-level.entity';
+import {
+  QAB_MANIFEST_VERSION,
+  QAB_SUBTESTS,
+  type QabSubtest,
+} from './constants/qab-subtest';
+import {
+  COLD_START_LEVEL,
+  LEVEL_WINDOW,
+  SPEECH_SCORED_SUBTESTS,
+  computeLevel,
+  type SkillLevel as SkillLevelValue,
+} from './services/skill-leveling';
 import { QuizError, QuizErrorCode } from './errors/quiz.errors';
 import {
   GeneratedQuizQuestion,
@@ -126,6 +139,12 @@ export interface SaveQabResultsResult {
   saved: number;
 }
 
+/** GET /quiz/skill-levels 반환 타입 — 스킬별 현재 레벨(콜드스타트 채움) + 매니페스트 버전. */
+export interface SkillLevelsResult {
+  levels: Record<QabSubtest, number>;
+  manifestVersion: number;
+}
+
 /** QAB 검사별 회복 추적 요약 (보호자용) */
 export interface QabSubtestSummary {
   subtest: string;
@@ -204,6 +223,8 @@ export class QuizService {
     private readonly quizBestScoreRepository: Repository<QuizBestScore>,
     @InjectRepository(QabResult)
     private readonly qabResultRepository: Repository<QabResult>,
+    @InjectRepository(SkillLevel)
+    private readonly skillLevelRepository: Repository<SkillLevel>,
     @InjectRepository(MemoryEntry)
     private readonly memoryEntryRepository: Repository<MemoryEntry>,
     @InjectRepository(PatientMemoryNote)
@@ -930,6 +951,17 @@ export class QuizService {
     effectivePatientId: string,
     dto: SubmitQabResultsDto,
   ): Promise<SaveQabResultsResult> {
+    // presented_level 감사: 클라이언트 매니페스트 버전이 서버와 다르면 기록만(경고).
+    // presented_level 해석이 옛 문항 풀 기준일 수 있음을 알리되, 거부하지는 않는다.
+    if (
+      dto.manifestVersion !== undefined &&
+      dto.manifestVersion !== QAB_MANIFEST_VERSION
+    ) {
+      this.logger.warn(
+        `QAB manifest 버전 불일치: client=${dto.manifestVersion} server=${QAB_MANIFEST_VERSION} (patient=${effectivePatientId})`,
+      );
+    }
+
     const rows = dto.results.map((r) =>
       this.qabResultRepository.create({
         patientId: effectivePatientId,
@@ -940,17 +972,121 @@ export class QuizService {
         assisted: r.assisted ?? false,
         metric: r.metric ?? null,
         score: r.score ?? null,
+        presentedLevel: r.presentedLevel ?? null,
       }),
     );
-    try {
-      await this.qabResultRepository.save(rows);
-    } catch (error) {
-      // 멱등성: 같은 세션 재제출은 UNIQUE 위반 → 이미 저장된 것으로 보고 성공 처리.
-      if (!this.isUniqueViolation(error)) {
-        throw error;
+
+    // 제출에 등장한 서브테스트만 레벨 재계산 대상.
+    const affectedSubtests = [...new Set(dto.results.map((r) => r.subtest))];
+
+    // insert + 레벨 재계산 + UPSERT를 단일 트랜잭션으로. 재계산은 현재 레벨에서
+    // 제시된 최근 윈도우로 결정론적이라, 중복/재시도 제출이 레벨을 이중으로
+    // 움직이지 않는다(dedup UNIQUE가 insert를 no-op으로 만들고 윈도우는 동일).
+    await this.dataSource.transaction(async (manager) => {
+      try {
+        await manager.save(QabResult, rows);
+      } catch (error) {
+        if (!this.isUniqueViolation(error)) {
+          throw error;
+        }
+        // 멱등: 재제출은 UNIQUE 위반 → 이미 저장됨. 재계산은 그대로 진행(동일 결과).
       }
-    }
+      for (const subtest of affectedSubtests) {
+        await this.recomputeSkillLevel(manager, effectivePatientId, subtest);
+      }
+    });
+
     return { saved: rows.length };
+  }
+
+  /**
+   * 한 스킬(서브테스트)의 레벨을 현재 레벨에서 제시된 최근 윈도우로 재계산해
+   * UPSERT한다. 트랜잭션 매니저 안에서 호출한다.
+   *
+   * 윈도우 필터:
+   *  - presented_level = 현재 레벨(승급 후 유도 하락을 퇴행으로 오독하는 교란 차단)
+   *  - assisted = false(보호자 도움은 환자 수행 아님)
+   *  - 발화 서브테스트는 score IS NOT NULL(Azure 불가 항목 제외 → 자연 홀드)
+   *  - created_at DESC, 동시각 타이는 id DESC로 결정론, 최근 LEVEL_WINDOW개
+   */
+  private async recomputeSkillLevel(
+    manager: EntityManager,
+    patientId: string,
+    subtest: QabSubtest,
+  ): Promise<void> {
+    const existing = await manager.findOne(SkillLevel, {
+      where: { patientId, subtest },
+    });
+    const currentLevel = (existing?.level ?? COLD_START_LEVEL) as SkillLevelValue;
+
+    const qb = manager
+      .createQueryBuilder(QabResult, 'r')
+      .select('r.is_correct', 'isCorrect')
+      .where('r.patient_id = :pid', { pid: patientId })
+      .andWhere('r.subtest = :subtest', { subtest })
+      .andWhere('r.presented_level = :lvl', { lvl: currentLevel })
+      .andWhere('r.assisted = false')
+      .orderBy('r.created_at', 'DESC')
+      .addOrderBy('r.id', 'DESC')
+      .limit(LEVEL_WINDOW);
+    if (SPEECH_SCORED_SUBTESTS.includes(subtest)) {
+      qb.andWhere('r.score IS NOT NULL');
+    }
+    const raw = await qb.getRawMany<{ isCorrect: boolean }>();
+    const window = raw.map((x) => ({ isCorrect: x.isCorrect }));
+
+    const nextLevel = computeLevel(currentLevel, window);
+
+    // 변화 없으면 쓰지 않는다. 콜드스타트(행 없음)이고 레벨이 그대로면 GET이
+    // 어차피 COLD_START_LEVEL로 채우므로 행을 만들 필요도 없다.
+    if (nextLevel === (existing?.level ?? COLD_START_LEVEL)) {
+      return;
+    }
+
+    await manager.upsert(
+      SkillLevel,
+      { patientId, subtest, level: nextLevel, updatedAt: new Date() },
+      ['patientId', 'subtest'],
+    );
+  }
+
+  /**
+   * 환자의 스킬별 현재 레벨. 이력이 없는 스킬은 콜드스타트 레벨(2)로 채운다.
+   * 프론트가 이 값을 읽어 문항 선택 난이도를 정한다. 레벨은 환자에게 노출하지
+   * 않으며(강등 비가시), 선택 로직·보호자 대시보드만 사용한다.
+   */
+  async getSkillLevels(effectivePatientId: string): Promise<SkillLevelsResult> {
+    const rows = await this.skillLevelRepository.find({
+      where: { patientId: effectivePatientId },
+    });
+    const bySubtest = new Map(rows.map((r) => [r.subtest, r.level]));
+    const levels = {} as Record<QabSubtest, number>;
+    for (const subtest of QAB_SUBTESTS) {
+      levels[subtest] = bySubtest.get(subtest) ?? COLD_START_LEVEL;
+    }
+    return { levels, manifestVersion: QAB_MANIFEST_VERSION };
+  }
+
+  /**
+   * 환자가 연습을 완료한 날짜 목록(최근 days일, YYYY-MM-DD). 솔로 홈의 스트릭에
+   * 쓴다. 세션 하나라도 qab_results가 남으면 그 날을 "완료"로 본다.
+   *
+   * 날짜 경계는 DB 세션 타임존 기준(getQabTrend의 주차 집계와 동일). 자정 근처
+   * 세션이 인접일로 잡힐 수 있으나 스트릭 표시엔 충분하다.
+   */
+  async getActivityDays(
+    effectivePatientId: string,
+    days = 14,
+  ): Promise<string[]> {
+    const raw = await this.qabResultRepository
+      .createQueryBuilder('r')
+      .select("to_char(date_trunc('day', r.created_at), 'YYYY-MM-DD')", 'day')
+      .distinct(true)
+      .where('r.patient_id = :pid', { pid: effectivePatientId })
+      .andWhere("r.created_at >= now() - make_interval(days => :days)", { days })
+      .orderBy('day', 'DESC')
+      .getRawMany<{ day: string }>();
+    return raw.map((x) => x.day);
   }
 
   /**

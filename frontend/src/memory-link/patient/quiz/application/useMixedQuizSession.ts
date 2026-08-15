@@ -27,10 +27,11 @@ import {
   type AzurePronunciationScores,
 } from '../domain/pronunciationScore.js';
 import { isDdkPass } from '../domain/ddkScore.js';
-import type { QabResultInput } from '../domain/QabResult.js';
+import type { QabResultInput, QabSubtest } from '../domain/QabResult.js';
 import { quizApi } from '../infrastructure/QuizApi.js';
 import type { IQuizApi } from '../infrastructure/QuizApi.js';
 import { pickQabItems, pickNamingItems } from '../infrastructure/QabItemBank.js';
+import { moveEasiestLast } from '../domain/sessionSafeguards.js';
 import {
   pickRepeatItems,
   pickReadingItems,
@@ -97,10 +98,13 @@ export type UseMixedQuizReturn = [UseMixedQuizState, UseMixedQuizActions];
 
 export interface UseMixedQuizDeps {
   quizApi?: IQuizApi;
-  /** QAB 질문형(단어/문장) 문항 추출기 (테스트 주입용) */
-  pickQabItems?: (count: number) => QabImageItem[];
-  /** QAB 그림 이름대기 문항 추출기 (테스트 주입용) */
-  pickNamingItems?: (count: number) => QabNamingItem[];
+  /** QAB 질문형(단어/문장) 문항 추출기 (테스트 주입용). levels로 제시 난이도 지정. */
+  pickQabItems?: (
+    count: number,
+    levels?: { word?: number; sentence?: number },
+  ) => QabImageItem[];
+  /** QAB 그림 이름대기 문항 추출기 (테스트 주입용). level로 제시 난이도 지정. */
+  pickNamingItems?: (count: number, level?: number) => QabNamingItem[];
   /** QAB 따라말하기 문항 추출기 (테스트 주입용) */
   pickRepeatItems?: (count: number) => QabRepeatItem[];
   /** QAB 소리 내어 읽기 문항 추출기 (테스트 주입용) */
@@ -121,6 +125,16 @@ export interface UseMixedQuizDeps {
   /** QAB 말운동(DDK) 개수 (기본 1) */
   ddkCount?: number;
 }
+
+/** success-ending 순위: 성공 확률 높은 종류가 클수록 뒤로 간다. */
+const SUCCESS_RANK: Record<PlayableItem['kind'], number> = {
+  qab: 3, // 그림선택(자동채점·비처벌) — 성공 확률 최고
+  daily: 2, // 데일리(백엔드 채점)
+  naming: 1, // 이하 발화 산출 — 낮음
+  repeat: 1,
+  reading: 1,
+  ddk: 1,
+};
 
 const DEFAULT_DAILY_COUNT = 4;
 const DEFAULT_QAB_COUNT = 2;
@@ -185,24 +199,42 @@ export function useMixedQuizSession(
   const correctCountRef = useRef<number>(0);
   /** QAB 항목 결과 누적 (세션 완료 시 백엔드 일괄 저장용) */
   const qabResultsRef = useRef<QabResultInput[]>([]);
+  /** 문항 풀 매니페스트 버전(레벨 조회 시 받음). 결과 제출에 함께 보낸다. */
+  const manifestVersionRef = useRef<number | undefined>(undefined);
 
   /** 세트 상세 로드 + 데일리/QAB 인터리브 구성 */
   const fetchAndApply = useCallback(async (): Promise<void> => {
     try {
       const detail = await apiRef.current.getSet(quizSetId);
+
+      // 적응형: 스킬별 현재 레벨을 읽어 문항 제시 난이도를 정한다. 조회 실패는
+      // 비차단 — 기본 난이도(레벨 미지정)로 진행한다(레벨은 환자에게 비노출).
+      let levels: Partial<Record<QabSubtest, number>> | undefined;
+      try {
+        const skillLevels = await apiRef.current.getSkillLevels();
+        levels = skillLevels.levels;
+        manifestVersionRef.current = skillLevels.manifestVersion;
+      } catch {
+        levels = undefined;
+        manifestVersionRef.current = undefined;
+      }
+
       const dailySorted = [...detail.questions].sort(
         (a, b) => a.orderIndex - b.orderIndex,
       );
       const dailyItems: PlayableItem[] = dailySorted
         .slice(0, dailyCount)
         .map((q) => ({ kind: 'daily', id: q.id, question: q }));
-      const qabItems: PlayableItem[] = pickRef.current(qabCount).map((it) => ({
+      const qabItems: PlayableItem[] = pickRef.current(
+        qabCount,
+        levels ? { word: levels.word, sentence: levels.sentence } : undefined,
+      ).map((it) => ({
         kind: 'qab',
         id: it.itemId,
         item: it,
       }));
       const namingItems: PlayableItem[] = pickNamingRef
-        .current(namingCount)
+        .current(namingCount, levels?.naming)
         .map((it) => ({ kind: 'naming', id: it.itemId, item: it }));
       const repeatItems: PlayableItem[] = pickRepeatRef
         .current(repeatCount)
@@ -214,7 +246,7 @@ export function useMixedQuizSession(
         .current(ddkCount)
         .map((it) => ({ kind: 'ddk', id: it.itemId, item: it }));
 
-      const merged = shuffle([
+      const shuffled = shuffle([
         ...dailyItems,
         ...qabItems,
         ...namingItems,
@@ -222,6 +254,10 @@ export function useMixedQuizSession(
         ...readingItems,
         ...ddkItems,
       ]);
+      // success-ending: 성취감으로 마무리하도록 성공 확률 높은 항목을 맨 뒤로.
+      // 그림선택(qab)은 자동채점·비처벌이라 성공 확률이 가장 높고, 발화(naming/
+      // repeat/reading/ddk)는 산출 과제라 낮게 둔다.
+      const merged = moveEasiestLast(shuffled, (it) => SUCCESS_RANK[it.kind]);
       itemsRef.current = merged;
       sessionTokenRef.current = tokenGenRef.current();
       correctCountRef.current = 0;
@@ -340,6 +376,9 @@ export function useMixedQuizSession(
         subtest: item.item.category,
         itemRef: item.item.itemId,
         isCorrect,
+        ...(item.item.presentedLevel !== undefined
+          ? { presentedLevel: item.item.presentedLevel }
+          : {}),
       });
       applyResult(
         { isCorrect, correctLabel: correct?.label ?? null },
@@ -368,6 +407,9 @@ export function useMixedQuizSession(
         itemRef: item.item.itemId,
         isCorrect: correct,
         ...(evaluation ? { score: evaluation.score } : {}),
+        ...(item.item.presentedLevel !== undefined
+          ? { presentedLevel: item.item.presentedLevel }
+          : {}),
       });
       applyResult(
         {
@@ -512,7 +554,11 @@ export function useMixedQuizSession(
       const qabResults = qabResultsRef.current;
       if (qabResults.length > 0) {
         void Promise.resolve(
-          apiRef.current.submitQabResults(sessionTokenRef.current, qabResults),
+          apiRef.current.submitQabResults(
+            sessionTokenRef.current,
+            qabResults,
+            manifestVersionRef.current,
+          ),
         ).catch((err) => {
           // 저장 실패는 환자 경험을 막지 않는다(추적 데이터 유실만).
           // 단, 완전 무음이면 추적이 영영 안 쌓여도 모르므로 경고는 남긴다.

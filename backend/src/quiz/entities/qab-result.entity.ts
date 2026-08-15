@@ -64,6 +64,12 @@ export class QabResult {
   @Column({ name: 'score', type: 'int', nullable: true })
   score: number | null;
 
+  // 이 항목이 제시된 난이도 레벨(1~5). 적응형 레벨링의 윈도우를 "현재 레벨에서
+  // 제시된 항목"으로 한정해 능력과 제시 난이도의 교란을 막는다. 컬럼 추가 이전
+  // 구데이터는 null(레벨링 윈도우에서 제외).
+  @Column({ name: 'presented_level', type: 'smallint', nullable: true })
+  presentedLevel: number | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }
