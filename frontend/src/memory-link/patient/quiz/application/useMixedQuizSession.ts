@@ -31,6 +31,7 @@ import type { QabResultInput, QabSubtest } from '../domain/QabResult.js';
 import { quizApi } from '../infrastructure/QuizApi.js';
 import type { IQuizApi } from '../infrastructure/QuizApi.js';
 import { pickQabItems, pickNamingItems } from '../infrastructure/QabItemBank.js';
+import { moveEasiestLast } from '../domain/sessionSafeguards.js';
 import {
   pickRepeatItems,
   pickReadingItems,
@@ -124,6 +125,16 @@ export interface UseMixedQuizDeps {
   /** QAB 말운동(DDK) 개수 (기본 1) */
   ddkCount?: number;
 }
+
+/** success-ending 순위: 성공 확률 높은 종류가 클수록 뒤로 간다. */
+const SUCCESS_RANK: Record<PlayableItem['kind'], number> = {
+  qab: 3, // 그림선택(자동채점·비처벌) — 성공 확률 최고
+  daily: 2, // 데일리(백엔드 채점)
+  naming: 1, // 이하 발화 산출 — 낮음
+  repeat: 1,
+  reading: 1,
+  ddk: 1,
+};
 
 const DEFAULT_DAILY_COUNT = 4;
 const DEFAULT_QAB_COUNT = 2;
@@ -235,7 +246,7 @@ export function useMixedQuizSession(
         .current(ddkCount)
         .map((it) => ({ kind: 'ddk', id: it.itemId, item: it }));
 
-      const merged = shuffle([
+      const shuffled = shuffle([
         ...dailyItems,
         ...qabItems,
         ...namingItems,
@@ -243,6 +254,10 @@ export function useMixedQuizSession(
         ...readingItems,
         ...ddkItems,
       ]);
+      // success-ending: 성취감으로 마무리하도록 성공 확률 높은 항목을 맨 뒤로.
+      // 그림선택(qab)은 자동채점·비처벌이라 성공 확률이 가장 높고, 발화(naming/
+      // repeat/reading/ddk)는 산출 과제라 낮게 둔다.
+      const merged = moveEasiestLast(shuffled, (it) => SUCCESS_RANK[it.kind]);
       itemsRef.current = merged;
       sessionTokenRef.current = tokenGenRef.current();
       correctCountRef.current = 0;
