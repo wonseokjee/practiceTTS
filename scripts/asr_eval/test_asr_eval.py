@@ -4,6 +4,7 @@
 """
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -302,3 +303,30 @@ def test_colab_split_disjoint_and_deterministic():
     trains = {s for s, v in a1.items() if v == "train"}
     assert not (tests & trains)  # 한 화자는 한 split만
     assert len(tests) == 2  # round(10*0.2)
+
+
+def test_colab_split_persisted_survives_batch_growth(tmp_path):
+    """회귀 방지: split_speakers()는 화자 수가 바뀌면 같은 seed라도 재셔플되어
+    기존 화자의 train/test가 뒤바뀐다(배치 병합마다 재현성이 깨지는 실측 버그).
+    split_speakers_persisted()는 split_file에 봉인해 기존 배정을 절대 바꾸지
+    않아야 한다 — 이게 이 함수의 존재 이유다."""
+    split_file = tmp_path / "speaker_split.json"
+
+    batch1 = [f"s{i}" for i in range(20)]
+    a1 = PC.split_speakers_persisted(
+        batch1, test_frac=0.2, dev_frac=0.0, seed=42, split_file=split_file
+    )
+
+    # 화자 15명이 추가된 2차 배치(화자 집합 크기가 바뀐다).
+    batch2 = batch1 + [f"s{i}" for i in range(20, 35)]
+    a2 = PC.split_speakers_persisted(
+        batch2, test_frac=0.2, dev_frac=0.0, seed=42, split_file=split_file
+    )
+
+    # 기존 화자의 배정은 1차와 완전히 동일해야 한다.
+    assert all(a1[s] == a2[s] for s in batch1)
+    # split_file에 병합된 전체 배정이 영속화돼 있어야 한다.
+    saved = json.loads(split_file.read_text(encoding="utf-8"))
+    assert saved == a2
+    # 신규 화자도 결국 배정되고, 한 화자는 한 split만 갖는다(누수 없음).
+    assert set(a2) == set(batch2)
