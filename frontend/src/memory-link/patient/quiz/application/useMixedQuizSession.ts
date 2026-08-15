@@ -31,7 +31,10 @@ import type { QabResultInput, QabSubtest } from '../domain/QabResult.js';
 import { quizApi } from '../infrastructure/QuizApi.js';
 import type { IQuizApi } from '../infrastructure/QuizApi.js';
 import { pickQabItems, pickNamingItems } from '../infrastructure/QabItemBank.js';
-import { moveEasiestLast } from '../domain/sessionSafeguards.js';
+import {
+  moveEasiestLast,
+  shouldFatigueExit,
+} from '../domain/sessionSafeguards.js';
 import {
   pickRepeatItems,
   pickReadingItems,
@@ -196,9 +199,17 @@ export function useMixedQuizSession(
   const itemsRef = useRef<PlayableItem[]>([]);
   const phaseRef = useRef<MixedPhase>('loading');
   const indexRef = useRef<number>(0);
-  const correctCountRef = useRef<number>(0);
+  /**
+   * 답한 문항의 정오답 로그(종류 무관, 답한 순서대로). 정답수·연속오답을 여기서
+   * 파생한다 — 정정(overrideSpeechVerdict)·재시도(answerAgain)가 이 로그만 고치면
+   * 점수와 피로 탈출 판정이 자동으로 일관되게 맞는다(각 지점을 따로 갱신하다
+   * 어긋나는 버그 방지).
+   */
+  const recentCorrectRef = useRef<boolean[]>([]);
   /** QAB 항목 결과 누적 (세션 완료 시 백엔드 일괄 저장용) */
   const qabResultsRef = useRef<QabResultInput[]>([]);
+  /** 이미 백엔드에 제출한 결과 수. 점진 제출에서 미전송 tail만 보낸다. */
+  const submittedCountRef = useRef<number>(0);
   /** 문항 풀 매니페스트 버전(레벨 조회 시 받음). 결과 제출에 함께 보낸다. */
   const manifestVersionRef = useRef<number | undefined>(undefined);
 
@@ -260,8 +271,9 @@ export function useMixedQuizSession(
       const merged = moveEasiestLast(shuffled, (it) => SUCCESS_RANK[it.kind]);
       itemsRef.current = merged;
       sessionTokenRef.current = tokenGenRef.current();
-      correctCountRef.current = 0;
+      recentCorrectRef.current = [];
       qabResultsRef.current = [];
+      submittedCountRef.current = 0;
 
       if (merged.length === 0) {
         phaseRef.current = 'error';
@@ -310,9 +322,17 @@ export function useMixedQuizSession(
   }, [fetchAndApply]);
 
   /** 채점 결과를 반영해 feedback 단계로 전이 (공통). */
+  /** 로그 끝에서부터 연속 오답 수(피로 탈출 판정용). */
+  const trailingWrong = (): number => {
+    const log = recentCorrectRef.current;
+    let n = 0;
+    for (let i = log.length - 1; i >= 0 && !log[i]; i -= 1) n += 1;
+    return n;
+  };
+
   const applyResult = useCallback(
     (result: PlayResult, selectedChoiceId: string | null): void => {
-      if (result.isCorrect) correctCountRef.current += 1;
+      recentCorrectRef.current.push(result.isCorrect);
       phaseRef.current = 'feedback';
       setState((prev) => ({
         ...prev,
@@ -541,30 +561,48 @@ export function useMixedQuizSession(
     applyResult({ isCorrect: true, correctLabel }, null);
   }, [applyResult]);
 
+  // 점진 제출: 아직 안 보낸 결과(tail)만 백엔드에 저장한다. 세션 끝 1회가 아니라
+  // 문항을 넘길 때마다 보내, 환자가 중도 이탈해도 그때까지의 결과·이탈 지점이
+  // 남는다(관측성). qab_results dedup UNIQUE로 재시도/중복은 멱등. 실패는 비차단 —
+  // submittedCount를 올리지 않으므로 다음 flush에서 재시도된다.
+  const flushPending = useCallback((): void => {
+    const all = qabResultsRef.current;
+    const pending = all.slice(submittedCountRef.current);
+    if (pending.length === 0) return;
+    const targetCount = all.length;
+    void Promise.resolve(
+      apiRef.current.submitQabResults(
+        sessionTokenRef.current,
+        pending,
+        manifestVersionRef.current,
+      ),
+    )
+      .then(() => {
+        submittedCountRef.current = targetCount;
+      })
+      .catch((err) => {
+        // 저장 실패는 환자 경험을 막지 않는다. 다음 flush에서 재시도(멱등).
+        console.warn('[quiz] QAB 결과 점진 저장 실패:', err);
+      });
+  }, []);
+
   const next = useCallback((): void => {
     if (phaseRef.current !== 'feedback') return;
 
     const items = itemsRef.current;
     const nextIndex = indexRef.current + 1;
-    if (nextIndex >= items.length) {
-      const total = items.length;
+    // 방금 확정된 문항 결과를 점진 제출(answerAgain 정정 이후라 최종값).
+    flushPending();
+    // 피로 탈출: 연속 오답이 임계에 닿으면 남은 문항이 있어도 그날 세션을 조기
+    // 종료한다. 좌절을 누적시키지 않는 게 순응도에 낫다(성공 경험 원칙).
+    const fatigued = shouldFatigueExit(trailingWrong());
+    if (nextIndex >= items.length || fatigued) {
+      // 점수 분모는 **실제로 푼 문항 수**다. 피로 탈출 시 안 푼 문항까지 오답으로
+      // 세면(0/10) 배려로 끝낸 세션이 되레 좌절을 준다 — 조기 종료의 목적과 반대.
+      const attempted = recentCorrectRef.current.length;
+      const correct = recentCorrectRef.current.filter(Boolean).length;
       const score =
-        total > 0 ? Math.round((correctCountRef.current / total) * 100) : 0;
-      // QAB 결과 백엔드 저장 (회복 추적). 실패해도 결과 화면을 막지 않는다(fire-and-forget).
-      const qabResults = qabResultsRef.current;
-      if (qabResults.length > 0) {
-        void Promise.resolve(
-          apiRef.current.submitQabResults(
-            sessionTokenRef.current,
-            qabResults,
-            manifestVersionRef.current,
-          ),
-        ).catch((err) => {
-          // 저장 실패는 환자 경험을 막지 않는다(추적 데이터 유실만).
-          // 단, 완전 무음이면 추적이 영영 안 쌓여도 모르므로 경고는 남긴다.
-          console.warn('[quiz] QAB 결과 저장 실패:', err);
-        });
-      }
+        attempted > 0 ? Math.round((correct / attempted) * 100) : 0;
       phaseRef.current = 'result';
       setState((prev) => ({ ...prev, phase: 'result', sessionScore: score }));
       return;
@@ -581,17 +619,25 @@ export function useMixedQuizSession(
       lastResult: null,
       selectedChoiceId: null,
     }));
-  }, []);
+  }, [flushPending]);
+
+  // 화면 이탈(언마운트) 시 마지막으로 답한(아직 next 안 누른) 문항 결과도 저장한다.
+  // 중도 이탈을 최대한 포착하기 위한 best-effort flush.
+  useEffect(() => {
+    return () => {
+      flushPending();
+    };
+  }, [flushPending]);
 
   // 같은 문항을 다시 답한다(발화/이름대기 재시도). 직전 결과를 되돌려
   // 재시도가 점수를 이중 반영하지 않게 하고, attempt를 올려 문항 컴포넌트를
   // 리마운트(내부 status/transcript 초기화)한다.
   const answerAgain = useCallback((): void => {
     if (phaseRef.current !== 'feedback') return;
-    const last = qabResultsRef.current.pop();
-    if (last?.isCorrect) {
-      correctCountRef.current = Math.max(0, correctCountRef.current - 1);
-    }
+    // 직전 결과를 로그에서 되돌린다 — 재시도가 새 결과로 다시 집계되게(점수·연속오답
+    // 모두 recentCorrect에서 파생되므로 이 pop 하나로 일관 유지).
+    qabResultsRef.current.pop();
+    recentCorrectRef.current.pop();
     phaseRef.current = 'answering';
     setState((prev) => ({
       ...prev,
@@ -623,11 +669,11 @@ export function useMixedQuizSession(
     const last = qabResultsRef.current[qabResultsRef.current.length - 1];
     if (!last || !SPEECH_KINDS.includes(last.subtest)) return;
     if (last.isCorrect === isCorrect) return; // 변화 없음
-    correctCountRef.current = Math.max(
-      0,
-      correctCountRef.current + (isCorrect ? 1 : -1),
-    );
     last.isCorrect = isCorrect;
+    // 로그의 마지막 항목도 함께 뒤집는다 — 점수·연속오답이 정정을 반영하게.
+    // (안 고치면 정정된 정답인데도 연속오답으로 남아 피로 탈출이 잘못 발동.)
+    const log = recentCorrectRef.current;
+    if (log.length > 0) log[log.length - 1] = isCorrect;
     setState((prev) => ({
       ...prev,
       lastResult: prev.lastResult

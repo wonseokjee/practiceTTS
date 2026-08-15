@@ -1593,6 +1593,7 @@ describe('QuizService', () => {
   // ─── QAB 결과 저장/요약 ─────────────────────────────────────────────
   describe('saveQabResults', () => {
     it('유효 환자 ID로 결과를 일괄 저장하고 저장 개수를 반환한다', async () => {
+      skillLevelRepo.find.mockResolvedValue([]);
       qabResultRepo.save.mockResolvedValue([]);
       const dto: SubmitQabResultsDto = {
         sessionToken: SESSION_TOKEN,
@@ -1620,6 +1621,7 @@ describe('QuizService', () => {
     });
 
     it('같은 세션 재제출(UNIQUE 위반)은 멱등 — 던지지 않고 성공 처리', async () => {
+      skillLevelRepo.find.mockResolvedValue([]);
       qabResultRepo.save.mockRejectedValue({ code: '23505' });
       const dto: SubmitQabResultsDto = {
         sessionToken: SESSION_TOKEN,
@@ -1632,6 +1634,7 @@ describe('QuizService', () => {
     });
 
     it('UNIQUE 위반이 아닌 DB 오류는 전파한다', async () => {
+      skillLevelRepo.find.mockResolvedValue([]);
       qabResultRepo.save.mockRejectedValue({ code: '08006' }); // connection failure
       const dto: SubmitQabResultsDto = {
         sessionToken: SESSION_TOKEN,
@@ -1643,11 +1646,14 @@ describe('QuizService', () => {
       ).rejects.toMatchObject({ code: '08006' });
     });
 
-    it('제출 항목의 presentedLevel을 그대로 영속화한다', async () => {
+    it('presentedLevel은 클라이언트 값을 무시하고 서버의 현재 레벨로 확정한다', async () => {
+      // word는 서버 상태에 레벨 4가 있고, naming은 행이 없어 콜드스타트(2)로 채워진다.
+      skillLevelRepo.find.mockResolvedValue([{ subtest: 'word', level: 4 }]);
       qabResultRepo.save.mockResolvedValue([]);
       const dto: SubmitQabResultsDto = {
         sessionToken: SESSION_TOKEN,
         results: [
+          // 클라이언트가 보낸 3은 무시되고, 서버의 현재 레벨 4가 저장돼야 한다.
           { subtest: 'word', itemRef: 'qw_001', isCorrect: true, presentedLevel: 3 },
           { subtest: 'naming', itemRef: 'nm_001', isCorrect: false },
         ],
@@ -1657,9 +1663,9 @@ describe('QuizService', () => {
       await service.saveQabResults(PATIENT_ID, dto);
 
       const savedRows = qabResultRepo.create.mock.calls.map((c) => c[0]);
-      expect(savedRows[0]).toMatchObject({ subtest: 'word', presentedLevel: 3 });
-      // presentedLevel 미전송 항목은 null(레벨링 윈도우에서 제외됨)
-      expect(savedRows[1]).toMatchObject({ subtest: 'naming', presentedLevel: null });
+      expect(savedRows[0]).toMatchObject({ subtest: 'word', presentedLevel: 4 });
+      // 레벨 이력 없는 서브테스트는 콜드스타트(2)로 확정된다(null이 아니다).
+      expect(savedRows[1]).toMatchObject({ subtest: 'naming', presentedLevel: 2 });
     });
   });
 

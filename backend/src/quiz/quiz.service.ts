@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, LessThan, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, LessThan, Repository } from 'typeorm';
 import { MemoryEntry } from '../memory/entities/memory-entry.entity';
 import { PatientMemoryNote } from '../memory/entities/patient-memory-note.entity';
 import { FastApiClientService } from '../memory/services/fast-api-client.service';
@@ -951,8 +951,9 @@ export class QuizService {
     effectivePatientId: string,
     dto: SubmitQabResultsDto,
   ): Promise<SaveQabResultsResult> {
-    // presented_level 감사: 클라이언트 매니페스트 버전이 서버와 다르면 기록만(경고).
-    // presented_level 해석이 옛 문항 풀 기준일 수 있음을 알리되, 거부하지는 않는다.
+    // manifest 버전 불일치는 관측용으로만 기록한다. presented_level 자체는
+    // 아래에서 서버 상태로 확정하므로, 오래된 클라이언트가 보낸 값이라도
+    // 레벨링 윈도우를 오염시킬 수 없다.
     if (
       dto.manifestVersion !== undefined &&
       dto.manifestVersion !== QAB_MANIFEST_VERSION
@@ -962,8 +963,33 @@ export class QuizService {
       );
     }
 
-    const rows = dto.results.map((r) =>
-      this.qabResultRepository.create({
+    // 제출에 등장한 서브테스트만 레벨 재계산 대상.
+    const affectedSubtests = [...new Set(dto.results.map((r) => r.subtest))];
+
+    // presented_level은 클라이언트를 신뢰하지 않는다. 서버가 보유한 현재
+    // 레벨(skill_levels)을 이 서브테스트의 제시 난이도로 확정한다 — 이 값이
+    // 바로 recomputeSkillLevel의 윈도우 필터(presented_level = 현재 레벨)가
+    // 쓰는 값이므로, 클라이언트가 조작된 레벨을 보내도 레벨링에 영향을 줄 수 없다.
+    const currentLevelRows = await this.skillLevelRepository.find({
+      where: { patientId: effectivePatientId, subtest: In(affectedSubtests) },
+    });
+    const currentLevelBySubtest = new Map(
+      currentLevelRows.map((row) => [row.subtest, row.level]),
+    );
+    const resolvePresentedLevel = (subtest: QabSubtest): SkillLevelValue =>
+      (currentLevelBySubtest.get(subtest) ?? COLD_START_LEVEL) as SkillLevelValue;
+
+    const rows = dto.results.map((r) => {
+      const serverLevel = resolvePresentedLevel(r.subtest);
+      // 클라이언트가 보낸 값은 저장하지 않지만, 서버값과 어긋나면 관측용으로
+      // 남긴다(프론트 배선 버그·구버전 클라이언트 조기 발견용).
+      if (r.presentedLevel !== undefined && r.presentedLevel !== serverLevel) {
+        this.logger.warn(
+          `presented_level 불일치: client=${r.presentedLevel} server=${serverLevel} ` +
+            `(patient=${effectivePatientId}, subtest=${r.subtest})`,
+        );
+      }
+      return this.qabResultRepository.create({
         patientId: effectivePatientId,
         sessionToken: dto.sessionToken,
         subtest: r.subtest,
@@ -972,12 +998,9 @@ export class QuizService {
         assisted: r.assisted ?? false,
         metric: r.metric ?? null,
         score: r.score ?? null,
-        presentedLevel: r.presentedLevel ?? null,
-      }),
-    );
-
-    // 제출에 등장한 서브테스트만 레벨 재계산 대상.
-    const affectedSubtests = [...new Set(dto.results.map((r) => r.subtest))];
+        presentedLevel: serverLevel,
+      });
+    });
 
     // insert + 레벨 재계산 + UPSERT를 단일 트랜잭션으로. 재계산은 현재 레벨에서
     // 제시된 최근 윈도우로 결정론적이라, 중복/재시도 제출이 레벨을 이중으로

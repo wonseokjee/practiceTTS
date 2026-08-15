@@ -9,6 +9,7 @@ import { EntryDetailScreen } from './EntryDetailScreen.js';
 import { EntryListScreen } from './EntryListScreen.js';
 import { SettingsScreen } from './SettingsScreen.js';
 import { QabProgressCard } from './QabProgressCard.js';
+import { SkillLevelCard } from './SkillLevelCard.js';
 import { WeeklyReportScreen } from './WeeklyReportScreen.js';
 import { withHonorific } from '../../shared/honorific.js';
 import { isConversationModeEnabled } from '../../shared/featureFlags.js';
@@ -228,6 +229,9 @@ export function CaregiverDashboard() {
 
             {/* 발화 검사 회복 추세 (데이터 있을 때만 표시) */}
             <QabProgressCard onOpenReport={() => setView('report')} />
+
+            {/* 스킬별 연습 눈높이(적응 레벨) — 방향 카드 */}
+            <SkillLevelCard />
 
             {/* 기억 목록 그리드 */}
             <EntryListScreen
