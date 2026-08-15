@@ -60,11 +60,13 @@ export interface IQuizApi {
   getBestScore(quizSetId: string): Promise<BestScore>;
   /** POST /quiz/sets/:id/wish-practice — 보호자 한마디 → 발화 연습 (Phase 6) */
   getWishPractice(quizSetId: string): Promise<WishPractice>;
-  /** POST /quiz/qab-results — QAB 검사 결과 일괄 저장 (세션 완료 시) */
+  /** POST /quiz/qab-results — QAB 결과 제출(ADP-001: 문항마다 점진 제출). */
   submitQabResults(
     sessionToken: string,
     results: QabResultInput[],
     manifestVersion?: number,
+    /** 이 제출로 세션이 끝까지 진행됐는지(완료 vs 중단 구분 마커). */
+    completed?: boolean,
   ): Promise<{ saved: number }>;
   /** GET /quiz/qab-summary — QAB 검사별 회복 추세 (보호자용) */
   getQabSummary(): Promise<QabSubtestSummary[]>;
@@ -301,11 +303,13 @@ export const quizApi: IQuizApi = {
     sessionToken: string,
     results: QabResultInput[],
     manifestVersion?: number,
+    completed?: boolean,
   ): Promise<{ saved: number }> {
     const res = await memoryLinkApi.post<unknown>('/quiz/qab-results', {
       sessionToken,
       results,
       ...(manifestVersion === undefined ? {} : { manifestVersion }),
+      ...(completed ? { completed: true } : {}),
     });
     const obj = asRecord(res.data);
     if (obj === null || typeof obj.saved !== 'number') {

@@ -14,6 +14,7 @@ import {
 import { SubmitAttemptDto } from './dto/submit-attempt.dto';
 import { SubmitQabResultsDto } from './dto/submit-qab-results.dto';
 import { QabResult } from './entities/qab-result.entity';
+import { QabSessionCompletion } from './entities/qab-session-completion.entity';
 import { QuizAttempt } from './entities/quiz-attempt.entity';
 import { QuizBestScore } from './entities/quiz-best-score.entity';
 import { QuizQuestion } from './entities/quiz-question.entity';
@@ -944,7 +945,7 @@ export class QuizService {
   }
 
   /**
-   * QAB 질문형 검사 결과 일괄 저장 (세션 완료 시 1회).
+   * QAB 질문형 검사 결과 저장 (ADP-001로 문항마다 점진 제출).
    * patientId는 토큰에서 도출된 유효 환자 ID를 사용한다(클라 입력 불신).
    */
   async saveQabResults(
@@ -1016,6 +1017,21 @@ export class QuizService {
       }
       for (const subtest of affectedSubtests) {
         await this.recomputeSkillLevel(manager, effectivePatientId, subtest);
+      }
+
+      // 완료 마커: 자연 종료·피로 탈출 등 세션이 의도한 대로 끝났을 때만 프론트가
+      // completed=true를 보낸다. 점진 제출의 중간 flush·화면 이탈 시 best-effort
+      // flush는 completed를 안 보내 이탈로 남는다(완료 vs 중단 구분).
+      if (dto.completed) {
+        await manager.upsert(
+          QabSessionCompletion,
+          {
+            sessionToken: dto.sessionToken,
+            patientId: effectivePatientId,
+            completedAt: new Date(),
+          },
+          ['sessionToken'],
+        );
       }
     });
 

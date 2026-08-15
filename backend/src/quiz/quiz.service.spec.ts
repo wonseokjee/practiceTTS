@@ -5,6 +5,7 @@ import { PatientMemoryNote } from '../memory/entities/patient-memory-note.entity
 import { SubmitAttemptDto } from './dto/submit-attempt.dto';
 import { SubmitQabResultsDto } from './dto/submit-qab-results.dto';
 import { QabResult } from './entities/qab-result.entity';
+import { QabSessionCompletion } from './entities/qab-session-completion.entity';
 import { QuizAttempt } from './entities/quiz-attempt.entity';
 import { QuizBestScore } from './entities/quiz-best-score.entity';
 import { QuizQuestion } from './entities/quiz-question.entity';
@@ -51,6 +52,7 @@ describe('QuizService', () => {
   let quizBestScoreRepo: ReturnType<typeof buildRepoMock>;
   let qabResultRepo: ReturnType<typeof buildRepoMock>;
   let skillLevelRepo: ReturnType<typeof buildRepoMock>;
+  let qabSessionCompletionRepo: ReturnType<typeof buildRepoMock>;
   let memoryEntryRepo: ReturnType<typeof buildRepoMock>;
   let patientMemoryNoteRepo: ReturnType<typeof buildRepoMock>;
   let generationClientMock: { generate: jest.Mock };
@@ -156,6 +158,7 @@ describe('QuizService', () => {
     quizBestScoreRepo = buildRepoMock();
     qabResultRepo = buildRepoMock();
     skillLevelRepo = buildRepoMock();
+    qabSessionCompletionRepo = buildRepoMock();
     memoryEntryRepo = buildRepoMock();
     patientMemoryNoteRepo = buildRepoMock();
     generationClientMock = { generate: jest.fn() };
@@ -230,8 +233,15 @@ describe('QuizService', () => {
                     limit: jest.fn().mockReturnThis(),
                     getRawMany: jest.fn().mockResolvedValue([]),
                   }),
-                  upsert: (_entity: unknown, values: unknown, conflict: unknown) =>
-                    skillLevelRepo.upsert(values, conflict),
+                  upsert: (entity: unknown, values: unknown, conflict: unknown) => {
+                    if (entity === SkillLevel) {
+                      return skillLevelRepo.upsert(values, conflict);
+                    }
+                    if (entity === QabSessionCompletion) {
+                      return qabSessionCompletionRepo.upsert(values, conflict);
+                    }
+                    throw new Error('예상치 못한 엔티티: 트랜잭션 upsert mock');
+                  },
                 }),
             ),
           },
@@ -1666,6 +1676,39 @@ describe('QuizService', () => {
       expect(savedRows[0]).toMatchObject({ subtest: 'word', presentedLevel: 4 });
       // 레벨 이력 없는 서브테스트는 콜드스타트(2)로 확정된다(null이 아니다).
       expect(savedRows[1]).toMatchObject({ subtest: 'naming', presentedLevel: 2 });
+    });
+
+    it('completed=true면 완료 마커를 남긴다(완료 vs 중단 구분)', async () => {
+      skillLevelRepo.find.mockResolvedValue([]);
+      qabResultRepo.save.mockResolvedValue([]);
+      const dto: SubmitQabResultsDto = {
+        sessionToken: SESSION_TOKEN,
+        results: [{ subtest: 'word', itemRef: 'qw_001', isCorrect: true }],
+        completed: true,
+      };
+
+      await service.saveQabResults(PATIENT_ID, dto);
+
+      expect(qabSessionCompletionRepo.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionToken: SESSION_TOKEN,
+          patientId: PATIENT_ID,
+        }),
+        ['sessionToken'],
+      );
+    });
+
+    it('completed 생략(점진 제출의 중간 flush)이면 완료 마커를 남기지 않는다', async () => {
+      skillLevelRepo.find.mockResolvedValue([]);
+      qabResultRepo.save.mockResolvedValue([]);
+      const dto: SubmitQabResultsDto = {
+        sessionToken: SESSION_TOKEN,
+        results: [{ subtest: 'word', itemRef: 'qw_001', isCorrect: true }],
+      };
+
+      await service.saveQabResults(PATIENT_ID, dto);
+
+      expect(qabSessionCompletionRepo.upsert).not.toHaveBeenCalled();
     });
   });
 

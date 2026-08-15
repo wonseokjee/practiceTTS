@@ -192,6 +192,27 @@ describe('quizApi', () => {
         results,
       });
     });
+
+    it('completed=true면 바디에 포함하고, false/생략이면 생략한다', async () => {
+      postMock.mockResolvedValue({ data: { saved: 1 } });
+      const results = [
+        { subtest: 'word' as const, itemRef: 'qw_001', isCorrect: true },
+      ];
+
+      await quizApi.submitQabResults('tok-1', results, undefined, true);
+      expect(postMock).toHaveBeenCalledWith('/quiz/qab-results', {
+        sessionToken: 'tok-1',
+        results,
+        completed: true,
+      });
+
+      postMock.mockClear();
+      await quizApi.submitQabResults('tok-1', results, undefined, false);
+      expect(postMock).toHaveBeenCalledWith('/quiz/qab-results', {
+        sessionToken: 'tok-1',
+        results,
+      });
+    });
   });
 
   describe('getSkillLevels', () => {

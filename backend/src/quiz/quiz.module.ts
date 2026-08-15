@@ -6,6 +6,7 @@ import { MemoryEntry } from '../memory/entities/memory-entry.entity';
 import { PatientMemoryNote } from '../memory/entities/patient-memory-note.entity';
 import { FastApiClientService } from '../memory/services/fast-api-client.service';
 import { QabResult } from './entities/qab-result.entity';
+import { QabSessionCompletion } from './entities/qab-session-completion.entity';
 import { QuizAttempt } from './entities/quiz-attempt.entity';
 import { QuizBestScore } from './entities/quiz-best-score.entity';
 import { QuizQuestion } from './entities/quiz-question.entity';
@@ -42,6 +43,7 @@ import { WishConversionClient } from './services/wish-conversion.client';
       QuizAttempt,
       QuizBestScore,
       QabResult,
+      QabSessionCompletion,
       SkillLevel,
       MemoryEntry,
       PatientMemoryNote,

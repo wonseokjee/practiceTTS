@@ -56,9 +56,13 @@ export class ServerAssessmentResultSubmitter
       return;
     }
     try {
+      // 이 submit()은 검사가 끝난 뒤 1회만 호출된다(FinishXxxAssessmentUseCase 등) —
+      // 점진 제출이 아니라 이미 완료된 결과의 일괄 저장이므로 완료 마커를 남긴다.
       await quizApi.submitQabResults(
         submission.sessionToken,
         submission.results,
+        undefined,
+        true,
       );
     } catch (error) {
       console.error('[assessment] 검사 결과 서버 저장 실패', {
