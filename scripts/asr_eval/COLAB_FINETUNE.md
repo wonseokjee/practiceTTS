@@ -41,12 +41,27 @@ wav/<화자>/*.wav   (16kHz mono, 짧은 클립)
 !nvidia-smi
 ```
 
-**셀 2 — 설치 (torchao 제거 + numpy 정리) → 실행 후 [런타임 → 세션 다시 시작] 필수**
+**셀 2 — 설치 (torchao 제거 + numpy 고정) → 실행 후 [런타임 → 세션 다시 시작] 필수**
+
+numpy 버전은 하드코딩하지 않는다. Colab 이미지의 torch/librosa는 **그 이미지의 numpy**에 맞춰 빌드돼 있으므로
+현재 런타임의 numpy 버전을 읽어 그대로 못박는다. 반드시 **초기화된 런타임**에서 실행할 것
+(이미 `pip -U`를 돌린 세션이면 잘못된 버전을 고정하게 된다).
 ```python
-!pip install -q -U transformers datasets peft accelerate evaluate jiwer librosa
-!pip uninstall -y torchao   # peft 버전검사와 충돌, LoRA엔 불필요
-!pip install -q --force-reinstall --no-cache-dir "numpy==2.0.2"  # Colab 기준 버전 고정(_center 에러 방지)
-print("설치 완료 → 런타임 재시작 후 셀 3부터")
+import numpy
+NPV = numpy.__version__
+print("Colab 기본 numpy:", NPV)
+# numpy 핀을 같은 pip 호출 안에 넣어야 resolver가 도로 올리지 못한다
+!pip install -q -U transformers datasets peft accelerate evaluate jiwer librosa "numpy=={NPV}"
+!pip uninstall -y -q torchao   # peft 버전검사와 충돌, LoRA엔 불필요
+print("설치 완료 → 런타임 재시작 후 셀 2.5(검증)부터")
+```
+
+**셀 2.5 — 재시작 후 검증** (여기서 통과해야 아래가 의미 있음)
+```python
+import numpy, torch, transformers
+print(numpy.__version__, torch.__version__, transformers.__version__)
+from transformers import WhisperForConditionalGeneration          # torch↔numpy 불일치면 여기서 터짐
+import librosa; librosa.stft(numpy.zeros(2048, dtype=numpy.float32))
 ```
 
 **셀 3 — 임포트 + 드라이브 마운트**
@@ -150,7 +165,12 @@ print(f"파인튜닝 후 test CER {m['eval_cer']:.3f} (baseline 0.70과 비교)"
 ## 흔한 에러
 - `torchao ... only versions above 0.16.0` → 셀 2에서 `!pip uninstall -y torchao` + 재시작
 - **CER이 2.0+ (100% 초과)** → whisper 생성이 반복 환각. 셀 4에 `generation_config`(언어 강제 + `no_repeat_ngram_size=3`) 추가. LR도 1e-4로(1e-3은 과학습).
-- `cannot import name '_center' from numpy._core.umath` → pip -U가 numpy를 섞어 깨뜨림.
-  `!pip install -q --force-reinstall --no-cache-dir "numpy==2.0.2"` + **재시작 필수**(셀 2에 포함). 최신 numpy로 재설치하면 또 어긋나니 버전을 고정한다.
+- **numpy 짝 안 맞음 계열** — 증상은 둘, 원인은 하나(`pip -U`가 Colab 이미지의 numpy를 흔든 것):
+  - `module 'numpy' has no attribute '_no_nep50_warning'` (임포트가 `WhisperForConditionalGeneration → GenerationMixin → torch`에서 실패)
+    → numpy가 **너무 높음**. `_no_nep50_warning`은 numpy 2.3에서 삭제된 사설 API인데 런타임의 torch가 아직 그걸 호출한다.
+  - `cannot import name '_center' from numpy._core.umath` → 반대로 numpy가 **너무 낮음**(librosa/numba가 새 numpy 기준으로 깔림).
+  - 처방(공통): [런타임 → **세션 삭제 후 다시 시작**] → 셀 2부터. 셀 2는 이미지 기본 numpy를 읽어 같은 pip 호출에 핀으로 넣는다.
+    급하게 지금 세션만 살리려면 `!pip install -q --force-reinstall --no-cache-dir "numpy<2.3"` 후 **세션 다시 시작**.
+    버전 숫자를 손으로 올렸다 내렸다 하지 말 것 — 고정 숫자(예전 `numpy==2.0.2`)는 Colab 이미지가 바뀌면 또 깨진다.
 - 라벨 못 찾음 / 학습 안 돎 → 셀 8의 `remove_unused_columns=False`, `label_names=["labels"]` 확인
 - `tokenizer=` deprecated 경고 → 최신 transformers는 `processing_class=processor`

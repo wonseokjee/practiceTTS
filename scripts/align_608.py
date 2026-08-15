@@ -124,6 +124,50 @@ def segment_file(transcript: str, hyp_words: list[dict]) -> list[dict]:
     return segs
 
 
+def segment_wordlist(
+    transcript: str,
+    hyp_words: list[dict],
+    words_per_seg: int = 1,
+    min_dur: float = 0.4,
+) -> list[dict]:
+    """단어 나열(wordlist) 전사를 **단어 단위** 세그먼트로 자른다.
+
+    608 단어 검사 파일은 문장부호 없이 `거울 안경 전화 신발 ...`처럼 단어를 하나씩
+    읽는다. 문장 분할(segment_file)로는 통짜 1세그먼트라 못 쓴다. 앱의 최약점이
+    단어 수준 구음장애 인식이므로, whisper 단어 타임스탬프에 정답 단어를 앵커해
+    단어(또는 words_per_seg개)별 짧은 세그먼트를 만든다.
+
+    앵커가 없어 시각이 무너지는(end<=start) 단어, min_dur보다 짧은 단어는 버린다
+    (whisper가 확실히 잡은 단어만 깨끗이 남긴다). words_per_seg를 키우면 앵커
+    간극을 건너뛰어 수율이 오르지만 세그먼트가 길어진다.
+    """
+    ref_tokens = _WORD.findall(transcript)
+    if not ref_tokens or not hyp_words:
+        return []
+    anchors = _anchor_times(ref_tokens, hyp_words)
+    if not anchors:
+        return []
+
+    step = max(1, words_per_seg)
+    segs: list[dict] = []
+    out_idx = 0
+    for start_i in range(0, len(ref_tokens), step):
+        idxs = list(range(start_i, min(start_i + step, len(ref_tokens))))
+        start = _interp(idxs[0], anchors, len(ref_tokens), 0)
+        end = _interp(idxs[-1], anchors, len(ref_tokens), 1)
+        if start is None or end is None or end - start < min_dur:
+            continue
+        text = " ".join(ref_tokens[j] for j in idxs)
+        segs.append({
+            "sent_index": out_idx,
+            "start": round(start, 3),
+            "end": round(end, 3),
+            "reference_text": text,
+        })
+        out_idx += 1
+    return segs
+
+
 def _cut_wav(src: Path, start: float, end: float, dst: Path) -> bool:
     """ffmpeg로 [start,end] 구간을 16kHz mono wav로 잘라 저장."""
     dst.parent.mkdir(parents=True, exist_ok=True)
@@ -149,7 +193,22 @@ def main() -> int:
     ap.add_argument("--model", default="small", help="whisper 모델 (tiny/base/small/medium)")
     ap.add_argument("--limit", type=int, default=0, help="처리할 파일 수 상한(0=전체)")
     ap.add_argument("--no-emit-wav", action="store_true", help="wav 절단 없이 타임스탬프만 기록")
+    ap.add_argument(
+        "--wordlist", choices=["auto", "off"], default="auto",
+        help="단어 나열 파일을 단어 단위로 자를지. auto=전사 문장부호로 자동 판별(기본)",
+    )
+    ap.add_argument("--words-per-seg", type=int, default=1, help="wordlist 세그먼트당 단어 수")
     args = ap.parse_args()
+
+    # wordlist 판별은 baseline_asr.task_type(문장부호 밀도)을 재사용한다.
+    classify = None
+    if args.wordlist == "auto":
+        sys.path.insert(0, str(Path(__file__).resolve().parent / "asr_eval"))
+        try:
+            from baseline_asr import task_type  # noqa: E402
+            classify = task_type
+        except Exception as exc:  # noqa: BLE001
+            print(f"[경고] task_type 임포트 실패 → 전부 문장 모드: {exc}", file=sys.stderr)
 
     manifest = Path(args.manifest).resolve()
     audio_root = Path(args.audio_root).resolve()
@@ -181,15 +240,58 @@ def main() -> int:
     model = whisper.load_model(args.model)
 
     seg_manifest = out_dir / "segments.jsonl"
+
+    # 재개: 이미 처리한 parent_file_id는 건너뛴다. 세그먼트를 낸 파일(segments.jsonl의
+    # parent)과 세그먼트 0개였던 파일(_attempted.txt) 모두 완료로 본다 — 0세그 파일이
+    # 매 재개마다 다시 전사(가장 비싼 단계)되지 않게. 손상된 줄(중단 중 부분 flush로
+    # 잘린 마지막 줄)은 건너뛴다 — 그 한 줄 때문에 재개가 영영 죽지 않게 한다.
+    attempted_log = out_dir / "_attempted.txt"
+    done_parents: set[str] = set()
+    if seg_manifest.exists():
+        for line in seg_manifest.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            try:
+                done_parents.add(json.loads(line)["parent_file_id"])
+            except (json.JSONDecodeError, KeyError):
+                continue  # 부분 기록/손상된 줄은 무시하고 계속
+    if attempted_log.exists():
+        for line in attempted_log.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                done_parents.add(line.strip())
+    if done_parents:
+        print(f"재개: 이미 처리 {len(done_parents)}파일 건너뜀")
+
     total_segs = 0
-    with seg_manifest.open("w", encoding="utf-8") as out:
+    open_mode = "a" if done_parents else "w"
+    with seg_manifest.open(open_mode, encoding="utf-8") as out, attempted_log.open(
+        "a", encoding="utf-8"
+    ) as att:
         for i, r in enumerate(present, 1):
+            if r["file_id"] in done_parents:
+                print(f"[{i}/{len(present)}] {r['file_id']} 건너뜀(완료됨)")
+                continue
             src = audio_root / r["expected_audio_relpath"]
-            print(f"[{i}/{len(present)}] {r['file_id']} 정렬 중...")
+            # wordlist 모드는 문장 구조가 실제로 없을 때만(문장부호로 나뉜 문장이 1개).
+            # task_type만 믿으면 문장 1~2개짜리 짧은 서술문도 wordlist로 분류돼 단어로
+            # 잘리는데(오분류), _sentences로 이중 확인해 그런 파일은 문장 모드로 남긴다.
+            is_wordlist = (
+                classify is not None
+                and classify(r["transcript"]) == "wordlist"
+                and len(_sentences(r["transcript"])) == 1
+            )
+            mode = "단어" if is_wordlist else "문장"
+            print(f"[{i}/{len(present)}] {r['file_id']} 정렬 중({mode})...")
             try:
                 hyp = align_words(src, model)
-                segs = segment_file(r["transcript"], hyp)
+                if is_wordlist:
+                    segs = segment_wordlist(
+                        r["transcript"], hyp, words_per_seg=args.words_per_seg
+                    )
+                else:
+                    segs = segment_file(r["transcript"], hyp)
             except Exception as exc:  # noqa: BLE001
+                # 정렬 실패는 attempted에 기록하지 않는다 — 일시적 실패면 다음 재개에서 재시도.
                 print(f"   [skip] 정렬 실패: {exc}", file=sys.stderr)
                 continue
             stem = Path(r["file_id"]).stem
@@ -202,6 +304,7 @@ def main() -> int:
                 out.write(json.dumps({
                     "parent_file_id": r["file_id"],
                     "category": r.get("category", ""),
+                    "task_type": "wordlist" if is_wordlist else "narrative",
                     "sent_index": s["sent_index"],
                     "start": s["start"],
                     "end": s["end"],
@@ -209,6 +312,10 @@ def main() -> int:
                     "segment_wav_relpath": seg_wav_rel,
                 }, ensure_ascii=False) + "\n")
                 total_segs += 1
+            out.flush()  # 파일 단위로 디스크 반영 → 중단(종료)해도 진행분 보존·재개 가능
+            # 세그먼트 0개여도 "처리함"으로 기록 → 다음 재개에서 재전사하지 않는다.
+            att.write(r["file_id"] + "\n")
+            att.flush()
             print(f"   → 세그먼트 {len(segs)}개")
 
     print(f"\n✅ 완료: 파일 {len(present)}건 → 세그먼트 {total_segs}개")
