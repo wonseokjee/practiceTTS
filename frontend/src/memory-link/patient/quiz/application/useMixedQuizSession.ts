@@ -31,7 +31,10 @@ import type { QabResultInput, QabSubtest } from '../domain/QabResult.js';
 import { quizApi } from '../infrastructure/QuizApi.js';
 import type { IQuizApi } from '../infrastructure/QuizApi.js';
 import { pickQabItems, pickNamingItems } from '../infrastructure/QabItemBank.js';
-import { moveEasiestLast } from '../domain/sessionSafeguards.js';
+import {
+  moveEasiestLast,
+  shouldFatigueExit,
+} from '../domain/sessionSafeguards.js';
 import {
   pickRepeatItems,
   pickReadingItems,
@@ -197,6 +200,8 @@ export function useMixedQuizSession(
   const phaseRef = useRef<MixedPhase>('loading');
   const indexRef = useRef<number>(0);
   const correctCountRef = useRef<number>(0);
+  /** 연속 오답 수(정답 시 0으로 리셋). 피로 탈출 판정에 쓴다. */
+  const consecutiveWrongRef = useRef<number>(0);
   /** QAB 항목 결과 누적 (세션 완료 시 백엔드 일괄 저장용) */
   const qabResultsRef = useRef<QabResultInput[]>([]);
   /** 이미 백엔드에 제출한 결과 수. 점진 제출에서 미전송 tail만 보낸다. */
@@ -263,6 +268,7 @@ export function useMixedQuizSession(
       itemsRef.current = merged;
       sessionTokenRef.current = tokenGenRef.current();
       correctCountRef.current = 0;
+      consecutiveWrongRef.current = 0;
       qabResultsRef.current = [];
       submittedCountRef.current = 0;
 
@@ -315,7 +321,12 @@ export function useMixedQuizSession(
   /** 채점 결과를 반영해 feedback 단계로 전이 (공통). */
   const applyResult = useCallback(
     (result: PlayResult, selectedChoiceId: string | null): void => {
-      if (result.isCorrect) correctCountRef.current += 1;
+      if (result.isCorrect) {
+        correctCountRef.current += 1;
+        consecutiveWrongRef.current = 0; // 정답이면 연속 오답 리셋
+      } else {
+        consecutiveWrongRef.current += 1;
+      }
       phaseRef.current = 'feedback';
       setState((prev) => ({
         ...prev,
@@ -576,7 +587,10 @@ export function useMixedQuizSession(
     const nextIndex = indexRef.current + 1;
     // 방금 확정된 문항 결과를 점진 제출(answerAgain 정정 이후라 최종값).
     flushPending();
-    if (nextIndex >= items.length) {
+    // 피로 탈출: 연속 오답이 임계에 닿으면 남은 문항이 있어도 그날 세션을 조기
+    // 종료한다. 좌절을 누적시키지 않는 게 순응도에 낫다(성공 경험 원칙).
+    const fatigued = shouldFatigueExit(consecutiveWrongRef.current);
+    if (nextIndex >= items.length || fatigued) {
       const total = items.length;
       const score =
         total > 0 ? Math.round((correctCountRef.current / total) * 100) : 0;
@@ -614,6 +628,9 @@ export function useMixedQuizSession(
     const last = qabResultsRef.current.pop();
     if (last?.isCorrect) {
       correctCountRef.current = Math.max(0, correctCountRef.current - 1);
+    } else if (last && !last.isCorrect) {
+      // 방금 오답이 applyResult에서 올린 연속오답을 되돌린다 — 재시도가 새로 집계되게.
+      consecutiveWrongRef.current = Math.max(0, consecutiveWrongRef.current - 1);
     }
     phaseRef.current = 'answering';
     setState((prev) => ({

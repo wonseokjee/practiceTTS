@@ -338,6 +338,74 @@ describe('useMixedQuizSession', () => {
     expect(firstPayload).toHaveLength(1); // 아직 안 보낸 tail(1개)만 부분 저장
   });
 
+  it('피로 탈출: 연속 오답 3회면 남은 문항이 있어도 세션을 조기 종료한다', async () => {
+    const fourNaming: QabNamingItem[] = [1, 2, 3, 4].map((n) => ({
+      itemId: `naming_${n}`,
+      imageUrl: `/${n}.svg`,
+      targetWord: '사과',
+      instruction: 'x',
+    }));
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi(),
+        pickQabItems: () => [],
+        generateSessionToken: () => 'tok-1',
+        dailyCount: 0,
+        qabCount: 0,
+        ...NO_SPEECH,
+        pickNamingItems: () => fourNaming,
+        namingCount: 4,
+      }),
+    );
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+    expect(result.current[0].total).toBe(4);
+
+    // 3연속 오답
+    for (let i = 0; i < 3; i += 1) {
+      act(() => result.current[1].submitNaming('전혀다른말'));
+      await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+      expect(result.current[0].lastResult?.isCorrect).toBe(false);
+      act(() => result.current[1].next());
+    }
+
+    // 4번째 문항이 남았지만 피로 탈출로 결과 화면으로 종료
+    await waitFor(() => expect(result.current[0].phase).toBe('result'));
+  });
+
+  it('정답이 중간에 나오면 연속 오답이 리셋돼 피로 탈출하지 않는다', async () => {
+    const fourNaming: QabNamingItem[] = [1, 2, 3, 4].map((n) => ({
+      itemId: `naming_${n}`,
+      imageUrl: `/${n}.svg`,
+      targetWord: '사과',
+      instruction: 'x',
+    }));
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi(),
+        pickQabItems: () => [],
+        generateSessionToken: () => 'tok-1',
+        dailyCount: 0,
+        qabCount: 0,
+        ...NO_SPEECH,
+        pickNamingItems: () => fourNaming,
+        namingCount: 4,
+      }),
+    );
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    // 오답, 오답, 정답(리셋), 오답 → 최대 연속 2 → 조기 종료 안 함
+    const answers = ['틀린말', '틀린말', '사과', '틀린말'];
+    for (let i = 0; i < answers.length; i += 1) {
+      act(() => result.current[1].submitNaming(answers[i]));
+      await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+      act(() => result.current[1].next());
+    }
+    // 4문항 다 풀어 자연 종료(피로 탈출 아님)
+    await waitFor(() => expect(result.current[0].phase).toBe('result'));
+    // 정답 1개 반영(1/4 = 25)
+    expect(result.current[0].sessionScore).toBe(25);
+  });
+
   it('보호자 정정: 같은 판정으로는 점수를 이중 반영하지 않는다', async () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
