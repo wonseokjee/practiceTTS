@@ -8,6 +8,9 @@ import type { AvailableEntry } from '../domain/TrainingSession.js';
 import { TrainingScreen } from './TrainingScreen.js';
 import { QuizListScreen } from '../quiz/presentation/QuizListScreen.js';
 import { QuizScreen } from '../quiz/presentation/QuizScreen.js';
+import { SoloDailyHome } from './SoloDailyHome.js';
+import { buildWeekStreak } from '../domain/streak.js';
+import { quizApi } from '../quiz/infrastructure/QuizApi.js';
 import { extractErrorMessage } from '../../shared/extractErrorMessage.js';
 import { WARM_SCREEN_BG } from '../../shared/theme.js';
 import { AuthedImage } from '../../shared/AuthedImage.js';
@@ -21,7 +24,12 @@ type PatientMode = 'QUIZ' | 'CONVERSATION';
 const LAST_MODE_KEY = 'ml_patient_last_mode';
 
 /** 환자 대시보드 화면 단계 */
-type DashboardPhase = 'LIST' | 'TRAINING' | 'QUIZ_LIST' | 'QUIZ_PLAY';
+type DashboardPhase =
+  | 'LIST'
+  | 'TRAINING'
+  | 'QUIZ_HOME'
+  | 'QUIZ_LIST'
+  | 'QUIZ_PLAY';
 
 /** 선택된 훈련 정보 */
 interface SelectedTraining {
@@ -67,8 +75,10 @@ export function PatientDashboard() {
   // 마지막 선택 모드 복원 — 퀴즈 모드면 퀴즈 목록, 대화 모드면 훈련 목록으로 진입.
   const [mode, setMode] = useState<PatientMode>(loadLastMode);
   const [phase, setPhase] = useState<DashboardPhase>(() =>
-    loadLastMode() === 'QUIZ' ? 'QUIZ_LIST' : 'LIST',
+    loadLastMode() === 'QUIZ' ? 'QUIZ_HOME' : 'LIST',
   );
+  /** 솔로 홈 스트릭용 — 연습 완료 날짜(YYYY-MM-DD). 조회 실패는 비차단(빈 배열). */
+  const [activityDays, setActivityDays] = useState<string[]>([]);
   const [selectedTraining, setSelectedTraining] = useState<SelectedTraining | null>(null);
   const [selectedQuizSetId, setSelectedQuizSetId] = useState<string | null>(null);
   const [entries, setEntries] = useState<AvailableEntry[]>([]);
@@ -81,8 +91,25 @@ export function PatientDashboard() {
     setMode(next);
     setSelectedQuizSetId(null);
     setSelectedTraining(null);
-    setPhase(next === 'QUIZ' ? 'QUIZ_LIST' : 'LIST');
+    setPhase(next === 'QUIZ' ? 'QUIZ_HOME' : 'LIST');
   }, []);
+
+  // 솔로 홈에 들어오면 연습 완료 날짜를 불러와 스트릭을 그린다(비차단).
+  useEffect(() => {
+    if (phase !== 'QUIZ_HOME') return;
+    let alive = true;
+    void quizApi
+      .getActivityDays()
+      .then((days) => {
+        if (alive) setActivityDays(days);
+      })
+      .catch(() => {
+        if (alive) setActivityDays([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [phase]);
 
   /** 퀴즈 선택 → 풀이 화면 진입 */
   const handleSelectQuiz = useCallback((quizSetId: string) => {
@@ -156,6 +183,42 @@ export function PatientDashboard() {
     return (
       <div className="min-h-screen" style={{ background: WARM_SCREEN_BG }}>
         <QuizScreen quizSetId={selectedQuizSetId} onExit={handleQuizExit} />
+      </div>
+    );
+  }
+
+  // 솔로 일일 홈(퀴즈 모드 진입) — 단일 CTA + 이번 주 스트릭.
+  // 인사·설정은 SoloDailyHome이 자체 렌더하므로, 대시보드 크롬 대신 최소 상단바만.
+  if (phase === 'QUIZ_HOME') {
+    return (
+      <div className="min-h-screen bg-[#F7F6F3]">
+        <header className="flex items-center justify-end px-6 py-4">
+          <button
+            type="button"
+            onClick={
+              isCaregiverInPatientMode ? () => setIsPinModalOpen(true) : logout
+            }
+            className="min-h-[44px] rounded-full bg-white/70 px-4 py-2 text-base font-medium text-[#6B6560]"
+            aria-label={isCaregiverInPatientMode ? '보호자로 돌아가기' : '로그아웃'}
+          >
+            {isCaregiverInPatientMode ? '보호자로' : '로그아웃'}
+          </button>
+        </header>
+        <ReturnToCaregiverPinModal
+          isOpen={isPinModalOpen}
+          onCancel={() => setIsPinModalOpen(false)}
+          onVerify={exitPatientMode}
+        />
+        <SoloDailyHome
+          greetingName={withHonorific(
+            user?.patientDisplayName ?? user?.displayName,
+            '님',
+            { separator: '' },
+          )}
+          streakDays={buildWeekStreak(new Set(activityDays))}
+          onStart={() => setPhase('QUIZ_LIST')}
+          onReview={() => setPhase('QUIZ_LIST')}
+        />
       </div>
     );
   }

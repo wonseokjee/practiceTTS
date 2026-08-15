@@ -1068,6 +1068,28 @@ export class QuizService {
   }
 
   /**
+   * 환자가 연습을 완료한 날짜 목록(최근 days일, YYYY-MM-DD). 솔로 홈의 스트릭에
+   * 쓴다. 세션 하나라도 qab_results가 남으면 그 날을 "완료"로 본다.
+   *
+   * 날짜 경계는 DB 세션 타임존 기준(getQabTrend의 주차 집계와 동일). 자정 근처
+   * 세션이 인접일로 잡힐 수 있으나 스트릭 표시엔 충분하다.
+   */
+  async getActivityDays(
+    effectivePatientId: string,
+    days = 14,
+  ): Promise<string[]> {
+    const raw = await this.qabResultRepository
+      .createQueryBuilder('r')
+      .select("to_char(date_trunc('day', r.created_at), 'YYYY-MM-DD')", 'day')
+      .distinct(true)
+      .where('r.patient_id = :pid', { pid: effectivePatientId })
+      .andWhere("r.created_at >= now() - make_interval(days => :days)", { days })
+      .orderBy('day', 'DESC')
+      .getRawMany<{ day: string }>();
+    return raw.map((x) => x.day);
+  }
+
+  /**
    * QAB 검사별 회복 추적 요약 (보호자용).
    * 검사 종류별로 정확도 + 수치 지표(평균/최고) + 마지막 측정 시각을 집계한다.
    */

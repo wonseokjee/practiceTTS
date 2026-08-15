@@ -227,6 +227,30 @@ export class QuizController {
   }
 
   /**
+   * GET /quiz/activity-days
+   * 환자가 연습 완료한 날짜(최근 N일, YYYY-MM-DD) — 솔로 홈 스트릭용.
+   */
+  @Get('quiz/activity-days')
+  async getActivityDays(
+    @Req() req: AuthenticatedRequest,
+    @Query('days') days?: string,
+  ): Promise<{ days: string[] }> {
+    const effectivePatientId = resolveEffectivePatientId(req.user);
+    const parsed = Number(days);
+    const safeDays =
+      Number.isInteger(parsed) && parsed >= 1 && parsed <= 60 ? parsed : 14;
+    try {
+      const result = await this.quizService.getActivityDays(
+        effectivePatientId,
+        safeDays,
+      );
+      return { days: result };
+    } catch (error) {
+      throw this.mapError(error);
+    }
+  }
+
+  /**
    * POST /quiz/sets/:id/wish-practice
    * 보호자 한마디 → 환자 발화 연습(따라말하기 + 빈칸) 변환 (Pattern 1, on-demand).
    */

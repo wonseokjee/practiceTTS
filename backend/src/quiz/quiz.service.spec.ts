@@ -1689,6 +1689,29 @@ describe('QuizService', () => {
     });
   });
 
+  describe('getActivityDays', () => {
+    it('완료 날짜 배열(YYYY-MM-DD)을 반환한다', async () => {
+      const qb = {
+        select: jest.fn().mockReturnThis(),
+        distinct: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([{ day: '2026-08-12' }, { day: '2026-08-10' }]),
+      };
+      qabResultRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const res = await service.getActivityDays(PATIENT_ID, 14);
+
+      expect(res).toEqual(['2026-08-12', '2026-08-10']);
+      expect(qb.where).toHaveBeenCalledWith('r.patient_id = :pid', {
+        pid: PATIENT_ID,
+      });
+    });
+  });
+
   describe('getQabSummary', () => {
     it('검사별 정확도/지표를 집계해 반환한다', async () => {
       const qb = {

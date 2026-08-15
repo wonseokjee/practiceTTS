@@ -225,6 +225,34 @@ describe('quizApi', () => {
     });
   });
 
+  describe('getActivityDays', () => {
+    it('GET /quiz/activity-days를 호출하고 날짜 배열을 반환한다', async () => {
+      getMock.mockResolvedValue({ data: { days: ['2026-08-12', '2026-08-10'] } });
+
+      const res = await quizApi.getActivityDays(14);
+
+      expect(getMock).toHaveBeenCalledWith('/quiz/activity-days', {
+        params: { days: 14 },
+      });
+      expect(res).toEqual(['2026-08-12', '2026-08-10']);
+    });
+
+    it('days 미지정이면 params 없이 호출한다', async () => {
+      getMock.mockResolvedValue({ data: { days: [] } });
+      await quizApi.getActivityDays();
+      expect(getMock).toHaveBeenCalledWith('/quiz/activity-days', {
+        params: undefined,
+      });
+    });
+
+    it('days가 배열이 아니면 형식 오류를 던진다', async () => {
+      getMock.mockResolvedValue({ data: { days: 'nope' } });
+      await expect(quizApi.getActivityDays()).rejects.toThrow(
+        '서버 응답 형식이 올바르지 않습니다.',
+      );
+    });
+  });
+
   describe('getQabSummary', () => {
     it('GET /quiz/qab-summary를 호출하고 items 배열을 반환한다', async () => {
       const item = {

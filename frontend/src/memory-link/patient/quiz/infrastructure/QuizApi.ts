@@ -72,6 +72,8 @@ export interface IQuizApi {
   getQabTrend(weeks?: number): Promise<QabTrendSeries[]>;
   /** GET /quiz/skill-levels — 스킬별 현재 난이도 레벨 + 매니페스트 버전 */
   getSkillLevels(): Promise<SkillLevels>;
+  /** GET /quiz/activity-days — 연습 완료 날짜(YYYY-MM-DD) — 솔로 홈 스트릭용 */
+  getActivityDays(days?: number): Promise<string[]>;
 }
 
 // ─── 런타임 타입가드 ──────────────────────────────────────────────
@@ -350,5 +352,17 @@ export const quizApi: IQuizApi = {
       levels: levels as Record<QabSubtest, number>,
       manifestVersion: obj.manifestVersion,
     };
+  },
+
+  async getActivityDays(days?: number): Promise<string[]> {
+    const res = await memoryLinkApi.get<unknown>('/quiz/activity-days', {
+      params: days === undefined ? undefined : { days },
+    });
+    const obj = asRecord(res.data);
+    const list = obj?.days;
+    if (!Array.isArray(list) || !list.every((x) => typeof x === 'string')) {
+      throw new Error(INVALID_RESPONSE_MESSAGE);
+    }
+    return list as string[];
   },
 };
