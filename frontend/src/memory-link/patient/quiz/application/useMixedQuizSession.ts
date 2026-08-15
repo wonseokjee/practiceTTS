@@ -199,6 +199,8 @@ export function useMixedQuizSession(
   const correctCountRef = useRef<number>(0);
   /** QAB 항목 결과 누적 (세션 완료 시 백엔드 일괄 저장용) */
   const qabResultsRef = useRef<QabResultInput[]>([]);
+  /** 이미 백엔드에 제출한 결과 수. 점진 제출에서 미전송 tail만 보낸다. */
+  const submittedCountRef = useRef<number>(0);
   /** 문항 풀 매니페스트 버전(레벨 조회 시 받음). 결과 제출에 함께 보낸다. */
   const manifestVersionRef = useRef<number | undefined>(undefined);
 
@@ -262,6 +264,7 @@ export function useMixedQuizSession(
       sessionTokenRef.current = tokenGenRef.current();
       correctCountRef.current = 0;
       qabResultsRef.current = [];
+      submittedCountRef.current = 0;
 
       if (merged.length === 0) {
         phaseRef.current = 'error';
@@ -541,30 +544,42 @@ export function useMixedQuizSession(
     applyResult({ isCorrect: true, correctLabel }, null);
   }, [applyResult]);
 
+  // 점진 제출: 아직 안 보낸 결과(tail)만 백엔드에 저장한다. 세션 끝 1회가 아니라
+  // 문항을 넘길 때마다 보내, 환자가 중도 이탈해도 그때까지의 결과·이탈 지점이
+  // 남는다(관측성). qab_results dedup UNIQUE로 재시도/중복은 멱등. 실패는 비차단 —
+  // submittedCount를 올리지 않으므로 다음 flush에서 재시도된다.
+  const flushPending = useCallback((): void => {
+    const all = qabResultsRef.current;
+    const pending = all.slice(submittedCountRef.current);
+    if (pending.length === 0) return;
+    const targetCount = all.length;
+    void Promise.resolve(
+      apiRef.current.submitQabResults(
+        sessionTokenRef.current,
+        pending,
+        manifestVersionRef.current,
+      ),
+    )
+      .then(() => {
+        submittedCountRef.current = targetCount;
+      })
+      .catch((err) => {
+        // 저장 실패는 환자 경험을 막지 않는다. 다음 flush에서 재시도(멱등).
+        console.warn('[quiz] QAB 결과 점진 저장 실패:', err);
+      });
+  }, []);
+
   const next = useCallback((): void => {
     if (phaseRef.current !== 'feedback') return;
 
     const items = itemsRef.current;
     const nextIndex = indexRef.current + 1;
+    // 방금 확정된 문항 결과를 점진 제출(answerAgain 정정 이후라 최종값).
+    flushPending();
     if (nextIndex >= items.length) {
       const total = items.length;
       const score =
         total > 0 ? Math.round((correctCountRef.current / total) * 100) : 0;
-      // QAB 결과 백엔드 저장 (회복 추적). 실패해도 결과 화면을 막지 않는다(fire-and-forget).
-      const qabResults = qabResultsRef.current;
-      if (qabResults.length > 0) {
-        void Promise.resolve(
-          apiRef.current.submitQabResults(
-            sessionTokenRef.current,
-            qabResults,
-            manifestVersionRef.current,
-          ),
-        ).catch((err) => {
-          // 저장 실패는 환자 경험을 막지 않는다(추적 데이터 유실만).
-          // 단, 완전 무음이면 추적이 영영 안 쌓여도 모르므로 경고는 남긴다.
-          console.warn('[quiz] QAB 결과 저장 실패:', err);
-        });
-      }
       phaseRef.current = 'result';
       setState((prev) => ({ ...prev, phase: 'result', sessionScore: score }));
       return;
@@ -581,7 +596,15 @@ export function useMixedQuizSession(
       lastResult: null,
       selectedChoiceId: null,
     }));
-  }, []);
+  }, [flushPending]);
+
+  // 화면 이탈(언마운트) 시 마지막으로 답한(아직 next 안 누른) 문항 결과도 저장한다.
+  // 중도 이탈을 최대한 포착하기 위한 best-effort flush.
+  useEffect(() => {
+    return () => {
+      flushPending();
+    };
+  }, [flushPending]);
 
   // 같은 문항을 다시 답한다(발화/이름대기 재시도). 직전 결과를 되돌려
   // 재시도가 점수를 이중 반영하지 않게 하고, attempt를 올려 문항 컴포넌트를

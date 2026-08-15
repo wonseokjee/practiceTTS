@@ -305,6 +305,39 @@ describe('useMixedQuizSession', () => {
     );
   });
 
+  it('점진 제출: 문항을 넘길 때마다 부분 저장해 중도 이탈을 포착한다', async () => {
+    const submitQabResults = vi.fn().mockResolvedValue({ saved: 1 });
+    const twoNaming: QabNamingItem[] = [
+      { itemId: 'naming_a', imageUrl: '/a.svg', targetWord: '사과', instruction: 'x' },
+      { itemId: 'naming_b', imageUrl: '/b.svg', targetWord: '바나나', instruction: 'x' },
+    ];
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi({ submitQabResults }),
+        pickQabItems: () => [],
+        generateSessionToken: () => 'tok-1',
+        dailyCount: 0,
+        qabCount: 0,
+        ...NO_SPEECH,
+        pickNamingItems: () => twoNaming,
+        namingCount: 2,
+      }),
+    );
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+    expect(result.current[0].total).toBe(2);
+
+    // 1번째 문항 답 → 넘기기. 세션이 아직 안 끝났는데도 그 결과가 저장돼야 한다
+    // (중도 이탈 시에도 진행분·이탈 지점이 남게 하는 게 ADP-001의 목적).
+    act(() => result.current[1].submitNaming('사과'));
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    act(() => result.current[1].next());
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    expect(submitQabResults).toHaveBeenCalledTimes(1); // 세션 끝 전에 이미 1회 저장
+    const firstPayload = submitQabResults.mock.calls[0][1];
+    expect(firstPayload).toHaveLength(1); // 아직 안 보낸 tail(1개)만 부분 저장
+  });
+
   it('보호자 정정: 같은 판정으로는 점수를 이중 반영하지 않는다', async () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
