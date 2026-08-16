@@ -330,3 +330,55 @@ def test_colab_split_persisted_survives_batch_growth(tmp_path):
     assert saved == a2
     # 신규 화자도 결국 배정되고, 한 화자는 한 split만 갖는다(누수 없음).
     assert set(a2) == set(batch2)
+
+
+# ─── refine_word_segments ────────────────────────────────────────
+
+def _profile(values):
+    import numpy as np
+    return np.asarray(values, dtype=np.float32)
+
+
+def test_refine_bounds_피크_주변만_잘라낸다():
+    """침묵 한가운데 단어 하나 — 발화 구간만 남아야 한다."""
+    from refine_word_segments import refine_bounds
+
+    prof = _profile([1, 1, 1, 1, 40, 100, 40, 1, 1, 1])
+    got = refine_bounds(prof, 0, 10, floor=1.0)
+
+    assert got == (4, 7)
+
+
+def test_refine_bounds_발화가_없으면_버린다():
+    """바닥소음뿐인 창은 None. 라벨만 있고 소리는 없는 클립을 막는다."""
+    from refine_word_segments import refine_bounds
+
+    prof = _profile([1, 1, 2, 1, 1, 2, 1])
+
+    assert refine_bounds(prof, 0, 7, floor=1.0) is None
+
+
+def test_refine_bounds_조용한_화자를_지우지_않는다():
+    """바닥 대비 상대 판정이라 절대 크기가 작아도 살아남는다.
+
+    실측에서 75·76세 여성 화자는 파일 전체 중앙 RMS가 50~62였다. 절대
+    임계값을 쓰면 구음장애 인식에 가장 필요한 집단이 통째로 사라진다.
+    """
+    from refine_word_segments import refine_bounds
+
+    조용한_화자 = _profile([2, 2, 2, 8, 20, 8, 2, 2])
+    큰_화자 = _profile([50, 50, 50, 200, 500, 200, 50, 50])
+
+    assert refine_bounds(조용한_화자, 0, 8, floor=2.0) is not None
+    assert refine_bounds(큰_화자, 0, 8, floor=50.0) is not None
+
+
+def test_refine_bounds_탐색창_밖은_보지_않는다():
+    """창을 이웃 세그먼트 중점으로 클램프해 옆 단어를 훔치는 걸 막는다."""
+    from refine_word_segments import refine_bounds
+
+    # 인덱스 8에 더 큰 피크가 있지만 창은 [0,5)까지만이다.
+    prof = _profile([1, 1, 30, 90, 30, 1, 1, 1, 900, 1])
+    got = refine_bounds(prof, 0, 5, floor=1.0)
+
+    assert got == (2, 5)
