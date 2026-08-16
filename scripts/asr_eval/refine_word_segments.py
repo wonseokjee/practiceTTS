@@ -168,6 +168,21 @@ def main() -> int:
     def n_words(row: dict) -> int:
         return len((row.get("reference_text") or "").split())
 
+    def copy_through(row: dict) -> None:
+        """재정렬하지 않는 세그먼트의 wav를 산출 폴더로 그대로 옮긴다.
+
+        이걸 빠뜨리면 매니페스트에는 줄이 있는데 wav가 없어, 패키징이 그 세그먼트를
+        조용히 건너뛴다(실측: 문장 1723개 중 16개만 살아남았다). 통과 경로가 두
+        군데(대상 없는 파일 / 파일 안의 문장 세그먼트)라 한 곳에 모은다.
+        """
+        if args.dry_run:
+            return
+        src_wav = args.segments.parent / row["segment_wav_relpath"]
+        dst_wav = args.out_dir / row["segment_wav_relpath"]
+        if src_wav.exists() and not dst_wav.exists():
+            dst_wav.parent.mkdir(parents=True, exist_ok=True)
+            dst_wav.write_bytes(src_wav.read_bytes())
+
     with out_path.open("w", encoding="utf-8") as out_f:
         for pi, (fid, segs) in enumerate(sorted(by_parent.items()), 1):
             src = args.audio_root / fid
@@ -187,8 +202,9 @@ def main() -> int:
             if not targets:
                 # 재정렬 대상이 없으면 프로파일을 만들 이유가 없다(파일당 수백 MB).
                 for r in segs:
-                    out_f.write(json.dumps({**r, "task_type": r.get("task_type") or file_kind},
-                                           ensure_ascii=False) + "\n")
+                    r = {**r, "task_type": r.get("task_type") or file_kind}
+                    copy_through(r)
+                    out_f.write(json.dumps(r, ensure_ascii=False) + "\n")
                     passed += 1
                 print(f"[{pi}/{len(by_parent)}] {fid} — 대상 없음, {len(segs)}개 통과")
                 continue
@@ -202,12 +218,7 @@ def main() -> int:
                 if args.words_max > 0 and n_words(r) > args.words_max:
                     # 문장 세그먼트는 손대지 않는다. wav도 원본을 그대로 옮겨
                     # 이 폴더 하나로 배치를 대체할 수 있게 한다.
-                    if not args.dry_run:
-                        src_wav = args.segments.parent / r["segment_wav_relpath"]
-                        dst_wav = args.out_dir / r["segment_wav_relpath"]
-                        if src_wav.exists() and not dst_wav.exists():
-                            dst_wav.parent.mkdir(parents=True, exist_ok=True)
-                            dst_wav.write_bytes(src_wav.read_bytes())
+                    copy_through(r)
                     out_f.write(json.dumps(r, ensure_ascii=False) + "\n")
                     passed += 1
                     continue
