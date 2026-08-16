@@ -291,6 +291,23 @@ whisper가 문장을 지어내고, 1글자 정답에 5글자를 뱉으면 그것
 덜 지어내서 CER이 낮아지는 면도 있다. → 단어 클립은 `max_new_tokens=8`로 좁혀
 재측정한다(모델 전부에 동일 적용해야 비교가 산다).
 
+### large 계열로 바꿀 때 터지는 곳
+
+`RuntimeError: Input type (float) and bias type (c10::Half) should be the same`
+
+`large-v3-turbo`는 config에 `torch_dtype: float16`이 박혀 있어 최신 transformers가
+**fp16 가중치로 올린다.** 특징 추출기는 fp32를 내놓으므로 인코더 conv에서 어긋난다.
+`small`은 config가 fp32라 지금까지 드러나지 않던 문제다.
+
+→ `from_pretrained(MODEL_ID, torch_dtype=torch.float32)`로 **명시 로드**한다.
+혼합정밀은 Trainer의 `fp16=True`(autocast)가 맡는다. 가중치까지 fp16으로 두고
+학습하면 마스터 가중치가 없어 불안정하고, T4는 Turing이라 bf16이 없어 이 조합이
+유일한 선택지다.
+
+> 참고: zero-shot 비교 셀(셀 10)은 **추론 전용**이라 fp16 가중치 + fp16 입력으로
+> 일부러 맞춰 뒀다. 학습 셀과 규칙이 다른 건 의도다 — 추론은 마스터 가중치가
+> 필요 없고 fp16이 2배 빠르다.
+
 ### 비교 시 고정할 것
 
 바꾸는 건 모델 하나뿐이어야 한다.
