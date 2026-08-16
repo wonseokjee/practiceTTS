@@ -87,3 +87,19 @@ export interface QabTrendSeries {
   /** 직전 검사 주 대비 정답률 변화(%p). 주가 2개 미만이면 null. */
   deltaFromPrevious: number | null;
 }
+
+/**
+ * GET /quiz/session-stats 응답 — 최근 N일 세션 완료율(보호자용).
+ *
+ * 시작한 세션 = 문항 결과가 하나라도 남은 세션. 완료 = 자연 종료·피로 탈출로
+ * 끝나 완료 마커가 찍힌 세션. 중간에 화면을 닫은 세션은 결과는 남지만 마커가
+ * 없어 '이탈'로 잡힌다.
+ */
+export interface SessionStats {
+  started: number;
+  completed: number;
+  /** 0..100. started가 0이면 null(비율을 지어내지 않는다). */
+  completionRate: number | null;
+  /** 이탈 세션이 평균 몇 문항까지 갔는지(소수 1자리). 이탈이 없으면 null. */
+  avgItemsBeforeDropoff: number | null;
+}

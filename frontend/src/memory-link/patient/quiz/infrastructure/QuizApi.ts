@@ -24,6 +24,7 @@ import type {
   QabResultInput,
   QabSubtest,
   QabSubtestSummary,
+  SessionStats,
   SkillLevels,
 } from '../domain/QabResult.js';
 
@@ -76,6 +77,8 @@ export interface IQuizApi {
   getSkillLevels(): Promise<SkillLevels>;
   /** GET /quiz/activity-days — 연습 완료 날짜(YYYY-MM-DD) — 솔로 홈 스트릭용 */
   getActivityDays(days?: number): Promise<string[]>;
+  /** GET /quiz/session-stats — 최근 N일 세션 완료율 (보호자용) */
+  getSessionStats(days?: number): Promise<SessionStats>;
 }
 
 // ─── 런타임 타입가드 ──────────────────────────────────────────────
@@ -83,6 +86,10 @@ export interface IQuizApi {
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (typeof value !== 'object' || value === null) return null;
   return value as Record<string, unknown>;
+}
+
+function isNumberOrNull(value: unknown): value is number | null {
+  return value === null || typeof value === 'number';
 }
 
 function isGenerationStatus(value: unknown): value is QuizGenerationStatus {
@@ -368,5 +375,27 @@ export const quizApi: IQuizApi = {
       throw new Error(INVALID_RESPONSE_MESSAGE);
     }
     return list as string[];
+  },
+
+  async getSessionStats(days?: number): Promise<SessionStats> {
+    const res = await memoryLinkApi.get<unknown>('/quiz/session-stats', {
+      params: days === undefined ? undefined : { days },
+    });
+    const obj = asRecord(res.data);
+    if (
+      obj === null ||
+      typeof obj.started !== 'number' ||
+      typeof obj.completed !== 'number' ||
+      !isNumberOrNull(obj.completionRate) ||
+      !isNumberOrNull(obj.avgItemsBeforeDropoff)
+    ) {
+      throw new Error(INVALID_RESPONSE_MESSAGE);
+    }
+    return {
+      started: obj.started,
+      completed: obj.completed,
+      completionRate: obj.completionRate,
+      avgItemsBeforeDropoff: obj.avgItemsBeforeDropoff,
+    };
   },
 };
