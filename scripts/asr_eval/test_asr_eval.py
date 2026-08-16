@@ -382,3 +382,31 @@ def test_refine_bounds_탐색창_밖은_보지_않는다():
     got = refine_bounds(prof, 0, 5, floor=1.0)
 
     assert got == (2, 5)
+
+
+def test_문장_경계는_창_안_발화_전체를_잡는다():
+    """중간 쉼에서 토막나면 안 된다 — 문장은 내부 침묵이 정상이다."""
+    from refine_word_segments import refine_narrative_bounds
+
+    # 발화 - 쉼 - 발화. 단어 규칙이면 앞 덩어리만 잡지만 문장은 전체를 잡아야 한다.
+    prof = _profile([1, 1, 50, 60, 1, 1, 1, 40, 55, 1, 1])
+    got = refine_narrative_bounds(prof, 0, 11, floor=1.0)
+
+    assert got == (2, 9)
+
+
+def test_문장_경계는_잘린_끝을_늘린다():
+    """실측 30%가 끝 경계 직후에 말소리가 이어졌다 — 창이 허용하면 늘려 잡는다."""
+    from refine_word_segments import refine_narrative_bounds
+
+    # 원래 경계가 인덱스 5에서 끊겼다고 보고, 창을 8까지 열어 준 상황.
+    prof = _profile([1, 40, 50, 60, 55, 50, 45, 1, 1])
+    got = refine_narrative_bounds(prof, 0, 9, floor=1.0)
+
+    assert got == (1, 7)
+
+
+def test_문장_창에_발화가_없으면_버린다():
+    from refine_word_segments import refine_narrative_bounds
+
+    assert refine_narrative_bounds(_profile([1, 1, 2, 1, 2]), 0, 5, floor=1.0) is None

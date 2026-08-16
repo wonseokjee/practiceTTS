@@ -1,4 +1,4 @@
-"""단어 세그먼트를 오디오 에너지로 재정렬한다 (whisper 재실행 불필요).
+"""정렬 세그먼트를 오디오 에너지로 재정렬한다 (whisper 재실행 불필요).
 
 배경: `align_608 --wordlist`는 whisper 단어 타임스탬프를 앵커로 단어를 자른다.
 그런데 단어 하나가 긴 침묵에 둘러싸인 608 단어검사 파일에서는 그 타임스탬프가
@@ -14,6 +14,13 @@
 — 실측에서 75세·76세 여성 화자는 파일 전체 중앙 RMS가 50~62였다. 구음장애
 인식에서 가장 필요한 집단을 데이터에서 지우는 셈이라, 각 파일의 바닥소음 대비로
 판단한다.
+
+**문장 세그먼트**(`--narrative refine`)는 규칙이 다르다. 단어는 피크 하나를 찾아
+그 주변만 남기지만, 문장은 내부에 자연스러운 쉼이 있어 같은 방식이면 토막난다.
+창 안 발화의 첫 지점부터 마지막 지점까지를 통째로 잡고 중간 침묵은 그대로 둔다.
+실측(표본 60): 문장 클립도 앞뒤 침묵이 평균 57%이고 **30%는 끝이 잘려 있다**
+(끝 경계 직후에 말소리가 이어짐). 그래서 줄이기만이 아니라 **늘리기도** 한다 -
+잘린 채로 두면 정답 텍스트에 있는 말이 오디오에 없어 무음보다 나쁘다.
 
 사용:
   python scripts/asr_eval/refine_word_segments.py \
@@ -99,6 +106,39 @@ def refine_bounds(
     return lo + s, lo + e + 1
 
 
+def refine_narrative_bounds(
+    profile: np.ndarray,
+    lo: int,
+    hi: int,
+    floor: float,
+    *,
+    rel_gate: float = 3.0,
+) -> tuple[int, int] | None:
+    """문장 세그먼트의 경계를 창 안 발화의 **전체 범위**로 맞춘다. 없으면 None.
+
+    단어와 규칙이 다르다. 단어는 피크 하나를 찾아 그 주변만 남기면 되지만, 문장은
+    내부에 자연스러운 쉼이 있어 같은 방식으로 자르면 **토막난다**. 그래서 창 안의
+    첫 발화부터 마지막 발화까지를 통째로 잡고, 중간 침묵은 그대로 둔다.
+
+    창을 이웃 세그먼트 중점과 최대 이동폭으로 미리 좁혀 두면, "창 안의 발화는 전부
+    이 세그먼트 것"이라는 전제가 성립한다 — 그래서 이 함수는 단순해도 된다.
+
+    이 규칙은 **줄이기와 늘리기를 동시에** 한다. 실측(표본 60): 30%가 끝 경계 직후에
+    말소리가 이어졌고(뒷부분 잘림), 13%는 시작 직전에 있었다. 잘린 채로 두면 정답
+    텍스트에 있는 말이 오디오에 없어 무음보다 나쁘다.
+    """
+    lo = max(0, lo)
+    hi = min(len(profile), hi)
+    if hi - lo < 2:
+        return None
+    win = profile[lo:hi]
+    gate = floor * rel_gate
+    voiced = np.flatnonzero(win > gate)
+    if voiced.size == 0:
+        return None
+    return lo + int(voiced[0]), lo + int(voiced[-1]) + 1
+
+
 def cut_wav(src: Path, start: float, end: float, dst: Path) -> bool:
     """ffmpeg로 [start,end]를 16kHz mono wav로 자른다(align_608과 같은 규격).
 
@@ -121,7 +161,7 @@ def main() -> int:
         with contextlib.suppress(Exception):
             stream.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
 
-    ap = argparse.ArgumentParser(description="단어 세그먼트 에너지 재정렬")
+    ap = argparse.ArgumentParser(description="세그먼트 에너지 재정렬(단어/문장)")
     ap.add_argument("--segments", required=True, type=Path)
     ap.add_argument("--audio-root", required=True, type=Path, help="부모 wav 루트")
     ap.add_argument("--out-dir", required=True, type=Path)
@@ -140,6 +180,22 @@ def main() -> int:
             "않고 그대로 통과시킨다 — 문장은 내부에 자연스러운 쉼이 있어 같은 "
             "파라미터로 자르면 토막나기 때문이다. 0이면 전부 재정렬."
         ),
+    )
+    ap.add_argument(
+        "--narrative",
+        choices=["skip", "refine"],
+        default="skip",
+        help=(
+            "문장 세그먼트 처리. skip=손대지 않고 통과(기본). refine=창 안 발화의 "
+            "전체 범위로 경계를 맞춘다(줄이기+늘리기). 실측상 문장 클립도 앞뒤 침묵이 "
+            "절반을 넘고 30%%는 끝이 잘려 있다."
+        ),
+    )
+    ap.add_argument(
+        "--narrative-max-shift",
+        type=float,
+        default=2.0,
+        help="문장 경계를 원래 위치에서 최대 몇 초까지 옮길지(무관한 발화 흡수 방지).",
     )
     ap.add_argument(
         "--wordlist-file-frac",
@@ -195,9 +251,13 @@ def main() -> int:
             word_frac = sum(n_words(r) == 1 for r in segs) / max(len(segs), 1)
             file_kind = "wordlist" if word_frac > args.wordlist_file_frac else "narrative"
 
+            # 재정렬 대상: 단어 세그먼트 + (--narrative refine이면) 문장 세그먼트.
+            # narrative를 빼먹으면 문장만 있는 파일이 통째로 건너뛰어진다.
             targets = [
                 r for r in segs
-                if args.words_max <= 0 or n_words(r) <= args.words_max
+                if args.words_max <= 0
+                or n_words(r) <= args.words_max
+                or args.narrative == "refine"
             ]
             if not targets:
                 # 재정렬 대상이 없으면 프로파일을 만들 이유가 없다(파일당 수백 MB).
@@ -215,9 +275,10 @@ def main() -> int:
 
             for i, r in enumerate(segs):
                 r = {**r, "task_type": r.get("task_type") or file_kind}
-                if args.words_max > 0 and n_words(r) > args.words_max:
-                    # 문장 세그먼트는 손대지 않는다. wav도 원본을 그대로 옮겨
-                    # 이 폴더 하나로 배치를 대체할 수 있게 한다.
+                is_narrative = args.words_max > 0 and n_words(r) > args.words_max
+                if is_narrative and args.narrative == "skip":
+                    # 손대지 않는다. wav도 원본을 그대로 옮겨 이 폴더
+                    # 하나로 배치를 대체할 수 있게 한다.
                     copy_through(r)
                     out_f.write(json.dumps(r, ensure_ascii=False) + "\n")
                     passed += 1
@@ -225,14 +286,21 @@ def main() -> int:
 
                 # 탐색창을 이웃 세그먼트의 중점으로 클램프 — 옆 단어를 훔칠 수 없다.
                 c = (r["start"] + r["end"]) / 2
-                lo_t = c - args.search_sec
-                hi_t = c + args.search_sec
+                if is_narrative:
+                    # 문장은 길어서 중심 기준 반경으로 잡으면 제 몸통을 잘라낸다.
+                    # 원래 경계에서 최대 이동폭만큼만 넓힌다.
+                    lo_t = r["start"] - args.narrative_max_shift
+                    hi_t = r["end"] + args.narrative_max_shift
+                else:
+                    lo_t = c - args.search_sec
+                    hi_t = c + args.search_sec
                 if i > 0:
                     lo_t = max(lo_t, (segs[i - 1]["end"] + r["start"]) / 2)
                 if i + 1 < len(segs):
                     hi_t = min(hi_t, (r["end"] + segs[i + 1]["start"]) / 2)
 
-                found = refine_bounds(
+                finder = refine_narrative_bounds if is_narrative else refine_bounds
+                found = finder(
                     prof, int(lo_t / hop), int(hi_t / hop), floor, rel_gate=args.rel_gate
                 )
                 # 재정렬 전에 원래 클립이 피크를 담고 있었는지(개선 측정용)
@@ -251,7 +319,7 @@ def main() -> int:
                     # 너무 짧으면 중심을 유지한 채 최소 길이로 넓힌다.
                     mid = (s + e) / 2
                     s, e = max(0.0, mid - args.min_sec / 2), mid + args.min_sec / 2
-                if e - s > args.max_sec:
+                if not is_narrative and e - s > args.max_sec:
                     dropped += 1
                     continue
 
