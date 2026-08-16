@@ -131,6 +131,27 @@ def main() -> int:
     ap.add_argument("--max-sec", type=float, default=2.50)
     ap.add_argument("--rel-gate", type=float, default=3.0, help="바닥소음 대비 피크 배수")
     ap.add_argument("--dry-run", action="store_true", help="wav를 자르지 않고 통계만")
+    ap.add_argument(
+        "--words-max",
+        type=int,
+        default=1,
+        help=(
+            "이 단어 수 이하인 세그먼트만 재정렬한다(기본 1=단어만). 초과분은 손대지 "
+            "않고 그대로 통과시킨다 — 문장은 내부에 자연스러운 쉼이 있어 같은 "
+            "파라미터로 자르면 토막나기 때문이다. 0이면 전부 재정렬."
+        ),
+    )
+    ap.add_argument(
+        "--wordlist-file-frac",
+        type=float,
+        default=0.5,
+        help=(
+            "부모 파일의 세그먼트 중 1단어 비율이 이 값을 넘으면 그 파일을 단어검사 "
+            "파일로 보고 task_type='wordlist'를 채운다. align_608이 파일 단위로 "
+            "판정하는 것과 같은 층위다 — 세그먼트 하나만 보고 정하면 짧은 서술문이 "
+            "오분류된다."
+        ),
+    )
     args = ap.parse_args()
 
     rows = [json.loads(l) for l in args.segments.open(encoding="utf-8") if l.strip()]
@@ -140,9 +161,12 @@ def main() -> int:
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     out_path = args.out_dir / "segments.jsonl"
-    kept = dropped = 0
+    kept = dropped = passed = 0
     before_hit = after_hit = 0
     shifts: list[float] = []
+
+    def n_words(row: dict) -> int:
+        return len((row.get("reference_text") or "").split())
 
     with out_path.open("w", encoding="utf-8") as out_f:
         for pi, (fid, segs) in enumerate(sorted(by_parent.items()), 1):
@@ -150,12 +174,44 @@ def main() -> int:
             if not src.exists():
                 print(f"[{pi}/{len(by_parent)}] {fid} 원본 없음 — 건너뜀")
                 continue
+            segs = sorted(segs, key=lambda r: r["start"])
+            # 파일 단위 판정: 1단어 세그먼트가 대부분이면 단어검사 파일이다.
+            # align_608도 파일 단위로 단어/문장 모드를 정한다 — 같은 층위로 맞춘다.
+            word_frac = sum(n_words(r) == 1 for r in segs) / max(len(segs), 1)
+            file_kind = "wordlist" if word_frac > args.wordlist_file_frac else "narrative"
+
+            targets = [
+                r for r in segs
+                if args.words_max <= 0 or n_words(r) <= args.words_max
+            ]
+            if not targets:
+                # 재정렬 대상이 없으면 프로파일을 만들 이유가 없다(파일당 수백 MB).
+                for r in segs:
+                    out_f.write(json.dumps({**r, "task_type": r.get("task_type") or file_kind},
+                                           ensure_ascii=False) + "\n")
+                    passed += 1
+                print(f"[{pi}/{len(by_parent)}] {fid} — 대상 없음, {len(segs)}개 통과")
+                continue
+
             prof, hop = rms_profile(src)
             # 바닥소음: 하위 10% 분위. 발화가 전체의 극히 일부라 안정적이다.
             floor = float(np.percentile(prof, 10)) or 1.0
-            segs = sorted(segs, key=lambda r: r["start"])
 
             for i, r in enumerate(segs):
+                r = {**r, "task_type": r.get("task_type") or file_kind}
+                if args.words_max > 0 and n_words(r) > args.words_max:
+                    # 문장 세그먼트는 손대지 않는다. wav도 원본을 그대로 옮겨
+                    # 이 폴더 하나로 배치를 대체할 수 있게 한다.
+                    if not args.dry_run:
+                        src_wav = args.segments.parent / r["segment_wav_relpath"]
+                        dst_wav = args.out_dir / r["segment_wav_relpath"]
+                        if src_wav.exists() and not dst_wav.exists():
+                            dst_wav.parent.mkdir(parents=True, exist_ok=True)
+                            dst_wav.write_bytes(src_wav.read_bytes())
+                    out_f.write(json.dumps(r, ensure_ascii=False) + "\n")
+                    passed += 1
+                    continue
+
                 # 탐색창을 이웃 세그먼트의 중점으로 클램프 — 옆 단어를 훔칠 수 없다.
                 c = (r["start"] + r["end"]) / 2
                 lo_t = c - args.search_sec
@@ -204,15 +260,21 @@ def main() -> int:
                 out_f.write(json.dumps(new, ensure_ascii=False) + "\n")
                 kept += 1
 
-            print(f"[{pi}/{len(by_parent)}] {fid} — 누적 유지 {kept} · 버림 {dropped}")
+            print(
+                f"[{pi}/{len(by_parent)}] {fid} ({file_kind}) — "
+                f"누적 재정렬 {kept} · 버림 {dropped} · 통과 {passed}"
+            )
 
-    total = kept + dropped
+    target_total = kept + dropped
     sh = np.asarray(shifts) if shifts else np.zeros(1)
     print()
-    print(f"세그먼트 {total}개 → 유지 {kept} · 버림 {dropped} ({dropped / max(total,1):.0%})")
-    print(f"피크가 클립 안: 전 {before_hit / max(total,1):.0%} → 후 {after_hit / max(kept,1):.0%}")
+    print(f"재정렬 대상 {target_total}개 → 유지 {kept} · 버림 {dropped} "
+          f"({dropped / max(target_total,1):.0%})")
+    print(f"손대지 않고 통과 {passed}개 (문장 세그먼트)")
+    print(f"피크가 클립 안: 전 {before_hit / max(target_total,1):.0%} "
+          f"→ 후 {after_hit / max(kept,1):.0%}")
     print(f"이동량(초): 중앙 {np.median(sh):+.2f} · 평균|이동| {np.abs(sh).mean():.2f}")
-    print(f"산출: {out_path}")
+    print(f"산출: {out_path} (총 {kept + passed}줄)")
     return 0
 
 
