@@ -29,21 +29,41 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
+/**
+ * 한 파일이 읽는 환경변수 이름을 뽑는다.
+ *
+ * `.get(` 앞의 수신자 이름은 보지 않는다. 예전에는 `configService.`로 시작하는
+ * 것만 셌는데, ConfigService를 `config`라는 이름으로 주입한 파일 하나 때문에
+ * SPEECH_DATA_DIR·SPEECH_DATA_MAX_PER_PATIENT가 "안 쓰는 값"으로 잡혔다.
+ * 주입 변수명은 아무도 강제하지 않으므로 거기에 기대면 안 된다.
+ *
+ * 놓치는 쪽(과소 수집)이 훨씬 위험하다 — 코드가 읽는데 .env.example에 없는
+ * 변수를 못 잡게 되고, 그게 이 테스트를 만든 이유(CRYPTO_SECRET_KEY 누락)다.
+ * 반대로 과다 수집은 잉여 항목 검사에서 하나를 놓치는 정도로 끝난다. 그래서
+ * 수신자를 넓게 잡는다. 키가 SCREAMING_SNAKE인 Map 조회 같은 오검출은
+ * 감수한다(현재 백엔드에는 없다).
+ */
+export function extractEnvNames(source: string): string[] {
+  const patterns = [
+    /\.get(?:<[^>]*>)?\(\s*'([A-Z][A-Z_0-9]*)'/g,
+    /process\.env\.([A-Z][A-Z_0-9]*)/g,
+    /process\.env\['([A-Z][A-Z_0-9]*)'\]/g,
+  ];
+  const found = new Set<string>();
+  for (const pattern of patterns) {
+    pattern.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(source)) !== null) found.add(match[1]);
+  }
+  return [...found];
+}
+
 /** 소스가 읽는 환경변수 이름을 모은다. */
 function collectUsedVars(): Set<string> {
-  const patterns = [
-    /configService\.get<[^>]*>\(\s*'([A-Z_0-9]+)'/g,
-    /configService\.get\(\s*'([A-Z_0-9]+)'/g,
-    /process\.env\.([A-Z_0-9]+)/g,
-    /process\.env\['([A-Z_0-9]+)'\]/g,
-  ];
   const used = new Set<string>();
   for (const file of walk(SRC_DIR)) {
-    const source = readFileSync(file, 'utf-8');
-    for (const pattern of patterns) {
-      pattern.lastIndex = 0;
-      let match: RegExpExecArray | null;
-      while ((match = pattern.exec(source)) !== null) used.add(match[1]);
+    for (const name of extractEnvNames(readFileSync(file, 'utf-8'))) {
+      used.add(name);
     }
   }
   return used;
@@ -79,6 +99,17 @@ describe('환경변수 드리프트', () => {
     const unused = [...declared].filter((name) => !used.has(name)).sort();
 
     expect(unused).toEqual([]);
+  });
+
+  it('ConfigService를 어떤 이름으로 주입했든 읽는 값을 잡아낸다', () => {
+    // 수신자 이름에 기대던 시절 놓쳤던 실제 코드 모양이다.
+    expect(
+      extractEnvNames(`config.get<string>('SPEECH_DATA_DIR', '../speech-data')`),
+    ).toEqual(['SPEECH_DATA_DIR']);
+    expect(
+      extractEnvNames(`this.configService.get<string>('CRYPTO_SECRET_KEY', '')`),
+    ).toEqual(['CRYPTO_SECRET_KEY']);
+    expect(extractEnvNames(`process.env.NODE_ENV`)).toEqual(['NODE_ENV']);
   });
 
   it('ai-service 주소를 가리키는 이름이 하나뿐이다', () => {
