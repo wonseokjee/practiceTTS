@@ -59,7 +59,8 @@ export class QabResultItemDto {
 
 /**
  * POST /quiz/qab-results 바디 DTO
- * - 한 세션의 QAB 항목 결과를 일괄 제출(세션 완료 시 1회).
+ * - 한 세션의 QAB 항목 결과를 제출. ADP-001로 문항마다 점진 제출되며, results는
+ *   아직 안 보낸 tail만 담는다(세션 끝 1회 일괄 제출이 아니다).
  * - sessionToken: 데일리와 동일 세션 식별자.
  */
 export class SubmitQabResultsDto {
@@ -79,4 +80,12 @@ export class SubmitQabResultsDto {
   @IsInt()
   @Min(0)
   manifestVersion?: number;
+
+  // 이 제출로 세션이 끝까지 진행됐는지(자연 종료 또는 피로 탈출 안전장치).
+  // true인 제출에만 완료 마커(qab_session_completions)를 남긴다. 점진 제출의
+  // 중간 flush나 화면 이탈 시 best-effort flush는 생략(=중도 이탈로 남는다) —
+  // 완료 vs 중단 구분(보호자 대시보드 이탈/완료율 통계용).
+  @IsOptional()
+  @IsBoolean()
+  completed?: boolean;
 }

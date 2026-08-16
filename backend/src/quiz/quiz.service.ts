@@ -14,6 +14,7 @@ import {
 import { SubmitAttemptDto } from './dto/submit-attempt.dto';
 import { SubmitQabResultsDto } from './dto/submit-qab-results.dto';
 import { QabResult } from './entities/qab-result.entity';
+import { QabSessionCompletion } from './entities/qab-session-completion.entity';
 import { QuizAttempt } from './entities/quiz-attempt.entity';
 import { QuizBestScore } from './entities/quiz-best-score.entity';
 import { QuizQuestion } from './entities/quiz-question.entity';
@@ -137,6 +138,27 @@ export interface RequestGenerationResult {
 /** saveQabResults 반환 타입 */
 export interface SaveQabResultsResult {
   saved: number;
+}
+
+/**
+ * GET /quiz/session-stats 반환 타입 — 세션 완료율(보호자용).
+ *
+ * started는 "결과가 한 문항이라도 남은 세션"이다. 세션을 열기만 하고 한 문항도
+ * 안 푼 경우는 qab_results에 행이 없어 분모에 들어가지 않는다 — 우연한 진입을
+ * 이탈로 세지 않기 위함이다.
+ */
+export interface SessionStatsResult {
+  started: number;
+  completed: number;
+  /** 0..100. started가 0이면 null(비율을 지어내지 않는다). */
+  completionRate: number | null;
+  /**
+   * 미완료(이탈) 세션이 평균 몇 문항까지 갔는지(소수 1자리). 이탈이 없으면 null.
+   *
+   * 완료율만으로는 "대부분 끝까지 가다 지쳐서 남긴 것"과 "시작하자마자 나간 것"이
+   * 같은 숫자로 보이는데, 대응은 정반대다(전자=세션이 길다, 후자=초반이 어렵다).
+   */
+  avgItemsBeforeDropoff: number | null;
 }
 
 /** GET /quiz/skill-levels 반환 타입 — 스킬별 현재 레벨(콜드스타트 채움) + 매니페스트 버전. */
@@ -944,7 +966,7 @@ export class QuizService {
   }
 
   /**
-   * QAB 질문형 검사 결과 일괄 저장 (세션 완료 시 1회).
+   * QAB 질문형 검사 결과 저장 (ADP-001로 문항마다 점진 제출).
    * patientId는 토큰에서 도출된 유효 환자 ID를 사용한다(클라 입력 불신).
    */
   async saveQabResults(
@@ -1016,6 +1038,21 @@ export class QuizService {
       }
       for (const subtest of affectedSubtests) {
         await this.recomputeSkillLevel(manager, effectivePatientId, subtest);
+      }
+
+      // 완료 마커: 자연 종료·피로 탈출 등 세션이 의도한 대로 끝났을 때만 프론트가
+      // completed=true를 보낸다. 점진 제출의 중간 flush·화면 이탈 시 best-effort
+      // flush는 completed를 안 보내 이탈로 남는다(완료 vs 중단 구분).
+      if (dto.completed) {
+        await manager.upsert(
+          QabSessionCompletion,
+          {
+            sessionToken: dto.sessionToken,
+            patientId: effectivePatientId,
+            completedAt: new Date(),
+          },
+          ['sessionToken'],
+        );
       }
     });
 
@@ -1110,6 +1147,65 @@ export class QuizService {
       .orderBy('day', 'DESC')
       .getRawMany<{ day: string }>();
     return raw.map((x) => x.day);
+  }
+
+  /**
+   * 세션 완료율 (보호자용). "며칠째 하고 있나"(스트릭)와 달리 "시작한 걸 끝까지
+   * 하고 있나"를 본다 — 중도 이탈이 잦으면 세션이 길거나 어렵다는 신호다.
+   *
+   * 분모(started)는 결과가 한 문항이라도 남은 세션만 센다. 완료 마커
+   * (qab_session_completions)가 없는 세션이 곧 이탈이다.
+   */
+  async getSessionStats(
+    effectivePatientId: string,
+    days = 30,
+  ): Promise<SessionStatsResult> {
+    const raw = await this.qabResultRepository
+      .createQueryBuilder('r')
+      .select('COUNT(DISTINCT r.session_token)', 'started')
+      .addSelect('COUNT(DISTINCT c.session_token)', 'completed')
+      .leftJoin(
+        QabSessionCompletion,
+        'c',
+        'c.session_token = r.session_token',
+      )
+      .where('r.patient_id = :pid', { pid: effectivePatientId })
+      .andWhere('r.created_at >= now() - make_interval(days => :days)', {
+        days,
+      })
+      .getRawOne<{ started: string; completed: string }>();
+
+    const started = Number(raw?.started ?? 0);
+    const completed = Number(raw?.completed ?? 0);
+
+    // 이탈 지점: 완료 마커가 없는 세션들이 각각 몇 문항까지 갔는지. 세션 수가
+    // (환자 1명 × 최근 N일이라) 적으므로 행을 받아 평균은 앱에서 낸다 — SQL
+    // 서브쿼리보다 읽기 쉽고, 이탈 세션 수도 함께 얻는다.
+    const droppedRows = await this.qabResultRepository
+      .createQueryBuilder('r')
+      .select('r.session_token', 'token')
+      .addSelect('COUNT(*)', 'items')
+      .leftJoin(QabSessionCompletion, 'c', 'c.session_token = r.session_token')
+      .where('r.patient_id = :pid', { pid: effectivePatientId })
+      .andWhere('r.created_at >= now() - make_interval(days => :days)', {
+        days,
+      })
+      .andWhere('c.session_token IS NULL')
+      .groupBy('r.session_token')
+      .getRawMany<{ token: string; items: string }>();
+
+    const totalItems = droppedRows.reduce((sum, r) => sum + Number(r.items), 0);
+
+    return {
+      started,
+      completed,
+      completionRate:
+        started > 0 ? Math.round((completed / started) * 100) : null,
+      avgItemsBeforeDropoff:
+        droppedRows.length > 0
+          ? Math.round((totalItems / droppedRows.length) * 10) / 10
+          : null,
+    };
   }
 
   /**

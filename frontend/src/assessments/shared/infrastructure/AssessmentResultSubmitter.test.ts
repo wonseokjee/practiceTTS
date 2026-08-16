@@ -29,6 +29,8 @@ describe('ServerAssessmentResultSubmitter', () => {
     expect(spy).toHaveBeenCalledWith(
       'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
       expect.arrayContaining([expect.objectContaining({ subtest: 'loc' })]),
+      undefined,
+      true, // 검사 종료 후 1회 저장이므로 완료 마커를 남긴다
     );
     spy.mockRestore();
   });

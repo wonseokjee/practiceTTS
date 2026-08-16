@@ -302,6 +302,7 @@ describe('useMixedQuizSession', () => {
       'tok-1',
       [{ subtest: 'naming', itemRef: 'naming_n1', isCorrect: true }],
       1,
+      true, // 마지막 문항 → 세션 자연 종료 → 완료 마커
     );
   });
 
@@ -336,7 +337,77 @@ describe('useMixedQuizSession', () => {
     expect(submitQabResults).toHaveBeenCalledTimes(1); // 세션 끝 전에 이미 1회 저장
     const firstPayload = submitQabResults.mock.calls[0][1];
     expect(firstPayload).toHaveLength(1); // 아직 안 보낸 tail(1개)만 부분 저장
+    // 세션 중간 flush는 완료 마커를 보내지 않는다(중도 이탈로 남아야 함).
+    expect(submitQabResults.mock.calls[0][3]).toBeFalsy();
   });
+
+  it('완료 마커: 세션이 끝까지 끝나면 마지막 flush에 completed=true를 보낸다', async () => {
+    const submitQabResults = vi.fn().mockResolvedValue({ saved: 1 });
+    const twoNaming: QabNamingItem[] = [
+      { itemId: 'naming_a', imageUrl: '/a.svg', targetWord: '사과', instruction: 'x' },
+      { itemId: 'naming_b', imageUrl: '/b.svg', targetWord: '바나나', instruction: 'x' },
+    ];
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi({ submitQabResults }),
+        pickQabItems: () => [],
+        generateSessionToken: () => 'tok-1',
+        dailyCount: 0,
+        qabCount: 0,
+        ...NO_SPEECH,
+        pickNamingItems: () => twoNaming,
+        namingCount: 2,
+      }),
+    );
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    // 1번째 문항: 세션 안 끝남 → completed 안 보냄
+    act(() => result.current[1].submitNaming('사과'));
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    act(() => result.current[1].next());
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+    expect(submitQabResults.mock.calls[0][3]).toBeFalsy();
+
+    // 2번째(마지막) 문항: 세션 끝 → completed=true
+    act(() => result.current[1].submitNaming('바나나'));
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    act(() => result.current[1].next());
+    await waitFor(() => expect(result.current[0].phase).toBe('result'));
+    expect(submitQabResults).toHaveBeenCalledTimes(2);
+    expect(submitQabResults.mock.calls[1][3]).toBe(true);
+  });
+
+  it('완료 마커: 화면 이탈(언마운트) 시 best-effort flush는 완료로 남기지 않는다', async () => {
+    const submitQabResults = vi.fn().mockResolvedValue({ saved: 1 });
+    const twoNaming: QabNamingItem[] = [
+      { itemId: 'naming_a', imageUrl: '/a.svg', targetWord: '사과', instruction: 'x' },
+      { itemId: 'naming_b', imageUrl: '/b.svg', targetWord: '바나나', instruction: 'x' },
+    ];
+    const { result, unmount } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi({ submitQabResults }),
+        pickQabItems: () => [],
+        generateSessionToken: () => 'tok-1',
+        dailyCount: 0,
+        qabCount: 0,
+        ...NO_SPEECH,
+        pickNamingItems: () => twoNaming,
+        namingCount: 2,
+      }),
+    );
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    // 1번째 문항만 답하고 next()를 누르지 않은 채(피드백 단계) 화면을 떠난다
+    // — 중도 이탈 시나리오. 세션은 안 끝났으므로 완료 마커가 남으면 안 된다.
+    act(() => result.current[1].submitNaming('사과'));
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+
+    unmount();
+
+    expect(submitQabResults).toHaveBeenCalledTimes(1);
+    expect(submitQabResults.mock.calls[0][3]).toBeFalsy();
+  });
+});
 
   it('피로 탈출: 연속 오답 3회면 남은 문항이 있어도 세션을 조기 종료한다', async () => {
     const fourNaming: QabNamingItem[] = [1, 2, 3, 4].map((n) => ({
@@ -531,6 +602,7 @@ describe('useMixedQuizSession', () => {
       'tok-1',
       [{ subtest: 'repeat', itemRef: 'rp1', isCorrect: true, score: expect.any(Number) }],
       1,
+      true, // 마지막 문항 → 세션 자연 종료 → 완료 마커
     );
   });
 
@@ -666,6 +738,7 @@ describe('useMixedQuizSession', () => {
       'tok-1',
       [{ subtest: 'ddk', itemRef: 'ddk_0', isCorrect: true, metric: 11 }],
       1,
+      true, // 마지막 문항 → 세션 자연 종료 → 완료 마커
     );
   });
 
@@ -698,6 +771,6 @@ describe('useMixedQuizSession', () => {
       'tok-1',
       [{ subtest: 'naming', itemRef: 'naming_n1', isCorrect: true, assisted: true }],
       1,
+      true, // 마지막 문항 → 세션 자연 종료 → 완료 마커
     );
   });
-});

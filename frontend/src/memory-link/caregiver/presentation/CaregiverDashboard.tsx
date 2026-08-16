@@ -9,6 +9,7 @@ import { EntryDetailScreen } from './EntryDetailScreen.js';
 import { EntryListScreen } from './EntryListScreen.js';
 import { SettingsScreen } from './SettingsScreen.js';
 import { QabProgressCard } from './QabProgressCard.js';
+import { SessionCompletionCard } from './SessionCompletionCard.js';
 import { SkillLevelCard } from './SkillLevelCard.js';
 import { WeeklyReportScreen } from './WeeklyReportScreen.js';
 import { withHonorific } from '../../shared/honorific.js';
@@ -232,6 +233,9 @@ export function CaregiverDashboard() {
 
             {/* 스킬별 연습 눈높이(적응 레벨) — 방향 카드 */}
             <SkillLevelCard />
+
+            {/* 연습 마무리(완료율·이탈 지점) — 기록 있을 때만 표시 */}
+            <SessionCompletionCard />
 
             {/* 기억 목록 그리드 */}
             <EntryListScreen

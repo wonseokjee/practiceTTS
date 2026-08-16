@@ -192,6 +192,27 @@ describe('quizApi', () => {
         results,
       });
     });
+
+    it('completed=true면 바디에 포함하고, false/생략이면 생략한다', async () => {
+      postMock.mockResolvedValue({ data: { saved: 1 } });
+      const results = [
+        { subtest: 'word' as const, itemRef: 'qw_001', isCorrect: true },
+      ];
+
+      await quizApi.submitQabResults('tok-1', results, undefined, true);
+      expect(postMock).toHaveBeenCalledWith('/quiz/qab-results', {
+        sessionToken: 'tok-1',
+        results,
+        completed: true,
+      });
+
+      postMock.mockClear();
+      await quizApi.submitQabResults('tok-1', results, undefined, false);
+      expect(postMock).toHaveBeenCalledWith('/quiz/qab-results', {
+        sessionToken: 'tok-1',
+        results,
+      });
+    });
   });
 
   describe('getSkillLevels', () => {
@@ -277,6 +298,67 @@ describe('quizApi', () => {
     it('항목 타입가드를 통과하지 못하면 형식 오류를 던진다', async () => {
       getMock.mockResolvedValue({ data: { items: [{ subtest: 'word' }] } });
       await expect(quizApi.getQabSummary()).rejects.toThrow(
+        '서버 응답 형식이 올바르지 않습니다.',
+      );
+    });
+  });
+
+  describe('getSessionStats', () => {
+    it('GET /quiz/session-stats를 호출하고 통계를 반환한다', async () => {
+      const stats = {
+        started: 10,
+        completed: 7,
+        completionRate: 70,
+        avgItemsBeforeDropoff: 4.3,
+      };
+      getMock.mockResolvedValue({ data: stats });
+
+      const res = await quizApi.getSessionStats(30);
+
+      expect(getMock).toHaveBeenCalledWith('/quiz/session-stats', {
+        params: { days: 30 },
+      });
+      expect(res).toEqual(stats);
+    });
+
+    it('days 미지정이면 params 없이 호출한다', async () => {
+      getMock.mockResolvedValue({
+        data: {
+          started: 0,
+          completed: 0,
+          completionRate: null,
+          avgItemsBeforeDropoff: null,
+        },
+      });
+      await quizApi.getSessionStats();
+      expect(getMock).toHaveBeenCalledWith('/quiz/session-stats', {
+        params: undefined,
+      });
+    });
+
+    it('완료율 null은 정상 응답으로 통과시킨다', async () => {
+      // 세션이 0건이면 서버가 비율을 지어내지 않고 null을 준다. 이걸 형식
+      // 오류로 막으면 첫 사용 보호자에게 오류 화면이 뜬다.
+      getMock.mockResolvedValue({
+        data: {
+          started: 0,
+          completed: 0,
+          completionRate: null,
+          avgItemsBeforeDropoff: null,
+        },
+      });
+
+      const res = await quizApi.getSessionStats();
+
+      expect(res.completionRate).toBeNull();
+      expect(res.avgItemsBeforeDropoff).toBeNull();
+    });
+
+    it('started가 숫자가 아니면 형식 오류를 던진다', async () => {
+      getMock.mockResolvedValue({
+        data: { started: 'x', completed: 0, completionRate: null },
+      });
+      await expect(quizApi.getSessionStats()).rejects.toThrow(
         '서버 응답 형식이 올바르지 않습니다.',
       );
     });

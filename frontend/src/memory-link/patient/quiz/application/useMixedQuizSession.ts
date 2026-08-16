@@ -565,7 +565,12 @@ export function useMixedQuizSession(
   // 문항을 넘길 때마다 보내, 환자가 중도 이탈해도 그때까지의 결과·이탈 지점이
   // 남는다(관측성). qab_results dedup UNIQUE로 재시도/중복은 멱등. 실패는 비차단 —
   // submittedCount를 올리지 않으므로 다음 flush에서 재시도된다.
-  const flushPending = useCallback((): void => {
+  //
+  // completed: 이 flush가 세션의 진짜 끝(자연 종료 또는 피로 탈출)일 때만 true로
+  // 보낸다. 백엔드가 완료 마커를 남겨 "완료 vs 중단"을 구분한다(보호자 대시보드
+  // 이탈/완료율 통계용) — 언마운트 시 best-effort flush는 completed를 안 보내
+  // 중도 이탈로 남는다.
+  const flushPending = useCallback((completed = false): void => {
     const all = qabResultsRef.current;
     const pending = all.slice(submittedCountRef.current);
     if (pending.length === 0) return;
@@ -575,6 +580,7 @@ export function useMixedQuizSession(
         sessionTokenRef.current,
         pending,
         manifestVersionRef.current,
+        completed,
       ),
     )
       .then(() => {
@@ -591,12 +597,14 @@ export function useMixedQuizSession(
 
     const items = itemsRef.current;
     const nextIndex = indexRef.current + 1;
-    // 방금 확정된 문항 결과를 점진 제출(answerAgain 정정 이후라 최종값).
-    flushPending();
     // 피로 탈출: 연속 오답이 임계에 닿으면 남은 문항이 있어도 그날 세션을 조기
     // 종료한다. 좌절을 누적시키지 않는 게 순응도에 낫다(성공 경험 원칙).
     const fatigued = shouldFatigueExit(trailingWrong());
-    if (nextIndex >= items.length || fatigued) {
+    const isSessionEnd = nextIndex >= items.length || fatigued;
+    // 방금 확정된 문항 결과를 점진 제출(answerAgain 정정 이후라 최종값). 세션의
+    // 진짜 끝(자연 종료·피로 탈출)이면 완료 마커도 함께 보낸다.
+    flushPending(isSessionEnd);
+    if (isSessionEnd) {
       // 점수 분모는 **실제로 푼 문항 수**다. 피로 탈출 시 안 푼 문항까지 오답으로
       // 세면(0/10) 배려로 끝낸 세션이 되레 좌절을 준다 — 조기 종료의 목적과 반대.
       const attempted = recentCorrectRef.current.length;
