@@ -23,7 +23,7 @@
 잘린 채로 두면 정답 텍스트에 있는 말이 오디오에 없어 무음보다 나쁘다.
 
 사용:
-  python scripts/asr_eval/refine_word_segments.py \
+  python scripts/asr_eval/refine_segments.py \
     --segments ".../_segs_big5/segments.jsonl" \
     --seg-root ".../_segs_big5" \
     --audio-root ".../608-audio-work/wav" \

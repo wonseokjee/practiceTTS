@@ -191,7 +191,7 @@ wordlist로 오분류). 대신 **"정렬기가 1단어로 잘랐다"**를 신호
 그 1.4초도 whisper가 실제 단어 길이를 못 재고 내놓던 기본값이라 **클립의 60%가
 침묵**이었다.
 
-→ `refine_word_segments.py`(에너지 재정렬). 단어 간격이 중앙값 9초라 앵커 주변
+→ `refine_segments.py`(에너지 재정렬). 단어 간격이 중앙값 9초라 앵커 주변
 피크 탐색이 안전하고, 탐색창을 이웃 세그먼트 중점으로 클램프해 옆 단어를 훔칠 수
 없게 했다. **whisper 재실행이 필요 없다.**
 
@@ -291,7 +291,7 @@ test 단어        0 →  146
 TS01.zip (원본 425 wav)
   → select_608_batch2.py --task-type wordlist   (완료분 제외 + 화자 다양성 + wav 추출)
   → align_608.py --wordlist auto                (문장/단어 자동 판별, 재개 가능)  [로컬 CPU, 수 시간]
-  → refine_word_segments.py                     (에너지 재정렬 + task_type 채움)  [필수]
+  → refine_segments.py                     (에너지 재정렬 + task_type 채움)  [필수]
   → prepare_colab_trainset.py --split-file ...  (배치 병합 + 화자 분리 + zip)
   → Colab (finetune_whisper_608_colab.ipynb, T4)
 ```
@@ -299,7 +299,7 @@ TS01.zip (원본 425 wav)
 ### 밟았던 함정
 
 - **정렬 직후 세그먼트를 그대로 쓰지 말 것.** 단어 클립의 25~49%가 단어를 놓치고
-  (3절 (2)), 문장 클립은 79%가 침묵이다(3-2절). `refine_word_segments.py`를 반드시
+  (3절 (2)), 문장 클립은 79%가 침묵이다(3-2절). `refine_segments.py`를 반드시
   거치고, 문장까지 처리하려면 `--narrative refine`을 명시한다(기본은 skip).
 - **매니페스트 줄 수와 wav 개수를 대조할 것.** 재정렬 스크립트가 통과 세그먼트의
   wav 복사를 한 경로에서 빠뜨렸을 때, 매니페스트에는 줄이 멀쩡히 있고 원본만 없어서
