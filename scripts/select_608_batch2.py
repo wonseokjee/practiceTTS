@@ -23,8 +23,23 @@ import collections
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent / "asr_eval"))
+sys.path.insert(0, str(Path(__file__).parent))
+from align_608 import _sentences  # noqa: E402
 from baseline_asr import task_type  # noqa: E402
 from split_speakers import speaker_of  # noqa: E402
+
+
+def kind_of(transcript: str) -> str:
+    """align_608이 실제로 쓰는 판정과 **같은** 기준으로 과제 유형을 정한다.
+
+    문장부호 밀도(task_type)만 보면 문장 1~2개짜리 짧은 서술문도 wordlist로
+    잡힌다. align_608은 `_sentences`가 1개일 때만 단어 모드로 자르므로, 선정도
+    같은 이중 확인을 거쳐야 한다 — 안 그러면 "단어 파일"로 뽑아 정렬했는데
+    문장 모드로 잘리는 헛수고가 난다. 판정을 복제하지 않고 그쪽을 임포트한다.
+    """
+    if task_type(transcript) == "wordlist" and len(_sentences(transcript)) == 1:
+        return "wordlist"
+    return "narrative"
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
@@ -59,6 +74,15 @@ def main() -> None:
     ap.add_argument("--count", type=int, default=150, help="새로 뽑을 총 파일 수")
     ap.add_argument("--max-sec", type=float, default=300)
     ap.add_argument("--out-manifest", default="align_manifest_big2.jsonl")
+    ap.add_argument(
+        "--task-type",
+        choices=["any", "wordlist", "narrative"],
+        default="any",
+        help=(
+            "과제 유형으로 후보를 거른다. 앱 과제는 단어 수준이 최악 조건이라"
+            "(608 실측 CER 0.70 vs 서술문 0.125) 단어 데이터만 집중해 모을 때 쓴다."
+        ),
+    )
     args = ap.parse_args()
 
     man = {}
@@ -82,6 +106,8 @@ def main() -> None:
             continue
         if float(r.get("play_time_sec") or 0) > args.max_sec:
             continue
+        if args.task_type != "any" and kind_of(r.get("transcript") or "") != args.task_type:
+            continue
         cand.append(r)
 
     cand.sort(key=lambda r: float(r.get("play_time_sec") or 0))  # 짧은 것부터
@@ -101,7 +127,7 @@ def main() -> None:
                 break
             if r not in chosen:
                 chosen.append(r)
-    tt = collections.Counter(task_type(r["transcript"]) for r in chosen)
+    tt = collections.Counter(kind_of(r["transcript"]) for r in chosen)
     print(f"  과제유형: {dict(tt)}")
 
     total_sec = sum(float(r.get("play_time_sec") or 0) for r in chosen)
