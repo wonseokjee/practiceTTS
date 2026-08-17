@@ -1,7 +1,6 @@
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
-  ArrayMinSize,
   IsArray,
   IsBoolean,
   IsIn,
@@ -67,8 +66,18 @@ export class SubmitQabResultsDto {
   @IsUUID('4')
   sessionToken: string;
 
+  /**
+   * 아직 안 보낸 결과 tail. **빈 배열이 허용된다.**
+   *
+   * 예전엔 `@ArrayMinSize(1)`이라 빈 제출이 400이었는데, 그게 완료 마커를
+   * 유실시켰다. 프론트는 문항마다 점진 제출하므로 세션이 끝나는 시점엔 보낼
+   * tail이 없는 경우가 생긴다(특히 피로 탈출). 그때 `completed=true`만 보내야
+   * 하는데 배열이 비어 거절당했고, 설계상 정상 종료가 중도 이탈로 기록됐다.
+   *
+   * 빈 배열 + `completed=false`는 무의미하지만 무해한 no-op이다(프론트가 그런
+   * 요청을 보내지 않는다). 여기서 막는 것보다 완료 마커를 살리는 쪽이 낫다.
+   */
   @IsArray()
-  @ArrayMinSize(1)
   @ArrayMaxSize(50)
   @ValidateNested({ each: true })
   @Type(() => QabResultItemDto)

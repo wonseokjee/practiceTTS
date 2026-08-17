@@ -667,7 +667,13 @@ export function useMixedQuizSession(
   const flushPending = useCallback((completed = false): void => {
     const all = qabResultsRef.current;
     const pending = all.slice(submittedCountRef.current);
-    if (pending.length === 0) return;
+    // **완료 마커는 보낼 tail이 없어도 보내야 한다.**
+    //
+    // 예전엔 `pending.length === 0`이면 completed를 보기도 전에 반환했다.
+    // 문항마다 점진 제출하므로 세션이 끝나는 시점엔 tail이 비어 있는 경우가
+    // 흔하고(특히 피로 탈출), 그때 설계상 정상 종료가 중도 이탈로 기록됐다.
+    // 보호자는 환자가 자주 포기한다고 오해하게 된다.
+    if (pending.length === 0 && !completed) return;
     const targetCount = all.length;
     void Promise.resolve(
       apiRef.current.submitQabResults(

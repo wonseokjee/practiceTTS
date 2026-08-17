@@ -1687,6 +1687,26 @@ describe('QuizService', () => {
       expect(qabSessionCompletionRepo.upsert).toHaveBeenCalledTimes(1);
     });
 
+    it('보낼 결과가 없어도 완료 마커는 남긴다', async () => {
+      // 프론트는 문항마다 점진 제출하므로 세션이 끝나는 시점엔 tail이 비어
+      // 있는 경우가 흔하다(특히 피로 탈출). 예전엔 DTO가 빈 배열을 400으로
+      // 막고 프론트도 조기 반환해, **설계상 정상 종료가 중도 이탈로 기록됐다.**
+      // 보호자 대시보드의 완료율이 그만큼 낮게 나온다.
+      skillLevelRepo.find.mockResolvedValue([]);
+      const dto: SubmitQabResultsDto = {
+        sessionToken: SESSION_TOKEN,
+        completed: true,
+        results: [],
+      };
+
+      const res = await service.saveQabResults(PATIENT_ID, dto);
+
+      expect(res).toEqual({ saved: 0 });
+      expect(qabSessionCompletionRepo.upsert).toHaveBeenCalledTimes(1);
+      // 넣을 행이 없으면 insert 자체를 건너뛴다(빈 values는 TypeORM이 거부한다).
+      expect(orIgnoreCalls).toHaveLength(0);
+    });
+
     it('DB 오류는 그대로 전파한다', async () => {
       skillLevelRepo.find.mockResolvedValue([]);
       qabResultRepo.save.mockRejectedValue({ code: '08006' }); // connection failure

@@ -1041,13 +1041,18 @@ export class QuizService {
     // 재제출한 세션의 결과가 통째로 롤백됐다. 주석은 "재계산은 그대로 진행"이라고
     // 단언하고 있었다. 애초에 예외를 안 내는 것이 유일하게 맞는 방법이다.
     await this.dataSource.transaction(async (manager) => {
-      await manager
-        .createQueryBuilder()
-        .insert()
-        .into(QabResult)
-        .values(rows)
-        .orIgnore()
-        .execute();
+      // rows가 빌 수 있다: 세션 끝에 보낼 tail이 없고 완료 마커만 보내는 제출.
+      // 빈 values()는 TypeORM이 거부하므로 건너뛴다 — 아래 완료 마커는 그대로
+      // 남겨야 한다. 그게 이 경로의 존재 이유다.
+      if (rows.length > 0) {
+        await manager
+          .createQueryBuilder()
+          .insert()
+          .into(QabResult)
+          .values(rows)
+          .orIgnore()
+          .execute();
+      }
       for (const subtest of affectedSubtests) {
         await this.recomputeSkillLevel(manager, effectivePatientId, subtest);
       }
