@@ -119,6 +119,18 @@
       "rate": 0.04
     },
     {
+      "transcript": "바",
+      "target": "반",
+      "mode": "word",
+      "rate": 0.08000000000000002
+    },
+    {
+      "transcript": "시게",
+      "target": "시계",
+      "mode": "word",
+      "rate": 0.2
+    },
+    {
       "transcript": "",
       "target": "사과",
       "mode": "word",
@@ -177,6 +189,18 @@
     {
       "transcript": "파나나",
       "target": "바나나",
+      "mode": "word",
+      "correct": true
+    },
+    {
+      "transcript": "바",
+      "target": "반",
+      "mode": "word",
+      "correct": true
+    },
+    {
+      "transcript": "시게",
+      "target": "시계",
       "mode": "word",
       "correct": true
     },
