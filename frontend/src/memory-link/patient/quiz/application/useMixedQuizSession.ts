@@ -128,11 +128,11 @@ export interface UseMixedQuizDeps {
     options?: PickSpellOptions,
   ) => QabSpellItem[];
   /** QAB 따라말하기 문항 추출기 (테스트 주입용) */
-  pickRepeatItems?: (count: number) => QabRepeatItem[];
+  pickRepeatItems?: (count: number, level?: number) => QabRepeatItem[];
   /** QAB 소리 내어 읽기 문항 추출기 (테스트 주입용) */
-  pickReadingItems?: (count: number) => QabReadingItem[];
+  pickReadingItems?: (count: number, level?: number) => QabReadingItem[];
   /** QAB 말운동(DDK) 문항 추출기 (테스트 주입용) */
-  pickDdkItems?: (count: number) => QabDdkItem[];
+  pickDdkItems?: (count: number, level?: number) => QabDdkItem[];
   generateSessionToken?: () => string;
   /** 데일리 문항 최대 개수 (기본 4) */
   dailyCount?: number;
@@ -305,14 +305,18 @@ export function useMixedQuizSession(
           priority: spellPriority,
         })
         .map((it) => ({ kind: 'spell', id: it.itemId, item: it }));
+      // 발화 검사도 레벨을 받는다. 예전엔 이 셋만 레벨 없이 무작위로 뽑았는데,
+      // 보호자 화면은 loc를 뺀 모든 검사에 1~5단계가 있다고 표시하고 있었다 —
+      // 같은 과제를 계속 내면서 숫자만 오르내리는 구조였다. 재활 앱에서 그건
+      // 단순한 UI 오류가 아니라 보호자의 임상 판단을 오염시키는 거짓 신호다.
       const repeatItems: PlayableItem[] = pickRepeatRef
-        .current(repeatCount)
+        .current(repeatCount, levels?.repeat)
         .map((it) => ({ kind: 'repeat', id: it.itemId, item: it }));
       const readingItems: PlayableItem[] = pickReadingRef
-        .current(readingCount)
+        .current(readingCount, levels?.reading)
         .map((it) => ({ kind: 'reading', id: it.itemId, item: it }));
       const ddkItems: PlayableItem[] = pickDdkRef
-        .current(ddkCount)
+        .current(ddkCount, levels?.ddk)
         .map((it) => ({ kind: 'ddk', id: it.itemId, item: it }));
 
       const shuffled = shuffle([

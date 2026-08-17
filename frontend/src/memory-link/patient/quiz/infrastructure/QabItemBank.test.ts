@@ -1,8 +1,12 @@
 // QabItemBank.ts — QAB 질문형(단어/문장) 뱅크 테스트
 
 import { describe, expect, it } from 'vitest';
+import sentCompRaw from '../../../../assets/data/sentCompItems.json';
+import sentMirrorRaw from '../../../../assets/data/qabSentMirror.json';
+import sentGeneratedRaw from '../../../../assets/data/qabSentGenerated.json';
 import {
   WORD_CATEGORY,
+  sentTypesForLevel,
   asItemRef,
   asWordLabel,
   buildSpellTiles,
@@ -334,3 +338,61 @@ describe('pickSpellItems — 난이도·중복·반복', () => {
   });
 });
 
+/**
+ * 문장이해 난이도 — 통사 복잡도.
+ *
+ * 예전엔 presentedLevel을 스탬핑만 하고 문항 구성은 레벨과 무관했다. 그러면
+ * "레벨 5 정답률"이 실제로는 레벨 1과 같은 문항의 정답률이라, 보호자가 보는
+ * 눈높이가 회복을 뜻하지 않는다.
+ */
+describe('pickSentItems — 통사 복잡도 위계', () => {
+  const 반복추출 = (lv: number, times = 20): string[] =>
+    Array.from({ length: times }, () => pickSentItems(2, lv))
+      .flat()
+      .map((i) => i.promptText);
+
+  /**
+   * promptText로 원본 sentenceType을 되찾는다(테스트 전용 역인덱스).
+   * **뱅크와 같은 세 출처를 봐야 한다** — 하나라도 빠지면 undefined가 나와
+   * 엉뚱한 실패로 보인다(실제로 qabSentGenerated를 빠뜨려 한 번 겪었다).
+   */
+  type RawSent = { sentence: string; sentenceType: string };
+  const ALL_SENTS: RawSent[] = [
+    ...(sentCompRaw as RawSent[]),
+    ...(sentMirrorRaw as { items: RawSent[] }).items,
+    ...(sentGeneratedRaw as { items: RawSent[] }).items,
+  ];
+  function typeOf(prompt: string): string | undefined {
+    return ALL_SENTS.find((x) => x.sentence === prompt)?.sentenceType;
+  }
+
+  it('레벨 1~2는 능동/수동만 낸다 — 절이 하나뿐인 가장 단순한 유형', () => {
+    for (const prompt of 반복추출(1)) {
+      expect(typeOf(prompt)).toBe('active-passive');
+    }
+  });
+
+  it('레벨 5는 내포절까지 낸다 — 작업기억 부담이 최대인 유형', () => {
+    const types = new Set(반복추출(5, 40).map(typeOf));
+
+    expect(types.has('embedded-clause')).toBe(true);
+  });
+
+  it('레벨 3~4는 관계절을 포함하되 내포절은 내지 않는다', () => {
+    const types = new Set(반복추출(3, 40).map(typeOf));
+
+    expect(types.has('relative-clause')).toBe(true);
+    expect(types.has('embedded-clause')).toBe(false);
+  });
+
+  it('레벨을 안 주면 콜드스타트(2)의 유형만 낸다', () => {
+    expect(sentTypesForLevel()).toEqual(sentTypesForLevel(2));
+  });
+
+  it('허용 유형이 부족하면 전체 풀로 되돌려 세션이 비지 않게 한다', () => {
+    // 문항이 조용히 사라지는 것보다 난이도가 어긋나는 편이 낫다.
+    expect(pickSentItems(100, 1).length).toBeGreaterThan(
+      sentTypesForLevel(1).length,
+    );
+  });
+});

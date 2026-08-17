@@ -263,8 +263,9 @@ function toWordItem(it: RawWordItem, level?: number): QabImageItem {
 }
 
 function toSentItem(it: RawSentItem, level?: number): QabImageItem {
-  // 문장이해 선택지는 원본 JSON의 고정 쌍이라 레벨로 오답거리를 바꾸지 않는다.
-  // presentedLevel은 스탬핑해 정오답 기반 레벨링은 동작하게 한다(변별 난이도는 추후).
+  // 선택지는 원본 JSON의 고정 쌍이라 **여기서** 오답거리를 바꾸지는 않는다.
+  // 문장이해의 난이도는 선택지가 아니라 **자극의 통사 복잡도**로 준다 —
+  // 어느 문항을 낼지는 sentPoolForLevel이 레벨로 정한다.
   return {
     itemId: it.itemId,
     category: 'sentence',
@@ -536,10 +537,50 @@ export function pickWordItems(count: number, level?: number): QabImageItem[] {
     .map((it) => toWordItem(it, level));
 }
 
+/**
+ * 문장이해 난이도 축 — **통사 복잡도**.
+ *
+ * 문장이해에서 오답거리를 조절할 수 없는 건 선택지가 원본 JSON의 고정 쌍이기
+ * 때문이다(toSentItem 참고). 대신 자극 자체에 이미 축이 들어 있다 — `sentenceType`.
+ *
+ * 실어증 문장이해의 복잡도 위계는 확립돼 있다:
+ *   active-passive   능동/수동 가역문 — 어순 단서만으로는 못 풀지만 절이 하나다
+ *   relative-clause  관계절 — 논항이 원위치를 벗어나 흔적 처리가 필요하다
+ *   embedded-clause  내포절 — 절 경계를 유지한 채 처리해야 해 작업기억 부담이 최대
+ *
+ * 예전에는 presentedLevel을 스탬핑만 하고 문항 구성은 레벨과 무관했다. 그러면
+ * "레벨 5 정답률"이 실제로는 레벨 1과 같은 문항의 정답률이라, 보호자가 보는
+ * 눈높이가 회복을 뜻하지 않게 된다.
+ */
+const SENT_TYPES_BY_LEVEL: Record<number, readonly string[]> = {
+  1: ['active-passive'],
+  2: ['active-passive'],
+  3: ['active-passive', 'relative-clause'],
+  4: ['active-passive', 'relative-clause'],
+  5: ['active-passive', 'relative-clause', 'embedded-clause'],
+};
+
+/** 이 레벨에서 낼 수 있는 통사 유형. (테스트 노출) */
+export function sentTypesForLevel(level?: number): readonly string[] {
+  return SENT_TYPES_BY_LEVEL[normalizeLevel(level, COLD_START_LEVEL)];
+}
+
+/**
+ * 레벨이 허용하는 통사 유형만 남긴다. 모자라면 전체 풀로 되돌려
+ * 세션이 비지 않게 한다(난이도가 어긋나는 편이 문항이 사라지는 것보다 낫다).
+ */
+function sentPoolForLevel(want: number, level?: number): RawSentItem[] {
+  const allowed = new Set(sentTypesForLevel(level));
+  const eligible = SENT_ITEMS.filter((it) => allowed.has(it.sentenceType));
+  return eligible.length >= want ? eligible : [...SENT_ITEMS];
+}
+
 /** 문장이해 문항을 무작위 count개 추출. */
 export function pickSentItems(count: number, level?: number): QabImageItem[] {
-  return shuffle(SENT_ITEMS)
-    .slice(0, Math.max(0, count))
+  const want = Math.max(0, count);
+  if (want === 0) return [];
+  return shuffle(sentPoolForLevel(want, level))
+    .slice(0, want)
     .map((it) => toSentItem(it, level));
 }
 
@@ -554,7 +595,11 @@ export function pickQabItems(
 ): QabImageItem[] {
   const pool: QabImageItem[] = [
     ...WORD_ITEMS.map((it) => toWordItem(it, levels?.word)),
-    ...SENT_ITEMS.map((it) => toSentItem(it, levels?.sentence)),
+    // 문장은 레벨이 허용하는 통사 유형만 — 단어처럼 오답거리를 조절할 수 없는
+    // 대신 자극의 복잡도로 난이도를 준다.
+    ...sentPoolForLevel(count, levels?.sentence).map((it) =>
+      toSentItem(it, levels?.sentence),
+    ),
   ];
   return shuffle(pool).slice(0, Math.max(0, count));
 }

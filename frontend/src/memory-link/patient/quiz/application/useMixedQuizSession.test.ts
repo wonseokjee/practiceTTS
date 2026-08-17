@@ -914,6 +914,84 @@ describe('글자 조합(spell)', () => {
   });
 });
 
+describe('발화 검사 — 눈높이 배선', () => {
+  /**
+   * 예전엔 따라말하기·읽기·말운동만 레벨을 **안 받고** 문항을 골랐다. 그런데
+   * 보호자 화면은 loc를 뺀 모든 검사에 1~5단계가 있다고 표시했다 — 보호자가
+   * 없는 회복을(또는 없는 악화를) 있다고 믿게 되는 거짓 신호였다.
+   *
+   * 뱅크가 레벨을 제대로 쓰는지는 QabSpeechBank.test.ts가 본다. 여기서 보는 건
+   * **세션이 서버 레벨을 뱅크까지 실어 나르는가**다. 배선이 끊기면 뱅크가 아무리
+   * 옳아도 환자는 콜드스타트 난이도만 받는다.
+   */
+  async function arrangeLevels(levels: Record<string, number>, token: string) {
+    const api = makeApi();
+    vi.spyOn(api, 'getSkillLevels').mockResolvedValue({
+      levels: {
+        word: 2, sentence: 2, naming: 2, repeat: 2, reading: 2, spell: 2,
+        ddk: 2, loc: 2, ...levels,
+      },
+      manifestVersion: 1,
+    } as Awaited<ReturnType<IQuizApi['getSkillLevels']>>);
+    const repeat = vi.fn().mockReturnValue([]);
+    const reading = vi.fn().mockReturnValue([]);
+    const ddk = vi.fn().mockReturnValue([]);
+
+    renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: api,
+        pickQabItems: () => [],
+        generateSessionToken: () => token,
+        dailyCount: 0,
+        qabCount: 0,
+        ...NO_SPEECH,
+        pickRepeatItems: repeat,
+        pickReadingItems: reading,
+        pickDdkItems: ddk,
+        repeatCount: 1,
+        readingCount: 1,
+        ddkCount: 1,
+      }),
+    );
+
+    await waitFor(() => expect(repeat).toHaveBeenCalled());
+    return { repeat, reading, ddk };
+  }
+
+  it('서버 레벨을 따라말하기·읽기·말운동 뱅크에 그대로 넘긴다', async () => {
+    const { repeat, reading, ddk } = await arrangeLevels(
+      { repeat: 5, reading: 4, ddk: 3 },
+      'tok-speech-lv',
+    );
+
+    expect(repeat.mock.calls[0][1]).toBe(5);
+    expect(reading.mock.calls[0][1]).toBe(4);
+    expect(ddk.mock.calls[0][1]).toBe(3);
+  });
+
+  it('레벨 조회가 실패해도 세션은 진행된다(뱅크가 콜드스타트로 떨어진다)', async () => {
+    const api = makeApi();
+    vi.spyOn(api, 'getSkillLevels').mockRejectedValue(new Error('network'));
+    const repeat = vi.fn().mockReturnValue([]);
+
+    renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: api,
+        pickQabItems: () => [],
+        generateSessionToken: () => 'tok-speech-fail',
+        dailyCount: 0,
+        qabCount: 0,
+        ...NO_SPEECH,
+        pickRepeatItems: repeat,
+        repeatCount: 1,
+      }),
+    );
+
+    await waitFor(() => expect(repeat).toHaveBeenCalled());
+    expect(repeat.mock.calls[0][1]).toBeUndefined();
+  });
+});
+
 describe('글자 조합 — 반복과 중복 방지', () => {
   /** 우선순위 배선만 보는 렌더 헬퍼 — 이력 응답을 주고 pickSpellItems 인자를 돌려준다. */
   async function arrangePriority(
