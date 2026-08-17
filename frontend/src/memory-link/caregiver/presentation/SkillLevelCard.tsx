@@ -23,6 +23,7 @@ const LEVELED_SKILLS: Array<{ key: string; label: string }> = [
   { key: 'naming', label: '그림 이름대기' },
   { key: 'repeat', label: '따라 말하기' },
   { key: 'reading', label: '소리 내어 읽기' },
+  { key: 'spell', label: '글자 조합' },
   { key: 'ddk', label: '말운동(퍼터커)' },
 ];
 

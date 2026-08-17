@@ -32,6 +32,7 @@ const SUBTEST_LABELS: Record<string, string> = {
   naming: '그림 이름대기',
   repeat: '따라 말하기',
   reading: '소리 내어 읽기',
+  spell: '글자 조합',
   ddk: '말운동(퍼터커)',
 };
 
@@ -42,6 +43,7 @@ const SUBTEST_ORDER = [
   'naming',
   'repeat',
   'reading',
+  'spell',
   'ddk',
 ];
 
