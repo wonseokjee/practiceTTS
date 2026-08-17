@@ -255,6 +255,8 @@ export class QuizService {
     private readonly qabResultRepository: Repository<QabResult>,
     @InjectRepository(SkillLevel)
     private readonly skillLevelRepository: Repository<SkillLevel>,
+    @InjectRepository(QabSessionCompletion)
+    private readonly qabSessionCompletionRepository: Repository<QabSessionCompletion>,
     @InjectRepository(MemoryEntry)
     private readonly memoryEntryRepository: Repository<MemoryEntry>,
     @InjectRepository(PatientMemoryNote)
@@ -1247,78 +1249,88 @@ export class QuizService {
   /**
    * 세션 완료율 (보호자용). "며칠째 하고 있나"(스트릭)와 달리 "시작한 걸 끝까지
    * 하고 있나"를 본다 — 중도 이탈이 잦으면 세션이 길거나 어렵다는 신호다.
+   * 완료 마커(qab_session_completions)가 없는 세션이 곧 이탈이다.
    *
-   * 분모(started)는 결과가 한 문항이라도 남은 세션만 센다. 완료 마커
-   * (qab_session_completions)가 없는 세션이 곧 이탈이다.
+   * **분모는 QAB만으로 세면 안 된다.** 예전엔 `qab_results`의 세션 토큰만 셌는데,
+   * 한 세션은 데일리 문항과 QAB 문항을 섞어 진행하고 QAB 슬롯이 0인 구성도 있다.
+   * 그런 세션은 시작한 적조차 없는 것으로 집계돼, 완료율의 분모가 조용히 작아졌다.
+   *
+   *     started   = qab_results ∪ quiz_attempts 의 세션 토큰   (뭐라도 푼 세션)
+   *     completed = 그중 완료 마커가 있는 것
+   *
+   * 세션 수가 (환자 1명 × 최근 N일이라) 수십 개 규모라 합집합은 앱에서 만든다.
+   * SQL UNION 서브쿼리보다 읽기 쉽고, 이탈 세션의 문항 수도 같은 행에서 얻는다.
+   *
+   * 이탈 평균만은 **QAB 문항이 있던 세션**으로 한정한다. 데일리만 푼 세션은
+   * QAB 문항 수가 0이라, 섞어 세면 "0문항 풀고 이탈"이 평균을 끌어내려 지표의
+   * 의미가 바뀐다(그 세션은 QAB를 안 한 게 아니라 애초에 없었다).
    */
   async getSessionStats(
     effectivePatientId: string,
     days = 30,
   ): Promise<SessionStatsResult> {
-    const raw = await this.qabResultRepository
-      .createQueryBuilder('r')
-      .select('COUNT(DISTINCT r.session_token)', 'started')
-      .addSelect('COUNT(DISTINCT c.session_token)', 'completed')
-      .leftJoin(
-        QabSessionCompletion,
-        'c',
-        'c.session_token = r.session_token',
-      )
-      .where('r.patient_id = :pid', { pid: effectivePatientId })
-      .andWhere('r.created_at >= now() - make_interval(days => :days)', {
-        days,
-      })
-      .getRawOne<{ started: string; completed: string }>();
+    const pid = effectivePatientId;
 
-    const started = Number(raw?.started ?? 0);
-    const completed = Number(raw?.completed ?? 0);
-
-    // 이탈 지점: 완료 마커가 없는 세션들이 각각 몇 문항까지 갔는지. 세션 수가
-    // (환자 1명 × 최근 N일이라) 적으므로 행을 받아 평균은 앱에서 낸다 — SQL
-    // 서브쿼리보다 읽기 쉽고, 이탈 세션 수도 함께 얻는다.
-    const droppedRows = await this.qabResultRepository
+    // ① QAB 문항이 있던 세션 — 토큰 + 그 세션에서 푼 문항 수
+    const qabRows = await this.qabResultRepository
       .createQueryBuilder('r')
       .select('r.session_token', 'token')
       .addSelect('COUNT(*)', 'items')
-      .leftJoin(QabSessionCompletion, 'c', 'c.session_token = r.session_token')
-      .where('r.patient_id = :pid', { pid: effectivePatientId })
+      .where('r.patient_id = :pid', { pid })
       .andWhere('r.created_at >= now() - make_interval(days => :days)', {
         days,
       })
-      .andWhere('c.session_token IS NULL')
       .groupBy('r.session_token')
       .getRawMany<{ token: string; items: string }>();
 
-    const totalItems = droppedRows.reduce((sum, r) => sum + Number(r.items), 0);
+    // ② 데일리 문항만 푼 세션 — 이게 빠져 있어서 분모가 샜다
+    const attemptRows = await this.quizAttemptRepository
+      .createQueryBuilder('a')
+      .select('DISTINCT a.session_token', 'token')
+      .where('a.patient_id = :pid', { pid })
+      .andWhere('a.answered_at >= now() - make_interval(days => :days)', {
+        days,
+      })
+      .getRawMany<{ token: string }>();
+
+    // ③ 완료 마커
+    const completionRows = await this.qabSessionCompletionRepository
+      .createQueryBuilder('c')
+      .select('c.session_token', 'token')
+      .where('c.patient_id = :pid', { pid })
+      .andWhere('c.completed_at >= now() - make_interval(days => :days)', {
+        days,
+      })
+      .getRawMany<{ token: string }>();
+
+    const startedTokens = new Set<string>([
+      ...qabRows.map((r) => r.token),
+      ...attemptRows.map((r) => r.token),
+    ]);
+    const completedTokens = new Set(completionRows.map((r) => r.token));
+    // 마커가 창 밖 세션을 가리킬 수 있으므로 시작 집합과 교집합을 낸다 —
+    // 안 그러면 완료율이 100%를 넘는다.
+    const completed = [...completedTokens].filter((t) =>
+      startedTokens.has(t),
+    ).length;
+
+    const dropped = qabRows.filter((r) => !completedTokens.has(r.token));
+    const totalItems = dropped.reduce((sum, r) => sum + Number(r.items), 0);
 
     return {
-      started,
+      started: startedTokens.size,
       completed,
       completionRate:
-        started > 0 ? Math.round((completed / started) * 100) : null,
+        startedTokens.size > 0
+          ? Math.round((completed / startedTokens.size) * 100)
+          : null,
       avgItemsBeforeDropoff:
-        droppedRows.length > 0
-          ? Math.round((totalItems / droppedRows.length) * 10) / 10
+        dropped.length > 0
+          ? Math.round((totalItems / dropped.length) * 10) / 10
           : null,
     };
   }
 
-  /**
-   * QAB 검사별 회복 추적 요약 (보호자용).
-   * 검사 종류별로 정확도 + 수치 지표(평균/최고) + 마지막 측정 시각을 집계한다.
-   */
-  /**
-   * 검사별 **주차** 추이. 보호자가 "나아지고 있나"를 보는 데이터다.
-   *
-   * getQabSummary는 전 기간을 하나로 합쳐서, 좋아지는 중인지 나빠지는 중인지
-   * 알 수 없었다. 치매 진료는 "지난 몇 달 어떠셨어요?"로 시작하는데 보호자는
-   * 대개 기억으로 답한다. 주 단위 기록을 내밀 수 있으면 그 자체로 가치다.
-   *
-   * 주차 경계는 **월요일 기준**이다(date_trunc('week')가 ISO 주라 월요일 시작).
-   * 보호자 도움(assisted) 문항은 환자 수행이 아니므로 정확도 집계에서 뺀다.
-   *
-   * @param weeks 최근 몇 주를 볼지. 너무 길면 그래프가 읽히지 않는다.
-   */
   async getQabTrend(
     effectivePatientId: string,
     weeks = 8,

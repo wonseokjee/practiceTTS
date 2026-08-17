@@ -193,6 +193,10 @@ describe('QuizService', () => {
         },
         { provide: getRepositoryToken(QabResult), useValue: qabResultRepo },
         { provide: getRepositoryToken(SkillLevel), useValue: skillLevelRepo },
+        {
+          provide: getRepositoryToken(QabSessionCompletion),
+          useValue: qabSessionCompletionRepo,
+        },
         { provide: getRepositoryToken(MemoryEntry), useValue: memoryEntryRepo },
         {
           provide: getRepositoryToken(PatientMemoryNote),
@@ -1928,35 +1932,49 @@ describe('QuizService', () => {
 
   describe('getSessionStats', () => {
     /**
-     * getSessionStats가 쓰는 쿼리빌더 mock.
-     * @param raw     시작/완료 집계(getRawOne)
-     * @param dropped 이탈 세션별 문항 수(getRawMany)
+     * getSessionStats가 쓰는 **세 리포지토리**의 쿼리빌더를 각각 목킹한다.
+     *
+     * 하나로 뭉치면 "분모가 QAB만 센다"는 회귀를 못 잡는다 — 데일리 전용 세션이
+     * 어느 쿼리에서 오는지가 이 수정의 요점이라, 리포지토리별로 다른 행을 준다.
+     *
+     * @param qab         QAB 결과가 남은 세션: 토큰 + 그 세션의 QAB 문항 수
+     * @param attempts    데일리 문항을 푼 세션 토큰
+     * @param completions 완료 마커가 찍힌 세션 토큰
      */
     function arrangeStats(
-      raw: { started: string; completed: string } | undefined,
-      dropped: Array<{ token: string; items: string }> = [],
+      qab: Array<{ token: string; items: string }>,
+      attempts: Array<{ token: string }> = [],
+      completions: Array<{ token: string }> = [],
     ) {
-      const qb = {
+      const buildQb = (rows: unknown[]) => ({
         select: jest.fn().mockReturnThis(),
         addSelect: jest.fn().mockReturnThis(),
-        leftJoin: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
         groupBy: jest.fn().mockReturnThis(),
-        getRawOne: jest.fn().mockResolvedValue(raw),
-        getRawMany: jest.fn().mockResolvedValue(dropped),
-      };
-      qabResultRepo.createQueryBuilder.mockReturnValue(qb);
-      return qb;
+        getRawMany: jest.fn().mockResolvedValue(rows),
+      });
+      qabResultRepo.createQueryBuilder.mockReturnValue(buildQb(qab));
+      quizAttemptRepo.createQueryBuilder.mockReturnValue(buildQb(attempts));
+      qabSessionCompletionRepo.createQueryBuilder.mockReturnValue(
+        buildQb(completions),
+      );
+    }
+
+    /** s1..sN 형태의 QAB 세션 행 — items는 postgres가 주는 대로 문자열이다 */
+    function qabSessions(
+      items: number[],
+    ): Array<{ token: string; items: string }> {
+      return items.map((n, i) => ({ token: `s${i + 1}`, items: String(n) }));
     }
 
     it('시작·완료 세션 수와 완료율(0..100)을 반환한다', async () => {
-      // 카운트는 postgres가 문자열로 돌려준다(bigint) — 숫자로 변환돼야 한다.
-      arrangeStats({ started: '10', completed: '7' }, [
-        { token: 's1', items: '9' },
-        { token: 's2', items: '2' },
-        { token: 's3', items: '1' },
-      ]);
+      // 10세션 시작, 그중 7세션에 완료 마커. 남은 3세션이 이탈이다.
+      arrangeStats(
+        qabSessions([9, 2, 1, 5, 5, 5, 5, 5, 5, 5]),
+        [],
+        ['s4', 's5', 's6', 's7', 's8', 's9', 's10'].map((token) => ({ token })),
+      );
 
       const res = await service.getSessionStats(PATIENT_ID, 30);
 
@@ -1968,8 +1986,87 @@ describe('QuizService', () => {
       });
     });
 
+    it('QAB 문항 없이 데일리만 푼 세션도 분모에 잡힌다', async () => {
+      // 이게 TODO-101 분모 버그였다. QAB 슬롯이 0인 세션 구성이 존재하는데
+      // qab_results만 세면 그 세션은 "시작한 적도 없는" 것으로 사라졌다.
+      arrangeStats([], [{ token: 'daily-only' }], []);
+
+      const res = await service.getSessionStats(PATIENT_ID, 30);
+
+      expect(res).toMatchObject({
+        started: 1,
+        completed: 0,
+        completionRate: 0,
+      });
+    });
+
+    it('데일리만 푼 세션도 완료 마커가 있으면 분자에 잡힌다', async () => {
+      arrangeStats([], [{ token: 'daily-only' }], [{ token: 'daily-only' }]);
+
+      const res = await service.getSessionStats(PATIENT_ID, 30);
+
+      expect(res).toMatchObject({
+        started: 1,
+        completed: 1,
+        completionRate: 100,
+      });
+    });
+
+    it('한 세션이 QAB·데일리 양쪽에 있어도 한 번만 센다', async () => {
+      // 실제로 흔한 구성(섞어 진행)이다. 합집합이 아니라 합이면 완료율이 반토막 난다.
+      arrangeStats(
+        [{ token: 's1', items: '3' }],
+        [{ token: 's1' }],
+        [{ token: 's1' }],
+      );
+
+      const res = await service.getSessionStats(PATIENT_ID, 30);
+
+      expect(res).toMatchObject({
+        started: 1,
+        completed: 1,
+        completionRate: 100,
+      });
+    });
+
+    it('창 밖 세션의 완료 마커가 완료율을 100% 위로 밀지 못한다', async () => {
+      // 마커 쪽 시간 창과 결과 쪽 시간 창이 어긋날 수 있다. 교집합을 안 내면
+      // completed가 started보다 커져서 "완료율 200%"가 나온다.
+      arrangeStats(
+        [{ token: 's1', items: '3' }],
+        [],
+        [{ token: 's1' }, { token: 'gone' }],
+      );
+
+      const res = await service.getSessionStats(PATIENT_ID, 30);
+
+      expect(res).toMatchObject({
+        started: 1,
+        completed: 1,
+        completionRate: 100,
+      });
+    });
+
+    it('이탈 지점 평균은 QAB 문항이 있던 세션만 센다', async () => {
+      // 데일리 전용 이탈 세션은 QAB 문항 수가 0이다. 섞어 세면 "0문항 풀고 이탈"이
+      // 평균을 끌어내려, 지표가 "얼마나 하다 그만뒀나"를 뜻하지 않게 된다.
+      arrangeStats(
+        [{ token: 's1', items: '4' }],
+        [{ token: 'daily-only' }],
+        [],
+      );
+
+      const res = await service.getSessionStats(PATIENT_ID, 30);
+
+      expect(res).toMatchObject({ started: 2, avgItemsBeforeDropoff: 4 });
+    });
+
     it('이탈 세션이 없으면 이탈 지점은 null이다', async () => {
-      arrangeStats({ started: '5', completed: '5' }, []);
+      arrangeStats(
+        qabSessions([3, 3, 3, 3, 3]),
+        [],
+        ['s1', 's2', 's3', 's4', 's5'].map((token) => ({ token })),
+      );
 
       const res = await service.getSessionStats(PATIENT_ID, 30);
 
@@ -1981,10 +2078,7 @@ describe('QuizService', () => {
 
     it('이탈 지점 평균은 소수 1자리로 반올림한다', async () => {
       // (1+2)/2 = 1.5 — 정수로 뭉개면 "1문항"과 "2문항"이 구분되지 않는다.
-      arrangeStats({ started: '2', completed: '0' }, [
-        { token: 's1', items: '1' },
-        { token: 's2', items: '2' },
-      ]);
+      arrangeStats(qabSessions([1, 2]), [], []);
 
       const res = await service.getSessionStats(PATIENT_ID, 30);
 
@@ -1992,7 +2086,7 @@ describe('QuizService', () => {
     });
 
     it('시작한 세션이 없으면 완료율은 null이다(비율을 지어내지 않는다)', async () => {
-      arrangeStats({ started: '0', completed: '0' }, []);
+      arrangeStats([], [], []);
 
       const res = await service.getSessionStats(PATIENT_ID, 30);
 
