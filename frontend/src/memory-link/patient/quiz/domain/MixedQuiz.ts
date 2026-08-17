@@ -77,6 +77,29 @@ export interface QabReadingItem {
 }
 
 /**
+ * QAB 글자 조합 문항 — 섞인 음절 타일을 눌러 목표 단어를 만든다(산출 과제).
+ *
+ * 출처는 **커리큘럼 단어 풀**이다. 예전에는 보호자 메모에서 만든 빈칸 문항을
+ * 변환해 썼는데, 그러면 한 문항이 기억 회상과 음절 조합을 동시에 물어 무엇을
+ * 못한 건지 분리되지 않았고 같은 목표가 반복되지도 않았다.
+ *
+ * 난이도는 **방해 타일 수**로 조절한다(레벨이 정한다). 상용 실어증 치료 도구가
+ * 이 과제를 단어 길이 × 방해 글자 0/2/4개로 등급화하는 것과 같은 축이다.
+ */
+export interface QabSpellItem {
+  itemId: string;
+  /** 만들어야 하는 목표 단어 — 로컬 채점 기준 */
+  targetWord: string;
+  /** 단서로 함께 보여주는 그림(단어 풀에 있는 경우) */
+  imageUrl: string;
+  /** 셔플된 음절 타일 (정답 음절 + 방해 음절) */
+  tiles: string[];
+  instruction: string;
+  /** 제시된 난이도 레벨(1~5). 결과 제출 시 백엔드 레벨링 윈도우에 사용. */
+  presentedLevel?: number;
+}
+
+/**
  * QAB 말운동/교대운동속도(검사8, DDK) 문항 — 한 음절을 빠르게 반복.
  * 마이크 녹음 → 음절 피크 수를 세어 targetCount 이상이면 통과(로컬 채점).
  */
@@ -98,6 +121,7 @@ export interface QabDdkItem {
  * - naming: QAB 그림 이름대기(보고 말하기) — 로컬 STT 채점
  * - repeat: QAB 따라말하기(듣고 따라 말하기) — 로컬 WER 채점
  * - reading: QAB 소리 내어 읽기(보고 읽기) — 로컬 WER 채점
+ * - spell: QAB 글자 조합(음절 타일로 단어 만들기) — 로컬 문자열 비교 채점
  * - ddk: QAB 말운동(음절 반복) — 로컬 피크 카운트 채점
  */
 export type PlayableItem =
@@ -106,6 +130,7 @@ export type PlayableItem =
   | { kind: 'naming'; id: string; item: QabNamingItem }
   | { kind: 'repeat'; id: string; item: QabRepeatItem }
   | { kind: 'reading'; id: string; item: QabReadingItem }
+  | { kind: 'spell'; id: string; item: QabSpellItem }
   | { kind: 'ddk'; id: string; item: QabDdkItem };
 
 /** 항목 채점 결과 (데일리/QAB 공통) */

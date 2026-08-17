@@ -16,7 +16,11 @@ import sentMirrorData from '../../../../assets/data/qabSentMirror.json';
 // AI 이미지 생성 스크립트(scripts/generate_sentcomp_images.py)가 만든 신규 장면 문항.
 // 이미지가 생성된 항목만 포함되며, 스크립트 실행 전에는 비어 있다.
 import sentGeneratedData from '../../../../assets/data/qabSentGenerated.json';
-import type { QabImageItem, QabNamingItem } from '../domain/MixedQuiz.js';
+import type {
+  QabImageItem,
+  QabNamingItem,
+  QabSpellItem,
+} from '../domain/MixedQuiz.js';
 
 interface RawWordChoice {
   choiceId: string;
@@ -54,10 +58,10 @@ const SENT_INSTRUCTION = '들려주는 문장에 맞는 그림을 골라주세�
 const NAMING_INSTRUCTION = '그림을 보고 이름을 말해주세요';
 
 /** Fisher-Yates 셔플 (원본 불변, 새 배열 반환). */
-function shuffle<T>(items: readonly T[]): T[] {
+function shuffle<T>(items: readonly T[], rng: () => number = Math.random): T[] {
   const result = [...items];
   for (let i = result.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     [result[i], result[j]] = [result[j], result[i]];
   }
   return result;
@@ -303,6 +307,88 @@ export function pickNamingItems(count: number, level?: number): QabNamingItem[] 
     .map((it) => toNamingItem(it, level))
     .filter((x): x is QabNamingItem => x !== null)
     .slice(0, Math.max(0, count));
+}
+
+// ─── 글자 조합(spell) ─────────────────────────────────────────────
+
+/**
+ * 방해 타일 후보 — 받침 유무가 섞인 흔한 한글 음절.
+ * 레벨 4~5에서 음운 유사 방해자로 좁히는 것은 후속 과제다(지금은 무작위).
+ */
+const SPELL_DISTRACTOR_POOL: readonly string[] = [
+  '가', '나', '다', '라', '마', '바', '사', '아', '자', '하',
+  '고', '노', '도', '로', '모', '보', '소', '오', '조', '호',
+  '구', '누', '두', '루', '무', '부', '수', '우', '주', '후',
+  '강', '산', '물', '불', '집', '길', '밤', '낮', '봄', '꽃',
+];
+
+/** 타일 총 개수 상한 (한 줄에 담기는 가독성). */
+const SPELL_MAX_TILES = 8;
+
+/**
+ * 레벨 → 방해 타일 수.
+ *
+ * 상용 실어증 치료 도구가 이 과제를 단어 길이 × 방해 글자 **0 / 2 / 4개**로
+ * 등급화하는 것을 그대로 따른다. 레벨 1~2에 **방해 0개**(정답 음절 재배열만)를
+ * 두는 게 핵심이다 — 예전 구현은 늘 3개라 가장 쉬운 진입 단계가 없었다.
+ */
+export function distractorCountForLevel(level?: number): number {
+  const lv = level == null ? 3 : Math.max(1, Math.min(5, Math.round(level)));
+  if (lv <= 2) return 0;
+  if (lv <= 4) return 2;
+  return 4;
+}
+
+/**
+ * 목표 단어를 음절로 쪼개고 방해 음절을 섞어 셔플한 타일을 만든다.
+ * 정답 음절의 중복은 보존한다(예: '바나나' → 바·나·나).
+ */
+export function buildSpellTiles(
+  targetWord: string,
+  level?: number,
+  rng: () => number = Math.random,
+): string[] {
+  const answer = Array.from(targetWord.replace(/\s+/g, ''));
+  if (answer.length === 0) return [];
+  const answerSet = new Set(answer);
+  const room = Math.max(0, SPELL_MAX_TILES - answer.length);
+  const wanted = Math.min(distractorCountForLevel(level), room);
+  const distractors = shuffle(
+    SPELL_DISTRACTOR_POOL.filter((s) => !answerSet.has(s)),
+    rng,
+  ).slice(0, wanted);
+  return shuffle([...answer, ...distractors], rng);
+}
+
+/**
+ * 글자 조합 문항을 무작위 count개 추출. level이 방해 타일 수를 정한다.
+ *
+ * 출처는 단어이해와 같은 커리큘럼 단어 풀이다. 같은 단어가 여러 세션에 반복될
+ * 수 있고(실어증 치료 이득은 훈련한 그 항목에 국한된다), 음절 수가 통제된다.
+ */
+export function pickSpellItems(count: number, level?: number): QabSpellItem[] {
+  return shuffle(WORD_ITEMS)
+    .map((it) => toSpellItem(it, level))
+    .filter((x): x is QabSpellItem => x !== null)
+    .slice(0, Math.max(0, count));
+}
+
+function toSpellItem(it: RawWordItem, level?: number): QabSpellItem | null {
+  const correct = it.choices.find((c) => c.isCorrect);
+  if (!correct) return null;
+  const tiles = buildSpellTiles(correct.label, level);
+  // 1음절 단어는 조합할 게 없어 과제가 성립하지 않는다.
+  if (tiles.length === 0 || Array.from(correct.label.trim()).length < 2) {
+    return null;
+  }
+  return {
+    itemId: `spell_${it.itemId}`,
+    targetWord: correct.label,
+    imageUrl: correct.imageUrl,
+    tiles,
+    instruction: '글자를 눌러 낱말을 만들어 보세요',
+    presentedLevel: level,
+  };
 }
 
 /** 단어이해 문항을 무작위 count개 추출. level로 선택지 난이도를 정한다. */
