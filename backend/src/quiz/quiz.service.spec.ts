@@ -53,6 +53,10 @@ describe('QuizService', () => {
   let qabResultRepo: ReturnType<typeof buildRepoMock>;
   let skillLevelRepo: ReturnType<typeof buildRepoMock>;
   let qabSessionCompletionRepo: ReturnType<typeof buildRepoMock>;
+  /** QAB 결과 INSERT에 넘긴 행들 (트랜잭션 쿼리빌더 mock이 채운다) */
+  let insertedValues: unknown[];
+  /** orIgnore() 호출 여부 — 멱등이 DB 수준(ON CONFLICT)인지 확인용 */
+  let orIgnoreCalls: boolean[];
   let memoryEntryRepo: ReturnType<typeof buildRepoMock>;
   let patientMemoryNoteRepo: ReturnType<typeof buildRepoMock>;
   let generationClientMock: { generate: jest.Mock };
@@ -141,6 +145,8 @@ describe('QuizService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    insertedValues = [];
+    orIgnoreCalls = [];
 
     // 기본값: 프로필 미등록 → 개인화 생략(원문 그대로 통과)
     personaSource = null;
@@ -224,6 +230,12 @@ describe('QuizService', () => {
                     }
                     throw new Error('예상치 못한 엔티티: 트랜잭션 findOne mock');
                   },
+                  // 두 경로가 이 빌더를 쓴다:
+                  //  (1) QAB 결과 INSERT ... ON CONFLICT DO NOTHING (insert 체인)
+                  //  (2) 레벨 재계산 윈도우 조회 (select 체인)
+                  // insert의 execute()는 qabResultRepo.save로 위임해 "어떤 행을
+                  // 넣으려 했나" assertion을 그대로 살린다. orIgnore는 별도 spy로
+                  // 노출해, 멱등이 DB 수준에서 보장되는지 테스트가 확인할 수 있게 한다.
                   createQueryBuilder: () => ({
                     select: jest.fn().mockReturnThis(),
                     where: jest.fn().mockReturnThis(),
@@ -232,6 +244,19 @@ describe('QuizService', () => {
                     addOrderBy: jest.fn().mockReturnThis(),
                     limit: jest.fn().mockReturnThis(),
                     getRawMany: jest.fn().mockResolvedValue([]),
+                    insert: jest.fn().mockReturnThis(),
+                    into: jest.fn().mockReturnThis(),
+                    values: jest.fn(function (this: unknown, rows: unknown) {
+                      insertedValues.push(rows);
+                      return this;
+                    }),
+                    orIgnore: jest.fn(function (this: unknown) {
+                      orIgnoreCalls.push(true);
+                      return this;
+                    }),
+                    execute: jest.fn(() =>
+                      qabResultRepo.save(insertedValues[insertedValues.length - 1]),
+                    ),
                   }),
                   upsert: (entity: unknown, values: unknown, conflict: unknown) => {
                     if (entity === SkillLevel) {
@@ -1628,9 +1653,13 @@ describe('QuizService', () => {
       expect(savedRows[1]).toMatchObject({ subtest: 'ddk', metric: 11 });
     });
 
-    it('같은 세션 재제출(UNIQUE 위반)은 멱등 — 던지지 않고 성공 처리', async () => {
+    it('재제출 멱등을 ON CONFLICT DO NOTHING으로 얻는다 — 예외를 내지 않는다', async () => {
+      // 예전에는 UNIQUE 위반을 try/catch로 삼켰는데, PostgreSQL에서 그건 멱등이
+      // 아니다. 트랜잭션 안에서 에러가 나는 순간 abort 상태가 되어, 바로 뒤의
+      // 레벨 재계산·완료 마커가 25P02로 같이 죽는다. 즉 **애초에 예외가 나지
+      // 않아야** 하고, 그걸 보장하는 게 orIgnore()다.
       skillLevelRepo.find.mockResolvedValue([]);
-      qabResultRepo.save.mockRejectedValue({ code: '23505' });
+      qabResultRepo.save.mockResolvedValue([]);
       const dto: SubmitQabResultsDto = {
         sessionToken: SESSION_TOKEN,
         results: [{ subtest: 'word', itemRef: 'qw_001', isCorrect: true }],
@@ -1639,9 +1668,26 @@ describe('QuizService', () => {
       await expect(service.saveQabResults(PATIENT_ID, dto)).resolves.toEqual({
         saved: 1,
       });
+      expect(orIgnoreCalls).toHaveLength(1);
     });
 
-    it('UNIQUE 위반이 아닌 DB 오류는 전파한다', async () => {
+    it('중복 제출이어도 레벨 재계산과 완료 마커가 진행된다', async () => {
+      // 이게 무너졌던 지점이다. insert가 조용히 no-op이 되므로 트랜잭션은
+      // 살아 있고, 뒤따르는 작업이 정상 수행돼야 한다.
+      skillLevelRepo.find.mockResolvedValue([]);
+      qabResultRepo.save.mockResolvedValue([]);
+      const dto: SubmitQabResultsDto = {
+        sessionToken: SESSION_TOKEN,
+        completed: true,
+        results: [{ subtest: 'word', itemRef: 'qw_001', isCorrect: true }],
+      };
+
+      await service.saveQabResults(PATIENT_ID, dto);
+
+      expect(qabSessionCompletionRepo.upsert).toHaveBeenCalledTimes(1);
+    });
+
+    it('DB 오류는 그대로 전파한다', async () => {
       skillLevelRepo.find.mockResolvedValue([]);
       qabResultRepo.save.mockRejectedValue({ code: '08006' }); // connection failure
       const dto: SubmitQabResultsDto = {
@@ -1840,6 +1886,7 @@ describe('QuizService', () => {
       // 2순위: 마지막 출제가 오래된 것 — 여기서 "간격"이 생긴다
       expect(qb.addOrderBy).toHaveBeenCalledWith('max(r.created_at)', 'ASC');
     });
+
   });
 
   describe('getSessionStats', () => {

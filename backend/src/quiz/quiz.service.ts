@@ -1030,15 +1030,23 @@ export class QuizService {
     // insert + 레벨 재계산 + UPSERT를 단일 트랜잭션으로. 재계산은 현재 레벨에서
     // 제시된 최근 윈도우로 결정론적이라, 중복/재시도 제출이 레벨을 이중으로
     // 움직이지 않는다(dedup UNIQUE가 insert를 no-op으로 만들고 윈도우는 동일).
+    //
+    // 멱등은 **DB가 제공하게 한다** — `ON CONFLICT DO NOTHING`.
+    //
+    // 예전에는 `manager.save()`를 try/catch로 감싸 UNIQUE 위반을 삼켰는데,
+    // PostgreSQL에서 그건 멱등이 아니다. 트랜잭션 안에서 에러가 나면 그 트랜잭션은
+    // **abort 상태**가 되어 ROLLBACK 전까지 후속 명령이 전부 25P02로 실패한다.
+    // 즉 잡아도 소용이 없고, 바로 아래 레벨 재계산과 완료 마커가 같이 죽어
+    // 재제출한 세션의 결과가 통째로 롤백됐다. 주석은 "재계산은 그대로 진행"이라고
+    // 단언하고 있었다. 애초에 예외를 안 내는 것이 유일하게 맞는 방법이다.
     await this.dataSource.transaction(async (manager) => {
-      try {
-        await manager.save(QabResult, rows);
-      } catch (error) {
-        if (!this.isUniqueViolation(error)) {
-          throw error;
-        }
-        // 멱등: 재제출은 UNIQUE 위반 → 이미 저장됨. 재계산은 그대로 진행(동일 결과).
-      }
+      await manager
+        .createQueryBuilder()
+        .insert()
+        .into(QabResult)
+        .values(rows)
+        .orIgnore()
+        .execute();
       for (const subtest of affectedSubtests) {
         await this.recomputeSkillLevel(manager, effectivePatientId, subtest);
       }
