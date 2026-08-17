@@ -36,6 +36,7 @@ import {
   pickNamingItems,
   pickSpellItems,
 } from '../infrastructure/QabItemBank.js';
+import type { PickSpellOptions } from '../infrastructure/QabItemBank.js';
 import {
   moveEasiestLast,
   shouldFatigueExit,
@@ -116,7 +117,11 @@ export interface UseMixedQuizDeps {
   /** QAB 그림 이름대기 문항 추출기 (테스트 주입용). level로 제시 난이도 지정. */
   pickNamingItems?: (count: number, level?: number) => QabNamingItem[];
   /** 글자 조합 문항 추출(테스트 주입용). level이 방해 타일 수를 정한다. */
-  pickSpellItems?: (count: number, level?: number) => QabSpellItem[];
+  pickSpellItems?: (
+    count: number,
+    level?: number,
+    options?: PickSpellOptions,
+  ) => QabSpellItem[];
   /** QAB 따라말하기 문항 추출기 (테스트 주입용) */
   pickRepeatItems?: (count: number) => QabRepeatItem[];
   /** QAB 소리 내어 읽기 문항 추출기 (테스트 주입용) */
@@ -262,8 +267,30 @@ export function useMixedQuizSession(
       const namingItems: PlayableItem[] = pickNamingRef
         .current(namingCount, levels?.naming)
         .map((it) => ({ kind: 'naming', id: it.itemId, item: it }));
+      // 재출제 우선순위: 최근에 틀린 문항부터. 실어증 치료 이득은 훈련한 그
+      // 항목을 크게 넘어가지 않으므로(limited transfer), 같은 목표가 여러 세션에
+      // 반복돼야 의미가 있다. 조회에 실패해도 세션은 진행한다(무작위로 떨어질 뿐).
+      let spellPriority: string[] = [];
+      if (spellCount > 0) {
+        try {
+          const recent = await apiRef.current.getRecentItems('spell');
+          spellPriority = recent
+            .filter((r) => !r.everCorrect)
+            .map((r) => r.itemRef);
+        } catch {
+          spellPriority = [];
+        }
+      }
+      // 같은 세션의 단어이해 문항이 정답 단어를 TTS로 들려주므로(promptText),
+      // 그 단어가 글자 조합으로 또 나오면 답을 알려준 셈이다.
+      const spokenWords = qabItems
+        .map((p) => (p.kind === 'qab' ? p.item.promptText : ''))
+        .filter((w) => w.length > 0);
       const spellItems: PlayableItem[] = pickSpellRef
-        .current(spellCount, levels?.spell)
+        .current(spellCount, levels?.spell, {
+          exclude: spokenWords,
+          priority: spellPriority,
+        })
         .map((it) => ({ kind: 'spell', id: it.itemId, item: it }));
       const repeatItems: PlayableItem[] = pickRepeatRef
         .current(repeatCount)

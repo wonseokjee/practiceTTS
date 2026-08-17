@@ -89,12 +89,20 @@ function makeApi(overrides?: Partial<IQuizApi>): IQuizApi {
     getQabSummary: vi.fn().mockResolvedValue([]),
     getSkillLevels: vi.fn().mockResolvedValue({
       levels: {
-        word: 2, sentence: 2, naming: 2, repeat: 2, reading: 2, ddk: 2, loc: 2,
+        word: 2, sentence: 2, naming: 2, repeat: 2, reading: 2, spell: 2,
+        ddk: 2, loc: 2,
       },
       manifestVersion: 1,
     }),
+    getActivityDays: vi.fn().mockResolvedValue([]),
+    getSessionStats: vi.fn(),
+    getRecentItems: vi.fn().mockResolvedValue([]),
+    getQabTrend: vi.fn().mockResolvedValue([]),
     ...overrides,
-  } as IQuizApi;
+  };
+  // `as IQuizApi` 캐스트를 쓰지 않는다. 캐스트하면 인터페이스에 메서드가 늘어도
+  // 목이 비어 있는 걸 타입이 못 잡고, 런타임에 "not defined on the object"로
+  // 터진다(실제로 getRecentItems를 추가하며 그렇게 터졌다).
 }
 
 /** QAB 그림 이름대기 1문항 */
@@ -905,3 +913,88 @@ describe('글자 조합(spell)', () => {
     ]);
   });
 });
+
+describe('글자 조합 — 반복과 중복 방지', () => {
+  it('최근에 틀린 문항을 우선순위로 넘긴다', async () => {
+    // 실어증 치료 이득은 훈련한 그 항목을 크게 넘어가지 않는다(limited transfer).
+    // 맞힌 문항은 우선순위에서 빼고 틀린 것만 다시 낸다.
+    const api = makeApi();
+    vi.spyOn(api, 'getRecentItems').mockResolvedValue([
+      { itemRef: 'spell_w9', everCorrect: false, lastAt: '2026-08-16T00:00:00Z' },
+      { itemRef: 'spell_w1', everCorrect: true, lastAt: '2026-08-16T00:00:00Z' },
+    ]);
+    const spy = vi.fn().mockReturnValue(makeSpellItems());
+
+    renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: api,
+        pickQabItems: () => [],
+        generateSessionToken: () => 'tok-rep',
+        dailyCount: 0,
+        qabCount: 0,
+        ...NO_SPEECH,
+        pickSpellItems: spy,
+        spellCount: 1,
+      }),
+    );
+
+    await waitFor(() => expect(spy).toHaveBeenCalled());
+    const opts = spy.mock.calls[0][2];
+    expect(opts.priority).toEqual(['spell_w9']);
+  });
+
+  it('같은 세션의 단어이해 정답은 글자 조합에서 제외한다', async () => {
+    // 단어이해가 정답 단어를 TTS로 들려주므로 겹치면 답을 알려준 셈이 된다.
+    const spy = vi.fn().mockReturnValue(makeSpellItems());
+
+    renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi(),
+        pickQabItems: () => [
+          {
+            itemId: 'w_apple',
+            category: 'word',
+            promptText: '사과',
+            choices: [
+              { choiceId: 'c1', label: '사과', imageUrl: '/a.svg', isCorrect: true },
+            ],
+            instruction: '들은 것을 고르세요',
+          },
+        ],
+        generateSessionToken: () => 'tok-dup',
+        dailyCount: 0,
+        qabCount: 1,
+        ...NO_SPEECH,
+        pickSpellItems: spy,
+        spellCount: 1,
+      }),
+    );
+
+    await waitFor(() => expect(spy).toHaveBeenCalled());
+    expect(spy.mock.calls[0][2].exclude).toContain('사과');
+  });
+
+  it('이력 조회가 실패해도 세션은 진행된다', async () => {
+    // 반복은 있으면 좋은 것이지 세션을 막을 이유가 아니다.
+    const api = makeApi();
+    vi.spyOn(api, 'getRecentItems').mockRejectedValue(new Error('network'));
+    const spy = vi.fn().mockReturnValue(makeSpellItems());
+
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: api,
+        pickQabItems: () => [],
+        generateSessionToken: () => 'tok-fail',
+        dailyCount: 0,
+        qabCount: 0,
+        ...NO_SPEECH,
+        pickSpellItems: spy,
+        spellCount: 1,
+      }),
+    );
+
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+    expect(spy.mock.calls[0][2].priority).toEqual([]);
+  });
+});
+

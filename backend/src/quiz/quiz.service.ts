@@ -146,6 +146,14 @@ export interface SaveQabResultsResult {
  * 안 푼 경우는 qab_results에 행이 없어 분모에 들어가지 않는다 — 우연한 진입을
  * 이탈로 세지 않기 위함이다.
  */
+/** 최근 문항 성적 1건 (재출제 우선순위 산출용). */
+export interface RecentItemResult {
+  itemRef: string;
+  /** 최근 N일 동안 한 번이라도 맞혔는가. false면 재출제 우선순위가 높다. */
+  everCorrect: boolean;
+  lastAt: string;
+}
+
 export interface SessionStatsResult {
   started: number;
   completed: number;
@@ -1142,6 +1150,47 @@ export class QuizService {
       .orderBy('day', 'DESC')
       .getRawMany<{ day: string }>();
     return raw.map((x) => x.day);
+  }
+
+  /**
+   * 최근 N일 동안 이 검사에서 낸 문항별 최근 성적 (문항 재출제용).
+   *
+   * 실어증 치료 이득은 **훈련한 그 항목**을 크게 넘어가지 않는다(limited
+   * transfer). 그래서 같은 목표가 여러 세션에 반복돼야 의미가 있는데, 프론트가
+   * 무작위로 뽑으면 70개 풀에서 재등장이 평균 70세션이라 사실상 반복이 없다.
+   * 이 조회로 "최근에 틀린 것부터" 다시 낼 수 있게 한다.
+   *
+   * 문항당 **가장 최근 1건**만 준다 — 같은 문항을 여러 번 푼 이력을 전부 내려
+   * 보내면 프론트가 다시 집계해야 한다. 정렬은 (틀린 것 우선, 오래된 것 우선)
+   * 이라 앞에서부터 쓰면 그대로 우선순위가 된다.
+   */
+  async getRecentItems(
+    effectivePatientId: string,
+    subtest: QabSubtest,
+    days = 30,
+    limit = 50,
+  ): Promise<RecentItemResult[]> {
+    const raw = await this.qabResultRepository
+      .createQueryBuilder('r')
+      .select('r.item_ref', 'itemRef')
+      .addSelect('bool_or(r.is_correct)', 'everCorrect')
+      .addSelect('max(r.created_at)', 'lastAt')
+      .where('r.patient_id = :pid', { pid: effectivePatientId })
+      .andWhere('r.subtest = :subtest', { subtest })
+      // 보호자가 넘어가기로 통과시킨 건 실력 근거가 아니라 재출제 판단에서 뺀다.
+      .andWhere('r.assisted = false')
+      .andWhere('r.created_at >= now() - make_interval(days => :days)', { days })
+      .groupBy('r.item_ref')
+      .orderBy('bool_or(r.is_correct)', 'ASC')
+      .addOrderBy('max(r.created_at)', 'ASC')
+      .limit(Math.max(1, Math.min(200, limit)))
+      .getRawMany<{ itemRef: string; everCorrect: boolean; lastAt: Date }>();
+
+    return raw.map((x) => ({
+      itemRef: x.itemRef,
+      everCorrect: x.everCorrect,
+      lastAt: x.lastAt.toISOString(),
+    }));
   }
 
   /**

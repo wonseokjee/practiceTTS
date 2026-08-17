@@ -11,7 +11,7 @@ import { QuizBestScore } from './entities/quiz-best-score.entity';
 import { QuizQuestion } from './entities/quiz-question.entity';
 import { QuizSet } from './entities/quiz-set.entity';
 import { SkillLevel } from './entities/skill-level.entity';
-import { QAB_SUBTESTS } from './constants/qab-subtest';
+import { QAB_MANIFEST_VERSION, QAB_SUBTESTS } from './constants/qab-subtest';
 import { QuizError, QuizErrorCode } from './errors/quiz.errors';
 import { QUIZ_GENERATION_CLIENT } from './interfaces/IQuizGenerationClient';
 import { QUIZ_SCORER } from './interfaces/IQuizScorer';
@@ -1716,7 +1716,8 @@ describe('QuizService', () => {
 
       const res = await service.getSkillLevels(PATIENT_ID);
 
-      expect(res.manifestVersion).toBe(1);
+      // 버전을 올릴 때마다 테스트가 깨지지 않도록 상수를 참조한다.
+      expect(res.manifestVersion).toBe(QAB_MANIFEST_VERSION);
       for (const subtest of QAB_SUBTESTS) {
         expect(res.levels[subtest]).toBe(2);
       }
@@ -1756,6 +1757,73 @@ describe('QuizService', () => {
       expect(qb.where).toHaveBeenCalledWith('r.patient_id = :pid', {
         pid: PATIENT_ID,
       });
+    });
+  });
+
+  describe('getRecentItems', () => {
+    /** createQueryBuilder 체이닝 mock — getRawMany 결과를 지정 */
+    function arrangeRecent(rows: unknown[]) {
+      const qb = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        addOrderBy: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue(rows),
+      };
+      qabResultRepo.createQueryBuilder.mockReturnValue(qb);
+      return qb;
+    }
+
+    it('문항별 최근 성적을 ISO 문자열로 반환한다', async () => {
+      arrangeRecent([
+        {
+          itemRef: 'spell_w9',
+          everCorrect: false,
+          lastAt: new Date('2026-08-16T00:00:00.000Z'),
+        },
+      ]);
+
+      const res = await service.getRecentItems(PATIENT_ID, 'spell', 30);
+
+      expect(res).toEqual([
+        {
+          itemRef: 'spell_w9',
+          everCorrect: false,
+          lastAt: '2026-08-16T00:00:00.000Z',
+        },
+      ]);
+    });
+
+    it('보호자가 넘어가기로 통과시킨 결과는 제외한다', async () => {
+      // assisted는 실력 근거가 아니다. 재출제 우선순위를 왜곡하면 안 된다.
+      const qb = arrangeRecent([]);
+
+      await service.getRecentItems(PATIENT_ID, 'spell');
+
+      expect(qb.andWhere).toHaveBeenCalledWith('r.assisted = false');
+    });
+
+    it('요청 검사만 조회한다', async () => {
+      const qb = arrangeRecent([]);
+
+      await service.getRecentItems(PATIENT_ID, 'spell');
+
+      expect(qb.andWhere).toHaveBeenCalledWith('r.subtest = :subtest', {
+        subtest: 'spell',
+      });
+    });
+
+    it('limit을 안전 범위로 가둔다', async () => {
+      // 사용자 입력이 그대로 오면 전체 이력을 훑게 된다.
+      const qb = arrangeRecent([]);
+
+      await service.getRecentItems(PATIENT_ID, 'spell', 30, 99999);
+
+      expect(qb.limit).toHaveBeenCalledWith(200);
     });
   });
 

@@ -195,8 +195,12 @@ describe('distractorCountForLevel', () => {
     expect(distractorCountForLevel(5)).toBe(4);
   });
 
-  it('레벨 미지정이면 중간(3)으로 본다', () => {
-    expect(distractorCountForLevel(undefined)).toBe(2);
+  it('레벨 미지정이면 백엔드 콜드스타트(2)와 같은 난이도를 쓴다', () => {
+    // 스킬 레벨 조회가 실패하면 level이 undefined로 온다. 이때 임의의 중간값을
+    // 쓰면 환자는 방해 2개를 푸는데 서버는 레벨 2(방해 0개)로 기록해 본 난이도와
+    // 기록이 어긋난다 — 적응 레벨링의 전제가 깨진다.
+    expect(distractorCountForLevel(undefined)).toBe(distractorCountForLevel(2));
+    expect(distractorCountForLevel(undefined)).toBe(0);
   });
 
   it('범위를 벗어난 레벨은 클램프한다', () => {
@@ -271,3 +275,60 @@ describe('pickSpellItems', () => {
     expect(items.every((it) => Array.from(it.targetWord).length >= 2)).toBe(true);
   });
 });
+
+describe('pickSpellItems — 난이도·중복·반복', () => {
+  it('레벨이 낮으면 짧은 단어만 낸다', () => {
+    // 방해 타일 수만으로는 난이도가 통제되지 않는다. 4음절+방해0은 2음절+방해0과
+    // 전혀 다른 과제라, 길이를 안 묶으면 레벨별 정답률이 어휘 부하와 교란된다.
+    const items = pickSpellItems(20, 1);
+
+    expect(items.length).toBeGreaterThan(0);
+    for (const it of items) {
+      expect(Array.from(it.targetWord.replace(/\s+/g, ''))).toHaveLength(2);
+    }
+  });
+
+  it('레벨이 높으면 긴 단어가 나온다', () => {
+    const items = pickSpellItems(20, 5);
+
+    expect(items.length).toBeGreaterThan(0);
+    for (const it of items) {
+      const n = Array.from(it.targetWord.replace(/\s+/g, '')).length;
+      expect(n).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it('제외 목록의 단어는 내지 않는다', () => {
+    // 같은 세션의 단어이해가 정답을 TTS로 들려주므로 겹치면 답을 알려준 셈이다.
+    const all = pickSpellItems(50, 3).map((it) => it.targetWord);
+    const banned = all.slice(0, 3);
+
+    const items = pickSpellItems(50, 3, { exclude: banned });
+
+    for (const b of banned) {
+      expect(items.map((it) => it.targetWord)).not.toContain(b);
+    }
+  });
+
+  it('우선순위 문항을 앞으로 당긴다', () => {
+    // 최근에 틀린 문항을 다시 내야 반복 훈련이 성립한다.
+    const pool = pickSpellItems(50, 3);
+    const target = pool[pool.length - 1];
+
+    const items = pickSpellItems(1, 3, { priority: [target.itemId] });
+
+    expect(items[0].itemId).toBe(target.itemId);
+  });
+
+  it('레벨 범위에 맞는 단어가 부족하면 범위를 풀어 문항을 채운다', () => {
+    // 문항이 조용히 사라지는 것보다 난이도가 조금 어긋나는 편이 낫다.
+    const items = pickSpellItems(200, 5);
+
+    expect(items.length).toBeGreaterThan(10);
+  });
+
+  it('count가 0이면 빈 배열', () => {
+    expect(pickSpellItems(0, 3)).toEqual([]);
+  });
+});
+

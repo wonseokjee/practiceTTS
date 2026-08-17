@@ -322,6 +322,12 @@ const SPELL_DISTRACTOR_POOL: readonly string[] = [
   '강', '산', '물', '불', '집', '길', '밤', '낮', '봄', '꽃',
 ];
 
+/**
+ * 레벨을 모를 때 쓰는 기본값. 백엔드 `COLD_START_LEVEL`과 **같아야 한다** —
+ * 다르면 환자가 본 난이도와 서버가 기록한 레벨이 어긋난다.
+ */
+const COLD_START_LEVEL = 2;
+
 /** 타일 총 개수 상한 (한 줄에 담기는 가독성). */
 const SPELL_MAX_TILES = 8;
 
@@ -333,7 +339,13 @@ const SPELL_MAX_TILES = 8;
  * 두는 게 핵심이다 — 예전 구현은 늘 3개라 가장 쉬운 진입 단계가 없었다.
  */
 export function distractorCountForLevel(level?: number): number {
-  const lv = level == null ? 3 : Math.max(1, Math.min(5, Math.round(level)));
+  // 레벨을 모를 때(스킬 레벨 조회 실패)는 **백엔드 콜드스타트와 같은 값**을 쓴다.
+  // 임의의 중간값(3)을 쓰면 환자는 방해 2개짜리를 푸는데 서버는 레벨 2(방해 0개)로
+  // 도장을 찍어, 본 난이도와 기록이 어긋난다. 적응 레벨링의 전제가
+  // "presented_level로 능력과 제시난이도 교란을 제거한다"이므로 그 전제가 깨진다.
+  // 서버가 클라이언트 값을 믿지 않는 건 의도된 설계(eb09bd8)라, 맞춰야 하는 쪽은
+  // 프론트의 기본값이다.
+  const lv = level == null ? COLD_START_LEVEL : Math.max(1, Math.min(5, Math.round(level)));
   if (lv <= 2) return 0;
   if (lv <= 4) return 2;
   return 4;
@@ -361,16 +373,98 @@ export function buildSpellTiles(
 }
 
 /**
- * 글자 조합 문항을 무작위 count개 추출. level이 방해 타일 수를 정한다.
+ * 레벨 → 목표 단어 음절 수 범위.
  *
- * 출처는 단어이해와 같은 커리큘럼 단어 풀이다. 같은 단어가 여러 세션에 반복될
- * 수 있고(실어증 치료 이득은 훈련한 그 항목에 국한된다), 음절 수가 통제된다.
+ * 방해 타일 수만으로는 난이도가 통제되지 않는다. 4음절 단어에 방해 0개는 2음절
+ * 단어에 방해 0개와 전혀 다른 과제인데, 예전에는 2~4음절이 섞여 나와 레벨별
+ * 정답률이 어휘·순서 부하와 교란됐다("이 환자는 방해 2개에서 잘한다"가 아니라
+ * "짧은 단어가 운 좋게 많이 나왔다"를 학습한다).
+ *
+ * 길이와 방해 수를 함께 올려 두 축이 같은 방향을 보게 한다.
  */
-export function pickSpellItems(count: number, level?: number): QabSpellItem[] {
-  return shuffle(WORD_ITEMS)
-    .map((it) => toSpellItem(it, level))
-    .filter((x): x is QabSpellItem => x !== null)
-    .slice(0, Math.max(0, count));
+function syllableRangeForLevel(level?: number): { min: number; max: number } {
+  const lv = level == null ? COLD_START_LEVEL : Math.max(1, Math.min(5, Math.round(level)));
+  if (lv <= 2) return { min: 2, max: 2 };
+  if (lv <= 4) return { min: 2, max: 3 };
+  return { min: 3, max: 4 };
+}
+
+/** 공백 제외 음절 수. */
+function syllableCount(text: string): number {
+  return Array.from(text.replace(/\s+/g, '')).length;
+}
+
+export interface PickSpellOptions {
+  /**
+   * 이 목표 단어들은 제외한다. 같은 세션의 단어이해 문항이 정답 단어를 TTS로
+   * 들려주므로(promptText), 겹치면 답을 알려준 셈이 된다.
+   */
+  exclude?: readonly string[];
+  /**
+   * 우선 재출제할 목표 단어(최근 틀린 것부터). 실어증 치료 이득은 훈련한 그
+   * 항목을 크게 넘어가지 않으므로(limited transfer), 같은 단어가 여러 세션에
+   * 반복돼야 의미가 있다. 비면 무작위로 떨어진다.
+   */
+  priority?: readonly string[];
+}
+
+/**
+ * 글자 조합 문항을 count개 추출.
+ *
+ * 선택 순서: (1) 레벨에 맞는 음절 수 + 제외 목록으로 후보를 좁히고,
+ * (2) `priority`에 있는 단어를 앞으로 당기고, (3) 나머지는 무작위.
+ *
+ * 후보를 먼저 좁힌 뒤에 타일을 만든다 — 예전에는 70개 전부에 타일을 만들고
+ * 1개만 썼다. 이력 조회가 얹히는 지금은 그 낭비가 그대로 비용이 된다.
+ */
+export function pickSpellItems(
+  count: number,
+  level?: number,
+  options?: PickSpellOptions,
+): QabSpellItem[] {
+  const want = Math.max(0, count);
+  if (want === 0) return [];
+
+  const { min, max } = syllableRangeForLevel(level);
+  const excluded = new Set(options?.exclude ?? []);
+  const priority = options?.priority ?? [];
+  const priorityRank = new Map(priority.map((w, i) => [w, i]));
+
+  const labelOf = (it: RawWordItem): string =>
+    it.choices.find((c) => c.isCorrect)?.label ?? '';
+  // priority는 제출 이력의 itemRef(`spell_<itemId>`)로 들어온다. 라벨(한글 단어)로
+  // 조회하면 절대 안 맞는다 — 두 키를 섞지 않도록 여기서 명시적으로 만든다.
+  const spellIdOf = (it: RawWordItem): string => `spell_${it.itemId}`;
+
+  const eligible = WORD_ITEMS.filter((it) => {
+    const label = labelOf(it);
+    if (label.length === 0 || excluded.has(label)) return false;
+    const n = syllableCount(label);
+    return n >= min && n <= max;
+  });
+
+  // 레벨 범위에 맞는 단어가 부족하면 범위를 풀어 세션이 비지 않게 한다
+  // (문항이 조용히 사라지는 것보다 난이도가 조금 어긋나는 편이 낫다).
+  const pool = eligible.length >= want
+    ? eligible
+    : WORD_ITEMS.filter((it) => {
+        const label = labelOf(it);
+        return label.length > 0 && !excluded.has(label) && syllableCount(label) >= 2;
+      });
+
+  const ordered = shuffle(pool).sort((a, b) => {
+    const ra = priorityRank.get(spellIdOf(a)) ?? Number.MAX_SAFE_INTEGER;
+    const rb = priorityRank.get(spellIdOf(b)) ?? Number.MAX_SAFE_INTEGER;
+    return ra - rb;
+  });
+
+  const picked: QabSpellItem[] = [];
+  for (const it of ordered) {
+    if (picked.length >= want) break;
+    const item = toSpellItem(it, level);
+    if (item !== null) picked.push(item);
+  }
+  return picked;
 }
 
 function toSpellItem(it: RawWordItem, level?: number): QabSpellItem | null {
