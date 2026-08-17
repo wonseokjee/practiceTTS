@@ -3,6 +3,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   WORD_CATEGORY,
+  asItemRef,
+  asWordLabel,
   buildSpellTiles,
   distractorCountForLevel,
   pickNamingItems,
@@ -303,7 +305,7 @@ describe('pickSpellItems — 난이도·중복·반복', () => {
     const all = pickSpellItems(50, 3).map((it) => it.targetWord);
     const banned = all.slice(0, 3);
 
-    const items = pickSpellItems(50, 3, { exclude: banned });
+    const items = pickSpellItems(50, 3, { exclude: banned.map(asWordLabel) });
 
     for (const b of banned) {
       expect(items.map((it) => it.targetWord)).not.toContain(b);
@@ -315,7 +317,7 @@ describe('pickSpellItems — 난이도·중복·반복', () => {
     const pool = pickSpellItems(50, 3);
     const target = pool[pool.length - 1];
 
-    const items = pickSpellItems(1, 3, { priority: [target.itemId] });
+    const items = pickSpellItems(1, 3, { priority: [asItemRef(target.itemId)] });
 
     expect(items[0].itemId).toBe(target.itemId);
   });

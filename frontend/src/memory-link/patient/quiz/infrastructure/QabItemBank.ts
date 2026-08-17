@@ -147,6 +147,29 @@ const MASTER_WORDS: MasterWord[] = (() => {
 //   - sameCat: 같은 의미 범주 오답 수(많을수록 범주만으론 못 맞춤 → 변별↑)
 // 낮은 레벨은 선택지 적고 오답이 무관(먼) 단어라 쉽고, 높은 레벨은 선택지 많고
 // 오답이 전부 같은 범주(근접)라 어렵다.
+/**
+ * 레벨을 모를 때 쓰는 기본값. 백엔드 `COLD_START_LEVEL`과 **같아야 한다** —
+ * 다르면 환자가 본 난이도와 서버가 기록한 레벨이 어긋난다.
+ */
+const COLD_START_LEVEL = 2;
+
+/**
+ * 적응 레벨을 [1..5] 정수로 정규화한다. **난이도 축이 여럿이라 반드시 공유해야 한다.**
+ *
+ * 예전에는 이 식(`level == null ? 기본 : clamp(round(level))`)이 세 함수에 복사돼
+ * 있었고, 이미 갈라져 있었다 — 두 곳은 `COLD_START_LEVEL`(=2), 한 곳은 `3`.
+ * 축마다 다른 레벨을 보면 "레벨 5인데 방해 타일은 레벨 2 수준" 같은 조합이 나오고,
+ * 각 함수를 따로 검증하는 테스트로는 그 어긋남을 잡을 수 없다.
+ *
+ * `fallback`을 **인자로 강제**하는 건 의도적이다. 그림선택은 기존 동작 보존을 위해
+ * 3을 쓰고 글자 조합은 콜드스타트 2를 쓴다 — 서로 다른 게 맞는 값이라, 기본값을
+ * 숨기면 호출자가 어느 쪽을 받는지 모르게 된다.
+ */
+function normalizeLevel(level: number | undefined, fallback: number): number {
+  if (level == null) return fallback;
+  return Math.max(1, Math.min(5, Math.round(level)));
+}
+
 export interface ChoiceSpec {
   total: number;
   sameCat: number;
@@ -161,7 +184,7 @@ export const LEVEL_CHOICE_SPEC: Record<number, ChoiceSpec> = {
 
 /** 레벨을 [1..5]로 클램프하고 해당 스펙을 돌려준다(미지정/범위밖은 3=기본). */
 function choiceSpecForLevel(level?: number): ChoiceSpec {
-  const lv = level == null ? 3 : Math.max(1, Math.min(5, Math.round(level)));
+  const lv = normalizeLevel(level, 3);
   return LEVEL_CHOICE_SPEC[lv];
 }
 
@@ -322,12 +345,6 @@ const SPELL_DISTRACTOR_POOL: readonly string[] = [
   '강', '산', '물', '불', '집', '길', '밤', '낮', '봄', '꽃',
 ];
 
-/**
- * 레벨을 모를 때 쓰는 기본값. 백엔드 `COLD_START_LEVEL`과 **같아야 한다** —
- * 다르면 환자가 본 난이도와 서버가 기록한 레벨이 어긋난다.
- */
-const COLD_START_LEVEL = 2;
-
 /** 타일 총 개수 상한 (한 줄에 담기는 가독성). */
 const SPELL_MAX_TILES = 8;
 
@@ -345,7 +362,7 @@ export function distractorCountForLevel(level?: number): number {
   // "presented_level로 능력과 제시난이도 교란을 제거한다"이므로 그 전제가 깨진다.
   // 서버가 클라이언트 값을 믿지 않는 건 의도된 설계(eb09bd8)라, 맞춰야 하는 쪽은
   // 프론트의 기본값이다.
-  const lv = level == null ? COLD_START_LEVEL : Math.max(1, Math.min(5, Math.round(level)));
+  const lv = normalizeLevel(level, COLD_START_LEVEL);
   if (lv <= 2) return 0;
   if (lv <= 4) return 2;
   return 4;
@@ -383,7 +400,7 @@ export function buildSpellTiles(
  * 길이와 방해 수를 함께 올려 두 축이 같은 방향을 보게 한다.
  */
 function syllableRangeForLevel(level?: number): { min: number; max: number } {
-  const lv = level == null ? COLD_START_LEVEL : Math.max(1, Math.min(5, Math.round(level)));
+  const lv = normalizeLevel(level, COLD_START_LEVEL);
   if (lv <= 2) return { min: 2, max: 2 };
   if (lv <= 4) return { min: 2, max: 3 };
   return { min: 3, max: 4 };
@@ -394,18 +411,43 @@ function syllableCount(text: string): number {
   return Array.from(text.replace(/\s+/g, '')).length;
 }
 
+/**
+ * 화면에 보이는 한글 낱말 그 자체 (예: `'사과'`).
+ *
+ * `SpellItemRef`와 **절대 섞이면 안 된다.** 둘 다 실체는 string이라, 브랜드를
+ * 안 붙이면 서로 바꿔 넣어도 컴파일이 통과하고 런타임에도 예외가 없다 —
+ * 그냥 조용히 아무 효과가 없어지고 결과가 무작위처럼 보인다. 실제로 한 번 그랬다.
+ */
+export type SpellWordLabel = string & { readonly __brand: 'SpellWordLabel' };
+
+/** 제출 이력에서 쓰는 문항 식별자 (예: `'spell_qw_002'`). {@link SpellWordLabel} 참고. */
+export type SpellItemRef = string & { readonly __brand: 'SpellItemRef' };
+
+/** 한글 낱말을 {@link SpellWordLabel}로 표시한다(값은 그대로). */
+export const asWordLabel = (s: string): SpellWordLabel => s as SpellWordLabel;
+
+/** 제출 이력의 itemRef를 {@link SpellItemRef}로 표시한다(값은 그대로). */
+export const asItemRef = (s: string): SpellItemRef => s as SpellItemRef;
+
 export interface PickSpellOptions {
   /**
-   * 이 목표 단어들은 제외한다. 같은 세션의 단어이해 문항이 정답 단어를 TTS로
+   * 제외할 **낱말**(`'사과'`). 같은 세션의 단어이해 문항이 정답 낱말을 TTS로
    * 들려주므로(promptText), 겹치면 답을 알려준 셈이 된다.
    */
-  exclude?: readonly string[];
+  exclude?: readonly SpellWordLabel[];
   /**
-   * 우선 재출제할 목표 단어(최근 틀린 것부터). 실어증 치료 이득은 훈련한 그
-   * 항목을 크게 넘어가지 않으므로(limited transfer), 같은 단어가 여러 세션에
-   * 반복돼야 의미가 있다. 비면 무작위로 떨어진다.
+   * 우선 재출제할 **문항 식별자**(`'spell_qw_002'`) — 낱말이 아니다.
+   *
+   * 앞에 올수록 먼저 뽑힌다. 백엔드 `GET /quiz/recent-items`가 이미
+   * (틀린 것 먼저, 그 안에서 마지막 출제가 오래된 것 먼저) 순으로 주므로,
+   * 그 응답 순서를 그대로 넘기면 그것이 곧 간격 반복이 된다 — 틀린 건 바로
+   * 다시, 맞힌 건 오래 안 나온 것부터.
+   *
+   * 실어증 치료 이득은 훈련한 그 항목을 크게 넘어가지 않으므로
+   * (limited transfer), 같은 낱말이 여러 세션에 걸쳐 반복돼야 의미가 있다.
+   * 비면 무작위로 떨어진다.
    */
-  priority?: readonly string[];
+  priority?: readonly SpellItemRef[];
 }
 
 /**
@@ -428,13 +470,15 @@ export function pickSpellItems(
   const { min, max } = syllableRangeForLevel(level);
   const excluded = new Set(options?.exclude ?? []);
   const priority = options?.priority ?? [];
-  const priorityRank = new Map(priority.map((w, i) => [w, i]));
+  const priorityRank = new Map<string, number>(
+    priority.map((ref, i) => [ref, i]),
+  );
 
-  const labelOf = (it: RawWordItem): string =>
-    it.choices.find((c) => c.isCorrect)?.label ?? '';
-  // priority는 제출 이력의 itemRef(`spell_<itemId>`)로 들어온다. 라벨(한글 단어)로
-  // 조회하면 절대 안 맞는다 — 두 키를 섞지 않도록 여기서 명시적으로 만든다.
-  const spellIdOf = (it: RawWordItem): string => `spell_${it.itemId}`;
+  // 두 키 공간을 각자의 브랜드로 만들어 낸다 — 타입이 뒤바뀜을 막아준다.
+  const labelOf = (it: RawWordItem): SpellWordLabel =>
+    asWordLabel(it.choices.find((c) => c.isCorrect)?.label ?? '');
+  const refOf = (it: RawWordItem): SpellItemRef =>
+    asItemRef(`spell_${it.itemId}`);
 
   const eligible = WORD_ITEMS.filter((it) => {
     const label = labelOf(it);
@@ -453,8 +497,8 @@ export function pickSpellItems(
       });
 
   const ordered = shuffle(pool).sort((a, b) => {
-    const ra = priorityRank.get(spellIdOf(a)) ?? Number.MAX_SAFE_INTEGER;
-    const rb = priorityRank.get(spellIdOf(b)) ?? Number.MAX_SAFE_INTEGER;
+    const ra = priorityRank.get(refOf(a)) ?? Number.MAX_SAFE_INTEGER;
+    const rb = priorityRank.get(refOf(b)) ?? Number.MAX_SAFE_INTEGER;
     return ra - rb;
   });
 

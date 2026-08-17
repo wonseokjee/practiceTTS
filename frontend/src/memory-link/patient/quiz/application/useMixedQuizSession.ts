@@ -35,8 +35,13 @@ import {
   pickQabItems,
   pickNamingItems,
   pickSpellItems,
+  asItemRef,
+  asWordLabel,
 } from '../infrastructure/QabItemBank.js';
-import type { PickSpellOptions } from '../infrastructure/QabItemBank.js';
+import type {
+  PickSpellOptions,
+  SpellItemRef,
+} from '../infrastructure/QabItemBank.js';
 import {
   moveEasiestLast,
   shouldFatigueExit,
@@ -270,13 +275,13 @@ export function useMixedQuizSession(
       // 재출제 우선순위: 최근에 틀린 문항부터. 실어증 치료 이득은 훈련한 그
       // 항목을 크게 넘어가지 않으므로(limited transfer), 같은 목표가 여러 세션에
       // 반복돼야 의미가 있다. 조회에 실패해도 세션은 진행한다(무작위로 떨어질 뿐).
-      let spellPriority: string[] = [];
+      let spellPriority: SpellItemRef[] = [];
       if (spellCount > 0) {
         try {
           const recent = await apiRef.current.getRecentItems('spell');
           spellPriority = recent
             .filter((r) => !r.everCorrect)
-            .map((r) => r.itemRef);
+            .map((r) => asItemRef(r.itemRef));
         } catch {
           spellPriority = [];
         }
@@ -285,7 +290,8 @@ export function useMixedQuizSession(
       // 그 단어가 글자 조합으로 또 나오면 답을 알려준 셈이다.
       const spokenWords = qabItems
         .map((p) => (p.kind === 'qab' ? p.item.promptText : ''))
-        .filter((w) => w.length > 0);
+        .filter((w) => w.length > 0)
+        .map(asWordLabel);
       const spellItems: PlayableItem[] = pickSpellRef
         .current(spellCount, levels?.spell, {
           exclude: spokenWords,
