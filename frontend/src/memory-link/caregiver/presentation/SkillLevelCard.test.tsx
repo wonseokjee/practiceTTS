@@ -1,5 +1,5 @@
 // SkillLevelCard 테스트 — 방향 프레이밍(danger 금지)·눈높이 표시·접근성
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { render, waitFor } from '@testing-library/react';
 import { SkillLevelCard } from './SkillLevelCard.js';
 import type { SkillLevels } from '../../patient/quiz/domain/QabResult.js';
