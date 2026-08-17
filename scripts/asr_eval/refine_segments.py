@@ -208,6 +208,15 @@ def main() -> int:
             "오분류된다."
         ),
     )
+    ap.add_argument(
+        "--resume",
+        action="store_true",
+        help=(
+            "이전 실행에서 끝난 부모 파일을 건너뛰고 매니페스트를 이어 쓴다. "
+            "완료 목록은 산출 폴더의 .done_parents.txt로 관리하며, 중간에 죽어 "
+            "절반만 남은 파일의 줄은 이어쓰기 전에 걷어내 중복을 막는다."
+        ),
+    )
     args = ap.parse_args()
 
     rows = [json.loads(l) for l in args.segments.open(encoding="utf-8") if l.strip()]
@@ -217,8 +226,41 @@ def main() -> int:
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     out_path = args.out_dir / "segments.jsonl"
+    done_path = args.out_dir / ".done_parents.txt"
+
+    # ── 이어하기 ────────────────────────────────────────────────
+    # 완료 판정을 "매니페스트에 줄이 있나"로 하면 안 된다 — 재정렬에서 버려진
+    # 세그먼트는 원래 줄이 안 남으므로 정상 완료와 중단이 구분되지 않는다.
+    # 그래서 파일 단위 완료 목록을 따로 둔다.
+    done_parents: set[str] = set()
+    if args.resume and done_path.exists():
+        done_parents = {
+            l.strip() for l in done_path.read_text(encoding="utf-8").splitlines() if l.strip()
+        }
+        # 중간에 죽은 파일의 줄이 매니페스트에 남아 있을 수 있다. 그 파일은 이번에
+        # 다시 처리하므로, 이어쓰기 전에 걷어내지 않으면 줄이 두 번 들어간다.
+        if out_path.exists():
+            keep = [
+                l for l in out_path.read_text(encoding="utf-8").splitlines()
+                if l.strip() and json.loads(l).get("parent_file_id") in done_parents
+            ]
+            out_path.write_text(
+                "".join(l + "\n" for l in keep), encoding="utf-8"
+            )
+            print(f"이어하기: 완료 {len(done_parents)}개 파일, 매니페스트 {len(keep)}줄 유지")
+    elif args.resume:
+        print("이어하기: 이전 진행 기록이 없다 — 처음부터 시작한다")
+
+    open_mode = "a" if (args.resume and done_parents) else "w"
+    if open_mode == "w":
+        done_parents = set()
+        with contextlib.suppress(FileNotFoundError):
+            done_path.unlink()
+
     kept = dropped = passed = 0
     before_hit = after_hit = 0
+    skipped_done = 0
+    failures: list[tuple[str, str]] = []
     shifts: list[float] = []
 
     def n_words(row: dict) -> int:
@@ -239,108 +281,149 @@ def main() -> int:
             dst_wav.parent.mkdir(parents=True, exist_ok=True)
             dst_wav.write_bytes(src_wav.read_bytes())
 
-    with out_path.open("w", encoding="utf-8") as out_f:
+    def process_parent(fid: str, segs: list[dict], src: Path) -> tuple[list[dict], dict]:
+        """부모 파일 하나를 처리해 (산출 줄들, 통계 델타)를 준다.
+
+        줄을 바로 쓰지 않고 모아서 돌려주는 이유: 파일 중간에 실패하면 반쪽짜리
+        줄이 매니페스트에 남는다. 그 줄들은 wav가 있어도 파일이 미완이라
+        신뢰할 수 없다. 통째로 성공했을 때만 쓰면 매니페스트는 항상 완결된
+        파일들로만 구성된다.
+        """
+        out_rows: list[dict] = []
+        st = {"kept": 0, "dropped": 0, "passed": 0, "before_hit": 0, "after_hit": 0}
+        shifts_local: list[float] = []
+        segs = sorted(segs, key=lambda r: r["start"])
+        # 파일 단위 판정: 1단어 세그먼트가 대부분이면 단어검사 파일이다.
+        # align_608도 파일 단위로 단어/문장 모드를 정한다 — 같은 층위로 맞춘다.
+        word_frac = sum(n_words(r) == 1 for r in segs) / max(len(segs), 1)
+        file_kind = "wordlist" if word_frac > args.wordlist_file_frac else "narrative"
+
+        # 재정렬 대상: 단어 세그먼트 + (--narrative refine이면) 문장 세그먼트.
+        # narrative를 빼먹으면 문장만 있는 파일이 통째로 건너뛰어진다.
+        targets = [
+            r for r in segs
+            if args.words_max <= 0
+            or n_words(r) <= args.words_max
+            or args.narrative == "refine"
+        ]
+        if not targets:
+            # 재정렬 대상이 없으면 프로파일을 만들 이유가 없다(파일당 수백 MB).
+            for r in segs:
+                r = {**r, "task_type": r.get("task_type") or file_kind}
+                copy_through(r)
+                out_rows.append(r)
+                st["passed"] += 1
+            return out_rows, {**st, "shifts": shifts_local, "kind": file_kind, "note": "대상 없음"}
+
+        prof, hop = rms_profile(src)
+        # 바닥소음: 하위 10% 분위. 발화가 전체의 극히 일부라 안정적이다.
+        floor = float(np.percentile(prof, 10)) or 1.0
+
+        for i, r in enumerate(segs):
+            r = {**r, "task_type": r.get("task_type") or file_kind}
+            is_narrative = args.words_max > 0 and n_words(r) > args.words_max
+            if is_narrative and args.narrative == "skip":
+                # 손대지 않는다. wav도 원본을 그대로 옮겨 이 폴더
+                # 하나로 배치를 대체할 수 있게 한다.
+                copy_through(r)
+                out_rows.append(r)
+                st["passed"] += 1
+                continue
+
+            # 탐색창을 이웃 세그먼트의 중점으로 클램프 — 옆 단어를 훔칠 수 없다.
+            c = (r["start"] + r["end"]) / 2
+            if is_narrative:
+                # 문장은 길어서 중심 기준 반경으로 잡으면 제 몸통을 잘라낸다.
+                # 원래 경계에서 최대 이동폭만큼만 넓힌다.
+                lo_t = r["start"] - args.narrative_max_shift
+                hi_t = r["end"] + args.narrative_max_shift
+            else:
+                lo_t = c - args.search_sec
+                hi_t = c + args.search_sec
+            if i > 0:
+                lo_t = max(lo_t, (segs[i - 1]["end"] + r["start"]) / 2)
+            if i + 1 < len(segs):
+                hi_t = min(hi_t, (r["end"] + segs[i + 1]["start"]) / 2)
+
+            finder = refine_narrative_bounds if is_narrative else refine_bounds
+            found = finder(
+                prof, int(lo_t / hop), int(hi_t / hop), floor, rel_gate=args.rel_gate
+            )
+            # 재정렬 전에 원래 클립이 피크를 담고 있었는지(개선 측정용)
+            win = prof[max(0, int(lo_t / hop)) : max(1, int(hi_t / hop))]
+            peak_t = None
+            if win.size:
+                peak_t = (max(0, int(lo_t / hop)) + int(win.argmax())) * hop
+                if r["start"] <= peak_t <= r["end"]:
+                    st["before_hit"] += 1
+            if found is None:
+                st["dropped"] += 1
+                continue
+
+            s = max(0.0, found[0] * hop - args.pad_sec)
+            e = found[1] * hop + args.pad_sec
+            if e - s < args.min_sec:
+                # 너무 짧으면 중심을 유지한 채 최소 길이로 넓힌다.
+                mid = (s + e) / 2
+                s, e = max(0.0, mid - args.min_sec / 2), mid + args.min_sec / 2
+            if not is_narrative and e - s > args.max_sec:
+                st["dropped"] += 1
+                continue
+
+            new = dict(r)
+            new["start"] = round(s, 3)
+            new["end"] = round(e, 3)
+            new["refined"] = True
+            # peak_t가 None이면 창이 비어 개선 여부를 잴 수 없다. 직전 세그먼트의
+            # 값을 물려받아 세면 통계가 조용히 틀어지므로 그냥 세지 않는다.
+            if peak_t is not None and s <= peak_t <= e:
+                st["after_hit"] += 1
+            shifts_local.append(((s + e) / 2) - c)
+
+            if not args.dry_run:
+                dst = args.out_dir / new["segment_wav_relpath"]
+                if not cut_wav(src, s, e, dst):
+                    st["dropped"] += 1
+                    continue
+            out_rows.append(new)
+            st["kept"] += 1
+
+        return out_rows, {**st, "shifts": shifts_local, "kind": file_kind, "note": ""}
+
+    with out_path.open(open_mode, encoding="utf-8") as out_f:
         for pi, (fid, segs) in enumerate(sorted(by_parent.items()), 1):
+            if fid in done_parents:
+                skipped_done += 1
+                continue
             src = args.audio_root / fid
             if not src.exists():
                 print(f"[{pi}/{len(by_parent)}] {fid} 원본 없음 — 건너뜀")
                 continue
-            segs = sorted(segs, key=lambda r: r["start"])
-            # 파일 단위 판정: 1단어 세그먼트가 대부분이면 단어검사 파일이다.
-            # align_608도 파일 단위로 단어/문장 모드를 정한다 — 같은 층위로 맞춘다.
-            word_frac = sum(n_words(r) == 1 for r in segs) / max(len(segs), 1)
-            file_kind = "wordlist" if word_frac > args.wordlist_file_frac else "narrative"
 
-            # 재정렬 대상: 단어 세그먼트 + (--narrative refine이면) 문장 세그먼트.
-            # narrative를 빼먹으면 문장만 있는 파일이 통째로 건너뛰어진다.
-            targets = [
-                r for r in segs
-                if args.words_max <= 0
-                or n_words(r) <= args.words_max
-                or args.narrative == "refine"
-            ]
-            if not targets:
-                # 재정렬 대상이 없으면 프로파일을 만들 이유가 없다(파일당 수백 MB).
-                for r in segs:
-                    r = {**r, "task_type": r.get("task_type") or file_kind}
-                    copy_through(r)
-                    out_f.write(json.dumps(r, ensure_ascii=False) + "\n")
-                    passed += 1
-                print(f"[{pi}/{len(by_parent)}] {fid} — 대상 없음, {len(segs)}개 통과")
+            # 파일 하나가 배치 전체를 죽이지 않게 한다. 수백 개를 몇 시간 돌리는
+            # 작업이라, 깨진 wav 하나로 나머지를 통째로 잃으면 재실행 비용이 크다.
+            try:
+                file_rows, st = process_parent(fid, segs, src)
+            except Exception as exc:  # noqa: BLE001 — 어떤 실패든 다음 파일로 간다
+                failures.append((fid, f"{type(exc).__name__}: {exc}"))
+                print(f"[{pi}/{len(by_parent)}] {fid} 실패({type(exc).__name__}) — 건너뜀")
                 continue
 
-            prof, hop = rms_profile(src)
-            # 바닥소음: 하위 10% 분위. 발화가 전체의 극히 일부라 안정적이다.
-            floor = float(np.percentile(prof, 10)) or 1.0
+            for row in file_rows:
+                out_f.write(json.dumps(row, ensure_ascii=False) + "\n")
+            out_f.flush()
+            with done_path.open("a", encoding="utf-8") as done_f:
+                done_f.write(fid + "\n")
 
-            for i, r in enumerate(segs):
-                r = {**r, "task_type": r.get("task_type") or file_kind}
-                is_narrative = args.words_max > 0 and n_words(r) > args.words_max
-                if is_narrative and args.narrative == "skip":
-                    # 손대지 않는다. wav도 원본을 그대로 옮겨 이 폴더
-                    # 하나로 배치를 대체할 수 있게 한다.
-                    copy_through(r)
-                    out_f.write(json.dumps(r, ensure_ascii=False) + "\n")
-                    passed += 1
-                    continue
-
-                # 탐색창을 이웃 세그먼트의 중점으로 클램프 — 옆 단어를 훔칠 수 없다.
-                c = (r["start"] + r["end"]) / 2
-                if is_narrative:
-                    # 문장은 길어서 중심 기준 반경으로 잡으면 제 몸통을 잘라낸다.
-                    # 원래 경계에서 최대 이동폭만큼만 넓힌다.
-                    lo_t = r["start"] - args.narrative_max_shift
-                    hi_t = r["end"] + args.narrative_max_shift
-                else:
-                    lo_t = c - args.search_sec
-                    hi_t = c + args.search_sec
-                if i > 0:
-                    lo_t = max(lo_t, (segs[i - 1]["end"] + r["start"]) / 2)
-                if i + 1 < len(segs):
-                    hi_t = min(hi_t, (r["end"] + segs[i + 1]["start"]) / 2)
-
-                finder = refine_narrative_bounds if is_narrative else refine_bounds
-                found = finder(
-                    prof, int(lo_t / hop), int(hi_t / hop), floor, rel_gate=args.rel_gate
-                )
-                # 재정렬 전에 원래 클립이 피크를 담고 있었는지(개선 측정용)
-                win = prof[max(0, int(lo_t / hop)) : max(1, int(hi_t / hop))]
-                if win.size:
-                    peak_t = (max(0, int(lo_t / hop)) + int(win.argmax())) * hop
-                    if r["start"] <= peak_t <= r["end"]:
-                        before_hit += 1
-                if found is None:
-                    dropped += 1
-                    continue
-
-                s = max(0.0, found[0] * hop - args.pad_sec)
-                e = found[1] * hop + args.pad_sec
-                if e - s < args.min_sec:
-                    # 너무 짧으면 중심을 유지한 채 최소 길이로 넓힌다.
-                    mid = (s + e) / 2
-                    s, e = max(0.0, mid - args.min_sec / 2), mid + args.min_sec / 2
-                if not is_narrative and e - s > args.max_sec:
-                    dropped += 1
-                    continue
-
-                new = dict(r)
-                new["start"] = round(s, 3)
-                new["end"] = round(e, 3)
-                new["refined"] = True
-                if s <= peak_t <= e:
-                    after_hit += 1
-                shifts.append(((s + e) / 2) - c)
-
-                if not args.dry_run:
-                    dst = args.out_dir / new["segment_wav_relpath"]
-                    if not cut_wav(src, s, e, dst):
-                        dropped += 1
-                        continue
-                out_f.write(json.dumps(new, ensure_ascii=False) + "\n")
-                kept += 1
-
+            kept += st["kept"]
+            dropped += st["dropped"]
+            passed += st["passed"]
+            before_hit += st["before_hit"]
+            after_hit += st["after_hit"]
+            shifts.extend(st["shifts"])
+            suffix = f" — {st['note']}, {st['passed']}개 통과" if st["note"] else ""
             print(
-                f"[{pi}/{len(by_parent)}] {fid} ({file_kind}) — "
+                f"[{pi}/{len(by_parent)}] {fid} ({st['kind']}){suffix} — "
                 f"누적 재정렬 {kept} · 버림 {dropped} · 통과 {passed}"
             )
 
@@ -353,7 +436,19 @@ def main() -> int:
     print(f"피크가 클립 안: 전 {before_hit / max(target_total,1):.0%} "
           f"→ 후 {after_hit / max(kept,1):.0%}")
     print(f"이동량(초): 중앙 {np.median(sh):+.2f} · 평균|이동| {np.abs(sh).mean():.2f}")
-    print(f"산출: {out_path} (총 {kept + passed}줄)")
+    if skipped_done:
+        print(f"이어하기로 건너뛴 파일 {skipped_done}개 (이번 실행 통계엔 미포함)")
+    print(f"산출: {out_path} (이번 실행 {kept + passed}줄)")
+
+    if failures:
+        # 스택트레이스로만 남기면 어느 파일이 문제였는지 스크롤을 뒤져야 한다.
+        # 다시 돌릴 때 이 목록만 있으면 되므로 끝에 모아 찍는다.
+        print()
+        print(f"실패 {len(failures)}건 — 이 파일들은 산출에 없다:")
+        for fid, why in failures:
+            print(f"  - {fid}: {why}")
+        print("고친 뒤 --resume 으로 다시 돌리면 끝난 파일은 건너뛴다.")
+        return 1
     return 0
 
 
