@@ -410,3 +410,142 @@ def test_문장_창에_발화가_없으면_버린다():
     from refine_segments import refine_narrative_bounds
 
     assert refine_narrative_bounds(_profile([1, 1, 2, 1, 2]), 0, 5, floor=1.0) is None
+
+
+# ─── refine_segments: 통과 세그먼트 wav 동반 (회귀) ──────────────
+#
+# 실제 사고: `copy_through`가 없던 판에서 매니페스트에는 줄이 있는데 wav가 없었고,
+# 패키징이 그 세그먼트를 **조용히** 건너뛰었다. 문장 1723개 중 16개만 살아남았다.
+# 예외도 로그도 없어서 패키지를 열어보기 전까지 몰랐다.
+#
+# 그래서 여기서 고정하는 불변식은 함수 호출이 아니라 **결과물의 정합성**이다:
+#   산출 매니페스트의 모든 줄에 대응하는 wav가 산출 폴더에 있어야 한다.
+# copy_through를 지우거나, 통과 경로를 하나 빠뜨리거나, 경로 계산이 틀어지면
+# 전부 이 단언에서 걸린다.
+
+
+def _write_wav(path: Path, seconds: float = 10.0, sr: int = 16000) -> None:
+    """유효한 PCM16 모노 wav를 만든다."""
+    import wave
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    n = int(sr * seconds)
+    with wave.open(str(path), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(sr)
+        # 0이 아닌 값을 섞어 바닥소음 분위(percentile 10)가 0으로 죽지 않게 한다.
+        w.writeframes(bytes((i % 7) for i in range(n * 2)))
+
+
+def _seg(fid: str, idx: int, text: str, start: float) -> dict:
+    return {
+        "parent_file_id": fid,
+        "segment_wav_relpath": f"{fid}_seg{idx}.wav",
+        "start": start,
+        "end": start + 0.5,
+        "reference_text": text,
+    }
+
+
+def _run_refine(tmp_path: Path, rows: list[dict], extra_argv: list[str], monkeypatch):
+    """세그먼트 폴더·부모 오디오를 만들고 refine_segments.main()을 돌린다.
+
+    반환: (산출 매니페스트 줄들, 산출 폴더 경로)
+    """
+    import refine_segments as RS
+
+    seg_dir = tmp_path / "segs"
+    audio_root = tmp_path / "audio"
+    out_dir = tmp_path / "out"
+    seg_dir.mkdir(parents=True, exist_ok=True)
+
+    for fid in {r["parent_file_id"] for r in rows}:
+        _write_wav(audio_root / fid)
+    for r in rows:
+        _write_wav(seg_dir / r["segment_wav_relpath"], seconds=0.5)
+
+    (seg_dir / "segments.jsonl").write_text(
+        "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows),
+        encoding="utf-8",
+    )
+
+    # ffmpeg에 의존하지 않는다 — 여기서 보는 건 자르기가 아니라 wav 동반이다.
+    def fake_cut(src, start, end, dst):
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_bytes(b"cut")
+        return True
+
+    monkeypatch.setattr(RS, "cut_wav", fake_cut)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "refine_segments.py",
+            "--segments", str(seg_dir / "segments.jsonl"),
+            "--audio-root", str(audio_root),
+            "--out-dir", str(out_dir),
+        ] + extra_argv,
+    )
+    assert RS.main() == 0
+
+    out_rows = [
+        json.loads(l)
+        for l in (out_dir / "segments.jsonl").read_text(encoding="utf-8").splitlines()
+        if l.strip()
+    ]
+    return out_rows, out_dir
+
+
+def test_대상없는_파일도_wav가_따라간다(tmp_path, monkeypatch):
+    # 통과 경로 ①: 파일 전체가 재정렬 대상이 아닐 때(문장만 있는 파일).
+    rows = [
+        _seg("p1.wav", 0, "바다에 갔다", 1.0),
+        _seg("p1.wav", 1, "밥을 먹었다", 3.0),
+    ]
+    out_rows, out_dir = _run_refine(
+        tmp_path, rows, ["--words-max", "1", "--narrative", "skip"], monkeypatch
+    )
+
+    assert len(out_rows) == 2, "통과 세그먼트가 매니페스트에서 사라지면 안 된다"
+    for r in out_rows:
+        assert (out_dir / r["segment_wav_relpath"]).exists(), (
+            f"{r['segment_wav_relpath']}: 매니페스트에 줄은 있는데 wav가 없다 — "
+            "패키징이 이 세그먼트를 조용히 건너뛴다"
+        )
+
+
+def test_파일_안의_문장_세그먼트도_wav가_따라간다(tmp_path, monkeypatch):
+    # 통과 경로 ②: 단어와 문장이 섞인 파일에서 문장만 통과할 때.
+    # 단어가 있어야 targets가 비지 않아 경로 ①이 아닌 루프 안으로 들어간다.
+    rows = [
+        _seg("p2.wav", 0, "사과", 1.0),
+        _seg("p2.wav", 1, "바다에 갔다", 3.0),
+        _seg("p2.wav", 2, "포도", 5.0),
+    ]
+    out_rows, out_dir = _run_refine(
+        tmp_path, rows, ["--words-max", "1", "--narrative", "skip"], monkeypatch
+    )
+
+    passed = [r for r in out_rows if not r.get("refined")]
+    assert passed, "문장 세그먼트가 통과 경로를 타야 이 테스트가 의미가 있다"
+    for r in out_rows:
+        assert (out_dir / r["segment_wav_relpath"]).exists(), (
+            f"{r['segment_wav_relpath']}: 매니페스트에 줄은 있는데 wav가 없다"
+        )
+
+
+def test_산출_매니페스트_줄수와_wav_수가_같다(tmp_path, monkeypatch):
+    # 사고의 형태 그대로: 줄은 많은데 wav가 적었다. 두 수를 직접 비교한다.
+    rows = [_seg("p3.wav", 0, "사과", 1.0)] + [
+        _seg("p3.wav", i, f"문장 {i} 입니다", 2.0 + i) for i in range(1, 6)
+    ]
+    out_rows, out_dir = _run_refine(
+        tmp_path, rows, ["--words-max", "1", "--narrative", "skip"], monkeypatch
+    )
+
+    wavs = {p.name for p in out_dir.rglob("*.wav")}
+    assert len(wavs) == len(out_rows), (
+        f"매니페스트 {len(out_rows)}줄 vs wav {len(wavs)}개 — "
+        "이 격차가 문장 1723→16 사고의 형태다"
+    )
