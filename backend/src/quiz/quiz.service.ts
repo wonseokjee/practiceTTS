@@ -38,7 +38,6 @@ import {
   IQuizGenerationClient,
   QUIZ_GENERATION_CLIENT,
 } from './interfaces/IQuizGenerationClient';
-import { buildTiles } from './services/tile-builder';
 import type { IQuizGenerationPayload } from './interfaces/IQuizGenerationPayload';
 import { IQuizScorer, QUIZ_SCORER } from './interfaces/IQuizScorer';
 import {
@@ -650,33 +649,29 @@ export class QuizService {
   }
 
   /**
-   * LLM이 만든 빈칸(fill_blank) 문항을 타일 조합/말하기로 번갈아 변환한다.
+   * LLM이 만든 빈칸(fill_blank) 문항을 말하기(따라읽기)로 변환한다.
    *
-   * 고령 실어증 환자의 타이핑 부담을 없애기 위해 fill_blank는 저장하지 않고,
-   * 등장 순서대로 tile_arrange(짝수 번째) → speech(홀수 번째)로 변환한다.
-   * (기본 분배 fill_blank=2 → 타일 1 + 말하기 1)
+   * 고령 실어증 환자의 타이핑 부담을 없애기 위해 fill_blank는 저장하지 않는다.
    *
-   * - tile_arrange: 정답 음절 + 오답 음절을 섞은 타일을 choices에 담는다.
-   *   (정답 음절이 비어 타일을 못 만들면 안전하게 speech로 폴백)
-   * - speech: choices=null, hintFirstChar는 유지(STT 재시도 힌트로 활용).
+   * **음절 타일(tile_arrange)은 여기서 만들지 않는다.** 예전에는 빈칸을 번갈아
+   * 타일/말하기로 바꿨는데, 그러면 한 문항이 기억 회상과 음절 조합을 동시에
+   * 물어 틀렸을 때 무엇을 못한 건지 분리되지 않았다. 게다가 보호자 메모에서
+   * 매일 새 문항이 나와 같은 목표가 반복되지 않고(실어증 치료 이득은 훈련한
+   * 그 항목에 국한된다), 난이도가 제각각이라 적응 레벨링이 붙을 자리도 없었다.
+   *
+   * 타일 과제는 커리큘럼 단어 풀 기반의 독립 검사(subtest `spell`)로 옮겼다.
+   * 거기서는 레벨이 방해 타일 수를 정하고 같은 단어가 여러 세션에 반복된다.
+   * 이미 저장된 tile_arrange 문항은 그대로 렌더링된다(유형은 유지).
+   *
+   * - speech: choices=null, prompt는 고정 안내, 읽을 단어는 correctAnswer로 유지.
    * - 그 외 유형(mc/yn)은 그대로 통과시킨다.
    */
   private diversifyRecallQuestions(
     questions: GeneratedQuizQuestion[],
   ): GeneratedQuizQuestion[] {
-    let recallIndex = 0;
     return questions.map((q) => {
       if (q.type !== 'fill_blank') {
         return q;
-      }
-      const useTile = recallIndex % 2 === 0;
-      recallIndex += 1;
-
-      if (useTile) {
-        const tiles = buildTiles(q.correctAnswer);
-        if (tiles.length > 0) {
-          return { ...q, type: 'tile_arrange', choices: tiles };
-        }
       }
       // speech는 따라읽기(repetition): 빈칸 회상이 아니라 단어를 보여주고 따라 말한다.
       // prompt를 고정 안내로 교체하고, 읽을 단어는 correctAnswer로 유지(공개 DTO가 targetWord로 노출).
