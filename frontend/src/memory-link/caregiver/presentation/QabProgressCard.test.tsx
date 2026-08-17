@@ -119,3 +119,31 @@ describe('새 검사 노출', () => {
   });
 });
 
+describe('반복 훈련 과제 구분 표시', () => {
+  it('글자 조합에는 반복 연습 배지와 연습 정답률 문구가 붙는다', async () => {
+    // 반복 훈련의 정답률 상승은 회복이 아니라 문항 친숙도다. 같은 숫자를 같은
+    // 자리에 같은 모양으로 놓으면 보호자가 회복 신호로 오독한다.
+    const fetchSummary = vi
+      .fn()
+      .mockResolvedValue([summary({ subtest: 'spell' })]);
+    render(<QabProgressCard fetchSummary={fetchSummary} />);
+
+    await waitFor(() =>
+      expect(screen.getByText('글자 조합')).toBeInTheDocument(),
+    );
+    expect(screen.getByText('반복 연습')).toBeInTheDocument();
+    expect(screen.getByText(/연습 정답률/)).toBeInTheDocument();
+  });
+
+  it('다른 검사에는 반복 연습 배지를 붙이지 않는다', async () => {
+    // 매번 다른 문항이라 정답률이 회복 신호로 읽힌다.
+    const fetchSummary = vi.fn().mockResolvedValue([summary()]);
+    render(<QabProgressCard fetchSummary={fetchSummary} />);
+
+    await waitFor(() =>
+      expect(screen.getByText('단어 이해')).toBeInTheDocument(),
+    );
+    expect(screen.queryByText('반복 연습')).toBeNull();
+  });
+});
+
