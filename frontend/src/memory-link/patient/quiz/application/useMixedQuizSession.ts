@@ -272,16 +272,23 @@ export function useMixedQuizSession(
       const namingItems: PlayableItem[] = pickNamingRef
         .current(namingCount, levels?.naming)
         .map((it) => ({ kind: 'naming', id: it.itemId, item: it }));
-      // 재출제 우선순위: 최근에 틀린 문항부터. 실어증 치료 이득은 훈련한 그
-      // 항목을 크게 넘어가지 않으므로(limited transfer), 같은 목표가 여러 세션에
-      // 반복돼야 의미가 있다. 조회에 실패해도 세션은 진행한다(무작위로 떨어질 뿐).
+      // 재출제 순서 = 간격 반복. 백엔드가 (틀린 것 먼저, 그 안에서 마지막 출제가
+      // 오래된 것 먼저) 순으로 주므로 **응답 순서를 그대로 넘긴다.** 여기서
+      // 거르지 않는 게 핵심이다 — 맞힌 문항까지 포함해야 "오래 안 나온 것부터"가
+      // 성립하고, 그래야 간격이 생긴다. 틀린 것만 남기면 맞힌 문항은 순서가
+      // 사라져 다음 세션에 우연히 또 나올 수도, 영영 안 나올 수도 있다.
+      //
+      // 후보가 레벨당 26~69개이고 세션당 1문항이라, 이 순서만으로 자연스럽게
+      // 26~69일 주기가 나온다. 별도의 간격 상수를 두지 않는 이유다.
+      //
+      // 실어증 치료 이득은 훈련한 그 항목을 크게 넘어가지 않으므로
+      // (limited transfer), 같은 목표가 여러 세션에 반복돼야 의미가 있다.
+      // 조회에 실패해도 세션은 진행한다(무작위로 떨어질 뿐).
       let spellPriority: SpellItemRef[] = [];
       if (spellCount > 0) {
         try {
           const recent = await apiRef.current.getRecentItems('spell');
-          spellPriority = recent
-            .filter((r) => !r.everCorrect)
-            .map((r) => asItemRef(r.itemRef));
+          spellPriority = recent.map((r) => asItemRef(r.itemRef));
         } catch {
           spellPriority = [];
         }

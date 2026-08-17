@@ -1825,6 +1825,21 @@ describe('QuizService', () => {
 
       expect(qb.limit).toHaveBeenCalledWith(200);
     });
+
+    it('틀린 문항 먼저, 그 안에서 오래된 것 먼저 정렬한다', async () => {
+      // **이 순서가 곧 간격 반복이다.** 프론트는 응답 순서를 그대로 우선순위로
+      // 쓰므로(useMixedQuizSession), 여기서 ASC/DESC가 뒤집히면 맞힌 문항부터,
+      // 방금 낸 문항부터 다시 나온다 — 반복 훈련이 정반대로 동작한다.
+      // 변환·필터만 검증하던 때는 이 뒤집힘이 전부 통과했다.
+      const qb = arrangeRecent([]);
+
+      await service.getRecentItems(PATIENT_ID, 'spell');
+
+      // 1순위: 아직 한 번도 못 맞힌 문항(false < true)
+      expect(qb.orderBy).toHaveBeenCalledWith('bool_or(r.is_correct)', 'ASC');
+      // 2순위: 마지막 출제가 오래된 것 — 여기서 "간격"이 생긴다
+      expect(qb.addOrderBy).toHaveBeenCalledWith('max(r.created_at)', 'ASC');
+    });
   });
 
   describe('getSessionStats', () => {

@@ -285,7 +285,9 @@ export class QuizController {
 
   /**
    * GET /quiz/recent-items?subtest=spell
-   * 최근 N일 문항별 성적 (문항 재출제용). 프론트가 "최근에 틀린 것부터" 다시 낸다.
+   * 최근 N일 문항별 성적 (문항 재출제용). 정렬이 곧 계약이다 — (틀린 것 먼저,
+   * 그 안에서 마지막 출제가 오래된 것 먼저). 프론트는 이 순서를 **재정렬 없이**
+   * 우선순위로 쓰므로, 그 순서 자체가 간격 반복이 된다.
    */
   @Get('quiz/recent-items')
   async getRecentItems(

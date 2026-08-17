@@ -915,21 +915,20 @@ describe('글자 조합(spell)', () => {
 });
 
 describe('글자 조합 — 반복과 중복 방지', () => {
-  it('최근에 틀린 문항을 우선순위로 넘긴다', async () => {
-    // 실어증 치료 이득은 훈련한 그 항목을 크게 넘어가지 않는다(limited transfer).
-    // 맞힌 문항은 우선순위에서 빼고 틀린 것만 다시 낸다.
+  /** 우선순위 배선만 보는 렌더 헬퍼 — 이력 응답을 주고 pickSpellItems 인자를 돌려준다. */
+  async function arrangePriority(
+    recent: Awaited<ReturnType<IQuizApi['getRecentItems']>>,
+    token: string,
+  ) {
     const api = makeApi();
-    vi.spyOn(api, 'getRecentItems').mockResolvedValue([
-      { itemRef: 'spell_w9', everCorrect: false, lastAt: '2026-08-16T00:00:00Z' },
-      { itemRef: 'spell_w1', everCorrect: true, lastAt: '2026-08-16T00:00:00Z' },
-    ]);
+    vi.spyOn(api, 'getRecentItems').mockResolvedValue(recent);
     const spy = vi.fn().mockReturnValue(makeSpellItems());
 
     renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: api,
         pickQabItems: () => [],
-        generateSessionToken: () => 'tok-rep',
+        generateSessionToken: () => token,
         dailyCount: 0,
         qabCount: 0,
         ...NO_SPEECH,
@@ -939,8 +938,38 @@ describe('글자 조합 — 반복과 중복 방지', () => {
     );
 
     await waitFor(() => expect(spy).toHaveBeenCalled());
-    const opts = spy.mock.calls[0][2];
-    expect(opts.priority).toEqual(['spell_w9']);
+    return spy.mock.calls[0][2];
+  }
+
+  it('이력 순서를 그대로 우선순위로 넘긴다 — 이 순서가 곧 간격 반복이다', async () => {
+    // 백엔드가 (틀린 것 먼저, 그 안에서 마지막 출제가 오래된 것 먼저) 순으로
+    // 주므로, 프론트는 **재정렬하지 않는다.** 여기서 순서를 건드리면 간격이 깨진다.
+    const opts = await arrangePriority(
+      [
+        { itemRef: 'spell_w9', everCorrect: false, lastAt: '2026-08-01T00:00:00Z' },
+        { itemRef: 'spell_w1', everCorrect: true, lastAt: '2026-06-01T00:00:00Z' },
+        { itemRef: 'spell_w4', everCorrect: true, lastAt: '2026-08-16T00:00:00Z' },
+      ],
+      'tok-order',
+    );
+
+    expect(opts.priority).toEqual(['spell_w9', 'spell_w1', 'spell_w4']);
+  });
+
+  it('맞힌 문항도 우선순위에 남긴다 — 빼면 간격이 아니라 무작위가 된다', async () => {
+    // 한때 `.filter(!everCorrect)`로 맞힌 문항을 버렸다. 그러면 "틀린 것 우선"일
+    // 뿐 시간 축이 없어서, 맞힌 낱말은 다음 세션에 우연히 또 나올 수도 영영 안
+    // 나올 수도 있다. 실어증 치료 이득은 훈련한 그 항목을 크게 넘어가지 않으므로
+    // (limited transfer), 맞힌 낱말도 **간격을 두고 다시** 나와야 유지가 된다.
+    const opts = await arrangePriority(
+      [
+        { itemRef: 'spell_w1', everCorrect: true, lastAt: '2026-06-01T00:00:00Z' },
+        { itemRef: 'spell_w4', everCorrect: true, lastAt: '2026-08-16T00:00:00Z' },
+      ],
+      'tok-keep',
+    );
+
+    expect(opts.priority).toEqual(['spell_w1', 'spell_w4']);
   });
 
   it('같은 세션의 단어이해 정답은 글자 조합에서 제외한다', async () => {
