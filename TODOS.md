@@ -225,3 +225,21 @@ score만 받아 **영역 외 터치도 '무반응'으로 기록**했다. 라벨�
 **Cons:** 세션 출처(환자 vs 보호자 대리) 태깅 필요 — 약간의 컨텍스트 전파.
 **Context:** `backend/src/auth/effective-patient-id.util.ts` + saveQabResults. 레벨 재계산 시 세션 출처 플래그를 보고 patient-origin 결과만 반영. 관측성으로 오염 빈도 먼저 실측 후 결정 가능.
 **Depends on:** skill_levels + 레벨 재계산 구현.
+
+## [glyph-level-axis] 글자 조합 5단계가 실제로는 3난이도다
+
+- **What:** 레벨 1~5가 방해 타일 0/0/2/2/4로 매핑돼 실질 3단계. 난이도 축을 하나 더
+  넣어 5단계를 실제 5단계로 만든다.
+- **Why:** 레벨 1→2 승급 시 환자가 보는 문제가 전혀 안 바뀐다. `MIN_TRIALS=5` ×
+  세션당 1문항이면 최대 10세션 동안 자극 변화 없이 "레벨이 오르는" 구간이 생긴다.
+  적응 레벨링이 환자에게 체감되지 않는다.
+- **Pros:** 레벨링이 실제 난이도 조절로 작동한다. 5단계라는 표시가 사실이 된다.
+- **Cons:** 새 축(목표 길이·힌트·제한시간)의 근거를 다시 찾아야 한다. 방해 0/2/4는
+  상용 실어증 치료 도구 관례라 근거가 있지만, 임의로 축을 늘리면 그 근거에서 벗어난다.
+- **Context:** 2026-08-17 엔지니어링 리뷰에서 외부 관점(codex)이 지적. 같은 리뷰에서
+  결정된 **레벨별 음절 수 범위 고정**(tasks T7)이 사실상 두 번째 축이라, 그걸 넣고
+  나면 이 문제가 저절로 완화될 수 있다. 그래서 지금 축을 더 만들지 않는다.
+- **Depends on / blocked by:** T7(음절 수 통제) 먼저. 그 뒤 레벨별 정답률 분포를
+  실측해 여전히 1↔2가 구분 안 되는지 확인하고 판단.
+- **관련 파일:** `frontend/src/memory-link/patient/quiz/infrastructure/QabItemBank.ts`
+  (`distractorCountForLevel`), `backend/src/quiz/services/skill-leveling.ts` (`MIN_TRIALS`)

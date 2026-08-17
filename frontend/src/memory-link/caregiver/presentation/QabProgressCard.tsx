@@ -5,6 +5,10 @@
 // 데이터가 없으면(아직 검사 전) 카드를 숨긴다 — 대시보드를 비우지 않게.
 
 import { useEffect, useState } from 'react';
+import {
+  QAB_SUBTEST_ORDER,
+  subtestLabel,
+} from '../../patient/quiz/domain/qabSubtestLabels.js';
 import { QabSparkline } from './components/QabSparkline.js';
 import { quizApi } from '../../patient/quiz/infrastructure/QuizApi.js';
 import type {
@@ -19,27 +23,6 @@ interface QabProgressCardProps {
   onOpenReport?: () => void;
 }
 
-/** 검사 종류 → 한글 라벨 + 표시 순서 */
-const SUBTEST_LABELS: Record<string, string> = {
-  word: '단어 이해',
-  sentence: '문장 이해',
-  naming: '그림 이름대기',
-  repeat: '따라 말하기',
-  reading: '소리 내어 읽기',
-  spell: '글자 조합',
-  ddk: '말운동(퍼터커)',
-  loc: '의식 수준',
-};
-const SUBTEST_ORDER = [
-  'loc',
-  'word',
-  'sentence',
-  'naming',
-  'repeat',
-  'reading',
-  'spell',
-  'ddk',
-];
 
 /**
  * loc는 다른 검사와 지표의 의미가 다르다.
@@ -92,7 +75,8 @@ export function QabProgressCard({
   if (state !== 'ready' || items.length === 0) return null;
 
   const sorted = [...items].sort(
-    (a, b) => SUBTEST_ORDER.indexOf(a.subtest) - SUBTEST_ORDER.indexOf(b.subtest),
+    (a, b) => QAB_SUBTEST_ORDER.indexOf(a.subtest as never) -
+      QAB_SUBTEST_ORDER.indexOf(b.subtest as never),
   );
 
   return (
@@ -117,7 +101,7 @@ export function QabProgressCard({
 
       <ul className="flex flex-col gap-3">
         {sorted.map((it) => {
-          const label = SUBTEST_LABELS[it.subtest] ?? it.subtest;
+          const label = subtestLabel(it.subtest);
           const assistedSuffix =
             it.assisted > 0 ? ` · 도움 ${it.assisted}회` : '';
           return (

@@ -36,4 +36,7 @@ export type QabSubtest = (typeof QAB_SUBTESTS)[number];
  * 어느 문항 풀 기준인지 추적하기 위한 것으로, 풀(단어·문장·오답거리 등)이
  * 바뀔 때 수동으로 올린다.
  */
-export const QAB_MANIFEST_VERSION = 1;
+// v2 (2026-08-17): `spell`(글자 조합) 검사 추가. 문항 풀과 난이도 의미가 바뀌었으므로
+// 올린다 — 이 값이 그대로면 v1 시절의 presented_level과 v2의 것이 같은 축으로 읽혀
+// 레벨 이력 해석이 어긋난다.
+export const QAB_MANIFEST_VERSION = 2;

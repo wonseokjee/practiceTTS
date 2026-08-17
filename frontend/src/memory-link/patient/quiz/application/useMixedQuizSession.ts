@@ -333,6 +333,7 @@ export function useMixedQuizSession(
     namingCount,
     repeatCount,
     readingCount,
+    spellCount,
     ddkCount,
   ]);
 
