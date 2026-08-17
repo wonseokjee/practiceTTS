@@ -1,0 +1,232 @@
+{
+  "threshold": 0.34,
+  "decompose": [
+    {
+      "ch": "각",
+      "jamo": [
+        "ㄱ",
+        "ㅏ",
+        "ㄱ"
+      ]
+    },
+    {
+      "ch": "가",
+      "jamo": [
+        "ㄱ",
+        "ㅏ",
+        ""
+      ]
+    },
+    {
+      "ch": "바",
+      "jamo": [
+        "ㅂ",
+        "ㅏ",
+        ""
+      ]
+    },
+    {
+      "ch": "파",
+      "jamo": [
+        "ㅍ",
+        "ㅏ",
+        ""
+      ]
+    },
+    {
+      "ch": "반",
+      "jamo": [
+        "ㅂ",
+        "ㅏ",
+        "ㄴ"
+      ]
+    },
+    {
+      "ch": "값",
+      "jamo": [
+        "ㄱ",
+        "ㅏ",
+        "ㅄ"
+      ]
+    },
+    {
+      "ch": "a",
+      "jamo": null
+    },
+    {
+      "ch": "1",
+      "jamo": null
+    },
+    {
+      "ch": " ",
+      "jamo": null
+    }
+  ],
+  "syllableCost": [
+    {
+      "a": "바",
+      "b": "바",
+      "cost": 0
+    },
+    {
+      "a": "바",
+      "b": "파",
+      "cost": 0.12
+    },
+    {
+      "a": "반",
+      "b": "바",
+      "cost": 0.08000000000000002
+    },
+    {
+      "a": "바",
+      "b": "다",
+      "cost": 0.4
+    },
+    {
+      "a": "바",
+      "b": "보",
+      "cost": 0.4
+    },
+    {
+      "a": "각",
+      "b": "값",
+      "cost": 0.2
+    },
+    {
+      "a": "바",
+      "b": "a",
+      "cost": 1
+    }
+  ],
+  "errorRate": [
+    {
+      "transcript": "사과",
+      "target": "사과",
+      "mode": "word",
+      "rate": 0
+    },
+    {
+      "transcript": "사가",
+      "target": "사과",
+      "mode": "word",
+      "rate": 0.2
+    },
+    {
+      "transcript": "파나나",
+      "target": "바나나",
+      "mode": "word",
+      "rate": 0.04
+    },
+    {
+      "transcript": "",
+      "target": "사과",
+      "mode": "word",
+      "rate": 1
+    },
+    {
+      "transcript": "사과",
+      "target": "",
+      "mode": "word",
+      "rate": 1
+    },
+    {
+      "transcript": "바다에 갔다",
+      "target": "바다에 갔다",
+      "mode": "sentence",
+      "rate": 0
+    },
+    {
+      "transcript": "바다에 간다",
+      "target": "바다에 갔다",
+      "mode": "sentence",
+      "rate": 0.5
+    },
+    {
+      "transcript": "오늘 밥을 먹었어요",
+      "target": "오늘 밥을 먹었어요",
+      "mode": "sentence",
+      "rate": 0
+    },
+    {
+      "transcript": "밥을 먹었어요",
+      "target": "오늘 밥을 먹었어요",
+      "mode": "sentence",
+      "rate": 0.3333333333333333
+    },
+    {
+      "transcript": "바다에, 갔다!",
+      "target": "바다에 갔다",
+      "mode": "sentence",
+      "rate": 0
+    }
+  ],
+  "isCorrect": [
+    {
+      "transcript": "사과",
+      "target": "사과",
+      "mode": "word",
+      "correct": true
+    },
+    {
+      "transcript": "사가",
+      "target": "사과",
+      "mode": "word",
+      "correct": true
+    },
+    {
+      "transcript": "파나나",
+      "target": "바나나",
+      "mode": "word",
+      "correct": true
+    },
+    {
+      "transcript": "",
+      "target": "사과",
+      "mode": "word",
+      "correct": false
+    },
+    {
+      "transcript": "사과",
+      "target": "",
+      "mode": "word",
+      "correct": false
+    },
+    {
+      "transcript": "바다에 갔다",
+      "target": "바다에 갔다",
+      "mode": "sentence",
+      "correct": true
+    },
+    {
+      "transcript": "바다에 간다",
+      "target": "바다에 갔다",
+      "mode": "sentence",
+      "correct": false
+    },
+    {
+      "transcript": "오늘 밥을 먹었어요",
+      "target": "오늘 밥을 먹었어요",
+      "mode": "sentence",
+      "correct": true
+    },
+    {
+      "transcript": "밥을 먹었어요",
+      "target": "오늘 밥을 먹었어요",
+      "mode": "sentence",
+      "correct": true
+    },
+    {
+      "transcript": "바다에, 갔다!",
+      "target": "바다에 갔다",
+      "mode": "sentence",
+      "correct": true
+    },
+    {
+      "transcript": "   ",
+      "target": "사과",
+      "mode": "word",
+      "correct": false
+    }
+  ]
+}

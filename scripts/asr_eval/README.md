@@ -53,24 +53,17 @@ ASR 평가의 1번 실수는 **같은 화자가 train과 test에 함께 들어�
 불충분·유해). 진짜 개인화는 음향 fine-tuning(`adapters.FinetuneAdapter`, 미구현)이
 필요하다. 이 커브는 그 결론을 실측으로 고정한다.
 
-### 파인튜닝 실측 (Colab T4, whisper-small LoRA) — 음성 결과
+### 파인튜닝 실측 → **[608 파인튜닝 대장](../../docs/asr/608-finetune-log.md)**
 
-`align_608` 세그먼트 → `prepare_colab_trainset` 패키지(20화자, 40분, 178 train
-세그먼트)로 T4에서 LoRA 파인튜닝(`finetune_whisper_608_colab.ipynb`).
+파인튜닝 배치별 CER·데이터 규모·정렬 이력은 전부 대장에 있다. 여기 적지 않는다 —
+두 곳에 적으면 갈라지고, 실제로 갈라졌었다(README에는 40분짜리 첫 실험 결론만
+남아 "파인튜닝은 암기만 한다"로 끝나 있었는데, 그 사이 6차까지 훨씬 큰 데이터로
+돌아 있었다).
 
-- **파이프라인은 T4에서 end-to-end 정상 작동**(설치·LoRA·학습·평가).
-- 그러나 **40분은 whisper 파인튜닝엔 턱없이 부족 → 과적합(암기)**. train loss가
-  0.003까지 떨어지고, 모델은 test 오디오를 무시한 채 학습 문장을 그대로 뱉었다
-  (서로 다른 오디오에 동일 출력 "엄마에게 전화를 합니다"). test CER 개선 없음.
-- 주의: HF Trainer의 generate 평가가 CER을 부풀린다(같은 KYG/JCJ 화자를
-  openai-whisper로 재면 0.12~0.19인데 HF eval은 2.0+). 생성 설정(언어 강제·반복
-  억제)을 맞춰야 공정. 그래서 이 실험의 절대 CER은 신뢰 불가, "암기했다"는 정성적
-  결론만 유효.
+대장을 읽을 때 **맨 앞의 경고 절을 먼저 봐라.** 1~6차 CER은 dev 스플릿 없이
+test로 체크포인트를 골라 낸 값이라 홀드아웃 성능이 아니다. 7차부터 기준이 바뀐다.
 
-**결론: whisper 파인튜닝은 수십 시간 규모가 필수. 40분은 학습이 아니라 암기.**
-prompt-biasing 부적합과 같은 방향 — 구음장애 개선엔 대규모 음향 학습이 필요하다.
-파이프라인(align→패키지→노트북)은 검증됐으니, 다음은 데이터 규모를 키워
-Colab Pro/자체 GPU로 실제 학습.
+이 README가 맡는 건 **어떻게 돌리는가**(아래 구성표·실행법)다.
 
 ## 데이터 예산 (매니페스트 기준, 오디오 라벨)
 
@@ -88,6 +81,8 @@ Colab Pro/자체 GPU로 실제 학습.
 | `baseline_asr.py` | 스플릿을 whisper로 인식 → CER/WER | ○ (`--smoke`는 ✕) |
 | `personalization_curve.py` | 적응 분량↑ → 홀드아웃 CER 커브 | ○ (`--adapter sim`은 ✕) |
 | `adapters.py` | 교체 가능한 개인화 적응기(프롬프트 바이어싱/LoRA/가상) | 구현별 |
+| `refine_segments.py` | 정렬 세그먼트를 오디오 에너지로 재정렬(단어/문장) | ○ 부모 wav |
+| `app_scorer.py` | **앱과 같은 잣대**로 채점(음소 가중 거리 + 통과율) | ✕ 순수함수 |
 | `build_training_set.py` | 보존 발화(app) → 라벨 품질 필터 → 화자 분리 학습셋 | 오디오 존재확인만 |
 | `prepare_colab_trainset.py` | align_608 세그먼트 → Colab 파인튜닝 패키지(zip) | 세그먼트 wav |
 | `COLAB_FINETUNE.md` | 무료 Colab T4로 whisper LoRA 파인튜닝 가이드(셀 전체) | — |
@@ -132,9 +127,29 @@ python scripts/asr_eval/personalization_curve.py \
   --test-split ".../_splits/test.jsonl" --adapter prompt \
   --audio-root ".../608-audio" --model small --minutes 0,1,3,5,10
 
-# 3) 테스트
-python -m pytest scripts/asr_eval/test_asr_eval.py
+# 3) 테스트 — 두 방법 중 하나
 ```
+
+**(a) 전용 venv (권장, 이 폴더만 있어도 된다)**
+
+```bash
+python -m venv scripts/asr_eval/.venv
+scripts/asr_eval/.venv/Scripts/python.exe -m pip install -r scripts/asr_eval/requirements-dev.txt   # Windows
+# source scripts/asr_eval/.venv/bin/activate && pip install -r scripts/asr_eval/requirements-dev.txt  # macOS/Linux
+
+scripts/asr_eval/.venv/Scripts/python.exe -m pytest scripts/asr_eval/ -q
+```
+
+**(b) 이미 있는 ai-service venv 재사용 (설치 없이 바로)**
+
+```bash
+ai-service/venv/Scripts/python.exe -m pytest scripts/asr_eval/ -q     # Windows
+# ai-service/venv/bin/python -m pytest scripts/asr_eval/ -q           # macOS/Linux
+```
+
+맨 파이썬(`python -m pytest`)은 pytest가 전역에 없으면 실패한다. 둘 중 하나를 써라.
+테스트는 오디오도 whisper도 필요 없다 — 실제 인식은 전부 지연 임포트라 테스트
+경로에 걸리지 않는다.
 
 ## 실측(진짜 숫자)에 필요한 것
 

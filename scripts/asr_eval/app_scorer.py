@@ -14,6 +14,7 @@
 """
 from __future__ import annotations
 
+import random
 import re
 import unicodedata
 
@@ -171,6 +172,80 @@ def is_speech_correct(transcript: str, target: str, mode: str) -> bool:
     if not normalize(transcript):
         return False
     return speech_error_rate(transcript, target, mode) <= SPEECH_PASS_THRESHOLD
+
+
+def _derange(n: int, rng: random.Random) -> list[int]:
+    """0..n-1의 순열 중 **고정점이 없는** 것을 만든다(i번이 i번에 안 남는다).
+
+    그냥 셔플하면 일부가 제자리에 남아 "정상 짝"이 섞여 들어간다. 대조군의 요점은
+    전부 어긋난 짝이라는 것이므로 고정점을 없애야 한다.
+    """
+    if n < 2:
+        return list(range(n))
+    idx = list(range(n))
+    for _ in range(20):
+        rng.shuffle(idx)
+        if all(idx[i] != i for i in range(n)):
+            return idx
+    # 20번 안에 못 만들면(작은 n에서 드물게) 고정점만 이웃과 바꿔 강제로 없앤다.
+    for i in range(n):
+        if idx[i] == i:
+            j = (i + 1) % n
+            idx[i], idx[j] = idx[j], idx[i]
+    return idx
+
+
+def mismatch_control(
+    hyps: list[str],
+    refs: list[str],
+    mode: str,
+    *,
+    seed: int = 0,
+    rounds: int = 5,
+) -> dict[str, float]:
+    """전사와 목표의 짝을 어긋나게 섞어 채점해, 통과가 얼마나 싼지 잰다.
+
+    **무엇을 재는가.** 구음장애 음성을 목표 대본으로 파인튜닝하면 모델이 "흐린
+    발음 → 정확한 목표어"를 배운다. 대화 인식에는 좋지만 발음 채점에는 정반대다 —
+    앱은 전사를 목표와 비교해 통과시키므로, 모델이 알아서 목표어로 고쳐 적으면
+    **틀리게 발음한 환자가 통과**한다. CER이 좋아진 게 오통과가 는 것일 수 있다.
+
+    가설이 아니다. `README.md`에 이미 관측 기록이 있다 — 예전 실험에서 모델이
+    오디오를 무시하고 학습 문장을 그대로 뱉었다("서로 다른 오디오에 동일 출력").
+    그때 대응은 데이터를 키우는 것이었고, 그 현상을 잡는 장치는 안 만들었다.
+
+    **읽는 법.** `discrimination`(정상 통과율 − 어긋난 통과율)이 이 지표의 핵심이다.
+      - 크다  → 통과가 그 음성에 대한 판정이다. 수치를 믿을 수 있다.
+      - 0에 가깝다 → 아무 목표에나 통과한다. 모델이 오디오를 안 듣거나(암기),
+        어휘가 너무 좁거나, 채점이 너무 관대하다. 어느 쪽이든 **통과율을
+        회복 지표로 쓸 수 없다.**
+
+    임상 판정 라벨이 아니라 대리 지표다. "얼마나 오통과하는가"의 절대량은 이걸로
+    알 수 없고, "통과가 변별력이 있는가"만 답한다. 그것만으로도 파인튜닝 전후를
+    비교하면 방향은 보인다.
+
+    `rounds`만큼 다른 순열로 반복해 평균한다 — 한 번만 섞으면 우연히 비슷한 짝이
+    몰려 값이 튄다.
+    """
+    n = min(len(hyps), len(refs))
+    if n < 2:
+        return {"paired_pass": 0.0, "mismatched_pass": 0.0, "discrimination": 0.0, "n": n}
+
+    hyps, refs = hyps[:n], refs[:n]
+    paired = score_batch(hyps, refs, mode)["pass_rate"]
+
+    rng = random.Random(seed)
+    mismatched = [
+        score_batch(hyps, [refs[j] for j in _derange(n, rng)], mode)["pass_rate"]
+        for _ in range(max(1, rounds))
+    ]
+    mis = sum(mismatched) / len(mismatched)
+    return {
+        "paired_pass": paired,
+        "mismatched_pass": mis,
+        "discrimination": paired - mis,
+        "n": n,
+    }
 
 
 def score_batch(hyps: list[str], refs: list[str], mode: str) -> dict[str, float]:

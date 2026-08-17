@@ -34,6 +34,19 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
 
+DEFAULT_DEV_SPEAKER_FRAC = 0.1
+"""고르기용(dev) 화자 비율의 기본값. **0이면 안 된다.**
+
+0이던 동안 dev 스플릿이 없었고, 노트북이 test를 에포크 평가·최고 체크포인트
+선택·최종 보고에 모두 썼다. 그 결과 1~6차 배치의 CER은 홀드아웃 성능이 아니라
+시험지를 보며 고른 점수였다(`docs/asr/608-finetune-log.md` 경고 절).
+
+0.1인 이유: test 0.2보다 작게 잡아 학습 데이터를 덜 깎으면서도, 화자 20~30명
+규모에서 dev가 2~3명은 되게 한다. 1명이면 그 화자의 특성이 체크포인트 선택을
+통째로 좌우한다.
+"""
+
+
 def load_segments(path: Path) -> list[dict]:
     return [json.loads(l) for l in path.read_text(encoding="utf-8").splitlines() if l.strip()]
 
@@ -137,7 +150,16 @@ def main() -> None:
     ap.add_argument("--seg-root", required=True, type=Path, help="segment_wav_relpath 기준 루트")
     ap.add_argument("--out-dir", required=True, type=Path)
     ap.add_argument("--test-speaker-frac", type=float, default=0.2)
-    ap.add_argument("--dev-speaker-frac", type=float, default=0.0)
+    ap.add_argument(
+        "--dev-speaker-frac",
+        type=float,
+        default=DEFAULT_DEV_SPEAKER_FRAC,
+        help=(
+            "고르기용(dev) 화자 비율. **0으로 두면 안 된다** — 그러면 노트북이 test로 "
+            "최고 체크포인트를 골라 보고 수치가 홀드아웃이 아니게 된다. "
+            "근거는 DEFAULT_DEV_SPEAKER_FRAC 독스트링 참고."
+        ),
+    )
     ap.add_argument("--min-sec", type=float, default=1.0)
     ap.add_argument("--max-sec", type=float, default=30.0)
     ap.add_argument("--zip", action="store_true", help="업로드용 zip도 생성")

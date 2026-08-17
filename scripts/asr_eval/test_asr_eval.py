@@ -410,3 +410,343 @@ def test_문장_창에_발화가_없으면_버린다():
     from refine_segments import refine_narrative_bounds
 
     assert refine_narrative_bounds(_profile([1, 1, 2, 1, 2]), 0, 5, floor=1.0) is None
+
+
+# ─── refine_segments: 통과 세그먼트 wav 동반 (회귀) ──────────────
+#
+# 실제 사고: `copy_through`가 없던 판에서 매니페스트에는 줄이 있는데 wav가 없었고,
+# 패키징이 그 세그먼트를 **조용히** 건너뛰었다. 문장 1723개 중 16개만 살아남았다.
+# 예외도 로그도 없어서 패키지를 열어보기 전까지 몰랐다.
+#
+# 그래서 여기서 고정하는 불변식은 함수 호출이 아니라 **결과물의 정합성**이다:
+#   산출 매니페스트의 모든 줄에 대응하는 wav가 산출 폴더에 있어야 한다.
+# copy_through를 지우거나, 통과 경로를 하나 빠뜨리거나, 경로 계산이 틀어지면
+# 전부 이 단언에서 걸린다.
+
+
+def _write_wav(
+    path: Path,
+    seconds: float = 10.0,
+    sr: int = 16000,
+    bursts: "list[float] | None" = None,
+) -> None:
+    """유효한 PCM16 모노 wav를 만든다.
+
+    `bursts`에 준 시각마다 짧고 큰 소리를 넣는다. 바닥소음만 있는 wav를 주면
+    refine_bounds가 `peak < floor * rel_gate`로 전부 버려서, 재정렬 경로를
+    타는 테스트가 "버려짐"만 확인하게 된다 — 실제 발화처럼 피크가 있어야
+    재정렬이 성공하는 경로를 검증할 수 있다.
+    """
+    import wave
+
+    import numpy as np
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    n = int(sr * seconds)
+    # 바닥소음: 0이 아니어야 percentile(10)이 0으로 죽지 않는다.
+    a = np.full(n, 50, dtype=np.int16)
+    for t in bursts or []:
+        s = max(0, int((t - 0.12) * sr))
+        e = min(n, int((t + 0.12) * sr))
+        if e > s:
+            a[s:e] = 12000
+    with wave.open(str(path), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(sr)
+        w.writeframes(a.tobytes())
+
+
+def _seg(fid: str, idx: int, text: str, start: float) -> dict:
+    return {
+        "parent_file_id": fid,
+        "segment_wav_relpath": f"{fid}_seg{idx}.wav",
+        "start": start,
+        "end": start + 0.5,
+        "reference_text": text,
+    }
+
+
+def _run_refine(tmp_path: Path, rows: list[dict], extra_argv: list[str], monkeypatch):
+    """세그먼트 폴더·부모 오디오를 만들고 refine_segments.main()을 돌린다.
+
+    반환: (산출 매니페스트 줄들, 산출 폴더 경로)
+    """
+    import refine_segments as RS
+
+    seg_dir = tmp_path / "segs"
+    audio_root = tmp_path / "audio"
+    out_dir = tmp_path / "out"
+    seg_dir.mkdir(parents=True, exist_ok=True)
+
+    for fid in {r["parent_file_id"] for r in rows}:
+        centers = [(r["start"] + r["end"]) / 2 for r in rows if r["parent_file_id"] == fid]
+        _write_wav(audio_root / fid, bursts=centers)
+    for r in rows:
+        _write_wav(seg_dir / r["segment_wav_relpath"], seconds=0.5)
+
+    (seg_dir / "segments.jsonl").write_text(
+        "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows),
+        encoding="utf-8",
+    )
+
+    # ffmpeg에 의존하지 않는다 — 여기서 보는 건 자르기가 아니라 wav 동반이다.
+    def fake_cut(src, start, end, dst):
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_bytes(b"cut")
+        return True
+
+    monkeypatch.setattr(RS, "cut_wav", fake_cut)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "refine_segments.py",
+            "--segments", str(seg_dir / "segments.jsonl"),
+            "--audio-root", str(audio_root),
+            "--out-dir", str(out_dir),
+        ] + extra_argv,
+    )
+    assert RS.main() == 0
+
+    out_rows = [
+        json.loads(l)
+        for l in (out_dir / "segments.jsonl").read_text(encoding="utf-8").splitlines()
+        if l.strip()
+    ]
+    return out_rows, out_dir
+
+
+def test_대상없는_파일도_wav가_따라간다(tmp_path, monkeypatch):
+    # 통과 경로 ①: 파일 전체가 재정렬 대상이 아닐 때(문장만 있는 파일).
+    rows = [
+        _seg("p1.wav", 0, "바다에 갔다", 1.0),
+        _seg("p1.wav", 1, "밥을 먹었다", 3.0),
+    ]
+    out_rows, out_dir = _run_refine(
+        tmp_path, rows, ["--words-max", "1", "--narrative", "skip"], monkeypatch
+    )
+
+    assert len(out_rows) == 2, "통과 세그먼트가 매니페스트에서 사라지면 안 된다"
+    for r in out_rows:
+        assert (out_dir / r["segment_wav_relpath"]).exists(), (
+            f"{r['segment_wav_relpath']}: 매니페스트에 줄은 있는데 wav가 없다 — "
+            "패키징이 이 세그먼트를 조용히 건너뛴다"
+        )
+
+
+def test_파일_안의_문장_세그먼트도_wav가_따라간다(tmp_path, monkeypatch):
+    # 통과 경로 ②: 단어와 문장이 섞인 파일에서 문장만 통과할 때.
+    # 단어가 있어야 targets가 비지 않아 경로 ①이 아닌 루프 안으로 들어간다.
+    rows = [
+        _seg("p2.wav", 0, "사과", 1.0),
+        _seg("p2.wav", 1, "바다에 갔다", 3.0),
+        _seg("p2.wav", 2, "포도", 5.0),
+    ]
+    out_rows, out_dir = _run_refine(
+        tmp_path, rows, ["--words-max", "1", "--narrative", "skip"], monkeypatch
+    )
+
+    passed = [r for r in out_rows if not r.get("refined")]
+    assert passed, "문장 세그먼트가 통과 경로를 타야 이 테스트가 의미가 있다"
+    for r in out_rows:
+        assert (out_dir / r["segment_wav_relpath"]).exists(), (
+            f"{r['segment_wav_relpath']}: 매니페스트에 줄은 있는데 wav가 없다"
+        )
+
+
+def test_산출_매니페스트_줄수와_wav_수가_같다(tmp_path, monkeypatch):
+    # 사고의 형태 그대로: 줄은 많은데 wav가 적었다. 두 수를 직접 비교한다.
+    rows = [_seg("p3.wav", 0, "사과", 1.0)] + [
+        _seg("p3.wav", i, f"문장 {i} 입니다", 2.0 + i) for i in range(1, 6)
+    ]
+    out_rows, out_dir = _run_refine(
+        tmp_path, rows, ["--words-max", "1", "--narrative", "skip"], monkeypatch
+    )
+
+    wavs = {p.name for p in out_dir.rglob("*.wav")}
+    assert len(wavs) == len(out_rows), (
+        f"매니페스트 {len(out_rows)}줄 vs wav {len(wavs)}개 — "
+        "이 격차가 문장 1723→16 사고의 형태다"
+    )
+
+
+# ─── refine_segments: 배치 내구성 (실패 격리 + 이어하기) ─────────
+#
+# 수백 파일을 몇 시간 돌리는 배치다. 예외 처리가 없으면 깨진 wav 하나가 나머지를
+# 통째로 날리고, 매니페스트가 open("w")라 재실행이 처음부터다. 5차 배치가 19개 중
+# 17개에서 멈춘 적이 있고 Colab 할당량 때문에 재실행 비용이 실제로 비쌌다.
+
+
+def _run_refine_raw(tmp_path: Path, rows: list[dict], extra_argv: list[str], monkeypatch,
+                    *, fresh: bool = True):
+    """_run_refine과 같지만 main()의 반환값(exit code)을 그대로 준다."""
+    import refine_segments as RS
+
+    seg_dir = tmp_path / "segs"
+    audio_root = tmp_path / "audio"
+    out_dir = tmp_path / "out"
+    if fresh:
+        seg_dir.mkdir(parents=True, exist_ok=True)
+        for fid in {r["parent_file_id"] for r in rows}:
+            centers = [(r["start"] + r["end"]) / 2 for r in rows if r["parent_file_id"] == fid]
+            _write_wav(audio_root / fid, bursts=centers)
+        for r in rows:
+            _write_wav(seg_dir / r["segment_wav_relpath"], seconds=0.5)
+        (seg_dir / "segments.jsonl").write_text(
+            "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows),
+            encoding="utf-8",
+        )
+
+    def fake_cut(src, start, end, dst):
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_bytes(b"cut")
+        return True
+
+    monkeypatch.setattr(RS, "cut_wav", fake_cut)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "refine_segments.py",
+            "--segments", str(seg_dir / "segments.jsonl"),
+            "--audio-root", str(audio_root),
+            "--out-dir", str(out_dir),
+        ] + extra_argv,
+    )
+    return RS.main(), out_dir
+
+
+def _manifest(out_dir: Path) -> list[dict]:
+    p = out_dir / "segments.jsonl"
+    if not p.exists():
+        return []
+    return [json.loads(l) for l in p.read_text(encoding="utf-8").splitlines() if l.strip()]
+
+
+def test_한_파일이_깨져도_나머지는_처리된다(tmp_path, monkeypatch):
+    import refine_segments as RS
+
+    rows = [
+        _seg("bad.wav", 0, "바다에 갔다", 1.0),
+        _seg("good.wav", 0, "밥을 먹었다", 1.0),
+    ]
+    # bad.wav만 읽다가 터지게 한다(깨진 wav가 하는 짓 그대로).
+    real_profile = RS.rms_profile
+
+    def flaky(path, *a, **kw):
+        if "bad" in str(path):
+            raise RuntimeError("깨진 헤더")
+        return real_profile(path, *a, **kw)
+
+    monkeypatch.setattr(RS, "rms_profile", flaky)
+    code, out_dir = _run_refine_raw(
+        tmp_path, rows, ["--words-max", "0"], monkeypatch
+    )
+
+    fids = {r["parent_file_id"] for r in _manifest(out_dir)}
+    assert "good.wav" in fids, "성한 파일은 계속 처리돼야 한다"
+    assert "bad.wav" not in fids, "실패한 파일의 줄은 산출에 남으면 안 된다"
+    assert code == 1, "실패가 있으면 exit code로 구분돼야 한다"
+
+
+def test_실패한_파일은_완료로_기록되지_않는다(tmp_path, monkeypatch):
+    import refine_segments as RS
+
+    rows = [_seg("bad.wav", 0, "바다에 갔다", 1.0), _seg("good.wav", 0, "밥 먹었다", 1.0)]
+    real_profile = RS.rms_profile
+    monkeypatch.setattr(
+        RS, "rms_profile",
+        lambda p, *a, **k: (_ for _ in ()).throw(RuntimeError("x"))
+        if "bad" in str(p) else real_profile(p, *a, **k),
+    )
+    _, out_dir = _run_refine_raw(tmp_path, rows, ["--words-max", "0"], monkeypatch)
+
+    done = (out_dir / ".done_parents.txt").read_text(encoding="utf-8").split()
+    assert "good.wav" in done
+    assert "bad.wav" not in done, (
+        "실패한 파일이 완료로 기록되면 --resume이 영영 건너뛴다"
+    )
+
+
+def test_resume은_끝난_파일을_다시_처리하지_않는다(tmp_path, monkeypatch):
+    import refine_segments as RS
+
+    rows = [_seg("p.wav", i, "바다에 갔다", 1.0 + i * 2) for i in range(3)]
+    _run_refine_raw(tmp_path, rows, ["--words-max", "1", "--narrative", "skip"], monkeypatch)
+    first = _manifest(tmp_path / "out")
+
+    # 2회차는 rms_profile을 못 쓰게 해도 통과해야 한다 — 건드리지 않는다는 뜻.
+    monkeypatch.setattr(
+        RS, "rms_profile",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("완료 파일을 다시 읽었다")),
+    )
+    code, out_dir = _run_refine_raw(
+        tmp_path, rows, ["--words-max", "1", "--narrative", "skip", "--resume"],
+        monkeypatch, fresh=False,
+    )
+
+    assert code == 0
+    assert _manifest(out_dir) == first, "이어하기가 줄을 늘리거나 줄이면 안 된다"
+
+
+def test_resume은_중단된_파일의_반쪽_줄을_걷어낸다(tmp_path, monkeypatch):
+    # 중간에 죽으면 완료 목록엔 없는데 매니페스트엔 줄이 남을 수 있다.
+    # 그대로 이어쓰면 같은 세그먼트가 두 번 들어간다.
+    rows = [_seg("p.wav", i, "바다에 갔다", 1.0 + i * 2) for i in range(2)]
+    _run_refine_raw(tmp_path, rows, ["--words-max", "1", "--narrative", "skip"], monkeypatch)
+    out_dir = tmp_path / "out"
+
+    # 완료 기록만 지워 "중단된 것처럼" 만든다(줄은 남아 있다).
+    (out_dir / ".done_parents.txt").write_text("", encoding="utf-8")
+
+    _run_refine_raw(
+        tmp_path, rows, ["--words-max", "1", "--narrative", "skip", "--resume"],
+        monkeypatch, fresh=False,
+    )
+
+    paths = [r["segment_wav_relpath"] for r in _manifest(out_dir)]
+    assert len(paths) == len(set(paths)), f"중복 줄이 생겼다: {paths}"
+    assert len(paths) == 2
+
+
+# ─── dev 스플릿 (test 누수 차단) ─────────────────────────────────
+#
+# dev가 없으면 노트북이 test를 에포크 평가·체크포인트 선택·최종 보고에 모두 쓴다.
+# 그러면 보고 CER이 홀드아웃 성능이 아니라 "시험지를 보며 고른 점수"가 된다.
+# 1~6차 배치가 그 상태였다.
+
+
+def test_dev_비율_기본값이_0이_아니다():
+    # 이 기본값이 0으로 돌아가면 test 누수가 조용히 부활한다.
+    assert PC.DEFAULT_DEV_SPEAKER_FRAC > 0
+
+
+def test_dev를_주면_세_갈래가_모두_생긴다():
+    speakers = [f"S{i:02d}" for i in range(20)]
+    assign = PC.split_speakers(
+        speakers, test_frac=0.2, dev_frac=PC.DEFAULT_DEV_SPEAKER_FRAC, seed=42
+    )
+    kinds = set(assign.values())
+    assert kinds == {"train", "dev", "test"}, f"세 갈래가 다 나와야 한다: {kinds}"
+    assert sum(v == "dev" for v in assign.values()) >= 2, (
+        "dev가 1명이면 그 화자 특성이 체크포인트 선택을 좌우한다"
+    )
+
+
+def test_dev도_화자_단위로_분리된다():
+    # 한 화자가 두 split에 걸치면 dev/test가 train을 엿보게 된다.
+    speakers = [f"S{i:02d}" for i in range(20)]
+    for seed in range(10):
+        assign = PC.split_speakers(
+            speakers, test_frac=0.2, dev_frac=PC.DEFAULT_DEV_SPEAKER_FRAC, seed=seed
+        )
+        # 화자→split이 단일 매핑이므로 한 화자는 정의상 한 split만 갖는다.
+        assert len(assign) == len(set(speakers))
+        by_split: dict[str, set[str]] = {}
+        for spk, sp in assign.items():
+            by_split.setdefault(sp, set()).add(spk)
+        pools = list(by_split.values())
+        for i in range(len(pools)):
+            for j in range(i + 1, len(pools)):
+                assert not (pools[i] & pools[j]), "split 간 화자가 겹친다"
