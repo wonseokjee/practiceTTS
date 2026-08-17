@@ -708,3 +708,45 @@ def test_resume은_중단된_파일의_반쪽_줄을_걷어낸다(tmp_path, monk
     paths = [r["segment_wav_relpath"] for r in _manifest(out_dir)]
     assert len(paths) == len(set(paths)), f"중복 줄이 생겼다: {paths}"
     assert len(paths) == 2
+
+
+# ─── dev 스플릿 (test 누수 차단) ─────────────────────────────────
+#
+# dev가 없으면 노트북이 test를 에포크 평가·체크포인트 선택·최종 보고에 모두 쓴다.
+# 그러면 보고 CER이 홀드아웃 성능이 아니라 "시험지를 보며 고른 점수"가 된다.
+# 1~6차 배치가 그 상태였다.
+
+
+def test_dev_비율_기본값이_0이_아니다():
+    # 이 기본값이 0으로 돌아가면 test 누수가 조용히 부활한다.
+    assert PC.DEFAULT_DEV_SPEAKER_FRAC > 0
+
+
+def test_dev를_주면_세_갈래가_모두_생긴다():
+    speakers = [f"S{i:02d}" for i in range(20)]
+    assign = PC.split_speakers(
+        speakers, test_frac=0.2, dev_frac=PC.DEFAULT_DEV_SPEAKER_FRAC, seed=42
+    )
+    kinds = set(assign.values())
+    assert kinds == {"train", "dev", "test"}, f"세 갈래가 다 나와야 한다: {kinds}"
+    assert sum(v == "dev" for v in assign.values()) >= 2, (
+        "dev가 1명이면 그 화자 특성이 체크포인트 선택을 좌우한다"
+    )
+
+
+def test_dev도_화자_단위로_분리된다():
+    # 한 화자가 두 split에 걸치면 dev/test가 train을 엿보게 된다.
+    speakers = [f"S{i:02d}" for i in range(20)]
+    for seed in range(10):
+        assign = PC.split_speakers(
+            speakers, test_frac=0.2, dev_frac=PC.DEFAULT_DEV_SPEAKER_FRAC, seed=seed
+        )
+        # 화자→split이 단일 매핑이므로 한 화자는 정의상 한 split만 갖는다.
+        assert len(assign) == len(set(speakers))
+        by_split: dict[str, set[str]] = {}
+        for spk, sp in assign.items():
+            by_split.setdefault(sp, set()).add(spk)
+        pools = list(by_split.values())
+        for i in range(len(pools)):
+            for j in range(i + 1, len(pools)):
+                assert not (pools[i] & pools[j]), "split 간 화자가 겹친다"
