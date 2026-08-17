@@ -1,0 +1,18 @@
+# asr_eval 테스트 실행에 필요한 것 전부.
+#
+# 왜 별도 파일인가: README가 `python -m pytest ...`를 안내했지만 시스템 파이썬에는
+# pytest가 없어 "No module named pytest"로 실패했다. pytest는 ai-service/venv에만
+# 있었고 asr_eval에는 의존성 선언이 없어서, 이 폴더만 받은 사람은 테스트를 돌릴
+# 방법이 없었다.
+#
+# 여기 없는 것 — 의도적이다:
+#   openai-whisper : 실제 인식(baseline_asr / personalization_curve)에만 필요하다.
+#                    두 곳 모두 함수 안에서 지연 임포트하므로 테스트에는 필요 없다.
+#                    실측을 돌릴 때만 따로 설치하면 된다(모델 가중치까지 수 GB).
+#   torch          : 위와 같다. 파인튜닝은 Colab에서 돈다(finetune_whisper_608_colab.ipynb).
+#
+# 버전 하한선은 실제로 쓰는 기능 기준이다. numpy는 percentile/reshape만 쓰므로
+# 1.x·2.x 모두 무방하고, pytest는 특별한 기능을 쓰지 않는다.
+
+pytest>=7.0
+numpy>=1.24

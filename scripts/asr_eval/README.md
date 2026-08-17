@@ -132,9 +132,29 @@ python scripts/asr_eval/personalization_curve.py \
   --test-split ".../_splits/test.jsonl" --adapter prompt \
   --audio-root ".../608-audio" --model small --minutes 0,1,3,5,10
 
-# 3) 테스트
-python -m pytest scripts/asr_eval/test_asr_eval.py
+# 3) 테스트 — 두 방법 중 하나
 ```
+
+**(a) 전용 venv (권장, 이 폴더만 있어도 된다)**
+
+```bash
+python -m venv scripts/asr_eval/.venv
+scripts/asr_eval/.venv/Scripts/python.exe -m pip install -r scripts/asr_eval/requirements-dev.txt   # Windows
+# source scripts/asr_eval/.venv/bin/activate && pip install -r scripts/asr_eval/requirements-dev.txt  # macOS/Linux
+
+scripts/asr_eval/.venv/Scripts/python.exe -m pytest scripts/asr_eval/ -q
+```
+
+**(b) 이미 있는 ai-service venv 재사용 (설치 없이 바로)**
+
+```bash
+ai-service/venv/Scripts/python.exe -m pytest scripts/asr_eval/ -q     # Windows
+# ai-service/venv/bin/python -m pytest scripts/asr_eval/ -q           # macOS/Linux
+```
+
+맨 파이썬(`python -m pytest`)은 pytest가 전역에 없으면 실패한다. 둘 중 하나를 써라.
+테스트는 오디오도 whisper도 필요 없다 — 실제 인식은 전부 지연 임포트라 테스트
+경로에 걸리지 않는다.
 
 ## 실측(진짜 숫자)에 필요한 것
 
