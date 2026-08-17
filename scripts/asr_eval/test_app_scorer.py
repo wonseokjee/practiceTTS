@@ -7,6 +7,7 @@
 """
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -23,6 +24,57 @@ from app_scorer import (  # noqa: E402
 
 
 # ─── 자모 분해 ────────────────────────────────────────────────
+
+def test_골든_벡터를_재현한다():
+    """TS 정본이 얼려둔 입력·출력 쌍을 이식본이 그대로 재현하는지 본다.
+
+    아래 다른 테스트들은 기대값을 **하드코딩**한다. 그건 Python 쪽이 바뀌는 것만
+    잡는다 — TS에서 W_JONG을 0.2→0.3으로 바꿔도 여기는 초록이고, 그때부터 608
+    평가는 앱이 안 쓰는 채점기로 측정한다. 그런데 활발히 바뀌는 쪽은 TS(앱)다.
+
+    이 테스트는 방향이 반대다. 벡터 파일이 계약이고, TS를 고치면 거기서 먼저
+    빨간불이 나며, 벡터를 다시 쓰면(UPDATE_GOLDEN=1) 이번엔 이식본이 안 따라온
+    만큼 여기가 빨간불이 된다. 한쪽만 바뀌는 경로가 없다.
+
+    벡터 생성:
+      cd frontend && UPDATE_GOLDEN=1 npx vitest run \
+        src/memory-link/patient/quiz/domain/speechScoreGolden.test.ts
+    """
+    vec_path = Path(__file__).parent / "golden" / "speech_scorer_vectors.json"
+    assert vec_path.exists(), (
+        f"골든 벡터가 없다: {vec_path}. TS 테스트를 UPDATE_GOLDEN=1로 돌려 만들어라."
+    )
+    v = json.loads(vec_path.read_text(encoding="utf-8"))
+
+    assert SPEECH_PASS_THRESHOLD == v["threshold"], (
+        f"임계값 불일치: py={SPEECH_PASS_THRESHOLD} ts={v['threshold']}"
+    )
+
+    for c in v["decompose"]:
+        got = decompose_hangul(c["ch"])
+        want = None if c["jamo"] is None else tuple(c["jamo"])
+        assert got == want, f"decompose_hangul({c['ch']!r}): py={got} ts={want}"
+
+    for c in v["syllableCost"]:
+        got = syllable_phonetic_cost(c["a"], c["b"])
+        assert abs(got - c["cost"]) < 1e-9, (
+            f"syllable_phonetic_cost({c['a']}, {c['b']}): py={got} ts={c['cost']}"
+        )
+
+    for c in v["errorRate"]:
+        got = speech_error_rate(c["transcript"], c["target"], c["mode"])
+        assert abs(got - c["rate"]) < 1e-9, (
+            f"speech_error_rate({c['transcript']!r}, {c['target']!r}, {c['mode']}): "
+            f"py={got} ts={c['rate']}"
+        )
+
+    for c in v["isCorrect"]:
+        got = is_speech_correct(c["transcript"], c["target"], c["mode"])
+        assert got == c["correct"], (
+            f"is_speech_correct({c['transcript']!r}, {c['target']!r}, {c['mode']}): "
+            f"py={got} ts={c['correct']}"
+        )
+
 
 def test_한글_분해():
     assert decompose_hangul("각") == ("ㄱ", "ㅏ", "ㄱ")
