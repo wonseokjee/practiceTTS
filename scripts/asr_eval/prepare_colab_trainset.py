@@ -99,6 +99,11 @@ def split_speakers_persisted(
     매번 처음부터 재셔플해 기존 화자가 train↔test를 넘나든다 — 배치 간 CER
     비교가 무의미해지고, 심하면 이전에 학습에 쓰인 화자가 다음 평가의 test로
     들어가는 실질적 데이터 누수가 된다.
+
+    예외가 하나 있다: 봉인된 배정에 dev가 목표치보다 모자라면 **train 화자만**
+    dev로 승격한다(test는 불변). dev_frac이 0이던 시절 봉인 파일을 이어 쓰면서
+    dev를 새로 만들려면 이 길밖에 없다 — 신규 화자가 없는 재패키징에서는
+    아무 일도 안 일어나 dev가 0으로 남기 때문이다.
     """
     existing: dict[str, str] = {}
     if split_file.exists():
@@ -131,6 +136,28 @@ def split_speakers_persisted(
                     assign[s] = "dev"
                 else:
                     assign[s] = "train"
+
+        # dev가 모자라면 **train에서만** 결정적으로 승격한다.
+        #
+        # 왜 필요한가: dev_frac이 0이던 시절에 봉인된 split은 dev가 0명인데,
+        # 위 분기는 "신규 화자"에게만 dev를 준다. 즉 신규 화자가 안 들어오는
+        # 재패키징에서는 --dev-speaker-frac을 올려도 dev가 영영 0으로 남고,
+        # 노트북은 다시 test로 체크포인트를 고르게 된다(1~6차가 그랬다).
+        # 오류 없이 조용히 옛 동작으로 돌아가는 종류의 실패라 여기서 막는다.
+        #
+        # test는 절대 건드리지 않는다 — 배치 간 test 화자가 바뀌면 이전 배치와
+        # 가로 비교가 불가능해지고, 예전 train 화자가 test로 가면 누수가 된다.
+        # 대가는 train이 화자 몇 명만큼 줄어드는 것이고, 그건 감수한다.
+        target_dev = round(len(assign) * dev_frac)
+        cur_dev = sum(1 for v in assign.values() if v == "dev")
+        short = target_dev - cur_dev
+        if short > 0:
+            # 이름 정렬 후 seed 셔플 — 같은 입력이면 항상 같은 화자가 뽑힌다.
+            pool = sorted(s for s, v in assign.items() if v == "train")
+            random.Random(seed).shuffle(pool)
+            for s in pool[:short]:
+                assign[s] = "dev"
+            print(f"  dev 부족 {short}명 → train에서 승격(test는 불변)")
 
     split_file.parent.mkdir(parents=True, exist_ok=True)
     split_file.write_text(

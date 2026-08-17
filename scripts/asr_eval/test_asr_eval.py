@@ -332,6 +332,64 @@ def test_colab_split_persisted_survives_batch_growth(tmp_path):
     assert set(a2) == set(batch2)
 
 
+def test_colab_split_persisted_dev를_train에서만_승격한다(tmp_path):
+    """dev_frac 0으로 봉인된 split을 이어 쓰며 dev를 만들 때, dev는 train에서만
+    나와야 한다. test 화자가 바뀌면 이전 배치와 가로 비교가 불가능해지고, 예전
+    train 화자가 test로 가면 누수다. 1~6차가 dev 없이 돌아간 실측 버그의 회귀."""
+    split_file = tmp_path / "speaker_split.json"
+
+    speakers = [f"s{i}" for i in range(20)]
+    a1 = PC.split_speakers_persisted(
+        speakers, test_frac=0.2, dev_frac=0.0, seed=42, split_file=split_file
+    )
+    assert sum(1 for v in a1.values() if v == "dev") == 0  # 전제: dev 없음
+
+    # 화자 추가 없이 dev_frac만 올려 재패키징한다(7차 재패키징과 같은 상황).
+    a2 = PC.split_speakers_persisted(
+        speakers, test_frac=0.2, dev_frac=0.1, seed=42, split_file=split_file
+    )
+
+    assert sum(1 for v in a2.values() if v == "dev") == 2  # round(20 * 0.1)
+    # test는 한 명도 바뀌지 않는다.
+    assert {s for s, v in a1.items() if v == "test"} == {
+        s for s, v in a2.items() if v == "test"
+    }
+    # 승격된 화자는 전부 이전에 train이던 화자다.
+    assert all(a1[s] == "train" for s, v in a2.items() if v == "dev")
+
+
+def test_colab_split_persisted_승격은_결정적이다(tmp_path):
+    """같은 입력이면 같은 화자가 dev로 간다. 재패키징마다 dev가 바뀌면
+    체크포인트 선택 기준이 흔들려 회차 간 비교가 또 깨진다."""
+    speakers = [f"s{i}" for i in range(20)]
+
+    def run(path):
+        f = tmp_path / path
+        PC.split_speakers_persisted(
+            speakers, test_frac=0.2, dev_frac=0.0, seed=42, split_file=f
+        )
+        return PC.split_speakers_persisted(
+            speakers, test_frac=0.2, dev_frac=0.1, seed=42, split_file=f
+        )
+
+    assert run("a.json") == run("b.json")
+
+
+def test_colab_split_persisted_dev가_충분하면_건드리지_않는다(tmp_path):
+    """이미 목표치를 채운 dev를 재패키징이 다시 흔들면 안 된다."""
+    split_file = tmp_path / "speaker_split.json"
+    speakers = [f"s{i}" for i in range(20)]
+
+    a1 = PC.split_speakers_persisted(
+        speakers, test_frac=0.2, dev_frac=0.1, seed=42, split_file=split_file
+    )
+    a2 = PC.split_speakers_persisted(
+        speakers, test_frac=0.2, dev_frac=0.1, seed=42, split_file=split_file
+    )
+
+    assert a1 == a2
+
+
 # ─── refine_segments ────────────────────────────────────────
 
 def _profile(values):
