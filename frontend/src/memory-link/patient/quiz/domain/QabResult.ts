@@ -10,6 +10,8 @@ export type QabSubtest =
   | 'naming'
   | 'repeat'
   | 'reading'
+  /** 글자 조합 — 음절 타일을 눌러 목표 단어를 만든다(산출 과제). */
+  | 'spell'
   | 'ddk'
   /** 의식 수준. 문항 정오답이 아니라 반응시간으로 0~3점을 매긴다. */
   | 'loc';

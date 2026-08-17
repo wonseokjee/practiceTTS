@@ -10,7 +10,11 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { useMixedQuizSession } from './useMixedQuizSession.js';
 import type { IQuizApi } from '../infrastructure/QuizApi.js';
-import type { QabImageItem, QabNamingItem } from '../domain/MixedQuiz.js';
+import type {
+  QabImageItem,
+  QabNamingItem,
+  QabSpellItem,
+} from '../domain/MixedQuiz.js';
 import type { QuizSetDetail } from '../domain/Quiz.js';
 
 const QUIZ_SET_ID = 'set-1';
@@ -105,17 +109,32 @@ function makeNamingItems(): QabNamingItem[] {
   ];
 }
 
-/** 새 음성/DDK 검사 카운트를 모두 0으로 끄는 공통 옵션. */
+/** 산출 과제(음성·글자조합·DDK) 카운트를 모두 0으로 끄는 공통 옵션. */
 const NO_SPEECH = {
   pickNamingItems: () => [],
   pickRepeatItems: () => [],
   pickReadingItems: () => [],
+  pickSpellItems: () => [],
   pickDdkItems: () => [],
   namingCount: 0,
   repeatCount: 0,
   readingCount: 0,
+  spellCount: 0,
   ddkCount: 0,
 } as const;
+
+function makeSpellItems(): QabSpellItem[] {
+  return [
+    {
+      itemId: 'spell_w1',
+      targetWord: '사과',
+      imageUrl: '/apple.svg',
+      tiles: ['과', '사'],
+      instruction: '글자를 눌러 낱말을 만들어 보세요',
+      presentedLevel: 2,
+    },
+  ];
+}
 
 function renderMixed(api: IQuizApi) {
   return renderHook(() =>
@@ -774,3 +793,115 @@ describe('useMixedQuizSession', () => {
       true, // 마지막 문항 → 세션 자연 종료 → 완료 마커
     );
   });
+
+describe('글자 조합(spell)', () => {
+  // 이 과제는 예전에 보호자 메모 기반 빈칸을 변환해 만들었다. 그러면 한 문항이
+  // 기억 회상과 음절 조합을 동시에 물어 무엇을 못한 건지 분리되지 않았고,
+  // 매일 다른 문항이라 같은 목표가 반복되지도 않았다. 커리큘럼 단어 풀 기반의
+  // 독립 검사로 옮기면서 subtest도 따로 뒀다.
+
+  it('타일로 만든 낱말이 목표와 같으면 정답', async () => {
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi(),
+        pickQabItems: () => [],
+        generateSessionToken: () => 'tok-spell',
+        dailyCount: 0,
+        qabCount: 0,
+        ...NO_SPEECH,
+        pickSpellItems: () => makeSpellItems(),
+        spellCount: 1,
+      }),
+    );
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    expect(result.current[0].currentItem?.kind).toBe('spell');
+
+    act(() => result.current[1].submitSpell('사과'));
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+
+    expect(result.current[0].lastResult?.isCorrect).toBe(true);
+  });
+
+  it('다르게 조합하면 오답이고 정답을 알려준다', async () => {
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi(),
+        pickQabItems: () => [],
+        generateSessionToken: () => 'tok-spell2',
+        dailyCount: 0,
+        qabCount: 0,
+        ...NO_SPEECH,
+        pickSpellItems: () => makeSpellItems(),
+        spellCount: 1,
+      }),
+    );
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    act(() => result.current[1].submitSpell('과사'));
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+
+    expect(result.current[0].lastResult?.isCorrect).toBe(false);
+    expect(result.current[0].lastResult?.correctLabel).toBe('사과');
+  });
+
+  it('결과를 subtest `spell`로 제출하고 제시 레벨을 함께 보낸다', async () => {
+    // word(듣고 고르기=이해)와 섞이면 두 능력의 신호가 한 레벨로 뭉개진다.
+    const api = makeApi();
+    const spy = vi.spyOn(api, 'submitQabResults');
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: api,
+        pickQabItems: () => [],
+        generateSessionToken: () => 'tok-spell3',
+        dailyCount: 0,
+        qabCount: 0,
+        ...NO_SPEECH,
+        pickSpellItems: () => makeSpellItems(),
+        spellCount: 1,
+      }),
+    );
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    act(() => result.current[1].submitSpell('사과'));
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    act(() => result.current[1].next());
+
+    await waitFor(() => expect(spy).toHaveBeenCalled());
+    expect(spy.mock.calls[0][1]).toEqual([
+      expect.objectContaining({
+        subtest: 'spell',
+        itemRef: 'spell_w1',
+        isCorrect: true,
+        presentedLevel: 2,
+      }),
+    ]);
+  });
+
+  it('넘어가기는 도움받음으로 기록한다', async () => {
+    const api = makeApi();
+    const spy = vi.spyOn(api, 'submitQabResults');
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: api,
+        pickQabItems: () => [],
+        generateSessionToken: () => 'tok-spell4',
+        dailyCount: 0,
+        qabCount: 0,
+        ...NO_SPEECH,
+        pickSpellItems: () => makeSpellItems(),
+        spellCount: 1,
+      }),
+    );
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    act(() => result.current[1].skipCurrent());
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    act(() => result.current[1].next());
+
+    await waitFor(() => expect(spy).toHaveBeenCalled());
+    expect(spy.mock.calls[0][1]).toEqual([
+      expect.objectContaining({ subtest: 'spell', assisted: true }),
+    ]);
+  });
+});

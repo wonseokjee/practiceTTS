@@ -2,12 +2,15 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  WORD_CATEGORY,
+  buildSpellTiles,
+  distractorCountForLevel,
   pickNamingItems,
   pickQabItems,
   pickSentItems,
+  pickSpellItems,
   pickWordItems,
   qabItemCount,
-  WORD_CATEGORY,
 } from './QabItemBank.js';
 
 /** 선택지 imageUrl("/…/apple.svg")에서 slug를 뽑는다. */
@@ -169,5 +172,102 @@ describe('QabItemBank', () => {
         expect(it.presentedLevel).toBe(it.category === 'word' ? 1 : 5);
       }
     });
+  });
+});
+
+// ─── 글자 조합(spell) ─────────────────────────────────────────────
+//
+// 이 과제는 예전에 보호자 메모 기반으로 만들어져 (a) 기억 회상과 음절 조합이
+// 한 문항에 겹치고 (b) 방해 타일이 늘 3개라 적응 레벨링이 붙지 않았다.
+// 커리큘럼 단어 풀 기반으로 옮기면서 레벨이 난이도를 정하게 했다.
+
+describe('distractorCountForLevel', () => {
+  it('레벨 1~2는 방해 타일이 없다', () => {
+    // 가장 쉬운 진입 단계 — 정답 음절 재배열만. 예전 구현엔 이 단계가 없었다.
+    expect(distractorCountForLevel(1)).toBe(0);
+    expect(distractorCountForLevel(2)).toBe(0);
+  });
+
+  it('레벨 3~4는 2개, 5는 4개', () => {
+    // 상용 실어증 치료 도구의 등급(방해 글자 0/2/4개)을 그대로 따른다.
+    expect(distractorCountForLevel(3)).toBe(2);
+    expect(distractorCountForLevel(4)).toBe(2);
+    expect(distractorCountForLevel(5)).toBe(4);
+  });
+
+  it('레벨 미지정이면 중간(3)으로 본다', () => {
+    expect(distractorCountForLevel(undefined)).toBe(2);
+  });
+
+  it('범위를 벗어난 레벨은 클램프한다', () => {
+    expect(distractorCountForLevel(0)).toBe(0);
+    expect(distractorCountForLevel(9)).toBe(4);
+  });
+});
+
+describe('buildSpellTiles', () => {
+  const zeroRng = () => 0;
+
+  it('정답 음절을 모두 담고 중복을 보존한다', () => {
+    const tiles = buildSpellTiles('바나나', 1, zeroRng);
+
+    expect(tiles).toHaveLength(3);
+    expect([...tiles].sort()).toEqual(['나', '나', '바']);
+  });
+
+  it('레벨이 낮으면 방해 타일을 섞지 않는다', () => {
+    const tiles = buildSpellTiles('바다', 1, zeroRng);
+
+    expect([...tiles].sort()).toEqual(['다', '바']);
+  });
+
+  it('레벨이 높으면 방해 타일이 붙는다', () => {
+    const tiles = buildSpellTiles('바다', 5, zeroRng);
+
+    expect(tiles).toHaveLength(2 + 4);
+    expect(tiles).toEqual(expect.arrayContaining(['바', '다']));
+  });
+
+  it('방해 타일은 정답 음절과 겹치지 않는다', () => {
+    // 겹치면 "정답인데 오답 타일"이 생겨 환자가 만든 답이 틀리게 채점된다.
+    const tiles = buildSpellTiles('가나', 5, zeroRng);
+    const extras = [...tiles];
+    for (const ch of ['가', '나']) extras.splice(extras.indexOf(ch), 1);
+
+    expect(extras).not.toContain('가');
+    expect(extras).not.toContain('나');
+  });
+
+  it('타일 총 개수가 상한을 넘지 않는다', () => {
+    const tiles = buildSpellTiles('가나다라마바사', 5, zeroRng);
+
+    expect(tiles.length).toBeLessThanOrEqual(8);
+  });
+
+  it('빈 목표는 빈 배열', () => {
+    expect(buildSpellTiles('', 3, zeroRng)).toEqual([]);
+    expect(buildSpellTiles('   ', 3, zeroRng)).toEqual([]);
+  });
+});
+
+describe('pickSpellItems', () => {
+  it('요청 개수만큼 커리큘럼 단어에서 뽑는다', () => {
+    const items = pickSpellItems(3, 3);
+
+    expect(items).toHaveLength(3);
+    for (const it of items) {
+      expect(it.targetWord.length).toBeGreaterThanOrEqual(2);
+      expect(it.tiles).toEqual(
+        expect.arrayContaining(Array.from(it.targetWord)),
+      );
+      expect(it.presentedLevel).toBe(3);
+    }
+  });
+
+  it('1음절 단어는 제외한다', () => {
+    // 조합할 게 없어 과제가 성립하지 않는다.
+    const items = pickSpellItems(50, 3);
+
+    expect(items.every((it) => Array.from(it.targetWord).length >= 2)).toBe(true);
   });
 });

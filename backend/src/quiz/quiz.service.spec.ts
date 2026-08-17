@@ -685,16 +685,14 @@ describe('QuizService', () => {
       const createdTypes = createCalls.map(
         (c) => (c[0] as { type: string }).type,
       );
-      // 첫 빈칸 → tile_arrange, 둘째 빈칸 → speech (번갈아 변환)
-      expect(createdTypes).toEqual(['tile_arrange', 'speech']);
+      // 빈칸은 전부 말하기(따라읽기)로 변환된다.
+      expect(createdTypes).toEqual(['speech', 'speech']);
 
-      // 타일 문항은 정답 음절을 choices에 담아야 한다 (정답은 별도 컬럼에 은닉)
-      const tileArg = createCalls[0][0] as {
-        choices: string[];
-        correctAnswer: string;
-      };
-      expect(tileArg.correctAnswer).toBe('바다');
-      expect(tileArg.choices).toEqual(expect.arrayContaining(['바', '다']));
+      // 음절 타일은 여기서 만들지 않는다. 기억 회상과 음절 조합을 한 문항에
+      // 겹치면 틀렸을 때 무엇을 못한 건지 분리되지 않고, 매일 다른 메모에서
+      // 나오는 문항이라 같은 목표가 반복되지 않는다. 타일 과제는 커리큘럼
+      // 단어 풀 기반의 독립 검사(subtest `spell`)로 옮겼다.
+      expect(createdTypes).not.toContain('tile_arrange');
 
       // 말하기 문항은 따라읽기: choices 없음, 프롬프트는 안내 문구, 읽을 단어는 correctAnswer로 보존
       const speechArg = createCalls[1][0] as {

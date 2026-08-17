@@ -21,6 +21,7 @@ import { MultipleChoiceCard } from './components/MultipleChoiceCard.js';
 import { SpeechInput } from './components/SpeechInput.js';
 import { TileArrangeInput } from './components/TileArrangeInput.js';
 import { ImageChoiceQuizItem } from './components/ImageChoiceQuizItem.js';
+import { SpellTileItem } from './components/SpellTileItem.js';
 import { PictureNamingItem } from './components/PictureNamingItem.js';
 import { SpeechCaptureItem } from './components/SpeechCaptureItem.js';
 import { DdkItem } from './components/DdkItem.js';
@@ -224,6 +225,16 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
           showFeedback={showFeedback}
           isCorrect={showFeedback ? (lastResult?.isCorrect ?? null) : null}
           onSubmit={(count) => actions.submitDdk(count)}
+          onSkip={actions.skipCurrent}
+        />
+      ) : currentItem.kind === 'spell' ? (
+        <SpellTileItem
+          key={currentItem.id}
+          item={currentItem.item}
+          isSelectable={canAnswer}
+          showFeedback={showFeedback}
+          isCorrect={showFeedback ? (lastResult?.isCorrect ?? null) : null}
+          onSubmit={(assembled) => actions.submitSpell(assembled)}
           onSkip={actions.skipCurrent}
         />
       ) : (

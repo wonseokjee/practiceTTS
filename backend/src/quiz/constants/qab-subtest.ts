@@ -6,6 +6,7 @@
  *  - naming   : 그림 이름대기(보고 말하기)
  *  - repeat   : 따라말하기(듣고 따라 말하기)
  *  - reading  : 소리 내어 읽기(보고 읽기)
+ *  - spell    : 글자 조합(정답 음절 + 방해 음절 타일을 눌러 단어 만들기)
  *  - ddk      : 말운동(음절 반복, metric=감지 횟수)
  *  - loc      : 의식 수준(소리 후 화면 터치 반응시간, score=0~3)
  *
@@ -22,6 +23,7 @@ export const QAB_SUBTESTS = [
   'naming',
   'repeat',
   'reading',
+  'spell',
   'ddk',
   'loc',
 ] as const;
