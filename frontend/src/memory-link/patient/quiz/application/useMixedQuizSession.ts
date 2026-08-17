@@ -12,13 +12,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { QuizSetDetail } from '../domain/Quiz.js';
 import type {
-  PlayableItem,
   PlayResult,
+  PlayableItem,
+  QabDdkItem,
   QabImageItem,
   QabNamingItem,
-  QabRepeatItem,
   QabReadingItem,
-  QabDdkItem,
+  QabRepeatItem,
+  QabSpellItem,
 } from '../domain/MixedQuiz.js';
 import { isNameMatch } from '../domain/nameMatch.js';
 import {
@@ -30,7 +31,11 @@ import { isDdkPass } from '../domain/ddkScore.js';
 import type { QabResultInput, QabSubtest } from '../domain/QabResult.js';
 import { quizApi } from '../infrastructure/QuizApi.js';
 import type { IQuizApi } from '../infrastructure/QuizApi.js';
-import { pickQabItems, pickNamingItems } from '../infrastructure/QabItemBank.js';
+import {
+  pickQabItems,
+  pickNamingItems,
+  pickSpellItems,
+} from '../infrastructure/QabItemBank.js';
 import {
   moveEasiestLast,
   shouldFatigueExit,
@@ -83,6 +88,8 @@ export interface UseMixedQuizActions {
     transcript: string,
     azure?: AzurePronunciationScores | null,
   ) => void;
+  /** QAB 글자 조합 제출 (타일로 만든 문자열, 로컬 비교 채점) */
+  submitSpell: (assembled: string) => void;
   /** QAB 말운동(DDK) 결과 제출 (감지된 음절 수, 로컬 채점) */
   submitDdk: (count: number) => void;
   /** 발화 문항을 보호자가 "넘어가기"로 통과 처리 (도움받음으로 기록, 정확도 집계 제외) */
@@ -108,6 +115,8 @@ export interface UseMixedQuizDeps {
   ) => QabImageItem[];
   /** QAB 그림 이름대기 문항 추출기 (테스트 주입용). level로 제시 난이도 지정. */
   pickNamingItems?: (count: number, level?: number) => QabNamingItem[];
+  /** 글자 조합 문항 추출(테스트 주입용). level이 방해 타일 수를 정한다. */
+  pickSpellItems?: (count: number, level?: number) => QabSpellItem[];
   /** QAB 따라말하기 문항 추출기 (테스트 주입용) */
   pickRepeatItems?: (count: number) => QabRepeatItem[];
   /** QAB 소리 내어 읽기 문항 추출기 (테스트 주입용) */
@@ -121,6 +130,8 @@ export interface UseMixedQuizDeps {
   qabCount?: number;
   /** QAB 그림 이름대기 개수 (기본 1) */
   namingCount?: number;
+  /** 글자 조합 문항 수(기본 1). */
+  spellCount?: number;
   /** QAB 따라말하기 개수 (기본 1) */
   repeatCount?: number;
   /** QAB 소리 내어 읽기 개수 (기본 1) */
@@ -133,6 +144,7 @@ export interface UseMixedQuizDeps {
 const SUCCESS_RANK: Record<PlayableItem['kind'], number> = {
   qab: 3, // 그림선택(자동채점·비처벌) — 성공 확률 최고
   daily: 2, // 데일리(백엔드 채점)
+  spell: 2, // 글자 조합 — 타일이 주어져 산출 과제 중에선 성공 확률이 높다
   naming: 1, // 이하 발화 산출 — 낮음
   repeat: 1,
   reading: 1,
@@ -141,6 +153,7 @@ const SUCCESS_RANK: Record<PlayableItem['kind'], number> = {
 
 const DEFAULT_DAILY_COUNT = 4;
 const DEFAULT_QAB_COUNT = 2;
+const DEFAULT_SPELL_COUNT = 1;
 const DEFAULT_NAMING_COUNT = 1;
 const DEFAULT_REPEAT_COUNT = 1;
 const DEFAULT_READING_COUNT = 1;
@@ -182,6 +195,7 @@ export function useMixedQuizSession(
   const apiRef = useRef<IQuizApi>(deps?.quizApi ?? quizApi);
   const pickRef = useRef(deps?.pickQabItems ?? pickQabItems);
   const pickNamingRef = useRef(deps?.pickNamingItems ?? pickNamingItems);
+  const pickSpellRef = useRef(deps?.pickSpellItems ?? pickSpellItems);
   const pickRepeatRef = useRef(deps?.pickRepeatItems ?? pickRepeatItems);
   const pickReadingRef = useRef(deps?.pickReadingItems ?? pickReadingItems);
   const pickDdkRef = useRef(deps?.pickDdkItems ?? pickDdkItems);
@@ -189,6 +203,7 @@ export function useMixedQuizSession(
   const dailyCount = deps?.dailyCount ?? DEFAULT_DAILY_COUNT;
   const qabCount = deps?.qabCount ?? DEFAULT_QAB_COUNT;
   const namingCount = deps?.namingCount ?? DEFAULT_NAMING_COUNT;
+  const spellCount = deps?.spellCount ?? DEFAULT_SPELL_COUNT;
   const repeatCount = deps?.repeatCount ?? DEFAULT_REPEAT_COUNT;
   const readingCount = deps?.readingCount ?? DEFAULT_READING_COUNT;
   const ddkCount = deps?.ddkCount ?? DEFAULT_DDK_COUNT;
@@ -247,6 +262,9 @@ export function useMixedQuizSession(
       const namingItems: PlayableItem[] = pickNamingRef
         .current(namingCount, levels?.naming)
         .map((it) => ({ kind: 'naming', id: it.itemId, item: it }));
+      const spellItems: PlayableItem[] = pickSpellRef
+        .current(spellCount, levels?.spell)
+        .map((it) => ({ kind: 'spell', id: it.itemId, item: it }));
       const repeatItems: PlayableItem[] = pickRepeatRef
         .current(repeatCount)
         .map((it) => ({ kind: 'repeat', id: it.itemId, item: it }));
@@ -261,6 +279,7 @@ export function useMixedQuizSession(
         ...dailyItems,
         ...qabItems,
         ...namingItems,
+        ...spellItems,
         ...repeatItems,
         ...readingItems,
         ...ddkItems,
@@ -498,6 +517,32 @@ export function useMixedQuizSession(
     [applyResult],
   );
 
+  const submitSpell = useCallback(
+    (assembled: string): void => {
+      if (phaseRef.current !== 'answering') return;
+      const item = itemsRef.current[indexRef.current];
+      if (!item || item.kind !== 'spell') return;
+
+      // 채점은 공백 제거 후 문자열 일치. 타일을 누른 순서가 곧 답이므로
+      // 발화 채점처럼 관대하게 볼 여지가 없다 — 만든 글자가 목표와 같거나 다르다.
+      const norm = (t: string): string => t.replace(/\s+/g, '');
+      const correct = norm(assembled) === norm(item.item.targetWord);
+      qabResultsRef.current.push({
+        subtest: 'spell',
+        itemRef: item.item.itemId,
+        isCorrect: correct,
+        ...(item.item.presentedLevel !== undefined
+          ? { presentedLevel: item.item.presentedLevel }
+          : {}),
+      });
+      applyResult(
+        { isCorrect: correct, correctLabel: item.item.targetWord },
+        null,
+      );
+    },
+    [applyResult],
+  );
+
   const submitDdk = useCallback(
     (count: number): void => {
       if (phaseRef.current !== 'answering') return;
@@ -542,6 +587,10 @@ export function useMixedQuizSession(
       case 'reading':
         subtest = 'reading';
         correctLabel = item.item.text;
+        break;
+      case 'spell':
+        subtest = 'spell';
+        correctLabel = item.item.targetWord;
         break;
       case 'ddk':
         subtest = 'ddk';
@@ -703,6 +752,7 @@ export function useMixedQuizSession(
       submitQabChoice,
       submitNaming,
       submitSpeech,
+      submitSpell,
       submitDdk,
       skipCurrent,
       next,

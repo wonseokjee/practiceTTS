@@ -6,7 +6,8 @@ import type { SkillLevels } from '../../patient/quiz/domain/QabResult.js';
 
 const LEVELS: SkillLevels = {
   levels: {
-    word: 4, sentence: 2, naming: 1, repeat: 3, reading: 2, ddk: 5, loc: 2,
+    word: 4, sentence: 2, naming: 1, repeat: 3, reading: 2, spell: 3, ddk: 5,
+    loc: 2,
   },
   manifestVersion: 1,
 };
