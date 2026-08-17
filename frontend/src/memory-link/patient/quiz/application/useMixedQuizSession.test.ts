@@ -946,9 +946,9 @@ describe('글자 조합 — 반복과 중복 방지', () => {
     // 주므로, 프론트는 **재정렬하지 않는다.** 여기서 순서를 건드리면 간격이 깨진다.
     const opts = await arrangePriority(
       [
-        { itemRef: 'spell_w9', everCorrect: false, lastAt: '2026-08-01T00:00:00Z' },
-        { itemRef: 'spell_w1', everCorrect: true, lastAt: '2026-06-01T00:00:00Z' },
-        { itemRef: 'spell_w4', everCorrect: true, lastAt: '2026-08-16T00:00:00Z' },
+        { itemRef: 'spell_w9', lastCorrect: false, lastAt: '2026-08-01T00:00:00Z' },
+        { itemRef: 'spell_w1', lastCorrect: true, lastAt: '2026-06-01T00:00:00Z' },
+        { itemRef: 'spell_w4', lastCorrect: true, lastAt: '2026-08-16T00:00:00Z' },
       ],
       'tok-order',
     );
@@ -957,14 +957,14 @@ describe('글자 조합 — 반복과 중복 방지', () => {
   });
 
   it('맞힌 문항도 우선순위에 남긴다 — 빼면 간격이 아니라 무작위가 된다', async () => {
-    // 한때 `.filter(!everCorrect)`로 맞힌 문항을 버렸다. 그러면 "틀린 것 우선"일
+    // 한때 `.filter(!lastCorrect)`로 맞힌 문항을 버렸다. 그러면 "틀린 것 우선"일
     // 뿐 시간 축이 없어서, 맞힌 낱말은 다음 세션에 우연히 또 나올 수도 영영 안
     // 나올 수도 있다. 실어증 치료 이득은 훈련한 그 항목을 크게 넘어가지 않으므로
     // (limited transfer), 맞힌 낱말도 **간격을 두고 다시** 나와야 유지가 된다.
     const opts = await arrangePriority(
       [
-        { itemRef: 'spell_w1', everCorrect: true, lastAt: '2026-06-01T00:00:00Z' },
-        { itemRef: 'spell_w4', everCorrect: true, lastAt: '2026-08-16T00:00:00Z' },
+        { itemRef: 'spell_w1', lastCorrect: true, lastAt: '2026-06-01T00:00:00Z' },
+        { itemRef: 'spell_w4', lastCorrect: true, lastAt: '2026-08-16T00:00:00Z' },
       ],
       'tok-keep',
     );

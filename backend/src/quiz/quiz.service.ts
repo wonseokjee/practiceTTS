@@ -150,7 +150,8 @@ export interface SaveQabResultsResult {
 export interface RecentItemResult {
   itemRef: string;
   /** 최근 N일 동안 한 번이라도 맞혔는가. false면 재출제 우선순위가 높다. */
-  everCorrect: boolean;
+  /** 가장 최근 시도의 정오답. "한 번이라도 맞았나"가 아니다 — 훈련에 필요한 신호는 최신 상태다. */
+  lastCorrect: boolean;
   lastAt: string;
 }
 
@@ -1181,7 +1182,15 @@ export class QuizService {
     const raw = await this.qabResultRepository
       .createQueryBuilder('r')
       .select('r.item_ref', 'itemRef')
-      .addSelect('bool_or(r.is_correct)', 'everCorrect')
+      // **최신 시도의 정오답**이다. `bool_or`(= 한 번이라도 맞았나)를 쓰면 3주 전에
+      // 한 번 맞히고 어제 틀린 문항이 "맞힌 것"으로 분류돼, 아래 정렬에서 맨 뒤로
+      // 밀린다 — 방금 틀린 낱말이 우선순위 꼴찌가 된다. 반복 훈련의 목적이 바로
+      // 그 낱말을 다시 내는 것이라, 정확히 거꾸로 동작했다.
+      // 동시각 타이는 id DESC로 결정론(recomputeSkillLevel의 윈도우와 같은 규칙).
+      .addSelect(
+        '(array_agg(r.is_correct ORDER BY r.created_at DESC, r.id DESC))[1]',
+        'lastCorrect',
+      )
       .addSelect('max(r.created_at)', 'lastAt')
       .where('r.patient_id = :pid', { pid: effectivePatientId })
       .andWhere('r.subtest = :subtest', { subtest })
@@ -1189,14 +1198,16 @@ export class QuizService {
       .andWhere('r.assisted = false')
       .andWhere('r.created_at >= now() - make_interval(days => :days)', { days })
       .groupBy('r.item_ref')
-      .orderBy('bool_or(r.is_correct)', 'ASC')
+      // 1순위: 최근에 틀린 문항(false < true). 2순위: 마지막 출제가 오래된 것 —
+      // 여기서 간격이 생긴다. 프론트는 이 순서를 재정렬 없이 우선순위로 쓴다.
+      .orderBy('"lastCorrect"', 'ASC')
       .addOrderBy('max(r.created_at)', 'ASC')
       .limit(Math.max(1, Math.min(200, limit)))
-      .getRawMany<{ itemRef: string; everCorrect: boolean; lastAt: Date }>();
+      .getRawMany<{ itemRef: string; lastCorrect: boolean; lastAt: Date }>();
 
     return raw.map((x) => ({
       itemRef: x.itemRef,
-      everCorrect: x.everCorrect,
+      lastCorrect: x.lastCorrect,
       lastAt: x.lastAt.toISOString(),
     }));
   }

@@ -1828,7 +1828,7 @@ describe('QuizService', () => {
       arrangeRecent([
         {
           itemRef: 'spell_w9',
-          everCorrect: false,
+          lastCorrect: false,
           lastAt: new Date('2026-08-16T00:00:00.000Z'),
         },
       ]);
@@ -1838,7 +1838,7 @@ describe('QuizService', () => {
       expect(res).toEqual([
         {
           itemRef: 'spell_w9',
-          everCorrect: false,
+          lastCorrect: false,
           lastAt: '2026-08-16T00:00:00.000Z',
         },
       ]);
@@ -1881,12 +1881,29 @@ describe('QuizService', () => {
 
       await service.getRecentItems(PATIENT_ID, 'spell');
 
-      // 1순위: 아직 한 번도 못 맞힌 문항(false < true)
-      expect(qb.orderBy).toHaveBeenCalledWith('bool_or(r.is_correct)', 'ASC');
+      // 1순위: 최근에 틀린 문항(false < true)
+      expect(qb.orderBy).toHaveBeenCalledWith('"lastCorrect"', 'ASC');
       // 2순위: 마지막 출제가 오래된 것 — 여기서 "간격"이 생긴다
       expect(qb.addOrderBy).toHaveBeenCalledWith('max(r.created_at)', 'ASC');
     });
 
+    it('정오답을 최신 시도로 판정한다 — bool_or를 쓰지 않는다', async () => {
+      // bool_or(= 한 번이라도 맞았나)를 쓰면 3주 전에 한 번 맞히고 **어제 틀린**
+      // 문항이 "맞힌 것" 그룹으로 가고, 그 안에서도 최근이라 맨 뒤로 밀린다.
+      // 방금 틀린 낱말이 우선순위 꼴찌가 되어 반복 훈련이 거꾸로 동작한다.
+      //
+      // 앞의 정렬 테스트는 이걸 못 잡는다 — 정렬 방향만 보고 무엇을 정렬하는지는
+      // 묻지 않기 때문이다. 그래서 판정식 자체를 따로 고정한다.
+      const qb = arrangeRecent([]);
+
+      await service.getRecentItems(PATIENT_ID, 'spell');
+
+      const selected = qb.addSelect.mock.calls.map((c) => String(c[0]));
+      expect(selected).toContainEqual(
+        expect.stringContaining('array_agg(r.is_correct ORDER BY r.created_at DESC'),
+      );
+      expect(selected.join(' ')).not.toContain('bool_or');
+    });
   });
 
   describe('getSessionStats', () => {

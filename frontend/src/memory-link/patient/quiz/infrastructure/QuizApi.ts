@@ -423,7 +423,7 @@ function isRecentItem(value: unknown): value is RecentItem {
   return (
     o !== null &&
     typeof o.itemRef === 'string' &&
-    typeof o.everCorrect === 'boolean' &&
+    typeof o.lastCorrect === 'boolean' &&
     typeof o.lastAt === 'string'
   );
 }
