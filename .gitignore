@@ -56,3 +56,9 @@ extract_pdf.py
 
 # Generated TTS / runtime cache
 backend/tts-cache/
+
+# 에이전트 작업 산출물 (도구가 만드는 것 — 커밋 대상 아님)
+.claude/worktrees/
+
+# 로컬 실험 부트스트랩 (머신마다 다름)
+safezone-bootstrap/
