@@ -7,6 +7,7 @@ import { PersonaContextService } from '../profile/services/persona-context.servi
 import { QuizAttempt } from './entities/quiz-attempt.entity';
 import { QuizBestScore } from './entities/quiz-best-score.entity';
 import { QabResult } from './entities/qab-result.entity';
+import { QabSessionCompletion } from './entities/qab-session-completion.entity';
 import { QuizQuestion } from './entities/quiz-question.entity';
 import { QuizSet } from './entities/quiz-set.entity';
 import { SkillLevel } from './entities/skill-level.entity';
@@ -64,6 +65,10 @@ describe('Quiz Phase 3 와이어링', () => {
         },
         { provide: getRepositoryToken(QabResult), useValue: buildRepoMock() },
         { provide: getRepositoryToken(SkillLevel), useValue: buildRepoMock() },
+        {
+          provide: getRepositoryToken(QabSessionCompletion),
+          useValue: buildRepoMock(),
+        },
         { provide: getDataSourceToken(), useValue: { transaction: jest.fn() } },
         { provide: QUIZ_GENERATION_CLIENT, useValue: { generate: jest.fn() } },
         {

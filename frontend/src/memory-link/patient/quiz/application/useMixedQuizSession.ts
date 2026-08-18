@@ -35,6 +35,12 @@ import {
   pickQabItems,
   pickNamingItems,
   pickSpellItems,
+  asItemRef,
+  asWordLabel,
+} from '../infrastructure/QabItemBank.js';
+import type {
+  PickSpellOptions,
+  SpellItemRef,
 } from '../infrastructure/QabItemBank.js';
 import {
   moveEasiestLast,
@@ -116,13 +122,17 @@ export interface UseMixedQuizDeps {
   /** QAB 그림 이름대기 문항 추출기 (테스트 주입용). level로 제시 난이도 지정. */
   pickNamingItems?: (count: number, level?: number) => QabNamingItem[];
   /** 글자 조합 문항 추출(테스트 주입용). level이 방해 타일 수를 정한다. */
-  pickSpellItems?: (count: number, level?: number) => QabSpellItem[];
+  pickSpellItems?: (
+    count: number,
+    level?: number,
+    options?: PickSpellOptions,
+  ) => QabSpellItem[];
   /** QAB 따라말하기 문항 추출기 (테스트 주입용) */
-  pickRepeatItems?: (count: number) => QabRepeatItem[];
+  pickRepeatItems?: (count: number, level?: number) => QabRepeatItem[];
   /** QAB 소리 내어 읽기 문항 추출기 (테스트 주입용) */
-  pickReadingItems?: (count: number) => QabReadingItem[];
+  pickReadingItems?: (count: number, level?: number) => QabReadingItem[];
   /** QAB 말운동(DDK) 문항 추출기 (테스트 주입용) */
-  pickDdkItems?: (count: number) => QabDdkItem[];
+  pickDdkItems?: (count: number, level?: number) => QabDdkItem[];
   generateSessionToken?: () => string;
   /** 데일리 문항 최대 개수 (기본 4) */
   dailyCount?: number;
@@ -262,17 +272,51 @@ export function useMixedQuizSession(
       const namingItems: PlayableItem[] = pickNamingRef
         .current(namingCount, levels?.naming)
         .map((it) => ({ kind: 'naming', id: it.itemId, item: it }));
+      // 재출제 순서 = 간격 반복. 백엔드가 (틀린 것 먼저, 그 안에서 마지막 출제가
+      // 오래된 것 먼저) 순으로 주므로 **응답 순서를 그대로 넘긴다.** 여기서
+      // 거르지 않는 게 핵심이다 — 맞힌 문항까지 포함해야 "오래 안 나온 것부터"가
+      // 성립하고, 그래야 간격이 생긴다. 틀린 것만 남기면 맞힌 문항은 순서가
+      // 사라져 다음 세션에 우연히 또 나올 수도, 영영 안 나올 수도 있다.
+      //
+      // 후보가 레벨당 26~69개이고 세션당 1문항이라, 이 순서만으로 자연스럽게
+      // 26~69일 주기가 나온다. 별도의 간격 상수를 두지 않는 이유다.
+      //
+      // 실어증 치료 이득은 훈련한 그 항목을 크게 넘어가지 않으므로
+      // (limited transfer), 같은 목표가 여러 세션에 반복돼야 의미가 있다.
+      // 조회에 실패해도 세션은 진행한다(무작위로 떨어질 뿐).
+      let spellPriority: SpellItemRef[] = [];
+      if (spellCount > 0) {
+        try {
+          const recent = await apiRef.current.getRecentItems('spell');
+          spellPriority = recent.map((r) => asItemRef(r.itemRef));
+        } catch {
+          spellPriority = [];
+        }
+      }
+      // 같은 세션의 단어이해 문항이 정답 단어를 TTS로 들려주므로(promptText),
+      // 그 단어가 글자 조합으로 또 나오면 답을 알려준 셈이다.
+      const spokenWords = qabItems
+        .map((p) => (p.kind === 'qab' ? p.item.promptText : ''))
+        .filter((w) => w.length > 0)
+        .map(asWordLabel);
       const spellItems: PlayableItem[] = pickSpellRef
-        .current(spellCount, levels?.spell)
+        .current(spellCount, levels?.spell, {
+          exclude: spokenWords,
+          priority: spellPriority,
+        })
         .map((it) => ({ kind: 'spell', id: it.itemId, item: it }));
+      // 발화 검사도 레벨을 받는다. 예전엔 이 셋만 레벨 없이 무작위로 뽑았는데,
+      // 보호자 화면은 loc를 뺀 모든 검사에 1~5단계가 있다고 표시하고 있었다 —
+      // 같은 과제를 계속 내면서 숫자만 오르내리는 구조였다. 재활 앱에서 그건
+      // 단순한 UI 오류가 아니라 보호자의 임상 판단을 오염시키는 거짓 신호다.
       const repeatItems: PlayableItem[] = pickRepeatRef
-        .current(repeatCount)
+        .current(repeatCount, levels?.repeat)
         .map((it) => ({ kind: 'repeat', id: it.itemId, item: it }));
       const readingItems: PlayableItem[] = pickReadingRef
-        .current(readingCount)
+        .current(readingCount, levels?.reading)
         .map((it) => ({ kind: 'reading', id: it.itemId, item: it }));
       const ddkItems: PlayableItem[] = pickDdkRef
-        .current(ddkCount)
+        .current(ddkCount, levels?.ddk)
         .map((it) => ({ kind: 'ddk', id: it.itemId, item: it }));
 
       const shuffled = shuffle([
@@ -333,6 +377,7 @@ export function useMixedQuizSession(
     namingCount,
     repeatCount,
     readingCount,
+    spellCount,
     ddkCount,
   ]);
 
@@ -622,7 +667,13 @@ export function useMixedQuizSession(
   const flushPending = useCallback((completed = false): void => {
     const all = qabResultsRef.current;
     const pending = all.slice(submittedCountRef.current);
-    if (pending.length === 0) return;
+    // **완료 마커는 보낼 tail이 없어도 보내야 한다.**
+    //
+    // 예전엔 `pending.length === 0`이면 completed를 보기도 전에 반환했다.
+    // 문항마다 점진 제출하므로 세션이 끝나는 시점엔 tail이 비어 있는 경우가
+    // 흔하고(특히 피로 탈출), 그때 설계상 정상 종료가 중도 이탈로 기록됐다.
+    // 보호자는 환자가 자주 포기한다고 오해하게 된다.
+    if (pending.length === 0 && !completed) return;
     const targetCount = all.length;
     void Promise.resolve(
       apiRef.current.submitQabResults(

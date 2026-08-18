@@ -34,6 +34,7 @@ function makeMockApi(listSets: IQuizApi['listSets']): IQuizApi {
   getSkillLevels: vi.fn(),
   getActivityDays: vi.fn(),
   getSessionStats: vi.fn(),
+  getRecentItems: vi.fn(),
   };
 }
 

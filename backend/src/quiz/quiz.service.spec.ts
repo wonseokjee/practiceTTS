@@ -11,7 +11,7 @@ import { QuizBestScore } from './entities/quiz-best-score.entity';
 import { QuizQuestion } from './entities/quiz-question.entity';
 import { QuizSet } from './entities/quiz-set.entity';
 import { SkillLevel } from './entities/skill-level.entity';
-import { QAB_SUBTESTS } from './constants/qab-subtest';
+import { QAB_MANIFEST_VERSION, QAB_SUBTESTS } from './constants/qab-subtest';
 import { QuizError, QuizErrorCode } from './errors/quiz.errors';
 import { QUIZ_GENERATION_CLIENT } from './interfaces/IQuizGenerationClient';
 import { QUIZ_SCORER } from './interfaces/IQuizScorer';
@@ -53,6 +53,10 @@ describe('QuizService', () => {
   let qabResultRepo: ReturnType<typeof buildRepoMock>;
   let skillLevelRepo: ReturnType<typeof buildRepoMock>;
   let qabSessionCompletionRepo: ReturnType<typeof buildRepoMock>;
+  /** QAB 결과 INSERT에 넘긴 행들 (트랜잭션 쿼리빌더 mock이 채운다) */
+  let insertedValues: unknown[];
+  /** orIgnore() 호출 여부 — 멱등이 DB 수준(ON CONFLICT)인지 확인용 */
+  let orIgnoreCalls: boolean[];
   let memoryEntryRepo: ReturnType<typeof buildRepoMock>;
   let patientMemoryNoteRepo: ReturnType<typeof buildRepoMock>;
   let generationClientMock: { generate: jest.Mock };
@@ -141,6 +145,8 @@ describe('QuizService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    insertedValues = [];
+    orIgnoreCalls = [];
 
     // 기본값: 프로필 미등록 → 개인화 생략(원문 그대로 통과)
     personaSource = null;
@@ -187,6 +193,10 @@ describe('QuizService', () => {
         },
         { provide: getRepositoryToken(QabResult), useValue: qabResultRepo },
         { provide: getRepositoryToken(SkillLevel), useValue: skillLevelRepo },
+        {
+          provide: getRepositoryToken(QabSessionCompletion),
+          useValue: qabSessionCompletionRepo,
+        },
         { provide: getRepositoryToken(MemoryEntry), useValue: memoryEntryRepo },
         {
           provide: getRepositoryToken(PatientMemoryNote),
@@ -224,6 +234,12 @@ describe('QuizService', () => {
                     }
                     throw new Error('예상치 못한 엔티티: 트랜잭션 findOne mock');
                   },
+                  // 두 경로가 이 빌더를 쓴다:
+                  //  (1) QAB 결과 INSERT ... ON CONFLICT DO NOTHING (insert 체인)
+                  //  (2) 레벨 재계산 윈도우 조회 (select 체인)
+                  // insert의 execute()는 qabResultRepo.save로 위임해 "어떤 행을
+                  // 넣으려 했나" assertion을 그대로 살린다. orIgnore는 별도 spy로
+                  // 노출해, 멱등이 DB 수준에서 보장되는지 테스트가 확인할 수 있게 한다.
                   createQueryBuilder: () => ({
                     select: jest.fn().mockReturnThis(),
                     where: jest.fn().mockReturnThis(),
@@ -232,6 +248,19 @@ describe('QuizService', () => {
                     addOrderBy: jest.fn().mockReturnThis(),
                     limit: jest.fn().mockReturnThis(),
                     getRawMany: jest.fn().mockResolvedValue([]),
+                    insert: jest.fn().mockReturnThis(),
+                    into: jest.fn().mockReturnThis(),
+                    values: jest.fn(function (this: unknown, rows: unknown) {
+                      insertedValues.push(rows);
+                      return this;
+                    }),
+                    orIgnore: jest.fn(function (this: unknown) {
+                      orIgnoreCalls.push(true);
+                      return this;
+                    }),
+                    execute: jest.fn(() =>
+                      qabResultRepo.save(insertedValues[insertedValues.length - 1]),
+                    ),
                   }),
                   upsert: (entity: unknown, values: unknown, conflict: unknown) => {
                     if (entity === SkillLevel) {
@@ -1628,9 +1657,13 @@ describe('QuizService', () => {
       expect(savedRows[1]).toMatchObject({ subtest: 'ddk', metric: 11 });
     });
 
-    it('같은 세션 재제출(UNIQUE 위반)은 멱등 — 던지지 않고 성공 처리', async () => {
+    it('재제출 멱등을 ON CONFLICT DO NOTHING으로 얻는다 — 예외를 내지 않는다', async () => {
+      // 예전에는 UNIQUE 위반을 try/catch로 삼켰는데, PostgreSQL에서 그건 멱등이
+      // 아니다. 트랜잭션 안에서 에러가 나는 순간 abort 상태가 되어, 바로 뒤의
+      // 레벨 재계산·완료 마커가 25P02로 같이 죽는다. 즉 **애초에 예외가 나지
+      // 않아야** 하고, 그걸 보장하는 게 orIgnore()다.
       skillLevelRepo.find.mockResolvedValue([]);
-      qabResultRepo.save.mockRejectedValue({ code: '23505' });
+      qabResultRepo.save.mockResolvedValue([]);
       const dto: SubmitQabResultsDto = {
         sessionToken: SESSION_TOKEN,
         results: [{ subtest: 'word', itemRef: 'qw_001', isCorrect: true }],
@@ -1639,9 +1672,46 @@ describe('QuizService', () => {
       await expect(service.saveQabResults(PATIENT_ID, dto)).resolves.toEqual({
         saved: 1,
       });
+      expect(orIgnoreCalls).toHaveLength(1);
     });
 
-    it('UNIQUE 위반이 아닌 DB 오류는 전파한다', async () => {
+    it('중복 제출이어도 레벨 재계산과 완료 마커가 진행된다', async () => {
+      // 이게 무너졌던 지점이다. insert가 조용히 no-op이 되므로 트랜잭션은
+      // 살아 있고, 뒤따르는 작업이 정상 수행돼야 한다.
+      skillLevelRepo.find.mockResolvedValue([]);
+      qabResultRepo.save.mockResolvedValue([]);
+      const dto: SubmitQabResultsDto = {
+        sessionToken: SESSION_TOKEN,
+        completed: true,
+        results: [{ subtest: 'word', itemRef: 'qw_001', isCorrect: true }],
+      };
+
+      await service.saveQabResults(PATIENT_ID, dto);
+
+      expect(qabSessionCompletionRepo.upsert).toHaveBeenCalledTimes(1);
+    });
+
+    it('보낼 결과가 없어도 완료 마커는 남긴다', async () => {
+      // 프론트는 문항마다 점진 제출하므로 세션이 끝나는 시점엔 tail이 비어
+      // 있는 경우가 흔하다(특히 피로 탈출). 예전엔 DTO가 빈 배열을 400으로
+      // 막고 프론트도 조기 반환해, **설계상 정상 종료가 중도 이탈로 기록됐다.**
+      // 보호자 대시보드의 완료율이 그만큼 낮게 나온다.
+      skillLevelRepo.find.mockResolvedValue([]);
+      const dto: SubmitQabResultsDto = {
+        sessionToken: SESSION_TOKEN,
+        completed: true,
+        results: [],
+      };
+
+      const res = await service.saveQabResults(PATIENT_ID, dto);
+
+      expect(res).toEqual({ saved: 0 });
+      expect(qabSessionCompletionRepo.upsert).toHaveBeenCalledTimes(1);
+      // 넣을 행이 없으면 insert 자체를 건너뛴다(빈 values는 TypeORM이 거부한다).
+      expect(orIgnoreCalls).toHaveLength(0);
+    });
+
+    it('DB 오류는 그대로 전파한다', async () => {
       skillLevelRepo.find.mockResolvedValue([]);
       qabResultRepo.save.mockRejectedValue({ code: '08006' }); // connection failure
       const dto: SubmitQabResultsDto = {
@@ -1716,7 +1786,8 @@ describe('QuizService', () => {
 
       const res = await service.getSkillLevels(PATIENT_ID);
 
-      expect(res.manifestVersion).toBe(1);
+      // 버전을 올릴 때마다 테스트가 깨지지 않도록 상수를 참조한다.
+      expect(res.manifestVersion).toBe(QAB_MANIFEST_VERSION);
       for (const subtest of QAB_SUBTESTS) {
         expect(res.levels[subtest]).toBe(2);
       }
@@ -1759,37 +1830,151 @@ describe('QuizService', () => {
     });
   });
 
-  describe('getSessionStats', () => {
-    /**
-     * getSessionStats가 쓰는 쿼리빌더 mock.
-     * @param raw     시작/완료 집계(getRawOne)
-     * @param dropped 이탈 세션별 문항 수(getRawMany)
-     */
-    function arrangeStats(
-      raw: { started: string; completed: string } | undefined,
-      dropped: Array<{ token: string; items: string }> = [],
-    ) {
+  describe('getRecentItems', () => {
+    /** createQueryBuilder 체이닝 mock — getRawMany 결과를 지정 */
+    function arrangeRecent(rows: unknown[]) {
       const qb = {
         select: jest.fn().mockReturnThis(),
         addSelect: jest.fn().mockReturnThis(),
-        leftJoin: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
         groupBy: jest.fn().mockReturnThis(),
-        getRawOne: jest.fn().mockResolvedValue(raw),
-        getRawMany: jest.fn().mockResolvedValue(dropped),
+        orderBy: jest.fn().mockReturnThis(),
+        addOrderBy: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue(rows),
       };
       qabResultRepo.createQueryBuilder.mockReturnValue(qb);
       return qb;
     }
 
-    it('시작·완료 세션 수와 완료율(0..100)을 반환한다', async () => {
-      // 카운트는 postgres가 문자열로 돌려준다(bigint) — 숫자로 변환돼야 한다.
-      arrangeStats({ started: '10', completed: '7' }, [
-        { token: 's1', items: '9' },
-        { token: 's2', items: '2' },
-        { token: 's3', items: '1' },
+    it('문항별 최근 성적을 ISO 문자열로 반환한다', async () => {
+      arrangeRecent([
+        {
+          itemRef: 'spell_w9',
+          lastCorrect: false,
+          lastAt: new Date('2026-08-16T00:00:00.000Z'),
+        },
       ]);
+
+      const res = await service.getRecentItems(PATIENT_ID, 'spell', 30);
+
+      expect(res).toEqual([
+        {
+          itemRef: 'spell_w9',
+          lastCorrect: false,
+          lastAt: '2026-08-16T00:00:00.000Z',
+        },
+      ]);
+    });
+
+    it('보호자가 넘어가기로 통과시킨 결과는 제외한다', async () => {
+      // assisted는 실력 근거가 아니다. 재출제 우선순위를 왜곡하면 안 된다.
+      const qb = arrangeRecent([]);
+
+      await service.getRecentItems(PATIENT_ID, 'spell');
+
+      expect(qb.andWhere).toHaveBeenCalledWith('r.assisted = false');
+    });
+
+    it('요청 검사만 조회한다', async () => {
+      const qb = arrangeRecent([]);
+
+      await service.getRecentItems(PATIENT_ID, 'spell');
+
+      expect(qb.andWhere).toHaveBeenCalledWith('r.subtest = :subtest', {
+        subtest: 'spell',
+      });
+    });
+
+    it('limit을 안전 범위로 가둔다', async () => {
+      // 사용자 입력이 그대로 오면 전체 이력을 훑게 된다.
+      const qb = arrangeRecent([]);
+
+      await service.getRecentItems(PATIENT_ID, 'spell', 30, 99999);
+
+      expect(qb.limit).toHaveBeenCalledWith(200);
+    });
+
+    it('틀린 문항 먼저, 그 안에서 오래된 것 먼저 정렬한다', async () => {
+      // **이 순서가 곧 간격 반복이다.** 프론트는 응답 순서를 그대로 우선순위로
+      // 쓰므로(useMixedQuizSession), 여기서 ASC/DESC가 뒤집히면 맞힌 문항부터,
+      // 방금 낸 문항부터 다시 나온다 — 반복 훈련이 정반대로 동작한다.
+      // 변환·필터만 검증하던 때는 이 뒤집힘이 전부 통과했다.
+      const qb = arrangeRecent([]);
+
+      await service.getRecentItems(PATIENT_ID, 'spell');
+
+      // 1순위: 최근에 틀린 문항(false < true)
+      expect(qb.orderBy).toHaveBeenCalledWith('"lastCorrect"', 'ASC');
+      // 2순위: 마지막 출제가 오래된 것 — 여기서 "간격"이 생긴다
+      expect(qb.addOrderBy).toHaveBeenCalledWith('max(r.created_at)', 'ASC');
+    });
+
+    it('정오답을 최신 시도로 판정한다 — bool_or를 쓰지 않는다', async () => {
+      // bool_or(= 한 번이라도 맞았나)를 쓰면 3주 전에 한 번 맞히고 **어제 틀린**
+      // 문항이 "맞힌 것" 그룹으로 가고, 그 안에서도 최근이라 맨 뒤로 밀린다.
+      // 방금 틀린 낱말이 우선순위 꼴찌가 되어 반복 훈련이 거꾸로 동작한다.
+      //
+      // 앞의 정렬 테스트는 이걸 못 잡는다 — 정렬 방향만 보고 무엇을 정렬하는지는
+      // 묻지 않기 때문이다. 그래서 판정식 자체를 따로 고정한다.
+      const qb = arrangeRecent([]);
+
+      await service.getRecentItems(PATIENT_ID, 'spell');
+
+      const selected = qb.addSelect.mock.calls.map((c) => String(c[0]));
+      expect(selected).toContainEqual(
+        expect.stringContaining('array_agg(r.is_correct ORDER BY r.created_at DESC'),
+      );
+      expect(selected.join(' ')).not.toContain('bool_or');
+    });
+  });
+
+  describe('getSessionStats', () => {
+    /**
+     * getSessionStats가 쓰는 **세 리포지토리**의 쿼리빌더를 각각 목킹한다.
+     *
+     * 하나로 뭉치면 "분모가 QAB만 센다"는 회귀를 못 잡는다 — 데일리 전용 세션이
+     * 어느 쿼리에서 오는지가 이 수정의 요점이라, 리포지토리별로 다른 행을 준다.
+     *
+     * @param qab         QAB 결과가 남은 세션: 토큰 + 그 세션의 QAB 문항 수
+     * @param attempts    데일리 문항을 푼 세션 토큰
+     * @param completions 완료 마커가 찍힌 세션 토큰
+     */
+    function arrangeStats(
+      qab: Array<{ token: string; items: string }>,
+      attempts: Array<{ token: string }> = [],
+      completions: Array<{ token: string }> = [],
+    ) {
+      const buildQb = (rows: unknown[]) => ({
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue(rows),
+      });
+      qabResultRepo.createQueryBuilder.mockReturnValue(buildQb(qab));
+      quizAttemptRepo.createQueryBuilder.mockReturnValue(buildQb(attempts));
+      qabSessionCompletionRepo.createQueryBuilder.mockReturnValue(
+        buildQb(completions),
+      );
+    }
+
+    /** s1..sN 형태의 QAB 세션 행 — items는 postgres가 주는 대로 문자열이다 */
+    function qabSessions(
+      items: number[],
+    ): Array<{ token: string; items: string }> {
+      return items.map((n, i) => ({ token: `s${i + 1}`, items: String(n) }));
+    }
+
+    it('시작·완료 세션 수와 완료율(0..100)을 반환한다', async () => {
+      // 10세션 시작, 그중 7세션에 완료 마커. 남은 3세션이 이탈이다.
+      arrangeStats(
+        qabSessions([9, 2, 1, 5, 5, 5, 5, 5, 5, 5]),
+        [],
+        ['s4', 's5', 's6', 's7', 's8', 's9', 's10'].map((token) => ({ token })),
+      );
 
       const res = await service.getSessionStats(PATIENT_ID, 30);
 
@@ -1801,8 +1986,87 @@ describe('QuizService', () => {
       });
     });
 
+    it('QAB 문항 없이 데일리만 푼 세션도 분모에 잡힌다', async () => {
+      // 이게 TODO-101 분모 버그였다. QAB 슬롯이 0인 세션 구성이 존재하는데
+      // qab_results만 세면 그 세션은 "시작한 적도 없는" 것으로 사라졌다.
+      arrangeStats([], [{ token: 'daily-only' }], []);
+
+      const res = await service.getSessionStats(PATIENT_ID, 30);
+
+      expect(res).toMatchObject({
+        started: 1,
+        completed: 0,
+        completionRate: 0,
+      });
+    });
+
+    it('데일리만 푼 세션도 완료 마커가 있으면 분자에 잡힌다', async () => {
+      arrangeStats([], [{ token: 'daily-only' }], [{ token: 'daily-only' }]);
+
+      const res = await service.getSessionStats(PATIENT_ID, 30);
+
+      expect(res).toMatchObject({
+        started: 1,
+        completed: 1,
+        completionRate: 100,
+      });
+    });
+
+    it('한 세션이 QAB·데일리 양쪽에 있어도 한 번만 센다', async () => {
+      // 실제로 흔한 구성(섞어 진행)이다. 합집합이 아니라 합이면 완료율이 반토막 난다.
+      arrangeStats(
+        [{ token: 's1', items: '3' }],
+        [{ token: 's1' }],
+        [{ token: 's1' }],
+      );
+
+      const res = await service.getSessionStats(PATIENT_ID, 30);
+
+      expect(res).toMatchObject({
+        started: 1,
+        completed: 1,
+        completionRate: 100,
+      });
+    });
+
+    it('창 밖 세션의 완료 마커가 완료율을 100% 위로 밀지 못한다', async () => {
+      // 마커 쪽 시간 창과 결과 쪽 시간 창이 어긋날 수 있다. 교집합을 안 내면
+      // completed가 started보다 커져서 "완료율 200%"가 나온다.
+      arrangeStats(
+        [{ token: 's1', items: '3' }],
+        [],
+        [{ token: 's1' }, { token: 'gone' }],
+      );
+
+      const res = await service.getSessionStats(PATIENT_ID, 30);
+
+      expect(res).toMatchObject({
+        started: 1,
+        completed: 1,
+        completionRate: 100,
+      });
+    });
+
+    it('이탈 지점 평균은 QAB 문항이 있던 세션만 센다', async () => {
+      // 데일리 전용 이탈 세션은 QAB 문항 수가 0이다. 섞어 세면 "0문항 풀고 이탈"이
+      // 평균을 끌어내려, 지표가 "얼마나 하다 그만뒀나"를 뜻하지 않게 된다.
+      arrangeStats(
+        [{ token: 's1', items: '4' }],
+        [{ token: 'daily-only' }],
+        [],
+      );
+
+      const res = await service.getSessionStats(PATIENT_ID, 30);
+
+      expect(res).toMatchObject({ started: 2, avgItemsBeforeDropoff: 4 });
+    });
+
     it('이탈 세션이 없으면 이탈 지점은 null이다', async () => {
-      arrangeStats({ started: '5', completed: '5' }, []);
+      arrangeStats(
+        qabSessions([3, 3, 3, 3, 3]),
+        [],
+        ['s1', 's2', 's3', 's4', 's5'].map((token) => ({ token })),
+      );
 
       const res = await service.getSessionStats(PATIENT_ID, 30);
 
@@ -1814,10 +2078,7 @@ describe('QuizService', () => {
 
     it('이탈 지점 평균은 소수 1자리로 반올림한다', async () => {
       // (1+2)/2 = 1.5 — 정수로 뭉개면 "1문항"과 "2문항"이 구분되지 않는다.
-      arrangeStats({ started: '2', completed: '0' }, [
-        { token: 's1', items: '1' },
-        { token: 's2', items: '2' },
-      ]);
+      arrangeStats(qabSessions([1, 2]), [], []);
 
       const res = await service.getSessionStats(PATIENT_ID, 30);
 
@@ -1825,7 +2086,7 @@ describe('QuizService', () => {
     });
 
     it('시작한 세션이 없으면 완료율은 null이다(비율을 지어내지 않는다)', async () => {
-      arrangeStats({ started: '0', completed: '0' }, []);
+      arrangeStats([], [], []);
 
       const res = await service.getSessionStats(PATIENT_ID, 30);
 

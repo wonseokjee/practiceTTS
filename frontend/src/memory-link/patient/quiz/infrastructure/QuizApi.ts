@@ -24,6 +24,7 @@ import type {
   QabResultInput,
   QabSubtest,
   QabSubtestSummary,
+  RecentItem,
   SessionStats,
   SkillLevels,
 } from '../domain/QabResult.js';
@@ -79,6 +80,8 @@ export interface IQuizApi {
   getActivityDays(days?: number): Promise<string[]>;
   /** GET /quiz/session-stats — 최근 N일 세션 완료율 (보호자용) */
   getSessionStats(days?: number): Promise<SessionStats>;
+  /** GET /quiz/recent-items — 검사별 최근 문항 성적 (재출제 우선순위용) */
+  getRecentItems(subtest: QabSubtest, days?: number): Promise<RecentItem[]>;
 }
 
 // ─── 런타임 타입가드 ──────────────────────────────────────────────
@@ -398,4 +401,29 @@ export const quizApi: IQuizApi = {
       avgItemsBeforeDropoff: obj.avgItemsBeforeDropoff,
     };
   },
+
+  async getRecentItems(
+    subtest: QabSubtest,
+    days?: number,
+  ): Promise<RecentItem[]> {
+    const res = await memoryLinkApi.get<unknown>('/quiz/recent-items', {
+      params: days === undefined ? { subtest } : { subtest, days },
+    });
+    const obj = asRecord(res.data);
+    const items = obj?.items;
+    if (!Array.isArray(items) || !items.every(isRecentItem)) {
+      throw new Error(INVALID_RESPONSE_MESSAGE);
+    }
+    return items;
+  },
 };
+
+function isRecentItem(value: unknown): value is RecentItem {
+  const o = asRecord(value);
+  return (
+    o !== null &&
+    typeof o.itemRef === 'string' &&
+    typeof o.lastCorrect === 'boolean' &&
+    typeof o.lastAt === 'string'
+  );
+}

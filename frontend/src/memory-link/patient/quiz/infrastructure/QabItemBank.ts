@@ -147,6 +147,29 @@ const MASTER_WORDS: MasterWord[] = (() => {
 //   - sameCat: 같은 의미 범주 오답 수(많을수록 범주만으론 못 맞춤 → 변별↑)
 // 낮은 레벨은 선택지 적고 오답이 무관(먼) 단어라 쉽고, 높은 레벨은 선택지 많고
 // 오답이 전부 같은 범주(근접)라 어렵다.
+/**
+ * 레벨을 모를 때 쓰는 기본값. 백엔드 `COLD_START_LEVEL`과 **같아야 한다** —
+ * 다르면 환자가 본 난이도와 서버가 기록한 레벨이 어긋난다.
+ */
+const COLD_START_LEVEL = 2;
+
+/**
+ * 적응 레벨을 [1..5] 정수로 정규화한다. **난이도 축이 여럿이라 반드시 공유해야 한다.**
+ *
+ * 예전에는 이 식(`level == null ? 기본 : clamp(round(level))`)이 세 함수에 복사돼
+ * 있었고, 이미 갈라져 있었다 — 두 곳은 `COLD_START_LEVEL`(=2), 한 곳은 `3`.
+ * 축마다 다른 레벨을 보면 "레벨 5인데 방해 타일은 레벨 2 수준" 같은 조합이 나오고,
+ * 각 함수를 따로 검증하는 테스트로는 그 어긋남을 잡을 수 없다.
+ *
+ * `fallback`을 **인자로 강제**하는 건 의도적이다. 그림선택은 기존 동작 보존을 위해
+ * 3을 쓰고 글자 조합은 콜드스타트 2를 쓴다 — 서로 다른 게 맞는 값이라, 기본값을
+ * 숨기면 호출자가 어느 쪽을 받는지 모르게 된다.
+ */
+function normalizeLevel(level: number | undefined, fallback: number): number {
+  if (level == null) return fallback;
+  return Math.max(1, Math.min(5, Math.round(level)));
+}
+
 export interface ChoiceSpec {
   total: number;
   sameCat: number;
@@ -161,7 +184,7 @@ export const LEVEL_CHOICE_SPEC: Record<number, ChoiceSpec> = {
 
 /** 레벨을 [1..5]로 클램프하고 해당 스펙을 돌려준다(미지정/범위밖은 3=기본). */
 function choiceSpecForLevel(level?: number): ChoiceSpec {
-  const lv = level == null ? 3 : Math.max(1, Math.min(5, Math.round(level)));
+  const lv = normalizeLevel(level, 3);
   return LEVEL_CHOICE_SPEC[lv];
 }
 
@@ -240,8 +263,9 @@ function toWordItem(it: RawWordItem, level?: number): QabImageItem {
 }
 
 function toSentItem(it: RawSentItem, level?: number): QabImageItem {
-  // 문장이해 선택지는 원본 JSON의 고정 쌍이라 레벨로 오답거리를 바꾸지 않는다.
-  // presentedLevel은 스탬핑해 정오답 기반 레벨링은 동작하게 한다(변별 난이도는 추후).
+  // 선택지는 원본 JSON의 고정 쌍이라 **여기서** 오답거리를 바꾸지는 않는다.
+  // 문장이해의 난이도는 선택지가 아니라 **자극의 통사 복잡도**로 준다 —
+  // 어느 문항을 낼지는 sentPoolForLevel이 레벨로 정한다.
   return {
     itemId: it.itemId,
     category: 'sentence',
@@ -333,7 +357,13 @@ const SPELL_MAX_TILES = 8;
  * 두는 게 핵심이다 — 예전 구현은 늘 3개라 가장 쉬운 진입 단계가 없었다.
  */
 export function distractorCountForLevel(level?: number): number {
-  const lv = level == null ? 3 : Math.max(1, Math.min(5, Math.round(level)));
+  // 레벨을 모를 때(스킬 레벨 조회 실패)는 **백엔드 콜드스타트와 같은 값**을 쓴다.
+  // 임의의 중간값(3)을 쓰면 환자는 방해 2개짜리를 푸는데 서버는 레벨 2(방해 0개)로
+  // 도장을 찍어, 본 난이도와 기록이 어긋난다. 적응 레벨링의 전제가
+  // "presented_level로 능력과 제시난이도 교란을 제거한다"이므로 그 전제가 깨진다.
+  // 서버가 클라이언트 값을 믿지 않는 건 의도된 설계(eb09bd8)라, 맞춰야 하는 쪽은
+  // 프론트의 기본값이다.
+  const lv = normalizeLevel(level, COLD_START_LEVEL);
   if (lv <= 2) return 0;
   if (lv <= 4) return 2;
   return 4;
@@ -361,16 +391,125 @@ export function buildSpellTiles(
 }
 
 /**
- * 글자 조합 문항을 무작위 count개 추출. level이 방해 타일 수를 정한다.
+ * 레벨 → 목표 단어 음절 수 범위.
  *
- * 출처는 단어이해와 같은 커리큘럼 단어 풀이다. 같은 단어가 여러 세션에 반복될
- * 수 있고(실어증 치료 이득은 훈련한 그 항목에 국한된다), 음절 수가 통제된다.
+ * 방해 타일 수만으로는 난이도가 통제되지 않는다. 4음절 단어에 방해 0개는 2음절
+ * 단어에 방해 0개와 전혀 다른 과제인데, 예전에는 2~4음절이 섞여 나와 레벨별
+ * 정답률이 어휘·순서 부하와 교란됐다("이 환자는 방해 2개에서 잘한다"가 아니라
+ * "짧은 단어가 운 좋게 많이 나왔다"를 학습한다).
+ *
+ * 길이와 방해 수를 함께 올려 두 축이 같은 방향을 보게 한다.
  */
-export function pickSpellItems(count: number, level?: number): QabSpellItem[] {
-  return shuffle(WORD_ITEMS)
-    .map((it) => toSpellItem(it, level))
-    .filter((x): x is QabSpellItem => x !== null)
-    .slice(0, Math.max(0, count));
+function syllableRangeForLevel(level?: number): { min: number; max: number } {
+  const lv = normalizeLevel(level, COLD_START_LEVEL);
+  if (lv <= 2) return { min: 2, max: 2 };
+  if (lv <= 4) return { min: 2, max: 3 };
+  return { min: 3, max: 4 };
+}
+
+/** 공백 제외 음절 수. */
+function syllableCount(text: string): number {
+  return Array.from(text.replace(/\s+/g, '')).length;
+}
+
+/**
+ * 화면에 보이는 한글 낱말 그 자체 (예: `'사과'`).
+ *
+ * `SpellItemRef`와 **절대 섞이면 안 된다.** 둘 다 실체는 string이라, 브랜드를
+ * 안 붙이면 서로 바꿔 넣어도 컴파일이 통과하고 런타임에도 예외가 없다 —
+ * 그냥 조용히 아무 효과가 없어지고 결과가 무작위처럼 보인다. 실제로 한 번 그랬다.
+ */
+export type SpellWordLabel = string & { readonly __brand: 'SpellWordLabel' };
+
+/** 제출 이력에서 쓰는 문항 식별자 (예: `'spell_qw_002'`). {@link SpellWordLabel} 참고. */
+export type SpellItemRef = string & { readonly __brand: 'SpellItemRef' };
+
+/** 한글 낱말을 {@link SpellWordLabel}로 표시한다(값은 그대로). */
+export const asWordLabel = (s: string): SpellWordLabel => s as SpellWordLabel;
+
+/** 제출 이력의 itemRef를 {@link SpellItemRef}로 표시한다(값은 그대로). */
+export const asItemRef = (s: string): SpellItemRef => s as SpellItemRef;
+
+export interface PickSpellOptions {
+  /**
+   * 제외할 **낱말**(`'사과'`). 같은 세션의 단어이해 문항이 정답 낱말을 TTS로
+   * 들려주므로(promptText), 겹치면 답을 알려준 셈이 된다.
+   */
+  exclude?: readonly SpellWordLabel[];
+  /**
+   * 우선 재출제할 **문항 식별자**(`'spell_qw_002'`) — 낱말이 아니다.
+   *
+   * 앞에 올수록 먼저 뽑힌다. 백엔드 `GET /quiz/recent-items`가 이미
+   * (틀린 것 먼저, 그 안에서 마지막 출제가 오래된 것 먼저) 순으로 주므로,
+   * 그 응답 순서를 그대로 넘기면 그것이 곧 간격 반복이 된다 — 틀린 건 바로
+   * 다시, 맞힌 건 오래 안 나온 것부터.
+   *
+   * 실어증 치료 이득은 훈련한 그 항목을 크게 넘어가지 않으므로
+   * (limited transfer), 같은 낱말이 여러 세션에 걸쳐 반복돼야 의미가 있다.
+   * 비면 무작위로 떨어진다.
+   */
+  priority?: readonly SpellItemRef[];
+}
+
+/**
+ * 글자 조합 문항을 count개 추출.
+ *
+ * 선택 순서: (1) 레벨에 맞는 음절 수 + 제외 목록으로 후보를 좁히고,
+ * (2) `priority`에 있는 단어를 앞으로 당기고, (3) 나머지는 무작위.
+ *
+ * 후보를 먼저 좁힌 뒤에 타일을 만든다 — 예전에는 70개 전부에 타일을 만들고
+ * 1개만 썼다. 이력 조회가 얹히는 지금은 그 낭비가 그대로 비용이 된다.
+ */
+export function pickSpellItems(
+  count: number,
+  level?: number,
+  options?: PickSpellOptions,
+): QabSpellItem[] {
+  const want = Math.max(0, count);
+  if (want === 0) return [];
+
+  const { min, max } = syllableRangeForLevel(level);
+  const excluded = new Set(options?.exclude ?? []);
+  const priority = options?.priority ?? [];
+  const priorityRank = new Map<string, number>(
+    priority.map((ref, i) => [ref, i]),
+  );
+
+  // 두 키 공간을 각자의 브랜드로 만들어 낸다 — 타입이 뒤바뀜을 막아준다.
+  const labelOf = (it: RawWordItem): SpellWordLabel =>
+    asWordLabel(it.choices.find((c) => c.isCorrect)?.label ?? '');
+  const refOf = (it: RawWordItem): SpellItemRef =>
+    asItemRef(`spell_${it.itemId}`);
+
+  const eligible = WORD_ITEMS.filter((it) => {
+    const label = labelOf(it);
+    if (label.length === 0 || excluded.has(label)) return false;
+    const n = syllableCount(label);
+    return n >= min && n <= max;
+  });
+
+  // 레벨 범위에 맞는 단어가 부족하면 범위를 풀어 세션이 비지 않게 한다
+  // (문항이 조용히 사라지는 것보다 난이도가 조금 어긋나는 편이 낫다).
+  const pool = eligible.length >= want
+    ? eligible
+    : WORD_ITEMS.filter((it) => {
+        const label = labelOf(it);
+        return label.length > 0 && !excluded.has(label) && syllableCount(label) >= 2;
+      });
+
+  const ordered = shuffle(pool).sort((a, b) => {
+    const ra = priorityRank.get(refOf(a)) ?? Number.MAX_SAFE_INTEGER;
+    const rb = priorityRank.get(refOf(b)) ?? Number.MAX_SAFE_INTEGER;
+    return ra - rb;
+  });
+
+  const picked: QabSpellItem[] = [];
+  for (const it of ordered) {
+    if (picked.length >= want) break;
+    const item = toSpellItem(it, level);
+    if (item !== null) picked.push(item);
+  }
+  return picked;
 }
 
 function toSpellItem(it: RawWordItem, level?: number): QabSpellItem | null {
@@ -398,10 +537,50 @@ export function pickWordItems(count: number, level?: number): QabImageItem[] {
     .map((it) => toWordItem(it, level));
 }
 
+/**
+ * 문장이해 난이도 축 — **통사 복잡도**.
+ *
+ * 문장이해에서 오답거리를 조절할 수 없는 건 선택지가 원본 JSON의 고정 쌍이기
+ * 때문이다(toSentItem 참고). 대신 자극 자체에 이미 축이 들어 있다 — `sentenceType`.
+ *
+ * 실어증 문장이해의 복잡도 위계는 확립돼 있다:
+ *   active-passive   능동/수동 가역문 — 어순 단서만으로는 못 풀지만 절이 하나다
+ *   relative-clause  관계절 — 논항이 원위치를 벗어나 흔적 처리가 필요하다
+ *   embedded-clause  내포절 — 절 경계를 유지한 채 처리해야 해 작업기억 부담이 최대
+ *
+ * 예전에는 presentedLevel을 스탬핑만 하고 문항 구성은 레벨과 무관했다. 그러면
+ * "레벨 5 정답률"이 실제로는 레벨 1과 같은 문항의 정답률이라, 보호자가 보는
+ * 눈높이가 회복을 뜻하지 않게 된다.
+ */
+const SENT_TYPES_BY_LEVEL: Record<number, readonly string[]> = {
+  1: ['active-passive'],
+  2: ['active-passive'],
+  3: ['active-passive', 'relative-clause'],
+  4: ['active-passive', 'relative-clause'],
+  5: ['active-passive', 'relative-clause', 'embedded-clause'],
+};
+
+/** 이 레벨에서 낼 수 있는 통사 유형. (테스트 노출) */
+export function sentTypesForLevel(level?: number): readonly string[] {
+  return SENT_TYPES_BY_LEVEL[normalizeLevel(level, COLD_START_LEVEL)];
+}
+
+/**
+ * 레벨이 허용하는 통사 유형만 남긴다. 모자라면 전체 풀로 되돌려
+ * 세션이 비지 않게 한다(난이도가 어긋나는 편이 문항이 사라지는 것보다 낫다).
+ */
+function sentPoolForLevel(want: number, level?: number): RawSentItem[] {
+  const allowed = new Set(sentTypesForLevel(level));
+  const eligible = SENT_ITEMS.filter((it) => allowed.has(it.sentenceType));
+  return eligible.length >= want ? eligible : [...SENT_ITEMS];
+}
+
 /** 문장이해 문항을 무작위 count개 추출. */
 export function pickSentItems(count: number, level?: number): QabImageItem[] {
-  return shuffle(SENT_ITEMS)
-    .slice(0, Math.max(0, count))
+  const want = Math.max(0, count);
+  if (want === 0) return [];
+  return shuffle(sentPoolForLevel(want, level))
+    .slice(0, want)
     .map((it) => toSentItem(it, level));
 }
 
@@ -416,7 +595,11 @@ export function pickQabItems(
 ): QabImageItem[] {
   const pool: QabImageItem[] = [
     ...WORD_ITEMS.map((it) => toWordItem(it, levels?.word)),
-    ...SENT_ITEMS.map((it) => toSentItem(it, levels?.sentence)),
+    // 문장은 레벨이 허용하는 통사 유형만 — 단어처럼 오답거리를 조절할 수 없는
+    // 대신 자극의 복잡도로 난이도를 준다.
+    ...sentPoolForLevel(count, levels?.sentence).map((it) =>
+      toSentItem(it, levels?.sentence),
+    ),
   ];
   return shuffle(pool).slice(0, Math.max(0, count));
 }
