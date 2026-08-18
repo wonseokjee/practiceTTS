@@ -134,3 +134,32 @@ describe('WeeklyReportScreen', () => {
     await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
   });
 });
+
+describe('새 검사 노출', () => {
+  it('글자 조합이 한글 라벨로 표시된다', async () => {
+    // 주차별 기록도 같은 라벨 맵을 쓰므로 같은 방식으로 깨졌었다.
+    vi.spyOn(quizApi, 'getQabTrend').mockResolvedValue([
+      {
+        subtest: 'spell',
+        points: [
+          {
+            weekStart: '2026-08-10',
+            total: 4,
+            correct: 3,
+            accuracy: 75,
+            avgScore: null,
+            avgMetric: null,
+          },
+        ],
+        deltaFromPrevious: null,
+      },
+    ]);
+    render(<WeeklyReportScreen onBack={() => {}} />);
+
+    await waitFor(() =>
+      expect(screen.getAllByText(/글자 조합/).length).toBeGreaterThan(0),
+    );
+    expect(screen.queryByText('spell')).toBeNull();
+  });
+});
+

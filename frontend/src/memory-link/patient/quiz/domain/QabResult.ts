@@ -105,3 +105,23 @@ export interface SessionStats {
   /** 이탈 세션이 평균 몇 문항까지 갔는지(소수 1자리). 이탈이 없으면 null. */
   avgItemsBeforeDropoff: number | null;
 }
+
+/**
+ * GET /quiz/recent-items 응답 1건 — 문항 재출제 우선순위 산출용.
+ *
+ * 실어증 치료 이득은 훈련한 그 항목을 크게 넘어가지 않는다(limited transfer).
+ * 최근에 틀린 문항을 다시 내야 반복 훈련이 성립한다.
+ */
+export interface RecentItem {
+  itemRef: string;
+  /** 최근 기간에 한 번이라도 맞혔는가. false면 재출제 우선순위가 높다. */
+  /**
+   * 가장 최근 시도의 정오답. "한 번이라도 맞았나"가 아니다.
+   *
+   * 후자를 쓰면 오래전에 한 번 맞히고 어제 틀린 문항이 "맞힌 것"으로 분류돼
+   * 우선순위 맨 뒤로 밀린다 — 반복 훈련이 정확히 거꾸로 동작한다.
+   */
+  lastCorrect: boolean;
+  lastAt: string;
+}
+

@@ -50,3 +50,18 @@ describe('SkillLevelCard', () => {
     await waitFor(() => expect(container.querySelector('section')).toBeNull());
   });
 });
+
+describe('새 검사 노출', () => {
+  it('글자 조합 눈높이가 화면에 보인다', async () => {
+    // 2026-08-17: spell을 추가하면서 표시 목록을 빠뜨려 보호자에게만 안 보였다.
+    // 라벨 표는 타입이 잡지만 "목록에 넣었는가"는 타입이 못 잡는다.
+    const { getByText, getByLabelText } = render(
+      <SkillLevelCard fetchLevels={() => Promise.resolve(LEVELS)} />,
+    );
+    await waitFor(() => expect(getByText('연습 눈높이')).toBeTruthy());
+
+    expect(getByText('글자 조합')).toBeTruthy();
+    expect(getByLabelText('글자 조합 눈높이 3단계 / 5')).toBeTruthy();
+  });
+});
+

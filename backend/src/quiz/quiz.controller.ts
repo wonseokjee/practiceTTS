@@ -21,6 +21,7 @@ import type { User } from '../auth/entities/user.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { OnboardingGuard } from '../auth/onboarding.guard';
 import { resolveEffectivePatientId } from '../auth/effective-patient-id.util';
+import { QAB_SUBTESTS, type QabSubtest } from './constants/qab-subtest';
 import { GenerateQuizDto } from './dto/generate-quiz.dto';
 import { QuizSetSummaryDto } from './dto/quiz-set-summary.dto';
 import { SubmitAttemptDto } from './dto/submit-attempt.dto';
@@ -37,8 +38,16 @@ import {
   SkillLevelsResult,
   SubmitAttemptsResult,
   QuizService,
+  RecentItemResult,
 } from './quiz.service';
 import type { WishConversionResult } from './interfaces/IWishConversionClient';
+
+/** 쿼리로 들어온 문자열이 유효한 검사 종류인지 좁힌다. */
+function isQabSubtest(value: unknown): value is QabSubtest {
+  return (
+    typeof value === 'string' && (QAB_SUBTESTS as readonly string[]).includes(value)
+  );
+}
 
 /** JWT 인증 후 req.user에 주입되는 사용자 타입 */
 interface AuthenticatedRequest extends Request {
@@ -269,6 +278,37 @@ export class QuizController {
         effectivePatientId,
         safeDays,
       );
+    } catch (error) {
+      throw this.mapError(error);
+    }
+  }
+
+  /**
+   * GET /quiz/recent-items?subtest=spell
+   * 최근 N일 문항별 성적 (문항 재출제용). 정렬이 곧 계약이다 — (틀린 것 먼저,
+   * 그 안에서 마지막 출제가 오래된 것 먼저). 프론트는 이 순서를 **재정렬 없이**
+   * 우선순위로 쓰므로, 그 순서 자체가 간격 반복이 된다.
+   */
+  @Get('quiz/recent-items')
+  async getRecentItems(
+    @Req() req: AuthenticatedRequest,
+    @Query('subtest') subtest?: string,
+    @Query('days') days?: string,
+  ): Promise<{ items: RecentItemResult[] }> {
+    const effectivePatientId = resolveEffectivePatientId(req.user);
+    if (!isQabSubtest(subtest)) {
+      throw new UnprocessableEntityException('알 수 없는 검사 종류입니다.');
+    }
+    const parsed = Number(days);
+    const safeDays =
+      Number.isInteger(parsed) && parsed >= 1 && parsed <= 180 ? parsed : 30;
+    try {
+      const items = await this.quizService.getRecentItems(
+        effectivePatientId,
+        subtest,
+        safeDays,
+      );
+      return { items };
     } catch (error) {
       throw this.mapError(error);
     }

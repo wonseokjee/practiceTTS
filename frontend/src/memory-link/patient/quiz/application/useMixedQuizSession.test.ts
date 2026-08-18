@@ -89,12 +89,20 @@ function makeApi(overrides?: Partial<IQuizApi>): IQuizApi {
     getQabSummary: vi.fn().mockResolvedValue([]),
     getSkillLevels: vi.fn().mockResolvedValue({
       levels: {
-        word: 2, sentence: 2, naming: 2, repeat: 2, reading: 2, ddk: 2, loc: 2,
+        word: 2, sentence: 2, naming: 2, repeat: 2, reading: 2, spell: 2,
+        ddk: 2, loc: 2,
       },
       manifestVersion: 1,
     }),
+    getActivityDays: vi.fn().mockResolvedValue([]),
+    getSessionStats: vi.fn(),
+    getRecentItems: vi.fn().mockResolvedValue([]),
+    getQabTrend: vi.fn().mockResolvedValue([]),
     ...overrides,
-  } as IQuizApi;
+  };
+  // `as IQuizApi` 캐스트를 쓰지 않는다. 캐스트하면 인터페이스에 메서드가 늘어도
+  // 목이 비어 있는 걸 타입이 못 잡고, 런타임에 "not defined on the object"로
+  // 터진다(실제로 getRecentItems를 추가하며 그렇게 터졌다).
 }
 
 /** QAB 그림 이름대기 1문항 */
@@ -905,3 +913,195 @@ describe('글자 조합(spell)', () => {
     ]);
   });
 });
+
+describe('발화 검사 — 눈높이 배선', () => {
+  /**
+   * 예전엔 따라말하기·읽기·말운동만 레벨을 **안 받고** 문항을 골랐다. 그런데
+   * 보호자 화면은 loc를 뺀 모든 검사에 1~5단계가 있다고 표시했다 — 보호자가
+   * 없는 회복을(또는 없는 악화를) 있다고 믿게 되는 거짓 신호였다.
+   *
+   * 뱅크가 레벨을 제대로 쓰는지는 QabSpeechBank.test.ts가 본다. 여기서 보는 건
+   * **세션이 서버 레벨을 뱅크까지 실어 나르는가**다. 배선이 끊기면 뱅크가 아무리
+   * 옳아도 환자는 콜드스타트 난이도만 받는다.
+   */
+  async function arrangeLevels(levels: Record<string, number>, token: string) {
+    const api = makeApi();
+    vi.spyOn(api, 'getSkillLevels').mockResolvedValue({
+      levels: {
+        word: 2, sentence: 2, naming: 2, repeat: 2, reading: 2, spell: 2,
+        ddk: 2, loc: 2, ...levels,
+      },
+      manifestVersion: 1,
+    } as Awaited<ReturnType<IQuizApi['getSkillLevels']>>);
+    const repeat = vi.fn().mockReturnValue([]);
+    const reading = vi.fn().mockReturnValue([]);
+    const ddk = vi.fn().mockReturnValue([]);
+
+    renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: api,
+        pickQabItems: () => [],
+        generateSessionToken: () => token,
+        dailyCount: 0,
+        qabCount: 0,
+        ...NO_SPEECH,
+        pickRepeatItems: repeat,
+        pickReadingItems: reading,
+        pickDdkItems: ddk,
+        repeatCount: 1,
+        readingCount: 1,
+        ddkCount: 1,
+      }),
+    );
+
+    await waitFor(() => expect(repeat).toHaveBeenCalled());
+    return { repeat, reading, ddk };
+  }
+
+  it('서버 레벨을 따라말하기·읽기·말운동 뱅크에 그대로 넘긴다', async () => {
+    const { repeat, reading, ddk } = await arrangeLevels(
+      { repeat: 5, reading: 4, ddk: 3 },
+      'tok-speech-lv',
+    );
+
+    expect(repeat.mock.calls[0][1]).toBe(5);
+    expect(reading.mock.calls[0][1]).toBe(4);
+    expect(ddk.mock.calls[0][1]).toBe(3);
+  });
+
+  it('레벨 조회가 실패해도 세션은 진행된다(뱅크가 콜드스타트로 떨어진다)', async () => {
+    const api = makeApi();
+    vi.spyOn(api, 'getSkillLevels').mockRejectedValue(new Error('network'));
+    const repeat = vi.fn().mockReturnValue([]);
+
+    renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: api,
+        pickQabItems: () => [],
+        generateSessionToken: () => 'tok-speech-fail',
+        dailyCount: 0,
+        qabCount: 0,
+        ...NO_SPEECH,
+        pickRepeatItems: repeat,
+        repeatCount: 1,
+      }),
+    );
+
+    await waitFor(() => expect(repeat).toHaveBeenCalled());
+    expect(repeat.mock.calls[0][1]).toBeUndefined();
+  });
+});
+
+describe('글자 조합 — 반복과 중복 방지', () => {
+  /** 우선순위 배선만 보는 렌더 헬퍼 — 이력 응답을 주고 pickSpellItems 인자를 돌려준다. */
+  async function arrangePriority(
+    recent: Awaited<ReturnType<IQuizApi['getRecentItems']>>,
+    token: string,
+  ) {
+    const api = makeApi();
+    vi.spyOn(api, 'getRecentItems').mockResolvedValue(recent);
+    const spy = vi.fn().mockReturnValue(makeSpellItems());
+
+    renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: api,
+        pickQabItems: () => [],
+        generateSessionToken: () => token,
+        dailyCount: 0,
+        qabCount: 0,
+        ...NO_SPEECH,
+        pickSpellItems: spy,
+        spellCount: 1,
+      }),
+    );
+
+    await waitFor(() => expect(spy).toHaveBeenCalled());
+    return spy.mock.calls[0][2];
+  }
+
+  it('이력 순서를 그대로 우선순위로 넘긴다 — 이 순서가 곧 간격 반복이다', async () => {
+    // 백엔드가 (틀린 것 먼저, 그 안에서 마지막 출제가 오래된 것 먼저) 순으로
+    // 주므로, 프론트는 **재정렬하지 않는다.** 여기서 순서를 건드리면 간격이 깨진다.
+    const opts = await arrangePriority(
+      [
+        { itemRef: 'spell_w9', lastCorrect: false, lastAt: '2026-08-01T00:00:00Z' },
+        { itemRef: 'spell_w1', lastCorrect: true, lastAt: '2026-06-01T00:00:00Z' },
+        { itemRef: 'spell_w4', lastCorrect: true, lastAt: '2026-08-16T00:00:00Z' },
+      ],
+      'tok-order',
+    );
+
+    expect(opts.priority).toEqual(['spell_w9', 'spell_w1', 'spell_w4']);
+  });
+
+  it('맞힌 문항도 우선순위에 남긴다 — 빼면 간격이 아니라 무작위가 된다', async () => {
+    // 한때 `.filter(!lastCorrect)`로 맞힌 문항을 버렸다. 그러면 "틀린 것 우선"일
+    // 뿐 시간 축이 없어서, 맞힌 낱말은 다음 세션에 우연히 또 나올 수도 영영 안
+    // 나올 수도 있다. 실어증 치료 이득은 훈련한 그 항목을 크게 넘어가지 않으므로
+    // (limited transfer), 맞힌 낱말도 **간격을 두고 다시** 나와야 유지가 된다.
+    const opts = await arrangePriority(
+      [
+        { itemRef: 'spell_w1', lastCorrect: true, lastAt: '2026-06-01T00:00:00Z' },
+        { itemRef: 'spell_w4', lastCorrect: true, lastAt: '2026-08-16T00:00:00Z' },
+      ],
+      'tok-keep',
+    );
+
+    expect(opts.priority).toEqual(['spell_w1', 'spell_w4']);
+  });
+
+  it('같은 세션의 단어이해 정답은 글자 조합에서 제외한다', async () => {
+    // 단어이해가 정답 단어를 TTS로 들려주므로 겹치면 답을 알려준 셈이 된다.
+    const spy = vi.fn().mockReturnValue(makeSpellItems());
+
+    renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi(),
+        pickQabItems: () => [
+          {
+            itemId: 'w_apple',
+            category: 'word',
+            promptText: '사과',
+            choices: [
+              { choiceId: 'c1', label: '사과', imageUrl: '/a.svg', isCorrect: true },
+            ],
+            instruction: '들은 것을 고르세요',
+          },
+        ],
+        generateSessionToken: () => 'tok-dup',
+        dailyCount: 0,
+        qabCount: 1,
+        ...NO_SPEECH,
+        pickSpellItems: spy,
+        spellCount: 1,
+      }),
+    );
+
+    await waitFor(() => expect(spy).toHaveBeenCalled());
+    expect(spy.mock.calls[0][2].exclude).toContain('사과');
+  });
+
+  it('이력 조회가 실패해도 세션은 진행된다', async () => {
+    // 반복은 있으면 좋은 것이지 세션을 막을 이유가 아니다.
+    const api = makeApi();
+    vi.spyOn(api, 'getRecentItems').mockRejectedValue(new Error('network'));
+    const spy = vi.fn().mockReturnValue(makeSpellItems());
+
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: api,
+        pickQabItems: () => [],
+        generateSessionToken: () => 'tok-fail',
+        dailyCount: 0,
+        qabCount: 0,
+        ...NO_SPEECH,
+        pickSpellItems: spy,
+        spellCount: 1,
+      }),
+    );
+
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+    expect(spy.mock.calls[0][2].priority).toEqual([]);
+  });
+});
+

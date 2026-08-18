@@ -8,6 +8,10 @@
 import { useEffect, useState } from 'react';
 import { quizApi } from '../../patient/quiz/infrastructure/QuizApi.js';
 import type { SkillLevels } from '../../patient/quiz/domain/QabResult.js';
+import {
+  LEVELED_SUBTESTS,
+  subtestLabel,
+} from '../../patient/quiz/domain/qabSubtestLabels.js';
 
 interface SkillLevelCardProps {
   /** 레벨 조회 함수(테스트 주입용). 없으면 quizApi.getSkillLevels. */
@@ -16,16 +20,6 @@ interface SkillLevelCardProps {
 
 const MAX_LEVEL = 5;
 
-/** 표시할 난이도 조절 스킬 + 라벨(loc은 진단성이라 눈높이 개념이 없어 제외). */
-const LEVELED_SKILLS: Array<{ key: string; label: string }> = [
-  { key: 'word', label: '단어 이해' },
-  { key: 'sentence', label: '문장 이해' },
-  { key: 'naming', label: '그림 이름대기' },
-  { key: 'repeat', label: '따라 말하기' },
-  { key: 'reading', label: '소리 내어 읽기' },
-  { key: 'spell', label: '글자 조합' },
-  { key: 'ddk', label: '말운동(퍼터커)' },
-];
 
 type LoadState = 'loading' | 'ready' | 'error';
 
@@ -87,7 +81,8 @@ export function SkillLevelCard({ fetchLevels }: SkillLevelCardProps) {
       </p>
 
       <ul className="flex flex-col gap-3">
-        {LEVELED_SKILLS.map(({ key, label }) => {
+        {LEVELED_SUBTESTS.map((key) => {
+          const label = subtestLabel(key);
           // 백엔드가 모든 스킬을 콜드스타트로 채워 보내므로 값은 항상 있다. 혹시
           // 누락되면 없는 레벨을 지어내지 않고 그 줄을 건너뛴다(조작 방지). 표시값은
           // 점·숫자·aria가 어긋나지 않게 한 번만 클램프한다.

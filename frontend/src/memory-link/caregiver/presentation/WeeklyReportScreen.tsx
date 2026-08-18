@@ -14,6 +14,10 @@
  */
 
 import { useEffect, useState } from 'react';
+import {
+  QAB_SUBTEST_ORDER,
+  subtestLabel,
+} from '../../patient/quiz/domain/qabSubtestLabels.js';
 import { useAuth } from '../../shared/AuthContext.js';
 import { quizApi } from '../../patient/quiz/infrastructure/QuizApi.js';
 import type {
@@ -25,27 +29,6 @@ import { withHonorific } from '../../shared/honorific.js';
 /** 약 3개월. 주간 변동이 커서 이 정도는 봐야 흐름이 보인다. */
 const REPORT_WEEKS = 12;
 
-const SUBTEST_LABELS: Record<string, string> = {
-  loc: '의식 수준',
-  word: '단어 이해',
-  sentence: '문장 이해',
-  naming: '그림 이름대기',
-  repeat: '따라 말하기',
-  reading: '소리 내어 읽기',
-  spell: '글자 조합',
-  ddk: '말운동(퍼터커)',
-};
-
-const SUBTEST_ORDER = [
-  'loc',
-  'word',
-  'sentence',
-  'naming',
-  'repeat',
-  'reading',
-  'spell',
-  'ddk',
-];
 
 // 검사마다 "성적"의 뜻이 다르다. 같은 표에 같은 라벨로 담으면 오독한다.
 //  - reaction(loc): 정오답이 아니라 반응 여부·의식 점수(0~3)
@@ -131,7 +114,8 @@ export function WeeklyReportScreen({ onBack }: WeeklyReportScreenProps) {
     .filter((s) => s.points.length > 0)
     .sort(
       (a, b) =>
-        SUBTEST_ORDER.indexOf(a.subtest) - SUBTEST_ORDER.indexOf(b.subtest),
+        QAB_SUBTEST_ORDER.indexOf(a.subtest as never) -
+        QAB_SUBTEST_ORDER.indexOf(b.subtest as never),
     );
 
   // 데이터가 얼마나 쌓였는지 — 의료진이 신뢰도를 판단하는 근거다.
@@ -214,11 +198,11 @@ export function WeeklyReportScreen({ onBack }: WeeklyReportScreenProps) {
                 return (
                   <section key={s.subtest} className="break-inside-avoid">
                     <h2 className="mb-2 text-base font-semibold text-[#1A1916]">
-                      {SUBTEST_LABELS[s.subtest] ?? s.subtest}
+                      {subtestLabel(s.subtest)}
                     </h2>
                     <table className="w-full border-collapse text-sm">
                       <caption className="sr-only">
-                        {SUBTEST_LABELS[s.subtest] ?? s.subtest} 주차별 기록
+                        {subtestLabel(s.subtest)} 주차별 기록
                       </caption>
                       <thead>
                         <tr className="border-b border-[#E8E4DC] text-left text-[#5C6661]">

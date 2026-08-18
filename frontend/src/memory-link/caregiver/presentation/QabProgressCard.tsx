@@ -5,6 +5,10 @@
 // 데이터가 없으면(아직 검사 전) 카드를 숨긴다 — 대시보드를 비우지 않게.
 
 import { useEffect, useState } from 'react';
+import {
+  QAB_SUBTEST_ORDER,
+  subtestLabel,
+} from '../../patient/quiz/domain/qabSubtestLabels.js';
 import { QabSparkline } from './components/QabSparkline.js';
 import { quizApi } from '../../patient/quiz/infrastructure/QuizApi.js';
 import type {
@@ -19,27 +23,6 @@ interface QabProgressCardProps {
   onOpenReport?: () => void;
 }
 
-/** 검사 종류 → 한글 라벨 + 표시 순서 */
-const SUBTEST_LABELS: Record<string, string> = {
-  word: '단어 이해',
-  sentence: '문장 이해',
-  naming: '그림 이름대기',
-  repeat: '따라 말하기',
-  reading: '소리 내어 읽기',
-  spell: '글자 조합',
-  ddk: '말운동(퍼터커)',
-  loc: '의식 수준',
-};
-const SUBTEST_ORDER = [
-  'loc',
-  'word',
-  'sentence',
-  'naming',
-  'repeat',
-  'reading',
-  'spell',
-  'ddk',
-];
 
 /**
  * loc는 다른 검사와 지표의 의미가 다르다.
@@ -49,6 +32,20 @@ const SUBTEST_ORDER = [
  * 뜨는 식이다.
  */
 const IS_REACTION_BASED = (subtest: string): boolean => subtest === 'loc';
+
+/**
+ * 반복 훈련 과제인가 — **정답률을 회복 신호로 읽으면 안 되는 검사.**
+ *
+ * 글자 조합은 실어증 치료 원리(limited transfer: 훈련한 그 항목만 좋아진다)에
+ * 따라 같은 낱말을 간격을 두고 일부러 다시 낸다 — 틀린 건 바로, 맞힌 건 오래
+ * 안 나온 것부터. 그러면 정답률은 오를 수밖에 없는데,
+ * 그 상승분은 **언어 회복이 아니라 그 문항에 익숙해진 것**이다. 다른 검사(듣고
+ * 고르기·이름대기)는 매번 다른 문항이라 정답률이 회복 신호로 읽힌다.
+ *
+ * 같은 숫자를 같은 자리에 같은 모양으로 놓으면 보호자는 구분하지 못한다.
+ * 그 오해가 진료 상담이나 치료 결정에 쓰일 수 있어서 표시를 나눈다.
+ */
+const IS_DRILL_BASED = (subtest: string): boolean => subtest === 'spell';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
@@ -92,7 +89,8 @@ export function QabProgressCard({
   if (state !== 'ready' || items.length === 0) return null;
 
   const sorted = [...items].sort(
-    (a, b) => SUBTEST_ORDER.indexOf(a.subtest) - SUBTEST_ORDER.indexOf(b.subtest),
+    (a, b) => QAB_SUBTEST_ORDER.indexOf(a.subtest as never) -
+      QAB_SUBTEST_ORDER.indexOf(b.subtest as never),
   );
 
   return (
@@ -103,6 +101,12 @@ export function QabProgressCard({
       <h2 className="mb-1 text-base font-bold text-[#1F2A26]">발화 검사 진행</h2>
       <p className="mb-4 text-sm text-[#5C6661]">
         환자분이 푼 검사별 정답률이에요. 꾸준히 오르는지 지켜봐 주세요.
+        <br />
+        <span className="text-xs text-[#8A918C]">
+          &lsquo;반복 연습&rsquo; 표시가 붙은 항목은 같은 낱말을 다시 내는
+          과제예요. 정답률이 오르는 건 그 낱말에 익숙해진 것이라 회복 정도와는
+          다르게 봐 주세요.
+        </span>
       </p>
 
       {onOpenReport !== undefined && (
@@ -117,7 +121,7 @@ export function QabProgressCard({
 
       <ul className="flex flex-col gap-3">
         {sorted.map((it) => {
-          const label = SUBTEST_LABELS[it.subtest] ?? it.subtest;
+          const label = subtestLabel(it.subtest);
           const assistedSuffix =
             it.assisted > 0 ? ` · 도움 ${it.assisted}회` : '';
           return (
@@ -125,7 +129,16 @@ export function QabProgressCard({
               <div className="flex items-baseline justify-between">
                 <span className="flex items-center gap-2 text-sm font-medium text-[#1F2A26]">
                   {label}
-                  <WeeklyTrend series={trend.get(it.subtest)} label={label} />
+                  {IS_DRILL_BASED(it.subtest) ? (
+                    <span
+                      className="rounded-full bg-[#EDEEEA] px-2 py-0.5 text-xs font-normal text-[#5C6661]"
+                      title="같은 낱말을 반복해서 연습하는 과제예요. 정답률이 오르는 건 그 낱말에 익숙해진 것이라, 회복 정도로 읽지 말아 주세요."
+                    >
+                      반복 연습
+                    </span>
+                  ) : (
+                    <WeeklyTrend series={trend.get(it.subtest)} label={label} />
+                  )}
                 </span>
                 <span className="text-sm tabular-nums text-[#5C6661]">
                   {it.subtest === 'ddk' && it.maxMetric !== null ? (
@@ -133,7 +146,11 @@ export function QabProgressCard({
                   ) : null}
                   {it.total > 0 ? (
                     <>
-                      {IS_REACTION_BASED(it.subtest) ? '반응률' : '정답률'}{' '}
+                      {IS_REACTION_BASED(it.subtest)
+                        ? '반응률'
+                        : IS_DRILL_BASED(it.subtest)
+                          ? '연습 정답률'
+                          : '정답률'}{' '}
                       <span className="font-bold text-[#2D6A56]">
                         {it.accuracy}%
                       </span>{' '}

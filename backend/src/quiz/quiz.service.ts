@@ -146,6 +146,15 @@ export interface SaveQabResultsResult {
  * 안 푼 경우는 qab_results에 행이 없어 분모에 들어가지 않는다 — 우연한 진입을
  * 이탈로 세지 않기 위함이다.
  */
+/** 최근 문항 성적 1건 (재출제 우선순위 산출용). */
+export interface RecentItemResult {
+  itemRef: string;
+  /** 최근 N일 동안 한 번이라도 맞혔는가. false면 재출제 우선순위가 높다. */
+  /** 가장 최근 시도의 정오답. "한 번이라도 맞았나"가 아니다 — 훈련에 필요한 신호는 최신 상태다. */
+  lastCorrect: boolean;
+  lastAt: string;
+}
+
 export interface SessionStatsResult {
   started: number;
   completed: number;
@@ -246,6 +255,8 @@ export class QuizService {
     private readonly qabResultRepository: Repository<QabResult>,
     @InjectRepository(SkillLevel)
     private readonly skillLevelRepository: Repository<SkillLevel>,
+    @InjectRepository(QabSessionCompletion)
+    private readonly qabSessionCompletionRepository: Repository<QabSessionCompletion>,
     @InjectRepository(MemoryEntry)
     private readonly memoryEntryRepository: Repository<MemoryEntry>,
     @InjectRepository(PatientMemoryNote)
@@ -1022,14 +1033,27 @@ export class QuizService {
     // insert + 레벨 재계산 + UPSERT를 단일 트랜잭션으로. 재계산은 현재 레벨에서
     // 제시된 최근 윈도우로 결정론적이라, 중복/재시도 제출이 레벨을 이중으로
     // 움직이지 않는다(dedup UNIQUE가 insert를 no-op으로 만들고 윈도우는 동일).
+    //
+    // 멱등은 **DB가 제공하게 한다** — `ON CONFLICT DO NOTHING`.
+    //
+    // 예전에는 `manager.save()`를 try/catch로 감싸 UNIQUE 위반을 삼켰는데,
+    // PostgreSQL에서 그건 멱등이 아니다. 트랜잭션 안에서 에러가 나면 그 트랜잭션은
+    // **abort 상태**가 되어 ROLLBACK 전까지 후속 명령이 전부 25P02로 실패한다.
+    // 즉 잡아도 소용이 없고, 바로 아래 레벨 재계산과 완료 마커가 같이 죽어
+    // 재제출한 세션의 결과가 통째로 롤백됐다. 주석은 "재계산은 그대로 진행"이라고
+    // 단언하고 있었다. 애초에 예외를 안 내는 것이 유일하게 맞는 방법이다.
     await this.dataSource.transaction(async (manager) => {
-      try {
-        await manager.save(QabResult, rows);
-      } catch (error) {
-        if (!this.isUniqueViolation(error)) {
-          throw error;
-        }
-        // 멱등: 재제출은 UNIQUE 위반 → 이미 저장됨. 재계산은 그대로 진행(동일 결과).
+      // rows가 빌 수 있다: 세션 끝에 보낼 tail이 없고 완료 마커만 보내는 제출.
+      // 빈 values()는 TypeORM이 거부하므로 건너뛴다 — 아래 완료 마커는 그대로
+      // 남겨야 한다. 그게 이 경로의 존재 이유다.
+      if (rows.length > 0) {
+        await manager
+          .createQueryBuilder()
+          .insert()
+          .into(QabResult)
+          .values(rows)
+          .orIgnore()
+          .execute();
       }
       for (const subtest of affectedSubtests) {
         await this.recomputeSkillLevel(manager, effectivePatientId, subtest);
@@ -1105,6 +1129,33 @@ export class QuizService {
     );
   }
 
+  // ══════════════════════════════════════════════════════════════════════
+  // 여기서부터 getQabSummary까지: **읽기 전용 집계** — 분리할 때의 이음선
+  // ══════════════════════════════════════════════════════════════════════
+  //
+  // 이 클래스는 리포지토리 9개를 주입받고 1600줄이 넘는다. 서로 다른 일 넷을
+  // 한다 — LLM 퀴즈 생성, 채점, 적응 레벨링, 보호자 집계. 테이블 9개가 필요한
+  // 서비스는 하나의 일을 하고 있지 않다는 뜻이고, 새 기능마다 여기가 기본
+  // 착지점이 돼 왔다(2026-08-16에만 1513→1653줄).
+  //
+  // 아래 6개 메서드가 가장 깨끗한 이음선이다:
+  //
+  //     getSkillLevels · getActivityDays · getRecentItems
+  //     getSessionStats · getQabTrend    · getQabSummary
+  //
+  //   - 전부 읽기 전용이다. 쓰기 경로(submitAttempts·saveQabResults)와 트랜잭션을
+  //     공유하지 않으므로 떼어낼 때 정합성 문제가 없다.
+  //   - 쓰는 테이블이 좁다: qab_results · skill_levels · qab_session_completions
+  //     · quiz_attempts. 나머지 5개 리포지토리는 안 쓴다.
+  //   - 각자 이미 테스트가 붙어 있어 옮겨도 안전망이 따라간다.
+  //
+  // 지금 쪼개지 않는 이유는 방금 QA를 통과한 코드이기 때문이다(2026-08-17 리뷰 D3).
+  // **다음에 이 영역에 기능을 더할 때** QabReportService로 들어내는 것이 맞다.
+  // 그때 옮길 것: 위 6개 + 그들만 쓰는 private 헬퍼 + 대응 스펙 블록.
+  //
+  // 이 주석을 지우려면 분리를 끝냈거나, 이음선이 더 이상 유효하지 않다고
+  // 판단했을 때다. 후자라면 왜인지 여기에 남겨라.
+
   /**
    * 환자의 스킬별 현재 레벨. 이력이 없는 스킬은 콜드스타트 레벨(2)로 채운다.
    * 프론트가 이 값을 읽어 문항 선택 난이도를 정한다. 레벨은 환자에게 노출하지
@@ -1145,80 +1196,141 @@ export class QuizService {
   }
 
   /**
+   * 최근 N일 동안 이 검사에서 낸 문항별 최근 성적 (문항 재출제용).
+   *
+   * 실어증 치료 이득은 **훈련한 그 항목**을 크게 넘어가지 않는다(limited
+   * transfer). 그래서 같은 목표가 여러 세션에 반복돼야 의미가 있는데, 프론트가
+   * 무작위로 뽑으면 70개 풀에서 재등장이 평균 70세션이라 사실상 반복이 없다.
+   * 이 조회로 "최근에 틀린 것부터" 다시 낼 수 있게 한다.
+   *
+   * 문항당 **가장 최근 1건**만 준다 — 같은 문항을 여러 번 푼 이력을 전부 내려
+   * 보내면 프론트가 다시 집계해야 한다. 정렬은 (틀린 것 우선, 오래된 것 우선)
+   * 이라 앞에서부터 쓰면 그대로 우선순위가 된다.
+   */
+  async getRecentItems(
+    effectivePatientId: string,
+    subtest: QabSubtest,
+    days = 30,
+    limit = 50,
+  ): Promise<RecentItemResult[]> {
+    const raw = await this.qabResultRepository
+      .createQueryBuilder('r')
+      .select('r.item_ref', 'itemRef')
+      // **최신 시도의 정오답**이다. `bool_or`(= 한 번이라도 맞았나)를 쓰면 3주 전에
+      // 한 번 맞히고 어제 틀린 문항이 "맞힌 것"으로 분류돼, 아래 정렬에서 맨 뒤로
+      // 밀린다 — 방금 틀린 낱말이 우선순위 꼴찌가 된다. 반복 훈련의 목적이 바로
+      // 그 낱말을 다시 내는 것이라, 정확히 거꾸로 동작했다.
+      // 동시각 타이는 id DESC로 결정론(recomputeSkillLevel의 윈도우와 같은 규칙).
+      .addSelect(
+        '(array_agg(r.is_correct ORDER BY r.created_at DESC, r.id DESC))[1]',
+        'lastCorrect',
+      )
+      .addSelect('max(r.created_at)', 'lastAt')
+      .where('r.patient_id = :pid', { pid: effectivePatientId })
+      .andWhere('r.subtest = :subtest', { subtest })
+      // 보호자가 넘어가기로 통과시킨 건 실력 근거가 아니라 재출제 판단에서 뺀다.
+      .andWhere('r.assisted = false')
+      .andWhere('r.created_at >= now() - make_interval(days => :days)', { days })
+      .groupBy('r.item_ref')
+      // 1순위: 최근에 틀린 문항(false < true). 2순위: 마지막 출제가 오래된 것 —
+      // 여기서 간격이 생긴다. 프론트는 이 순서를 재정렬 없이 우선순위로 쓴다.
+      .orderBy('"lastCorrect"', 'ASC')
+      .addOrderBy('max(r.created_at)', 'ASC')
+      .limit(Math.max(1, Math.min(200, limit)))
+      .getRawMany<{ itemRef: string; lastCorrect: boolean; lastAt: Date }>();
+
+    return raw.map((x) => ({
+      itemRef: x.itemRef,
+      lastCorrect: x.lastCorrect,
+      lastAt: x.lastAt.toISOString(),
+    }));
+  }
+
+  /**
    * 세션 완료율 (보호자용). "며칠째 하고 있나"(스트릭)와 달리 "시작한 걸 끝까지
    * 하고 있나"를 본다 — 중도 이탈이 잦으면 세션이 길거나 어렵다는 신호다.
+   * 완료 마커(qab_session_completions)가 없는 세션이 곧 이탈이다.
    *
-   * 분모(started)는 결과가 한 문항이라도 남은 세션만 센다. 완료 마커
-   * (qab_session_completions)가 없는 세션이 곧 이탈이다.
+   * **분모는 QAB만으로 세면 안 된다.** 예전엔 `qab_results`의 세션 토큰만 셌는데,
+   * 한 세션은 데일리 문항과 QAB 문항을 섞어 진행하고 QAB 슬롯이 0인 구성도 있다.
+   * 그런 세션은 시작한 적조차 없는 것으로 집계돼, 완료율의 분모가 조용히 작아졌다.
+   *
+   *     started   = qab_results ∪ quiz_attempts 의 세션 토큰   (뭐라도 푼 세션)
+   *     completed = 그중 완료 마커가 있는 것
+   *
+   * 세션 수가 (환자 1명 × 최근 N일이라) 수십 개 규모라 합집합은 앱에서 만든다.
+   * SQL UNION 서브쿼리보다 읽기 쉽고, 이탈 세션의 문항 수도 같은 행에서 얻는다.
+   *
+   * 이탈 평균만은 **QAB 문항이 있던 세션**으로 한정한다. 데일리만 푼 세션은
+   * QAB 문항 수가 0이라, 섞어 세면 "0문항 풀고 이탈"이 평균을 끌어내려 지표의
+   * 의미가 바뀐다(그 세션은 QAB를 안 한 게 아니라 애초에 없었다).
    */
   async getSessionStats(
     effectivePatientId: string,
     days = 30,
   ): Promise<SessionStatsResult> {
-    const raw = await this.qabResultRepository
-      .createQueryBuilder('r')
-      .select('COUNT(DISTINCT r.session_token)', 'started')
-      .addSelect('COUNT(DISTINCT c.session_token)', 'completed')
-      .leftJoin(
-        QabSessionCompletion,
-        'c',
-        'c.session_token = r.session_token',
-      )
-      .where('r.patient_id = :pid', { pid: effectivePatientId })
-      .andWhere('r.created_at >= now() - make_interval(days => :days)', {
-        days,
-      })
-      .getRawOne<{ started: string; completed: string }>();
+    const pid = effectivePatientId;
 
-    const started = Number(raw?.started ?? 0);
-    const completed = Number(raw?.completed ?? 0);
-
-    // 이탈 지점: 완료 마커가 없는 세션들이 각각 몇 문항까지 갔는지. 세션 수가
-    // (환자 1명 × 최근 N일이라) 적으므로 행을 받아 평균은 앱에서 낸다 — SQL
-    // 서브쿼리보다 읽기 쉽고, 이탈 세션 수도 함께 얻는다.
-    const droppedRows = await this.qabResultRepository
+    // ① QAB 문항이 있던 세션 — 토큰 + 그 세션에서 푼 문항 수
+    const qabRows = await this.qabResultRepository
       .createQueryBuilder('r')
       .select('r.session_token', 'token')
       .addSelect('COUNT(*)', 'items')
-      .leftJoin(QabSessionCompletion, 'c', 'c.session_token = r.session_token')
-      .where('r.patient_id = :pid', { pid: effectivePatientId })
+      .where('r.patient_id = :pid', { pid })
       .andWhere('r.created_at >= now() - make_interval(days => :days)', {
         days,
       })
-      .andWhere('c.session_token IS NULL')
       .groupBy('r.session_token')
       .getRawMany<{ token: string; items: string }>();
 
-    const totalItems = droppedRows.reduce((sum, r) => sum + Number(r.items), 0);
+    // ② 데일리 문항만 푼 세션 — 이게 빠져 있어서 분모가 샜다
+    const attemptRows = await this.quizAttemptRepository
+      .createQueryBuilder('a')
+      .select('DISTINCT a.session_token', 'token')
+      .where('a.patient_id = :pid', { pid })
+      .andWhere('a.answered_at >= now() - make_interval(days => :days)', {
+        days,
+      })
+      .getRawMany<{ token: string }>();
+
+    // ③ 완료 마커
+    const completionRows = await this.qabSessionCompletionRepository
+      .createQueryBuilder('c')
+      .select('c.session_token', 'token')
+      .where('c.patient_id = :pid', { pid })
+      .andWhere('c.completed_at >= now() - make_interval(days => :days)', {
+        days,
+      })
+      .getRawMany<{ token: string }>();
+
+    const startedTokens = new Set<string>([
+      ...qabRows.map((r) => r.token),
+      ...attemptRows.map((r) => r.token),
+    ]);
+    const completedTokens = new Set(completionRows.map((r) => r.token));
+    // 마커가 창 밖 세션을 가리킬 수 있으므로 시작 집합과 교집합을 낸다 —
+    // 안 그러면 완료율이 100%를 넘는다.
+    const completed = [...completedTokens].filter((t) =>
+      startedTokens.has(t),
+    ).length;
+
+    const dropped = qabRows.filter((r) => !completedTokens.has(r.token));
+    const totalItems = dropped.reduce((sum, r) => sum + Number(r.items), 0);
 
     return {
-      started,
+      started: startedTokens.size,
       completed,
       completionRate:
-        started > 0 ? Math.round((completed / started) * 100) : null,
+        startedTokens.size > 0
+          ? Math.round((completed / startedTokens.size) * 100)
+          : null,
       avgItemsBeforeDropoff:
-        droppedRows.length > 0
-          ? Math.round((totalItems / droppedRows.length) * 10) / 10
+        dropped.length > 0
+          ? Math.round((totalItems / dropped.length) * 10) / 10
           : null,
     };
   }
 
-  /**
-   * QAB 검사별 회복 추적 요약 (보호자용).
-   * 검사 종류별로 정확도 + 수치 지표(평균/최고) + 마지막 측정 시각을 집계한다.
-   */
-  /**
-   * 검사별 **주차** 추이. 보호자가 "나아지고 있나"를 보는 데이터다.
-   *
-   * getQabSummary는 전 기간을 하나로 합쳐서, 좋아지는 중인지 나빠지는 중인지
-   * 알 수 없었다. 치매 진료는 "지난 몇 달 어떠셨어요?"로 시작하는데 보호자는
-   * 대개 기억으로 답한다. 주 단위 기록을 내밀 수 있으면 그 자체로 가치다.
-   *
-   * 주차 경계는 **월요일 기준**이다(date_trunc('week')가 ISO 주라 월요일 시작).
-   * 보호자 도움(assisted) 문항은 환자 수행이 아니므로 정확도 집계에서 뺀다.
-   *
-   * @param weeks 최근 몇 주를 볼지. 너무 길면 그래프가 읽히지 않는다.
-   */
   async getQabTrend(
     effectivePatientId: string,
     weeks = 8,
@@ -1373,6 +1485,10 @@ export class QuizService {
    *   재시도 대상에서 영구 제외한다(attempts를 상한으로 올린다).
    * - 각 set 처리 실패는 다음 set 처리를 막지 않는다(독립적).
    */
+  // ══════════════════════════════════════════════════════════════════════
+  // 읽기 전용 집계 끝 — 아래는 다시 쓰기·생성 경로다
+  // ══════════════════════════════════════════════════════════════════════
+
   async recoverStuckSets(
     now: Date = new Date(),
   ): Promise<{ recovered: number; failed: number; skipped: number }> {
