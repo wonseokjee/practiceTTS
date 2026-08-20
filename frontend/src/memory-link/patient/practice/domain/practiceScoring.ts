@@ -41,6 +41,43 @@ export function scorePracticeAnswer(
   }
 }
 
+/**
+ * 한 문항에서 허용하는 최대 시도 횟수.
+ *
+ * 3번 다 틀리면 정답을 알려주고 다음으로 간다. 선택지 수에 연동하는 안도
+ * 검토했으나(마지막 시도에 항상 진짜 선택지 2개를 남기는 규칙) 규칙이 하나인
+ * 편을 택했다. 2지선다는 오답 하나가 잠기면 2차에서 반드시 끝나므로 3에
+ * 닿지 않는다 — 규칙은 같고 그 경우만 짧게 끝난다.
+ */
+export const MAX_PRACTICE_ATTEMPTS = 3;
+
+/**
+ * 재시도를 허용하는 문항인가.
+ *
+ * **터치(Tier 0)만이다.** 발화에 재시도를 붙이면 두 가지가 깨진다.
+ *  - 비용: Tier 2 재시도 3회 = Azure 3회/문항. 세션 40→6 계산이 무너진다.
+ *  - 정확도: 우리 ASR은 단어 CER 0.70이다. 맞게 말한 어르신에게 불확실한
+ *    채점기가 "틀렸으니 다시"라고 말하는 상황이 생긴다.
+ */
+export function allowsRetry(playable: PracticePlayable): boolean {
+  return tierForKind(playable.kind) === 0;
+}
+
+/**
+ * 정답을 말로 알려줄 때 쓰는 문자열.
+ *
+ * 맞혔든 3번 틀렸든 문항은 정답을 본 채로 끝난다 — 틀린 연결이 굳는 것을
+ * 막는 것이 연습의 목적이기 때문이다.
+ */
+export function correctAnswerLabelOf(playable: PracticePlayable): string {
+  switch (playable.kind) {
+    case 'imageChoice':
+      return playable.item.choices.find((c) => c.isCorrect)?.label ?? '';
+    case 'spell':
+      return playable.item.targetWord;
+  }
+}
+
 /** 문항 종류 → 비용 계층. 지금은 전부 터치(0)다. */
 const TIER_BY_KIND: Record<PracticeItemKind, PracticeTier> = {
   imageChoice: 0,

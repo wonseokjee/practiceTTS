@@ -11,16 +11,23 @@ import {
 /**
  * 연습 세션 훅 테스트.
  *
- * 초점은 두 가지다.
- *  - **판정이 상태로 새지 않는가** — 연습 중엔 정오답을 안 보여준다. 채점은
- *    하되 화면이 그릴 수 있는 형태로 노출되면 안 된다.
- *  - **점진 저장이 tail만 보내는가** — 중도 이탈해도 그때까지가 남아야 하고,
- *    실패한 제출은 다음번에 다시 실려야 한다.
+ * 초점은 세 가지다.
+ *  - **재시도 루프** — 틀리면 그 선택지를 잠그고 다시 고르게 하고, 3번을 다
+ *    쓰면 정답을 알려주고 끝낸다.
+ *  - **시도 축** — 한 문항이 최대 3행으로 남고, 앞 시도를 덮어쓰지 않는다.
+ *    "몇 번 만에 됐는가"는 마지막 결과만 남기면 사라지는 정보다.
+ *  - **점진 저장** — 중도 이탈해도 그때까지가 남고, 실패한 제출은 다음에
+ *    다시 실린다.
  *
  * 훅이 문항을 섞으므로 어떤 테스트도 문항 순서를 가정하지 않는다 — 현재
  * 문항에서 식별자를 읽는다.
+ *
+ * 2026-08-20 이전에 있던 "오답과 정답이 상태로 구별되지 않는다"는 테스트는
+ * 지웠다. 그 불변식을 의도적으로 뒤집었다(정답을 가르치기로 결정). 남은
+ * 불변식은 "집계를 노출하지 않는다"이고, 그건 화면 테스트가 지킨다.
  */
 
+/** 4지선다 — 오답 3개가 있어야 3번 틀리는 경로를 볼 수 있다. */
 const imageItem = (id: string): QabImageItem => ({
   itemId: id,
   category: 'word',
@@ -28,7 +35,9 @@ const imageItem = (id: string): QabImageItem => ({
   instruction: '고르세요',
   choices: [
     { choiceId: id + '_ok', label: '사과', imageUrl: '/a.png', isCorrect: true },
-    { choiceId: id + '_no', label: '배', imageUrl: '/b.png', isCorrect: false },
+    { choiceId: id + '_n1', label: '배', imageUrl: '/b.png', isCorrect: false },
+    { choiceId: id + '_n2', label: '감', imageUrl: '/c.png', isCorrect: false },
+    { choiceId: id + '_n3', label: '귤', imageUrl: '/d.png', isCorrect: false },
   ],
 });
 
@@ -76,10 +85,20 @@ describe('usePracticeSession', () => {
 
   type Rendered = { current: UsePracticeReturn };
 
-  /** 지금 문항에 답한다. 답한 문항의 itemRef를 돌려준다. */
-  const answerCurrent = (r: Rendered, correct: boolean): string => {
-    const id = r.current[0].currentItem?.item.itemId ?? '';
-    act(() => r.current[1].answer(id + (correct ? '_ok' : '_no')));
+  const currentId = (r: Rendered): string =>
+    r.current[0].currentItem?.item.itemId ?? '';
+
+  /** 지금 문항에 정답을 낸다. 문항 id를 돌려준다. */
+  const answerCorrect = (r: Rendered): string => {
+    const id = currentId(r);
+    act(() => r.current[1].answer(id + '_ok'));
+    return id;
+  };
+
+  /** 지금 문항에 n번째 오답을 낸다(n = 1..3). */
+  const answerWrong = (r: Rendered, n: 1 | 2 | 3): string => {
+    const id = currentId(r);
+    act(() => r.current[1].answer(id + '_n' + String(n)));
     return id;
   };
 
@@ -98,74 +117,113 @@ describe('usePracticeSession', () => {
     });
   };
 
-  describe('판정 미노출', () => {
-    it('상태에 정오답을 담는 필드가 없다', () => {
+  describe('재시도 루프', () => {
+    it('틀리면 그 선택지를 잠그고 다시 고르게 한다', () => {
       const { result } = renderHook(() => usePracticeSession(deps()));
-      answerCurrent(result, true);
+      const id = answerWrong(result, 1);
 
-      // 검사 훅에는 lastResult(isCorrect·correctLabel·grade)가 있고 화면이 그걸
-      // 그린다. 연습 상태에는 그런 자리가 아예 없어야 한다.
-      expect(Object.keys(result.current[0]).sort()).toEqual([
-        'currentIndex',
-        'currentItem',
-        'isSelectable',
-        'phase',
-        'selectedValue',
-        'totalCount',
+      const [s] = result.current;
+      expect(s.phase).toBe('answering');
+      expect(s.attemptNo).toBe(2);
+      expect(s.isSelectable).toBe(true);
+      expect(s.triedWrongValues).toEqual([id + '_n1']);
+      // 아직 정답을 알려줄 때가 아니다.
+      expect(s.outcome).toBeNull();
+      expect(s.correctAnswerLabel).toBeNull();
+    });
+
+    it('맞히면 정답을 알려주고 문항이 끝난다', () => {
+      const { result } = renderHook(() => usePracticeSession(deps()));
+      answerCorrect(result);
+
+      const [s] = result.current;
+      expect(s.phase).toBe('revealed');
+      expect(s.outcome).toBe('correct');
+      expect(s.correctAnswerLabel).toBe('사과');
+      expect(s.isSelectable).toBe(false);
+    });
+
+    it('세 번 틀리면 정답을 알려주고 문항이 끝난다', () => {
+      const { result } = renderHook(() => usePracticeSession(deps()));
+      answerWrong(result, 1);
+      answerWrong(result, 2);
+      expect(result.current[0].attemptNo).toBe(3);
+
+      answerWrong(result, 3);
+
+      const [s] = result.current;
+      expect(s.phase).toBe('revealed');
+      expect(s.outcome).toBe('exhausted');
+      // 3번 틀렸어도 정답을 본 채로 끝난다 — 틀린 연결이 굳는 것을 막는다.
+      expect(s.correctAnswerLabel).toBe('사과');
+      expect(s.isSelectable).toBe(false);
+    });
+
+    it('중간에 맞히면 남은 시도를 쓰지 않는다', () => {
+      const { result } = renderHook(() => usePracticeSession(deps()));
+      answerWrong(result, 1);
+      answerCorrect(result);
+
+      expect(result.current[0].phase).toBe('revealed');
+      expect(result.current[0].outcome).toBe('correct');
+    });
+
+    it('정답이 공개된 뒤의 답은 무시된다', () => {
+      const { result } = renderHook(() => usePracticeSession(deps()));
+      const id = answerCorrect(result);
+      act(() => result.current[1].answer(id + '_n1'));
+
+      expect(result.current[0].outcome).toBe('correct');
+      expect(result.current[0].attemptNo).toBe(1);
+    });
+
+    it('다음 문항으로 가면 시도 번호와 잠금이 초기화된다', async () => {
+      const { result } = renderHook(() => usePracticeSession(deps()));
+      answerWrong(result, 1);
+      answerCorrect(result);
+      await goNext(result);
+
+      const [s] = result.current;
+      expect(s.attemptNo).toBe(1);
+      expect(s.triedWrongValues).toEqual([]);
+      expect(s.selectedValue).toBeNull();
+      expect(s.outcome).toBeNull();
+    });
+  });
+
+  describe('시도 축', () => {
+    it('시도마다 한 행씩 남고 앞 시도를 덮어쓰지 않는다', async () => {
+      const { result } = renderHook(() => usePracticeSession(deps()));
+      const id = answerWrong(result, 1);
+      answerWrong(result, 2);
+      answerCorrect(result);
+      await goNext(result);
+
+      expect(submitted[0].results).toEqual([
+        { itemKind: 'imageChoice', itemRef: id, attempt: 1, isCorrect: false, tier: 0 },
+        { itemKind: 'imageChoice', itemRef: id, attempt: 2, isCorrect: false, tier: 0 },
+        { itemKind: 'imageChoice', itemRef: id, attempt: 3, isCorrect: true, tier: 0 },
       ]);
     });
 
-    it('오답을 골라도 정답을 고른 것과 상태가 구별되지 않는다', () => {
-      // 훅마다 따로 섞으므로 1문항 세션으로 고정해야 같은 문항을 비교한다.
-      const one = { imageChoiceCount: 1 };
-      const a = renderHook(() => usePracticeSession(deps(one)));
-      const b = renderHook(() => usePracticeSession(deps(one)));
+    it('세 번 다 틀린 문항은 실패 세 행으로 남는다', async () => {
+      const { result } = renderHook(() => usePracticeSession(deps()));
+      const id = answerWrong(result, 1);
+      answerWrong(result, 2);
+      answerWrong(result, 3);
+      await goNext(result);
 
-      answerCurrent(a.result, true);
-      answerCurrent(b.result, false);
-
-      // 유일한 차이는 "무엇을 눌렀는가"뿐이어야 한다 — 그게 맞았는지가 아니라.
-      const strip = (s: object): object => {
-        const rest = { ...(s as Record<string, unknown>) };
-        delete rest.selectedValue;
-        return rest;
-      };
-      expect(strip(a.result.current[0])).toEqual(strip(b.result.current[0]));
+      const rows = submitted[0].results;
+      expect(rows.map((r) => r.attempt)).toEqual([1, 2, 3]);
+      expect(rows.every((r) => r.itemRef === id)).toBe(true);
+      expect(rows.every((r) => r.isCorrect === false)).toBe(true);
     });
   });
 
   describe('진행', () => {
-    it('답하면 잠기고, next로 다음 문항으로 간다', async () => {
-      const { result } = renderHook(() => usePracticeSession(deps()));
-      expect(result.current[0].phase).toBe('answering');
-      expect(result.current[0].totalCount).toBe(2);
-
-      answerCurrent(result, true);
-      expect(result.current[0].phase).toBe('answered');
-      expect(result.current[0].isSelectable).toBe(false);
-
-      await goNext(result);
-      expect(result.current[0].phase).toBe('answering');
-      expect(result.current[0].currentIndex).toBe(1);
-      expect(result.current[0].selectedValue).toBeNull();
-    });
-
-    it('잠긴 동안의 중복 답은 무시된다', async () => {
-      const { result } = renderHook(() => usePracticeSession(deps()));
-      const first = answerCurrent(result, true);
-      answerCurrent(result, false); // 잠긴 뒤의 두 번째 답 — 무시돼야 한다
-
-      await goNext(result);
-      const second = answerCurrent(result, true);
-      await goNext(result);
-
-      const refs = submitted.flatMap((s) => s.results).map((r) => r.itemRef);
-      expect(refs).toEqual([first, second]);
-    });
-
     it('넘어가기는 시도로 기록하지 않고 다음으로 간다', async () => {
       const { result } = renderHook(() => usePracticeSession(deps()));
-      const skipped = result.current[0].currentItem?.item.itemId ?? '';
+      const skipped = currentId(result);
 
       act(() => result.current[1].skip());
       await act(async () => {
@@ -176,24 +234,38 @@ describe('usePracticeSession', () => {
       expect(result.current[0].currentIndex).toBe(1);
       // 넘어가기는 실패가 아니라 "막혔다"는 신호라 남길 값이 없다.
       expect(submitted.flatMap((x) => x.results)).toHaveLength(0);
-      expect(result.current[0].currentItem?.item.itemId).not.toBe(skipped);
+      expect(currentId(result)).not.toBe(skipped);
     });
 
-    it('답한 뒤에는 넘어가기가 먹지 않는다', () => {
+    it('틀린 뒤 넘어가면 그때까지의 시도는 남는다', async () => {
       const { result } = renderHook(() => usePracticeSession(deps()));
-      answerCurrent(result, true);
+      const id = answerWrong(result, 1);
+      act(() => result.current[1].skip());
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(submitted.flatMap((x) => x.results)).toEqual([
+        { itemKind: 'imageChoice', itemRef: id, attempt: 1, isCorrect: false, tier: 0 },
+      ]);
+    });
+
+    it('정답 공개 중에는 넘어가기가 먹지 않는다', () => {
+      const { result } = renderHook(() => usePracticeSession(deps()));
+      answerCorrect(result);
       act(() => result.current[1].skip());
 
-      // 이미 기록된 시도를 넘어가기로 무르는 경로는 없다.
-      expect(result.current[0].phase).toBe('answered');
+      expect(result.current[0].phase).toBe('revealed');
       expect(result.current[0].currentIndex).toBe(0);
     });
 
     it('마지막 문항을 넘기면 종료된다', async () => {
       const { result } = renderHook(() => usePracticeSession(deps()));
-      answerCurrent(result, true);
+      expect(result.current[0].totalCount).toBe(2);
+
+      answerCorrect(result);
       await goNext(result);
-      answerCurrent(result, true);
+      answerCorrect(result);
       await goNext(result);
 
       expect(result.current[0].phase).toBe('done');
@@ -204,35 +276,21 @@ describe('usePracticeSession', () => {
   describe('점진 저장', () => {
     it('문항을 넘길 때마다 아직 안 보낸 tail만 보낸다', async () => {
       const { result } = renderHook(() => usePracticeSession(deps()));
-      const first = answerCurrent(result, true);
+      const first = answerCorrect(result);
       await goNext(result);
       expect(submitted).toHaveLength(1);
       expect(submitted[0].results.map((r) => r.itemRef)).toEqual([first]);
 
-      const second = answerCurrent(result, false);
+      const second = answerCorrect(result);
       await goNext(result);
       expect(submitted).toHaveLength(2);
       // 두 번째 제출에 첫 문항이 다시 들어가면 안 된다.
       expect(submitted[1].results.map((r) => r.itemRef)).toEqual([second]);
     });
 
-    it('시도에 tier와 attempt가 실린다', async () => {
-      const { result } = renderHook(() => usePracticeSession(deps()));
-      const ref = answerCurrent(result, true);
-      await goNext(result);
-
-      expect(submitted[0].results[0]).toEqual({
-        itemKind: 'imageChoice',
-        itemRef: ref,
-        attempt: 1,
-        isCorrect: true,
-        tier: 0,
-      });
-    });
-
     it('중간에 그만둬도 그때까지가 저장된다', () => {
       const { result } = renderHook(() => usePracticeSession(deps()));
-      answerCurrent(result, false);
+      answerWrong(result, 1);
       act(() => result.current[1].endSession());
 
       expect(result.current[0].phase).toBe('done');
@@ -241,7 +299,7 @@ describe('usePracticeSession', () => {
 
     it('답한 뒤 next 없이 화면을 떠나도 저장된다', () => {
       const { result, unmount } = renderHook(() => usePracticeSession(deps()));
-      answerCurrent(result, true);
+      answerCorrect(result);
       expect(submitted).toHaveLength(0);
 
       unmount();
@@ -259,14 +317,14 @@ describe('usePracticeSession', () => {
       };
 
       const { result } = renderHook(() => usePracticeSession(deps()));
-      const first = answerCurrent(result, true);
+      const first = answerCorrect(result);
       await goNext(result);
 
       // 실패해도 다음 문항으로 넘어가 있다 — 저장은 환자 경험을 막지 않는다.
       expect(result.current[0].phase).toBe('answering');
       expect(submitted).toHaveLength(0);
 
-      const second = answerCurrent(result, true);
+      const second = answerCorrect(result);
       await goNext(result);
 
       // submittedCount를 안 올렸으므로 실패한 첫 문항이 함께 다시 실린다.
@@ -281,9 +339,9 @@ describe('usePracticeSession', () => {
   describe('세션 토큰', () => {
     it('한 세션의 모든 제출이 같은 토큰을 쓴다', async () => {
       const { result } = renderHook(() => usePracticeSession(deps()));
-      answerCurrent(result, true);
+      answerCorrect(result);
       await goNext(result);
-      answerCurrent(result, true);
+      answerCorrect(result);
       await goNext(result);
 
       expect(submitted.map((x) => x.token)).toEqual(['tok-1', 'tok-1']);

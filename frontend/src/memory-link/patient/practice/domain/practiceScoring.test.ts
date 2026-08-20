@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { PracticePlayable } from './Practice.js';
-import { itemRefOf, scorePracticeAnswer, tierForKind } from './practiceScoring.js';
+import {
+  MAX_PRACTICE_ATTEMPTS,
+  allowsRetry,
+  correctAnswerLabelOf,
+  itemRefOf,
+  scorePracticeAnswer,
+  tierForKind,
+} from './practiceScoring.js';
 
 const imageChoice = (): PracticePlayable => ({
   kind: 'imageChoice',
@@ -81,5 +88,38 @@ describe('itemRefOf', () => {
   it('문항 식별자를 그대로 쓴다', () => {
     expect(itemRefOf(imageChoice())).toBe('qw_001');
     expect(itemRefOf(spell('사과'))).toBe('sp_001');
+  });
+});
+
+describe('correctAnswerLabelOf', () => {
+  it('그림 선택은 정답 카드의 라벨을 돌려준다', () => {
+    expect(correctAnswerLabelOf(imageChoice())).toBe('사과');
+  });
+
+  it('철자는 목표 낱말 자체가 정답이다', () => {
+    expect(correctAnswerLabelOf(spell('사과'))).toBe('사과');
+  });
+});
+
+describe('allowsRetry', () => {
+  it('터치 문항은 재시도를 허용한다', () => {
+    expect(allowsRetry(imageChoice())).toBe(true);
+    expect(allowsRetry(spell('사과'))).toBe(true);
+  });
+
+  // 발화에 재시도를 붙이면 Tier 2 재시도 3회 = Azure 3회/문항이 되어 세션
+  // 40→6 계산이 무너지고, CER 0.70짜리 채점기가 맞게 말한 어르신에게
+  // '다시'라고 말하게 된다. 여기서 그 경계를 지킨다.
+  it('발화 계층(tier > 0)에는 재시도가 없다', () => {
+    const speechKinds = ['naming', 'repeat', 'reading'] as const;
+    for (const kind of speechKinds) {
+      expect(tierForKind(kind)).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('MAX_PRACTICE_ATTEMPTS', () => {
+  it('한 문항에 세 번까지 시도한다', () => {
+    expect(MAX_PRACTICE_ATTEMPTS).toBe(3);
   });
 });

@@ -7,14 +7,18 @@
 //
 //  1. 저장소가 다르다 — 연습 결과가 qab_results로 흘러들면 세션당 40문항이
 //     검사 13문항을 3:1로 압도해 연습 성적이 곧 환자의 측정값이 된다.
-//  2. 판정을 안 보여준다 — 검사 훅의 'feedback' 단계와 lastResult는 정오답을
-//     드러내기 위한 것이다. 연습엔 그 단계가 없어야 한다.
-//  3. 나중에 단서 층이 들어온다 — 한 문항 안에서 "발화 → 막히면 단서 → 재시도"가
-//     돌아야 하는데, 검사 훅의 answerAgain은 앞 시도를 pop으로 지운다
-//     (검사는 한 문항 한 결과가 옳으므로 그게 맞다).
+//  2. 시도 축이 있다 — 한 문항이 최대 3행으로 남는다. 검사 훅의 answerAgain은
+//     앞 시도를 pop으로 지운다(검사는 한 문항 한 결과가 옳으므로 그게 맞다).
+//  3. 판정의 쓰임이 다르다 — 검사는 채점하려고, 연습은 가르치려고 한다.
 //
 // 억지로 합치면 위 셋이 전부 조건 분기가 되고, 그 분기 하나를 잘못 타는 순간
 // 오염이 조용히 일어난다.
+//
+// **2026-08-20 — 판정을 화면에 드러내기로 뒤집었다.**
+// 이전 설계는 "연습 중엔 판정을 전혀 안 보여준다"였다. 그 근거였던 오염 논리는
+// **결과가 어디에 저장되는가**에 대한 것이지 화면에 무엇이 그려지는가와는
+// 무관하다는 것이 분명해졌다. 시험이 되는 지점은 집계(점수·정답률)이지 문항별
+// 안내가 아니다. 저장소 분리는 그대로다.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -23,40 +27,64 @@ import {
 } from '../../quiz/infrastructure/QabItemBank.js';
 import type { PracticeAttemptInput, PracticePlayable } from '../domain/Practice.js';
 import {
+  MAX_PRACTICE_ATTEMPTS,
+  allowsRetry,
+  correctAnswerLabelOf,
   itemRefOf,
   scorePracticeAnswer,
   tierForKind,
 } from '../domain/practiceScoring.js';
 import { practiceApi, type IPracticeApi } from '../infrastructure/PracticeApi.js';
 
-export type PracticePhase = 'answering' | 'answered' | 'done';
+export type PracticePhase = 'answering' | 'revealed' | 'done';
+
+/**
+ * 문항이 끝난 방식.
+ *
+ * 어느 쪽이든 **정답을 본 채로** 끝난다. 다른 것은 문구뿐이다
+ * ("맞아요, 사과예요" / "이건 사과예요").
+ */
+export type PracticeOutcome = 'correct' | 'exhausted';
 
 export interface UsePracticeState {
   phase: PracticePhase;
   currentItem: PracticePlayable | null;
   currentIndex: number;
   totalCount: number;
-  /** 방금 고른 선택지(UI가 눌린 상태를 유지하기 위한 값). 정답 여부가 아니다. */
+  /** 현재 시도 번호(1부터). 재시도할 때마다 오른다. */
+  attemptNo: number;
+  /** 최근에 고른 값. 정답 여부가 아니라 "무엇을 눌렀는가"다. */
   selectedValue: string | null;
-  /** 선택 가능 여부 — 답한 뒤 next() 전까지 잠근다(중복 제출 방지). */
+  /** 이번 문항에서 이미 틀린 값들 — 다시 고를 수 없다. */
+  triedWrongValues: string[];
+  /** 선택 가능 여부 — 정답 공개 뒤 next() 전까지 잠근다. */
   isSelectable: boolean;
+  /** phase가 'revealed'일 때만 값이 있다. */
+  outcome: PracticeOutcome | null;
+  /** phase가 'revealed'일 때만 값이 있다. 화면이 말로 알려줄 정답. */
+  correctAnswerLabel: string | null;
 }
 
 export interface UsePracticeActions {
-  /** 답을 낸다. 채점은 하되 **결과를 상태에 노출하지 않는다.** */
+  /**
+   * 답을 낸다.
+   *
+   * 맞으면 정답을 확인해주고 끝난다. 틀리면 그 선택지를 잠그고 다시 고르게
+   * 한다. {@link MAX_PRACTICE_ATTEMPTS}번을 다 쓰면 정답을 알려주고 끝난다.
+   */
   answer: (value: string) => void;
   /**
    * 이 문항을 건너뛴다.
    *
-   * **시도로 기록하지 않는다.** 연습에서 넘어가기는 실패가 아니라 "막혔다"는
+   * **넘어가기 자체는 시도로 기록하지 않는다.** 실패가 아니라 "막혔다"는
    * 신호다. isCorrect: false로 남기면 연습이 실패 기록이 되고, null로 남기면
    * Tier 1(채점 안 함)과 구별되지 않는다. 어느 쪽도 사실이 아니다.
+   * (앞서 틀린 시도가 있었다면 그 행들은 이미 남아 있다.)
    *
-   * 단서 층이 들어오면 이 버튼이 곧 단서 트리거가 된다(설계 §트리거 C —
-   * 보호자 버튼). 그때 "막혔다"는 신호가 비로소 기록할 값을 갖는다.
+   * 단서 층이 들어오면 이 버튼이 곧 단서 트리거가 된다(설계 §트리거 C).
    */
   skip: () => void;
-  /** 다음 문항으로. 마지막이면 종료. */
+  /** 정답을 본 뒤 다음 문항으로. 마지막이면 종료. */
   next: () => void;
   /** 중간에 그만둔다(보호자/환자). 지금까지의 결과는 저장된다. */
   endSession: () => void;
@@ -126,6 +154,8 @@ export function usePracticeSession(
   const phaseRef = useRef<PracticePhase>(
     items.length > 0 ? 'answering' : 'done',
   );
+  /** 같은 이유로 시도 번호도 ref가 진실이다. */
+  const attemptRef = useRef(1);
   /** 쌓인 시도 전부. 아직 안 보낸 tail은 submittedCount 이후다. */
   const attemptsRef = useRef<PracticeAttemptInput[]>([]);
   const submittedCountRef = useRef(0);
@@ -135,8 +165,12 @@ export function usePracticeSession(
     currentItem: items[0] ?? null,
     currentIndex: 0,
     totalCount: items.length,
+    attemptNo: 1,
     selectedValue: null,
+    triedWrongValues: [],
     isSelectable: items.length > 0,
+    outcome: null,
+    correctAnswerLabel: null,
   }));
 
   // 점진 제출: 문항을 넘길 때마다 아직 안 보낸 tail만 보낸다. 세션 끝 1회가
@@ -165,23 +199,47 @@ export function usePracticeSession(
     const playable = items[indexRef.current];
     if (!playable) return;
 
-    // 채점은 하되 결과를 상태에 넣지 않는다. 연습 중엔 판정을 안 보여준다 —
-    // 여기서 lastResult 같은 걸 두는 순간 화면이 그걸 그리게 된다.
+    const attempt = attemptRef.current;
     const isCorrect = scorePracticeAnswer(playable, value);
+
+    // 시도마다 한 행. 앞 시도를 덮어쓰지 않는다 — "몇 번 만에 됐는가"가
+    // 단서 반응성의 前身이고, 그건 마지막 결과만 남기면 사라지는 정보다.
     attemptsRef.current.push({
       itemKind: playable.kind,
       itemRef: itemRefOf(playable),
-      attempt: 1,
+      attempt,
       isCorrect,
       tier: tierForKind(playable.kind),
     });
 
-    phaseRef.current = 'answered';
+    const canRetry =
+      !isCorrect && allowsRetry(playable) && attempt < MAX_PRACTICE_ATTEMPTS;
+
+    if (canRetry) {
+      // 고른 오답을 잠그고 다시 고르게 한다. 같은 오답을 또 누르는 것은
+      // 배우는 것이 없고 답답하기만 하다.
+      attemptRef.current = attempt + 1;
+      setState((prev) => ({
+        ...prev,
+        attemptNo: attempt + 1,
+        selectedValue: null,
+        triedWrongValues: [...prev.triedWrongValues, value],
+        isSelectable: true,
+        outcome: null,
+        correctAnswerLabel: null,
+      }));
+      return;
+    }
+
+    // 맞혔거나 시도를 다 썼다. 어느 쪽이든 **정답을 본 채로** 끝난다.
+    phaseRef.current = 'revealed';
     setState((prev) => ({
       ...prev,
-      phase: 'answered',
+      phase: 'revealed',
       selectedValue: value,
       isSelectable: false,
+      outcome: isCorrect ? 'correct' : 'exhausted',
+      correctAnswerLabel: correctAnswerLabelOf(playable),
     }));
   }, [items]);
 
@@ -197,24 +255,31 @@ export function usePracticeSession(
         phase: 'done',
         currentItem: null,
         isSelectable: false,
+        outcome: null,
+        correctAnswerLabel: null,
       }));
       return;
     }
 
     indexRef.current = nextIndex;
+    attemptRef.current = 1;
     phaseRef.current = 'answering';
     setState((prev) => ({
       ...prev,
       phase: 'answering',
       currentIndex: nextIndex,
       currentItem: items[nextIndex],
+      attemptNo: 1,
       selectedValue: null,
+      triedWrongValues: [],
       isSelectable: true,
+      outcome: null,
+      correctAnswerLabel: null,
     }));
   }, [flushPending, items]);
 
   const next = useCallback((): void => {
-    if (phaseRef.current !== 'answered') return;
+    if (phaseRef.current !== 'revealed') return;
     advance();
   }, [advance]);
 
@@ -232,10 +297,12 @@ export function usePracticeSession(
       phase: 'done',
       currentItem: null,
       isSelectable: false,
+      outcome: null,
+      correctAnswerLabel: null,
     }));
   }, [flushPending]);
 
-  // 화면 이탈 시 마지막으로 답한(아직 next 안 누른) 문항도 저장한다.
+  // 화면 이탈 시 마지막 시도(아직 next 안 누른 것)도 저장한다.
   useEffect(() => {
     return () => {
       flushPending();
