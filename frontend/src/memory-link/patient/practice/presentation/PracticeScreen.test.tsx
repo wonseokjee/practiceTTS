@@ -169,6 +169,33 @@ describe('PracticeScreen', () => {
       });
     });
 
+    // Regression: ISSUE-001 — 4지선다 그림 문항에서 답한 뒤 "다음 문제"가 화면
+    // 밖(720px 높이 기준 y=888)에 있어 앞으로 갈 방법이 안 보였다.
+    // Found by /qa on 2026-08-20
+    // Report: .gstack/qa-reports/qa-report-localhost-5173-2026-08-20.md
+    it('답하면 다음 버튼을 화면 안으로 끌어온다', async () => {
+      const scrollIntoView = vi.fn();
+      // jsdom에는 scrollIntoView가 아예 없어서 정의부터 해야 한다.
+      Object.defineProperty(Element.prototype, 'scrollIntoView', {
+        value: scrollIntoView,
+        configurable: true,
+        writable: true,
+      });
+
+      await renderScreen({ onExit: () => undefined, deps: deps() });
+      expect(scrollIntoView).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByLabelText('사과 선택'));
+
+      // block:'nearest'라야 이미 보이는 화면에서는 아무 일도 안 한다.
+      expect(scrollIntoView).toHaveBeenCalledWith({
+        block: 'nearest',
+        behavior: 'smooth',
+      });
+
+      delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+    });
+
     it('마치기를 누르면 밖으로 나간다', async () => {
       const onExit = vi.fn();
       await renderScreen({ onExit, deps: deps({ imageChoiceCount: 1 }) });

@@ -10,6 +10,7 @@
 // 맞았는지에 대한 정보를 전혀 담지 않는다. 연습에서 격려하는 대상은 답이
 // 아니라 연습했다는 사실이다.
 
+import { useEffect, useRef } from 'react';
 import type { PracticePlayable } from '../domain/Practice.js';
 import {
   usePracticeSession,
@@ -69,6 +70,24 @@ function PracticeItemBody({
 export function PracticeScreen({ onExit, deps }: PracticeScreenProps) {
   const [state, actions] = usePracticeSession(deps);
   const { phase, currentItem, currentIndex, totalCount, selectedValue } = state;
+  const answeredRef = useRef<HTMLDivElement>(null);
+
+  // 답한 뒤 "다음 문제"를 화면 안으로 끌어온다.
+  //
+  // 4지선다 그림 문항은 카드 2×2만으로 약 630px이라, 높이 720px 화면에서는 답한
+  // 직후 나타나는 격려 문구와 다음 버튼이 접힌 곳 아래로 밀린다. 화면에는 답을
+  // 고른 카드만 남고 앞으로 갈 방법이 하나도 안 보인다 — 어르신에게는 막다른
+  // 길로 읽힌다.
+  //
+  // block:'nearest'는 필요한 만큼만 스크롤하므로, 이미 보이는 태블릿·휴대폰
+  // 크기에서는 아무 일도 하지 않는다.
+  useEffect(() => {
+    if (phase !== 'answered') return;
+    const el = answeredRef.current;
+    // jsdom에는 scrollIntoView가 없다.
+    if (!el || typeof el.scrollIntoView !== 'function') return;
+    el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [phase, currentIndex]);
 
   // ── 마침 ──────────────────────────────────────────────────────
   //
@@ -120,7 +139,7 @@ export function PracticeScreen({ onExit, deps }: PracticeScreenProps) {
       />
 
       {isAnswered && (
-        <div className="mt-6">
+        <div className="mt-6" ref={answeredRef}>
           {/* 정오답과 무관하게 항상 같은 문구 — 정보량이 0이라 판정이 새지 않는다. */}
           <p
             className="mb-4 text-center text-lg font-medium text-[#5C6661]"
