@@ -8,6 +8,7 @@ import type { AvailableEntry } from '../domain/TrainingSession.js';
 import { TrainingScreen } from './TrainingScreen.js';
 import { QuizListScreen } from '../quiz/presentation/QuizListScreen.js';
 import { QuizScreen } from '../quiz/presentation/QuizScreen.js';
+import { PracticeScreen } from '../practice/presentation/PracticeScreen.js';
 import { SoloDailyHome } from './SoloDailyHome.js';
 import { buildWeekStreak } from '../domain/streak.js';
 import { quizApi } from '../quiz/infrastructure/QuizApi.js';
@@ -29,7 +30,8 @@ type DashboardPhase =
   | 'TRAINING'
   | 'QUIZ_HOME'
   | 'QUIZ_LIST'
-  | 'QUIZ_PLAY';
+  | 'QUIZ_PLAY'
+  | 'PRACTICE';
 
 /** 선택된 훈련 정보 */
 interface SelectedTraining {
@@ -178,6 +180,16 @@ export function PatientDashboard() {
     );
   }
 
+  // 연습 모드 — 터치 중심, 판정을 보여주지 않는다. 결과는 검사와 다른
+  // 테이블(practice_results)로 나가므로 회복 추세·레벨을 건드리지 않는다.
+  if (phase === 'PRACTICE') {
+    return (
+      <div className="min-h-screen" style={{ background: WARM_SCREEN_BG }}>
+        <PracticeScreen onExit={() => setPhase('QUIZ_HOME')} />
+      </div>
+    );
+  }
+
   // 퀴즈 풀이 화면(퀴즈 모드)
   if (phase === 'QUIZ_PLAY' && selectedQuizSetId !== null) {
     return (
@@ -217,6 +229,7 @@ export function PatientDashboard() {
           )}
           streakDays={buildWeekStreak(new Set(activityDays))}
           onStart={() => setPhase('QUIZ_LIST')}
+          onPractice={() => setPhase('PRACTICE')}
           onReview={() => setPhase('QUIZ_LIST')}
         />
       </div>

@@ -21,6 +21,13 @@ interface SoloDailyHomeProps {
   onStart: () => void;
   /** 부차 링크 — 이번 주 돌아보기(대시보드/목록). 없으면 렌더 안 함. */
   onReview?: () => void;
+  /**
+   * 부차 링크 — 연습 모드(터치 중심, 판정 없음). 없으면 렌더 안 함.
+   *
+   * 거대 CTA(onStart)는 기존 검사 흐름 그대로 둔다. 연습이 일일 기본이 되는지는
+   * 실제로 써보고 정할 일이라, 지금은 나란히 놓고 고를 수 있게만 한다.
+   */
+  onPractice?: () => void;
 }
 
 /** 솔로 일일 홈 화면. */
@@ -30,6 +37,7 @@ export function SoloDailyHome({
   hasResumable = false,
   onStart,
   onReview,
+  onPractice,
 }: SoloDailyHomeProps) {
   return (
     <div className="mx-auto flex w-full max-w-md flex-col px-6 pt-8">
@@ -70,15 +78,26 @@ export function SoloDailyHome({
       </button>
 
       {/* 부차 링크 (작게) */}
-      {onReview && (
-        <div className="mt-5 text-center">
-          <button
-            type="button"
-            onClick={onReview}
-            className="inline-block px-4 py-2 text-base text-[#6B6560] transition-colors duration-[180ms] ease-out hover:text-[#1A1916]"
-          >
-            이번 주 돌아보기
-          </button>
+      {(onReview ?? onPractice) && (
+        <div className="mt-5 flex flex-col items-center gap-1 text-center">
+          {onPractice && (
+            <button
+              type="button"
+              onClick={onPractice}
+              className="inline-block px-4 py-2 text-base text-[#6B6560] transition-colors duration-[180ms] ease-out hover:text-[#1A1916]"
+            >
+              가볍게 연습하기
+            </button>
+          )}
+          {onReview && (
+            <button
+              type="button"
+              onClick={onReview}
+              className="inline-block px-4 py-2 text-base text-[#6B6560] transition-colors duration-[180ms] ease-out hover:text-[#1A1916]"
+            >
+              이번 주 돌아보기
+            </button>
+          )}
         </div>
       )}
     </div>

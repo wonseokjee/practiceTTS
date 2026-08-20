@@ -45,6 +45,17 @@ export interface UsePracticeState {
 export interface UsePracticeActions {
   /** 답을 낸다. 채점은 하되 **결과를 상태에 노출하지 않는다.** */
   answer: (value: string) => void;
+  /**
+   * 이 문항을 건너뛴다.
+   *
+   * **시도로 기록하지 않는다.** 연습에서 넘어가기는 실패가 아니라 "막혔다"는
+   * 신호다. isCorrect: false로 남기면 연습이 실패 기록이 되고, null로 남기면
+   * Tier 1(채점 안 함)과 구별되지 않는다. 어느 쪽도 사실이 아니다.
+   *
+   * 단서 층이 들어오면 이 버튼이 곧 단서 트리거가 된다(설계 §트리거 C —
+   * 보호자 버튼). 그때 "막혔다"는 신호가 비로소 기록할 값을 갖는다.
+   */
+  skip: () => void;
   /** 다음 문항으로. 마지막이면 종료. */
   next: () => void;
   /** 중간에 그만둔다(보호자/환자). 지금까지의 결과는 저장된다. */
@@ -174,8 +185,8 @@ export function usePracticeSession(
     }));
   }, [items]);
 
-  const next = useCallback((): void => {
-    if (phaseRef.current !== 'answered') return;
+  /** 다음 문항으로 이동하거나 세션을 끝낸다. next/skip이 공유한다. */
+  const advance = useCallback((): void => {
     flushPending();
 
     const nextIndex = indexRef.current + 1;
@@ -202,6 +213,16 @@ export function usePracticeSession(
     }));
   }, [flushPending, items]);
 
+  const next = useCallback((): void => {
+    if (phaseRef.current !== 'answered') return;
+    advance();
+  }, [advance]);
+
+  const skip = useCallback((): void => {
+    if (phaseRef.current !== 'answering') return;
+    advance();
+  }, [advance]);
+
   const endSession = useCallback((): void => {
     if (phaseRef.current === 'done') return;
     flushPending();
@@ -221,5 +242,5 @@ export function usePracticeSession(
     };
   }, [flushPending]);
 
-  return [state, { answer, next, endSession }];
+  return [state, { answer, skip, next, endSession }];
 }
