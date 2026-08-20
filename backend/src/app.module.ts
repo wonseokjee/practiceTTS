@@ -13,6 +13,7 @@ import { seedHealingMessagesIfMissing } from './memory/seeds/healing-messages.se
 import { ProfileModule } from './profile/profile.module';
 import { QuizModule } from './quiz/quiz.module';
 import { SpeechDataModule } from './speech-data/speech-data.module';
+import { PracticeModule } from './practice/practice.module';
 import { TrainingModule } from './training/training.module';
 import { SingleInstanceGuard } from './common/single-instance.guard';
 
@@ -31,6 +32,7 @@ import { SingleInstanceGuard } from './common/single-instance.guard';
     // Phase 3 구현 완료 (Controller/Service/이벤트 리스너 포함)
     QuizModule,
     SpeechDataModule,
+    PracticeModule,
   ],
   controllers: [AppController],
   providers: [AppService, SingleInstanceGuard],
