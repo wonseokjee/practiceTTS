@@ -8,7 +8,7 @@
 //
 // 흐름은 이렇다.
 //
-//   틀림  →  그 선택지를 잠그고 "다시 한번 해볼까요?"  (최대 3번)
+//   틀림  →  판정 없이 "다시 한번 해볼까요?"  (최대 3번)
 //   맞힘  →  "맞아요, '사과'예요."
 //   3번 다 틀림  →  "이건 '사과'예요."
 //
@@ -66,7 +66,6 @@ function PracticeItemBody({
   isSelectable,
   isRevealed,
   selectedValue,
-  triedWrongValues,
   onAnswer,
   onSkip,
 }: {
@@ -74,7 +73,6 @@ function PracticeItemBody({
   isSelectable: boolean;
   isRevealed: boolean;
   selectedValue: string | null;
-  triedWrongValues: readonly string[];
   onAnswer: (value: string) => void;
   onSkip: () => void;
 }) {
@@ -87,7 +85,6 @@ function PracticeItemBody({
           showFeedback={isRevealed}
           // 정답 카드만 표시한다. 내가 고른 오답은 칠하지 않는다.
           answerOnly
-          disabledChoiceIds={triedWrongValues}
           selectedChoiceId={selectedValue}
           onSelect={onAnswer}
         />
@@ -117,7 +114,6 @@ export function PracticeScreen({ onExit, deps }: PracticeScreenProps) {
     totalCount,
     attemptNo,
     selectedValue,
-    triedWrongValues,
     outcome,
     correctAnswerLabel,
   } = state;
@@ -192,7 +188,6 @@ export function PracticeScreen({ onExit, deps }: PracticeScreenProps) {
         isSelectable={state.isSelectable}
         isRevealed={isRevealed}
         selectedValue={selectedValue}
-        triedWrongValues={triedWrongValues}
         onAnswer={actions.answer}
         onSkip={actions.skip}
       />

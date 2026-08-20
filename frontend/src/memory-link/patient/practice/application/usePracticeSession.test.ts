@@ -12,8 +12,9 @@ import {
  * 연습 세션 훅 테스트.
  *
  * 초점은 세 가지다.
- *  - **재시도 루프** — 틀리면 그 선택지를 잠그고 다시 고르게 하고, 3번을 다
- *    쓰면 정답을 알려주고 끝낸다.
+ *  - **재시도 루프** — 틀리면 판정 없이 다시 고르게 하고, 3번을 다 쓰면
+ *    정답을 알려주고 끝낸다. 고른 선택지를 잠그지는 않는다 — 잠그면 마지막
+ *    시도가 소거법이 되어 시도 간 비교가 깨진다.
  *  - **시도 축** — 한 문항이 최대 3행으로 남고, 앞 시도를 덮어쓰지 않는다.
  *    "몇 번 만에 됐는가"는 마지막 결과만 남기면 사라지는 정보다.
  *  - **점진 저장** — 중도 이탈해도 그때까지가 남고, 실패한 제출은 다음에
@@ -118,18 +119,30 @@ describe('usePracticeSession', () => {
   };
 
   describe('재시도 루프', () => {
-    it('틀리면 그 선택지를 잠그고 다시 고르게 한다', () => {
+    it('틀리면 다시 고르게 한다', () => {
       const { result } = renderHook(() => usePracticeSession(deps()));
-      const id = answerWrong(result, 1);
+      answerWrong(result, 1);
 
       const [s] = result.current;
       expect(s.phase).toBe('answering');
       expect(s.attemptNo).toBe(2);
       expect(s.isSelectable).toBe(true);
-      expect(s.triedWrongValues).toEqual([id + '_n1']);
       // 아직 정답을 알려줄 때가 아니다.
       expect(s.outcome).toBeNull();
       expect(s.correctAnswerLabel).toBeNull();
+    });
+
+    it('같은 오답을 다시 골라도 시도가 흘러간다', () => {
+      // 선택지를 잠그지 않으므로 같은 것을 또 누를 수 있다. 그래도 시도는
+      // 소모된다 — 무한히 머무르지 않는다.
+      const { result } = renderHook(() => usePracticeSession(deps()));
+      answerWrong(result, 1);
+      answerWrong(result, 1);
+      expect(result.current[0].attemptNo).toBe(3);
+
+      answerWrong(result, 1);
+      expect(result.current[0].phase).toBe('revealed');
+      expect(result.current[0].outcome).toBe('exhausted');
     });
 
     it('맞히면 정답을 알려주고 문항이 끝난다', () => {
@@ -177,7 +190,7 @@ describe('usePracticeSession', () => {
       expect(result.current[0].attemptNo).toBe(1);
     });
 
-    it('다음 문항으로 가면 시도 번호와 잠금이 초기화된다', async () => {
+    it('다음 문항으로 가면 시도 번호가 초기화된다', async () => {
       const { result } = renderHook(() => usePracticeSession(deps()));
       answerWrong(result, 1);
       answerCorrect(result);
@@ -185,7 +198,6 @@ describe('usePracticeSession', () => {
 
       const [s] = result.current;
       expect(s.attemptNo).toBe(1);
-      expect(s.triedWrongValues).toEqual([]);
       expect(s.selectedValue).toBeNull();
       expect(s.outcome).toBeNull();
     });

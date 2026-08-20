@@ -55,8 +55,6 @@ export interface UsePracticeState {
   attemptNo: number;
   /** 최근에 고른 값. 정답 여부가 아니라 "무엇을 눌렀는가"다. */
   selectedValue: string | null;
-  /** 이번 문항에서 이미 틀린 값들 — 다시 고를 수 없다. */
-  triedWrongValues: string[];
   /** 선택 가능 여부 — 정답 공개 뒤 next() 전까지 잠근다. */
   isSelectable: boolean;
   /** phase가 'revealed'일 때만 값이 있다. */
@@ -69,8 +67,8 @@ export interface UsePracticeActions {
   /**
    * 답을 낸다.
    *
-   * 맞으면 정답을 확인해주고 끝난다. 틀리면 그 선택지를 잠그고 다시 고르게
-   * 한다. {@link MAX_PRACTICE_ATTEMPTS}번을 다 쓰면 정답을 알려주고 끝난다.
+   * 맞으면 정답을 확인해주고 끝난다. 틀리면 판정 없이 다시 고르게 한다.
+   * {@link MAX_PRACTICE_ATTEMPTS}번을 다 쓰면 정답을 알려주고 끝난다.
    */
   answer: (value: string) => void;
   /**
@@ -167,7 +165,6 @@ export function usePracticeSession(
     totalCount: items.length,
     attemptNo: 1,
     selectedValue: null,
-    triedWrongValues: [],
     isSelectable: items.length > 0,
     outcome: null,
     correctAnswerLabel: null,
@@ -216,14 +213,15 @@ export function usePracticeSession(
       !isCorrect && allowsRetry(playable) && attempt < MAX_PRACTICE_ATTEMPTS;
 
     if (canRetry) {
-      // 고른 오답을 잠그고 다시 고르게 한다. 같은 오답을 또 누르는 것은
-      // 배우는 것이 없고 답답하기만 하다.
+      // 고른 오답을 잠그지 않는다. 4지선다에서 둘을 잠그면 3차 시도가
+      // 소거법이 되어 우연 정답률 바닥이 25%에서 50%로 뛴다. "몇 번 만에
+      // 됐는가"를 단서 반응성으로 읽으려면 매 시도가 같은 조건이어야 한다.
+      // 눌렸다는 신호는 시도마다 바뀌는 안내 문구가 대신한다.
       attemptRef.current = attempt + 1;
       setState((prev) => ({
         ...prev,
         attemptNo: attempt + 1,
         selectedValue: null,
-        triedWrongValues: [...prev.triedWrongValues, value],
         isSelectable: true,
         outcome: null,
         correctAnswerLabel: null,
@@ -271,7 +269,6 @@ export function usePracticeSession(
       currentItem: items[nextIndex],
       attemptNo: 1,
       selectedValue: null,
-      triedWrongValues: [],
       isSelectable: true,
       outcome: null,
       correctAnswerLabel: null,

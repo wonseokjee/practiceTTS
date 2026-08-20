@@ -63,12 +63,6 @@ interface ImageChoiceQuizItemProps {
    * ✗·빨강은 쓰지 않는다. 성적표가 아니라 안내다.
    */
   answerOnly?: boolean;
-  /**
-   * 이미 틀려서 다시 못 고르는 선택지(연습 모드 재시도).
-   *
-   * 같은 오답을 또 누르는 것은 배우는 것이 없고 답답하기만 하다.
-   */
-  disabledChoiceIds?: readonly string[];
   /** 사용자가 고른 선택지 id (피드백 단계 강조용) */
   selectedChoiceId: string | null;
   onSelect: (choiceId: string) => void;
@@ -80,7 +74,6 @@ export function ImageChoiceQuizItem({
   isSelectable,
   showFeedback,
   answerOnly = false,
-  disabledChoiceIds,
   selectedChoiceId,
   onSelect,
 }: ImageChoiceQuizItemProps) {
@@ -119,8 +112,6 @@ export function ImageChoiceQuizItem({
       >
         {item.choices.map((choice) => {
           const isChosen = selectedChoiceId === choice.choiceId;
-          const isLockedWrong =
-            disabledChoiceIds?.includes(choice.choiceId) ?? false;
 
           // 피드백 단계 강조: 정답=초록, 내가 고른 오답=빨강.
           let ring = 'border-[#E5E5E0]';
@@ -140,26 +131,21 @@ export function ImageChoiceQuizItem({
             } else {
               ring = 'border-[#E5E5E0] opacity-60';
             }
-          } else if (isLockedWrong) {
-            // 재시도 중 잠긴 오답 — 흐리게 두되 빨강은 쓰지 않는다.
-            ring = 'border-[#E5E5E0] opacity-40';
           } else if (isChosen) {
             ring = 'border-[#2D6A56]';
           }
-
-          const canPick = isSelectable && !isLockedWrong;
 
           return (
             <button
               key={choice.choiceId}
               type="button"
-              disabled={!canPick}
+              disabled={!isSelectable}
               onClick={() => {
-                if (canPick) onSelect(choice.choiceId);
+                if (isSelectable) onSelect(choice.choiceId);
               }}
               aria-label={`${choice.label} 선택`}
               className={`relative aspect-square w-full overflow-hidden rounded-2xl border-4 transition-all duration-150 disabled:cursor-default ${ring} ${
-                canPick ? 'hover:border-[#A8AFA9] active:scale-[0.97]' : ''
+                isSelectable ? 'hover:border-[#A8AFA9] active:scale-[0.97]' : ''
               }`}
             >
               {/* 그림 — 로딩/실패 시 라벨(정답) 노출 없이 중립 표시 */}

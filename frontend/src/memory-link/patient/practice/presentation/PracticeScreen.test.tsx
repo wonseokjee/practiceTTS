@@ -118,14 +118,15 @@ describe('PracticeScreen', () => {
       expect(container.textContent).not.toContain("'사과'예요");
     });
 
-    it('틀린 선택지는 다시 고를 수 없다', async () => {
+    it('틀린 뒤에도 모든 선택지를 그대로 고를 수 있다', async () => {
+      // 틀린 카드를 잠그지 않는다. 4지선다에서 둘을 잠그면 마지막 시도가
+      // 소거법이 되어 "몇 번 만에 됐는가"가 시도마다 다른 척도가 된다.
       await renderScreen({ onExit: () => undefined, deps: deps() });
 
       pick('배');
       await flush();
 
-      expect(screen.getByLabelText('배 선택')).toBeDisabled();
-      // 나머지는 그대로 고를 수 있다.
+      expect(screen.getByLabelText('배 선택')).toBeEnabled();
       expect(screen.getByLabelText('감 선택')).toBeEnabled();
       expect(screen.getByLabelText('사과 선택')).toBeEnabled();
     });
