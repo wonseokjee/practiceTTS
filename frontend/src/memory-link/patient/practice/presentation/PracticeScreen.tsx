@@ -9,7 +9,7 @@
 // 흐름은 이렇다.
 //
 //   틀림  →  판정 없이 "다시 한번 해볼까요?"  (최대 3번)
-//   맞힘  →  "맞아요, '사과'예요."
+//   맞힘  →  "맞아요, '사과'예요."  ("칫솔"이면 "칫솔이에요" — 받침을 본다)
 //   3번 다 틀림  →  "이건 '사과'예요."
 //
 // 어느 쪽이든 **정답을 본 채로** 문항이 끝난다. 피드백 없는 드릴에서 어르신이
@@ -26,6 +26,7 @@ import {
   type PracticeOutcome,
   type UsePracticeDeps,
 } from '../application/usePracticeSession.js';
+import { copulaSuffix } from '../../../../shared/domain/korean.js';
 import { QuizProgressBar } from '../../quiz/presentation/QuizProgressBar.js';
 import { ImageChoiceQuizItem } from '../../quiz/presentation/components/ImageChoiceQuizItem.js';
 import { SpellTileItem } from '../../quiz/presentation/components/SpellTileItem.js';
@@ -51,9 +52,9 @@ function messageFor(
   answerLabel: string | null,
 ): string | null {
   if (phase === 'revealed' && answerLabel !== null) {
-    return outcome === 'correct'
-      ? `맞아요, '${answerLabel}'예요.`
-      : `이건 '${answerLabel}'예요.`;
+    // 조사는 낱말의 받침을 보고 고른다. 그냥 이어붙이면 "칫솔예요"가 된다.
+    const quoted = `'${answerLabel}'${copulaSuffix(answerLabel)}`;
+    return outcome === 'correct' ? `맞아요, ${quoted}.` : `이건 ${quoted}.`;
   }
   if (phase === 'answering' && attemptNo === 2) return '다시 한번 해볼까요?';
   if (phase === 'answering' && attemptNo >= 3) return '한 번만 더 해볼까요?';

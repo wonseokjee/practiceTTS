@@ -151,6 +151,30 @@ describe('PracticeScreen', () => {
       expect(container.textContent).not.toContain('✗');
     });
 
+    // Found by browser QA on 2026-08-21: "이건 '칫솔'예요."가 그대로 읽혔다.
+    it('받침 있는 낱말이면 조사가 이에요로 바뀐다', async () => {
+      const 칫솔 = (): QabImageItem => ({
+        ...imageItem('c_0'),
+        choices: [
+          { choiceId: 'c_0_ok', label: '칫솔', imageUrl: '/a.png', isCorrect: true },
+          { choiceId: 'c_0_n1', label: '당근', imageUrl: '/b.png', isCorrect: false },
+        ],
+      });
+      await renderScreen({
+        onExit: () => undefined,
+        deps: deps({
+          pickQabItems: (() => [칫솔()]) as UsePracticeDeps['pickQabItems'],
+          imageChoiceCount: 1,
+        }),
+      });
+
+      pick('칫솔');
+
+      expect(screen.getByRole('status')).toHaveTextContent(
+        "맞아요, '칫솔'이에요.",
+      );
+    });
+
     it('답하기 전에는 아무 문구도 없다', async () => {
       await renderScreen({ onExit: () => undefined, deps: deps() });
 
