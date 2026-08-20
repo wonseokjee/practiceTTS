@@ -163,6 +163,32 @@ describe('usePracticeSession', () => {
       expect(refs).toEqual([first, second]);
     });
 
+    it('넘어가기는 시도로 기록하지 않고 다음으로 간다', async () => {
+      const { result } = renderHook(() => usePracticeSession(deps()));
+      const skipped = result.current[0].currentItem?.item.itemId ?? '';
+
+      act(() => result.current[1].skip());
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(result.current[0].phase).toBe('answering');
+      expect(result.current[0].currentIndex).toBe(1);
+      // 넘어가기는 실패가 아니라 "막혔다"는 신호라 남길 값이 없다.
+      expect(submitted.flatMap((x) => x.results)).toHaveLength(0);
+      expect(result.current[0].currentItem?.item.itemId).not.toBe(skipped);
+    });
+
+    it('답한 뒤에는 넘어가기가 먹지 않는다', () => {
+      const { result } = renderHook(() => usePracticeSession(deps()));
+      answerCurrent(result, true);
+      act(() => result.current[1].skip());
+
+      // 이미 기록된 시도를 넘어가기로 무르는 경로는 없다.
+      expect(result.current[0].phase).toBe('answered');
+      expect(result.current[0].currentIndex).toBe(0);
+    });
+
     it('마지막 문항을 넘기면 종료된다', async () => {
       const { result } = renderHook(() => usePracticeSession(deps()));
       answerCurrent(result, true);
