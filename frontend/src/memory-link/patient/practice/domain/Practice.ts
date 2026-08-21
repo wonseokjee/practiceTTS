@@ -11,6 +11,7 @@ import type {
   QabImageItem,
   QabSpellItem,
 } from '../../quiz/domain/MixedQuiz.js';
+import type { PracticeOddOneOutItem } from './practiceOddOneOut.js';
 import type { PracticeWordChoiceItem } from './practiceWordChoice.js';
 
 /**
@@ -46,6 +47,7 @@ export type PracticeItemKind =
 export type PracticePlayable =
   | { kind: 'imageChoice'; id: string; item: QabImageItem }
   | { kind: 'wordChoice'; id: string; item: PracticeWordChoiceItem }
+  | { kind: 'oddOneOut'; id: string; item: PracticeOddOneOutItem }
   | { kind: 'spell'; id: string; item: QabSpellItem };
 
 /** 백엔드 POST /practice/results가 받는 시도 1건. */

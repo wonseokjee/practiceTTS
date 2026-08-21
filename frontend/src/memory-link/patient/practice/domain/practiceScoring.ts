@@ -29,7 +29,8 @@ export function scorePracticeAnswer(
 ): boolean {
   switch (playable.kind) {
     case 'imageChoice':
-    case 'wordChoice': {
+    case 'wordChoice':
+    case 'oddOneOut': {
       // 자극과 반응이 뒤집혔을 뿐 채점은 같다 — 누른 선택지가 정답인가.
       const chosen = playable.item.choices.find((c) => c.choiceId === value);
       return chosen?.isCorrect ?? false;
@@ -75,6 +76,7 @@ export function correctAnswerLabelOf(playable: PracticePlayable): string {
   switch (playable.kind) {
     case 'imageChoice':
     case 'wordChoice':
+    case 'oddOneOut':
       return playable.item.choices.find((c) => c.isCorrect)?.label ?? '';
     case 'spell':
       return playable.item.targetWord;

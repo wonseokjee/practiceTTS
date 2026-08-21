@@ -22,6 +22,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  masterWords,
   pickSentItems,
   pickSpellItems,
   pickWordItems,
@@ -40,6 +41,7 @@ import {
   PRACTICE_SENTENCE_COUNT,
   practiceLevelFor,
 } from '../domain/practiceDifficulty.js';
+import { buildOddOneOutItems } from '../domain/practiceOddOneOut.js';
 import { toWordChoiceItem } from '../domain/practiceWordChoice.js';
 import { practiceApi, type IPracticeApi } from '../infrastructure/PracticeApi.js';
 
@@ -106,6 +108,9 @@ export interface UsePracticeDeps {
   imageChoiceCount?: number;
   /** 낱말고르기(그림 보고 낱말 고르기) 문항 수. */
   wordChoiceCount?: number;
+  /** 무리에서 빼기 문항 수. */
+  oddOneOutCount?: number;
+  masterWords?: typeof masterWords;
   /** 문장이해 문항 수. 기본 0 — 이유는 practiceDifficulty.ts 참고. */
   sentenceCount?: number;
   spellCount?: number;
@@ -115,9 +120,10 @@ export interface UsePracticeDeps {
 
 // 걸어다니는 뼈대의 기본 구성. 총량은 궁극적으로 보호자가 정하고 구성비는
 // 레벨이 정하지만(설계 §세션 길이), 그 배선은 후속 작업이다.
-const DEFAULT_IMAGE_CHOICE_COUNT = 4;
+const DEFAULT_IMAGE_CHOICE_COUNT = 3;
 const DEFAULT_WORD_CHOICE_COUNT = 2;
-const DEFAULT_SPELL_COUNT = 2;
+const DEFAULT_ODD_ONE_OUT_COUNT = 2;
+const DEFAULT_SPELL_COUNT = 1;
 
 function defaultGenerateToken(): string {
   return crypto.randomUUID();
@@ -181,12 +187,17 @@ export function usePracticeSession(
       deps?.sentenceCount ?? PRACTICE_SENTENCE_COUNT,
       level,
     ).map(toImageChoice);
+    const oddOneOutItems: PracticePlayable[] = buildOddOneOutItems(
+      (deps?.masterWords ?? masterWords)(),
+      deps?.oddOneOutCount ?? DEFAULT_ODD_ONE_OUT_COUNT,
+    ).map((item) => ({ kind: 'oddOneOut' as const, id: item.itemId, item }));
     const spellItems: PracticePlayable[] = pickSpell(
       deps?.spellCount ?? DEFAULT_SPELL_COUNT,
     ).map((item) => ({ kind: 'spell' as const, id: item.itemId, item }));
     return shuffle([
       ...wordItems,
       ...wordChoiceItems,
+      ...oddOneOutItems,
       ...sentItems,
       ...spellItems,
     ]);
