@@ -22,9 +22,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  pickQabItems,
+  pickSentItems,
   pickSpellItems,
+  pickWordItems,
 } from '../../quiz/infrastructure/QabItemBank.js';
+import type { QabImageItem } from '../../quiz/domain/MixedQuiz.js';
 import type { PracticeAttemptInput, PracticePlayable } from '../domain/Practice.js';
 import {
   MAX_PRACTICE_ATTEMPTS,
@@ -34,6 +36,10 @@ import {
   scorePracticeAnswer,
   tierForKind,
 } from '../domain/practiceScoring.js';
+import {
+  PRACTICE_SENTENCE_COUNT,
+  practiceLevelFor,
+} from '../domain/practiceDifficulty.js';
 import { practiceApi, type IPracticeApi } from '../infrastructure/PracticeApi.js';
 
 export type PracticePhase = 'answering' | 'revealed' | 'done';
@@ -92,11 +98,16 @@ export type UsePracticeReturn = [UsePracticeState, UsePracticeActions];
 
 export interface UsePracticeDeps {
   practiceApi?: IPracticeApi;
-  pickQabItems?: typeof pickQabItems;
+  pickWordItems?: typeof pickWordItems;
+  pickSentItems?: typeof pickSentItems;
   pickSpellItems?: typeof pickSpellItems;
   generateSessionToken?: () => string;
   imageChoiceCount?: number;
+  /** 문장이해 문항 수. 기본 0 — 이유는 practiceDifficulty.ts 참고. */
+  sentenceCount?: number;
   spellCount?: number;
+  /** 검사 레벨(있으면). 연습 상한을 넘으면 상한으로 깎인다. */
+  examLevel?: number;
 }
 
 // 걸어다니는 뼈대의 기본 구성. 총량은 궁극적으로 보호자가 정하고 구성비는
@@ -130,16 +141,35 @@ export function usePracticeSession(
   );
 
   // 문항은 전부 로컬 뱅크에서 조립한다 — Tier 0의 콘텐츠 비용이 0인 이유다.
+  //
+  // **뱅크는 검사와 공유하되 뽑는 규칙은 공유하지 않는다.** 이전에는
+  // pickQabItems(count)를 인자 없이 불러 검사 기본값을 그대로 받았고, 그래서
+  // 연습 첫 화면에 역행 문장 변별이 나왔다(TODO-113). 지금은 레벨을 명시하고
+  // 문장은 종류를 골라 넣을 수 있을 때까지 뺀다.
   const [items] = useState<PracticePlayable[]>(() => {
-    const pickImage = deps?.pickQabItems ?? pickQabItems;
+    const pickWord = deps?.pickWordItems ?? pickWordItems;
+    const pickSent = deps?.pickSentItems ?? pickSentItems;
     const pickSpell = deps?.pickSpellItems ?? pickSpellItems;
-    const imageItems: PracticePlayable[] = pickImage(
+    const level = practiceLevelFor(deps?.examLevel);
+
+    const toImageChoice = (item: QabImageItem): PracticePlayable => ({
+      kind: 'imageChoice',
+      id: item.itemId,
+      item,
+    });
+
+    const wordItems = pickWord(
       deps?.imageChoiceCount ?? DEFAULT_IMAGE_CHOICE_COUNT,
-    ).map((item) => ({ kind: 'imageChoice' as const, id: item.itemId, item }));
+      level,
+    ).map(toImageChoice);
+    const sentItems = pickSent(
+      deps?.sentenceCount ?? PRACTICE_SENTENCE_COUNT,
+      level,
+    ).map(toImageChoice);
     const spellItems: PracticePlayable[] = pickSpell(
       deps?.spellCount ?? DEFAULT_SPELL_COUNT,
     ).map((item) => ({ kind: 'spell' as const, id: item.itemId, item }));
-    return shuffle([...imageItems, ...spellItems]);
+    return shuffle([...wordItems, ...sentItems, ...spellItems]);
   });
 
   const indexRef = useRef(0);

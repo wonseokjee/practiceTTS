@@ -51,10 +51,10 @@ describe('PracticeScreen', () => {
         return Promise.resolve({ saved: results.length });
       },
     },
-    pickQabItems: ((n: number) =>
+    pickWordItems: ((n: number) =>
       Array.from({ length: n }, (_, i) =>
         imageItem('img_' + String(i)),
-      )) as UsePracticeDeps['pickQabItems'],
+      )) as UsePracticeDeps['pickWordItems'],
     pickSpellItems: (() => []) as UsePracticeDeps['pickSpellItems'],
     generateSessionToken: () => 'tok-1',
     imageChoiceCount: 2,
@@ -163,7 +163,7 @@ describe('PracticeScreen', () => {
       await renderScreen({
         onExit: () => undefined,
         deps: deps({
-          pickQabItems: (() => [칫솔()]) as UsePracticeDeps['pickQabItems'],
+          pickWordItems: (() => [칫솔()]) as UsePracticeDeps['pickWordItems'],
           imageChoiceCount: 1,
         }),
       });

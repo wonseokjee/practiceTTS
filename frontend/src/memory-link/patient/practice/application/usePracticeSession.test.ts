@@ -2,6 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { QabImageItem, QabSpellItem } from '../../quiz/domain/MixedQuiz.js';
 import type { PracticeAttemptInput } from '../domain/Practice.js';
+import { PRACTICE_MAX_LEVEL } from '../domain/practiceDifficulty.js';
 import {
   usePracticeSession,
   type UsePracticeDeps,
@@ -62,10 +63,16 @@ describe('usePracticeSession', () => {
   const deps = (over?: Partial<UsePracticeDeps>): UsePracticeDeps => ({
     practiceApi: { submitResults: (t, r) => submitResults(t, r) },
     // 뱅크를 고정해 조립을 결정론적으로 만든다(순서는 여전히 섞인다).
-    pickQabItems: ((n: number) =>
+    pickWordItems: ((n: number) =>
       Array.from({ length: n }, (_, i) =>
         imageItem('img_' + String(i)),
-      )) as UsePracticeDeps['pickQabItems'],
+      )) as UsePracticeDeps['pickWordItems'],
+    // 문장은 기본 0이지만, 테스트에서 "0이라 안 불렸다"와 "빼먹었다"를
+    // 구별하려면 주입해 두고 호출 인자를 봐야 한다.
+    pickSentItems: ((n: number) =>
+      Array.from({ length: n }, (_, i) =>
+        imageItem('snt_' + String(i)),
+      )) as UsePracticeDeps['pickSentItems'],
     pickSpellItems: ((n: number) =>
       Array.from({ length: n }, (_, i) =>
         spellItem('sp_' + String(i)),
@@ -345,6 +352,39 @@ describe('usePracticeSession', () => {
         second,
       ]);
       warn.mockRestore();
+    });
+  });
+
+  describe('난이도 상한', () => {
+    it('문장이해는 기본 구성에 넣지 않는다', () => {
+      const pickSent = vi.fn(() => []);
+      renderHook(() =>
+        usePracticeSession(
+          deps({
+            pickSentItems:
+              pickSent as unknown as UsePracticeDeps['pickSentItems'],
+          }),
+        ),
+      );
+
+      // 0을 넘겼는지까지 본다 — 아예 안 부르는 것과 0개를 요청하는 것은
+      // 나중에 문장을 다시 넣을 때 다른 이야기가 된다.
+      expect(pickSent).toHaveBeenCalledWith(0, PRACTICE_MAX_LEVEL);
+    });
+
+    it('검사 레벨이 높아도 상한 레벨로 문항을 뽑는다', () => {
+      const pickWord = vi.fn(() => []);
+      renderHook(() =>
+        usePracticeSession(
+          deps({
+            examLevel: 5,
+            pickWordItems:
+              pickWord as unknown as UsePracticeDeps['pickWordItems'],
+          }),
+        ),
+      );
+
+      expect(pickWord).toHaveBeenCalledWith(2, PRACTICE_MAX_LEVEL);
     });
   });
 
