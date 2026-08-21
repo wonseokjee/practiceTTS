@@ -79,6 +79,8 @@ describe('usePracticeSession', () => {
       )) as UsePracticeDeps['pickSpellItems'],
     generateSessionToken: () => 'tok-1',
     imageChoiceCount: 2,
+    // 이 파일의 테스트는 그림고르기 흐름만 본다.
+    wordChoiceCount: 0,
     spellCount: 0,
     ...over,
   });
@@ -352,6 +354,52 @@ describe('usePracticeSession', () => {
         second,
       ]);
       warn.mockRestore();
+    });
+  });
+
+  describe('낱말 고르기', () => {
+    /** 그림고르기 0개 + 낱말고르기 1개짜리 세션. */
+    const wordChoiceOnly = (): UsePracticeDeps =>
+      deps({ imageChoiceCount: 0, wordChoiceCount: 1, spellCount: 0 });
+
+    it('그림 문항을 뒤집어 낱말고르기로 낸다', () => {
+      const { result } = renderHook(() => usePracticeSession(wordChoiceOnly()));
+
+      const [s] = result.current;
+      expect(s.totalCount).toBe(1);
+      expect(s.currentItem?.kind).toBe('wordChoice');
+    });
+
+    it('저장되는 item_ref에 접두사가 붙는다', async () => {
+      // 접두사가 없으면 같은 낱말을 두 양식으로 낸 세션에서 두 번째 시도가
+      // practice_results의 UNIQUE(patient, session, item_ref, attempt)에 걸려
+      // ON CONFLICT DO NOTHING으로 조용히 사라진다.
+      const { result } = renderHook(() => usePracticeSession(wordChoiceOnly()));
+
+      act(() => result.current[1].answer('img_0_ok'));
+      await goNext(result);
+
+      expect(submitted[0].results).toEqual([
+        {
+          itemKind: 'wordChoice',
+          itemRef: 'wc_img_0',
+          attempt: 1,
+          isCorrect: true,
+          tier: 0,
+        },
+      ]);
+    });
+
+    it('그림고르기와 같은 낱말을 쓰지 않는다', () => {
+      const { result } = renderHook(() =>
+        usePracticeSession(
+          deps({ imageChoiceCount: 2, wordChoiceCount: 2, spellCount: 0 }),
+        ),
+      );
+
+      // 한 번에 뽑아 나누므로 자극이 겹치지 않는다. 겹치면 어르신에게는
+      // "아까 그거 또 나왔네"로 읽힌다.
+      expect(result.current[0].totalCount).toBe(4);
     });
   });
 
