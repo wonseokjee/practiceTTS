@@ -30,6 +30,7 @@ import { copulaSuffix } from '../../../../shared/domain/korean.js';
 import { QuizProgressBar } from '../../quiz/presentation/QuizProgressBar.js';
 import { ImageChoiceQuizItem } from '../../quiz/presentation/components/ImageChoiceQuizItem.js';
 import { SpellTileItem } from '../../quiz/presentation/components/SpellTileItem.js';
+import { WordChoiceItem } from './components/WordChoiceItem.js';
 
 interface PracticeScreenProps {
   /** 세션을 마치거나 그만둘 때 호출 */
@@ -86,6 +87,17 @@ function PracticeItemBody({
           showFeedback={isRevealed}
           // 정답 카드만 표시한다. 내가 고른 오답은 칠하지 않는다.
           answerOnly
+          selectedChoiceId={selectedValue}
+          onSelect={onAnswer}
+        />
+      );
+    case 'wordChoice':
+      // 연습 전용 컴포넌트라 선택 prop이 없다 — 처음부터 연습 규칙만 갖는다.
+      return (
+        <WordChoiceItem
+          item={playable.item}
+          isSelectable={isSelectable}
+          showAnswer={isRevealed}
           selectedChoiceId={selectedValue}
           onSelect={onAnswer}
         />

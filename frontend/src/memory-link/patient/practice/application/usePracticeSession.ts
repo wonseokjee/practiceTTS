@@ -40,6 +40,7 @@ import {
   PRACTICE_SENTENCE_COUNT,
   practiceLevelFor,
 } from '../domain/practiceDifficulty.js';
+import { toWordChoiceItem } from '../domain/practiceWordChoice.js';
 import { practiceApi, type IPracticeApi } from '../infrastructure/PracticeApi.js';
 
 export type PracticePhase = 'answering' | 'revealed' | 'done';
@@ -103,6 +104,8 @@ export interface UsePracticeDeps {
   pickSpellItems?: typeof pickSpellItems;
   generateSessionToken?: () => string;
   imageChoiceCount?: number;
+  /** 낱말고르기(그림 보고 낱말 고르기) 문항 수. */
+  wordChoiceCount?: number;
   /** 문장이해 문항 수. 기본 0 — 이유는 practiceDifficulty.ts 참고. */
   sentenceCount?: number;
   spellCount?: number;
@@ -112,7 +115,8 @@ export interface UsePracticeDeps {
 
 // 걸어다니는 뼈대의 기본 구성. 총량은 궁극적으로 보호자가 정하고 구성비는
 // 레벨이 정하지만(설계 §세션 길이), 그 배선은 후속 작업이다.
-const DEFAULT_IMAGE_CHOICE_COUNT = 6;
+const DEFAULT_IMAGE_CHOICE_COUNT = 4;
+const DEFAULT_WORD_CHOICE_COUNT = 2;
 const DEFAULT_SPELL_COUNT = 2;
 
 function defaultGenerateToken(): string {
@@ -158,10 +162,21 @@ export function usePracticeSession(
       item,
     });
 
-    const wordItems = pickWord(
-      deps?.imageChoiceCount ?? DEFAULT_IMAGE_CHOICE_COUNT,
-      level,
-    ).map(toImageChoice);
+    // 낱말 문항을 한 번에 뽑아 두 양식으로 나눈다. 따로 뽑으면 같은 낱말이
+    // 한 세션에 두 양식으로 나올 수 있는데, 반복 훈련으로는 오히려 맞는 일이나
+    // 어르신에게는 "아까 그거 또 나왔네"로 읽힌다. 나누는 편을 먼저 둔다.
+    const imageCount = deps?.imageChoiceCount ?? DEFAULT_IMAGE_CHOICE_COUNT;
+    const wordChoiceCount = deps?.wordChoiceCount ?? DEFAULT_WORD_CHOICE_COUNT;
+    const wordPool = pickWord(imageCount + wordChoiceCount, level);
+
+    const wordItems = wordPool.slice(0, imageCount).map(toImageChoice);
+    const wordChoiceItems: PracticePlayable[] = wordPool
+      .slice(imageCount)
+      .map(toWordChoiceItem)
+      // 문장 문항은 뒤집을 수 없어 null로 온다. 뱅크가 낱말만 주지만
+      // 조용히 이상한 문항이 서느니 여기서 떨군다.
+      .filter((item) => item !== null)
+      .map((item) => ({ kind: 'wordChoice' as const, id: item.itemId, item }));
     const sentItems = pickSent(
       deps?.sentenceCount ?? PRACTICE_SENTENCE_COUNT,
       level,
@@ -169,7 +184,12 @@ export function usePracticeSession(
     const spellItems: PracticePlayable[] = pickSpell(
       deps?.spellCount ?? DEFAULT_SPELL_COUNT,
     ).map((item) => ({ kind: 'spell' as const, id: item.itemId, item }));
-    return shuffle([...wordItems, ...sentItems, ...spellItems]);
+    return shuffle([
+      ...wordItems,
+      ...wordChoiceItems,
+      ...sentItems,
+      ...spellItems,
+    ]);
   });
 
   const indexRef = useRef(0);
