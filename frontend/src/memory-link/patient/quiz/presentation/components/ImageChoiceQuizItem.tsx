@@ -55,6 +55,14 @@ interface ImageChoiceQuizItemProps {
   item: QabImageItem;
   isSelectable: boolean;
   showFeedback: boolean;
+  /**
+   * 피드백을 **정답 안내로만** 쓴다(연습 모드).
+   *
+   * 검사는 채점하려고 피드백을 켠다 — 정답 초록✓ + 내 오답 빨강✗. 연습은
+   * 가르치려고 켠다. 틀린 연결이 굳는 것만 막으면 되므로 정답 카드만 표시하고
+   * ✗·빨강은 쓰지 않는다. 성적표가 아니라 안내다.
+   */
+  answerOnly?: boolean;
   /** 사용자가 고른 선택지 id (피드백 단계 강조용) */
   selectedChoiceId: string | null;
   onSelect: (choiceId: string) => void;
@@ -65,6 +73,7 @@ export function ImageChoiceQuizItem({
   item,
   isSelectable,
   showFeedback,
+  answerOnly = false,
   selectedChoiceId,
   onSelect,
 }: ImageChoiceQuizItemProps) {
@@ -107,7 +116,12 @@ export function ImageChoiceQuizItem({
           // 피드백 단계 강조: 정답=초록, 내가 고른 오답=빨강.
           let ring = 'border-[#E5E5E0]';
           let icon: string | null = null;
-          if (showFeedback) {
+          if (showFeedback && answerOnly) {
+            // 연습: 정답만 알려준다. ✗도 빨강도 없다.
+            ring = choice.isCorrect
+              ? 'border-[#2D6A56]'
+              : 'border-[#E5E5E0] opacity-50';
+          } else if (showFeedback) {
             if (choice.isCorrect) {
               ring = 'border-[#2D6A56]';
               icon = '✓';

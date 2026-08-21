@@ -1,4 +1,11 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryColumn,
+} from 'typeorm';
 import { User } from '../../auth/entities/user.entity';
 
 /**
@@ -11,6 +18,8 @@ import { User } from '../../auth/entities/user.entity';
  * (언마운트) 시의 best-effort flush는 완료로 남기지 않는다.
  */
 @Entity('qab_session_completions')
+// M19가 만드는 인덱스. 엔티티에도 선언해야 스키마 드리프트가 안 생긴다.
+@Index('IDX_qab_session_completions_patient', ['patientId'])
 export class QabSessionCompletion {
   @PrimaryColumn({ name: 'session_token', type: 'uuid' })
   sessionToken: string;
@@ -25,6 +34,8 @@ export class QabSessionCompletion {
   @Column({ name: 'patient_id', type: 'uuid' })
   patientId: string;
 
-  @Column({ name: 'completed_at', type: 'timestamptz' })
+  // 서비스가 항상 값을 넣지만 DB 기본값도 M19와 맞춘다(드리프트 방지 +
+  // 직접 INSERT 시 안전망).
+  @Column({ name: 'completed_at', type: 'timestamptz', default: () => 'now()' })
   completedAt: Date;
 }

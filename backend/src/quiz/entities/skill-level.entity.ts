@@ -2,10 +2,10 @@ import {
   Check,
   Column,
   Entity,
-  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
+  Unique,
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../../auth/entities/user.entity';
@@ -20,7 +20,11 @@ import type { QabSubtest } from '../constants/qab-subtest';
  * 조회 시 콜드스타트 레벨(2)로 채운다.
  */
 @Entity('skill_levels')
-@Index('UQ_skill_levels_patient_subtest', ['patientId', 'subtest'], { unique: true })
+// M18은 이걸 UNIQUE **제약**으로 만든다. 여기서 유니크 **인덱스**로 선언하면
+// 이름은 같아도 다른 DB 객체라 드리프트로 잡힌다 — 마이그레이션 쪽에 맞춘다.
+// (저장소 다수 관례는 CREATE UNIQUE INDEX이지만, 이미 배포됐을 수 있는
+//  마이그레이션을 고치는 것보다 엔티티를 맞추는 쪽이 위험이 없다.)
+@Unique('UQ_skill_levels_patient_subtest', ['patientId', 'subtest'])
 @Check('CHK_skill_levels_level_range', '"level" >= 1 AND "level" <= 5')
 export class SkillLevel {
   @PrimaryGeneratedColumn('uuid')

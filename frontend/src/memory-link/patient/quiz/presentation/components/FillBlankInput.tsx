@@ -5,6 +5,7 @@
 // 피드백 단계에서는 입력을 잠그고 정답/오답 색상 + 정답 표시.
 
 import { useState } from 'react';
+import { copulaSuffix } from '../../../../../shared/domain/korean.js';
 
 interface FillBlankInputProps {
   isSelectable: boolean;
@@ -49,8 +50,8 @@ export function FillBlankInput({
       {hintFirstChar !== null && hintFirstChar.length > 0 && (
         <p className="text-base text-[#5C6661]">
           힌트: 첫 글자는{' '}
-          <span className="font-bold text-[#2D6A56]">{hintFirstChar}</span>{' '}
-          이에요
+          <span className="font-bold text-[#2D6A56]">{hintFirstChar}</span>
+          {copulaSuffix(hintFirstChar)}
         </p>
       )}
 
