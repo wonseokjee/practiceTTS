@@ -79,7 +79,10 @@ export function PatientDashboard() {
   const [phase, setPhase] = useState<DashboardPhase>(() =>
     loadLastMode() === 'QUIZ' ? 'QUIZ_HOME' : 'LIST',
   );
-  /** 솔로 홈 스트릭용 — 연습 완료 날짜(YYYY-MM-DD). 조회 실패는 비차단(빈 배열). */
+  /**
+   * 솔로 홈 스트릭용 — 검사 **또는** 연습을 한 날짜(YYYY-MM-DD).
+   * 조회 실패는 비차단(빈 배열).
+   */
   const [activityDays, setActivityDays] = useState<string[]>([]);
   const [selectedTraining, setSelectedTraining] = useState<SelectedTraining | null>(null);
   const [selectedQuizSetId, setSelectedQuizSetId] = useState<string | null>(null);
@@ -180,8 +183,9 @@ export function PatientDashboard() {
     );
   }
 
-  // 연습 모드 — 터치 중심, 판정을 보여주지 않는다. 결과는 검사와 다른
-  // 테이블(practice_results)로 나가므로 회복 추세·레벨을 건드리지 않는다.
+  // 연습 모드 — 터치 중심. 문항별로는 정답을 알려주지만(가르친다) 점수·정답률
+  // 같은 집계는 내지 않는다. 결과는 검사와 다른 테이블(practice_results)로
+  // 나가므로 회복 추세·레벨을 건드리지 않는다. 활동 일자만 스트릭에 합쳐진다.
   if (phase === 'PRACTICE') {
     return (
       <div className="min-h-screen" style={{ background: WARM_SCREEN_BG }}>

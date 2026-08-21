@@ -208,4 +208,87 @@ describe('PracticeService', () => {
       );
     });
   });
+
+  /**
+   * 활동 일자(TODO-111).
+   *
+   * 격리의 예외가 아니다 — 나가는 것은 "했다/안 했다"뿐이고 정답률·레벨·추세는
+   * 여전히 나가지 않는다. 이 조회가 없으면 어르신이 하루 세 번 연습해도 캘린더가
+   * 비어 보인다.
+   */
+  describe('활동 일자', () => {
+    interface SelectQbMock {
+      select: (expr: string, alias: string) => SelectQbMock;
+      distinct: (v: boolean) => SelectQbMock;
+      where: (c: string, p: Record<string, unknown>) => SelectQbMock;
+      andWhere: (c: string, p: Record<string, unknown>) => SelectQbMock;
+      orderBy: (c: string, dir: string) => SelectQbMock;
+      getRawMany: () => Promise<{ day: string }[]>;
+    }
+
+    let calls: { where: string[]; params: Record<string, unknown> };
+    let distinctArgs: boolean[];
+    let rows: { day: string }[];
+
+    beforeEach(async () => {
+      calls = { where: [], params: {} };
+      distinctArgs = [];
+      rows = [{ day: '2026-08-21' }, { day: '2026-08-19' }];
+
+      const qb: SelectQbMock = {
+        select: jest.fn((): SelectQbMock => qb),
+        distinct: jest.fn((v: boolean): SelectQbMock => {
+          distinctArgs.push(v);
+          return qb;
+        }),
+        where: jest.fn(
+          (c: string, p: Record<string, unknown>): SelectQbMock => {
+            calls.where.push(c);
+            Object.assign(calls.params, p);
+            return qb;
+          },
+        ),
+        andWhere: jest.fn(
+          (c: string, p: Record<string, unknown>): SelectQbMock => {
+            calls.where.push(c);
+            Object.assign(calls.params, p);
+            return qb;
+          },
+        ),
+        orderBy: jest.fn((): SelectQbMock => qb),
+        getRawMany: jest.fn(() => Promise.resolve(rows)),
+      };
+
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          PracticeService,
+          {
+            provide: getRepositoryToken(PracticeResult),
+            useValue: { createQueryBuilder: jest.fn(() => qb) },
+          },
+        ],
+      }).compile();
+      service = module.get<PracticeService>(PracticeService);
+    });
+
+    it('연습한 날짜만 중복 없이 돌려준다', async () => {
+      const days = await service.getActivityDays(PATIENT_ID);
+
+      expect(days).toEqual(['2026-08-21', '2026-08-19']);
+      // 하루에 40문항이 쌓이므로 distinct가 없으면 같은 날이 수십 번 나온다.
+      expect(distinctArgs).toEqual([true]);
+    });
+
+    it('다른 환자의 연습은 섞이지 않는다', async () => {
+      await service.getActivityDays(PATIENT_ID);
+
+      expect(calls.where.some((c) => c.includes('patient_id'))).toBe(true);
+      expect(calls.params.pid).toBe(PATIENT_ID);
+    });
+
+    it('조회 기간은 인자를 따른다', async () => {
+      await service.getActivityDays(PATIENT_ID, 30);
+      expect(calls.params.days).toBe(30);
+    });
+  });
 });

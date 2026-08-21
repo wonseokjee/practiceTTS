@@ -9,6 +9,7 @@ import { Test } from '@nestjs/testing';
 import { UnprocessableEntityException } from '@nestjs/common';
 import { QuizController } from './quiz.controller';
 import { QuizService } from './quiz.service';
+import { PracticeService } from '../practice/practice.service';
 import type { User } from '../auth/entities/user.entity';
 
 const PATIENT_ID = 'patient-1';
@@ -34,7 +35,10 @@ describe('QuizController — recent-items', () => {
     getRecentItems = jest.fn().mockResolvedValue([]);
     const moduleRef = await Test.createTestingModule({
       controllers: [QuizController],
-      providers: [{ provide: QuizService, useValue: { getRecentItems } }],
+      providers: [
+        { provide: QuizService, useValue: { getRecentItems } },
+        { provide: PracticeService, useValue: { getActivityDays: jest.fn() } },
+      ],
     }).compile();
     controller = moduleRef.get(QuizController);
   });
@@ -73,5 +77,81 @@ describe('QuizController — recent-items', () => {
     await controller.getRecentItems(patientReq, 'spell', '7');
 
     expect(getRecentItems).toHaveBeenCalledWith(PATIENT_ID, 'spell', 7);
+  });
+});
+
+/**
+ * 활동 일자 — 검사와 연습의 합집합(TODO-111).
+ *
+ * 합치는 자리가 **컨트롤러**인 것이 요점이다. QuizService에 PracticeService를
+ * 주입하면 레벨 재계산·보호자 추세 코드가 연습 데이터에 닿을 수 있게 된다.
+ * 연습을 별도 테이블로 낸 이유가 정확히 그것을 막는 것이라, 통로를 라우트에
+ * 가둔다. 아래 테스트가 그 경계를 지킨다.
+ */
+describe('QuizController — activity-days', () => {
+  let controller: QuizController;
+  let quizDays: jest.Mock;
+  let practiceDays: jest.Mock;
+
+  const build = async (): Promise<void> => {
+    const moduleRef = await Test.createTestingModule({
+      controllers: [QuizController],
+      providers: [
+        { provide: QuizService, useValue: { getActivityDays: quizDays } },
+        {
+          provide: PracticeService,
+          useValue: { getActivityDays: practiceDays },
+        },
+      ],
+    }).compile();
+    controller = moduleRef.get(QuizController);
+  };
+
+  beforeEach(async () => {
+    quizDays = jest.fn().mockResolvedValue([]);
+    practiceDays = jest.fn().mockResolvedValue([]);
+    await build();
+  });
+
+  it('검사만 한 날과 연습만 한 날이 모두 들어온다', async () => {
+    quizDays.mockResolvedValue(['2026-08-17']);
+    practiceDays.mockResolvedValue(['2026-08-21', '2026-08-19']);
+
+    const res = await controller.getActivityDays(patientReq);
+
+    expect(res.days).toEqual(['2026-08-21', '2026-08-19', '2026-08-17']);
+  });
+
+  it('같은 날 둘 다 했으면 한 번만 센다', async () => {
+    quizDays.mockResolvedValue(['2026-08-21']);
+    practiceDays.mockResolvedValue(['2026-08-21']);
+
+    const res = await controller.getActivityDays(patientReq);
+
+    expect(res.days).toEqual(['2026-08-21']);
+  });
+
+  it('연습만 있어도 빈 배열이 아니다', async () => {
+    // 이게 TODO-111의 증상이다 — 어제까지는 여기가 빈 배열이었고, 보호자
+    // 화면에는 "오늘 아무것도 안 했네"로 보였다.
+    practiceDays.mockResolvedValue(['2026-08-21']);
+
+    const res = await controller.getActivityDays(patientReq);
+
+    expect(res.days).toEqual(['2026-08-21']);
+  });
+
+  it('days 인자를 두 출처에 똑같이 넘긴다', async () => {
+    await controller.getActivityDays(patientReq, '30');
+
+    expect(quizDays).toHaveBeenCalledWith(PATIENT_ID, 30);
+    expect(practiceDays).toHaveBeenCalledWith(PATIENT_ID, 30);
+  });
+
+  it('범위 밖 days는 두 출처 모두 기본값 14로 떨어진다', async () => {
+    await controller.getActivityDays(patientReq, '999');
+
+    expect(quizDays).toHaveBeenCalledWith(PATIENT_ID, 14);
+    expect(practiceDays).toHaveBeenCalledWith(PATIENT_ID, 14);
   });
 });

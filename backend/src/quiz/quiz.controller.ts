@@ -21,6 +21,7 @@ import type { User } from '../auth/entities/user.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { OnboardingGuard } from '../auth/onboarding.guard';
 import { resolveEffectivePatientId } from '../auth/effective-patient-id.util';
+import { PracticeService } from '../practice/practice.service';
 import { QAB_SUBTESTS, type QabSubtest } from './constants/qab-subtest';
 import { GenerateQuizDto } from './dto/generate-quiz.dto';
 import { QuizSetSummaryDto } from './dto/quiz-set-summary.dto';
@@ -45,7 +46,8 @@ import type { WishConversionResult } from './interfaces/IWishConversionClient';
 /** 쿼리로 들어온 문자열이 유효한 검사 종류인지 좁힌다. */
 function isQabSubtest(value: unknown): value is QabSubtest {
   return (
-    typeof value === 'string' && (QAB_SUBTESTS as readonly string[]).includes(value)
+    typeof value === 'string' &&
+    (QAB_SUBTESTS as readonly string[]).includes(value)
   );
 }
 
@@ -62,7 +64,10 @@ interface AuthenticatedRequest extends Request {
 @Controller()
 @UseGuards(JwtAuthGuard, OnboardingGuard)
 export class QuizController {
-  constructor(private readonly quizService: QuizService) {}
+  constructor(
+    private readonly quizService: QuizService,
+    private readonly practiceService: PracticeService,
+  ) {}
 
   /**
    * POST /quiz/generate/:memoryEntryId
@@ -238,7 +243,21 @@ export class QuizController {
 
   /**
    * GET /quiz/activity-days
-   * 환자가 연습 완료한 날짜(최근 N일, YYYY-MM-DD) — 솔로 홈 스트릭용.
+   * 환자가 검사 또는 연습을 한 날짜(최근 N일, YYYY-MM-DD) — 솔로 홈 스트릭용.
+   *
+   * **두 출처를 여기서 합치는 이유.**
+   *
+   * QuizService에 PracticeService를 주입하면 한 줄로 끝난다. 그렇게 하지 않는다.
+   * QuizService는 레벨을 재계산하고(`recomputeSkillLevel`) 보호자 추세를
+   * 집계하는 클래스다. 거기에 연습 데이터로 가는 통로가 한 번 뚫리면, 나중에
+   * 누군가 "이왕 있으니" 정답률에도 섞는 것을 막을 방법이 없다 — 그리고 그건
+   * 조용히 틀린다. 연습을 별도 테이블로 낸 이유가 정확히 그것이다.
+   *
+   * 라우트에서 합치면 QuizService는 연습을 **볼 수 없는 채로** 남는다. 합치는
+   * 것이 "했다/안 했다" 하나뿐이라는 사실도 이 자리에서 한눈에 보인다.
+   *
+   * 참여 기록은 측정이 아니다. 어르신이 하루 세 번 연습했는데 캘린더가 비어
+   * 있으면 보호자에게는 "오늘 아무것도 안 했네"로 읽힌다(TODO-111).
    */
   @Get('quiz/activity-days')
   async getActivityDays(
@@ -250,11 +269,15 @@ export class QuizController {
     const safeDays =
       Number.isInteger(parsed) && parsed >= 1 && parsed <= 60 ? parsed : 14;
     try {
-      const result = await this.quizService.getActivityDays(
-        effectivePatientId,
-        safeDays,
+      const [quizDays, practiceDays] = await Promise.all([
+        this.quizService.getActivityDays(effectivePatientId, safeDays),
+        this.practiceService.getActivityDays(effectivePatientId, safeDays),
+      ]);
+      // 양쪽 다 날짜 문자열(YYYY-MM-DD)이라 사전순 내림차순 = 최신순이다.
+      const merged = [...new Set([...quizDays, ...practiceDays])].sort((a, b) =>
+        b.localeCompare(a),
       );
-      return { days: result };
+      return { days: merged };
     } catch (error) {
       throw this.mapError(error);
     }

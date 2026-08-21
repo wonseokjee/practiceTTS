@@ -61,4 +61,32 @@ export class PracticeService {
 
     return { saved: rows.length };
   }
+
+  /**
+   * 연습을 한 날짜 목록(최근 days일, YYYY-MM-DD).
+   *
+   * **위의 "아무것도 움직이지 않는다"에 대한 유일한 예외이자, 예외가 아니다.**
+   * 이 조회가 주는 것은 "했다/안 했다"뿐이다. 정답률도 레벨도 추세도 나가지
+   * 않는다. 오염 논리가 막으려던 것은 연습 40문항이 검사 13문항을 압도해
+   * 환자의 **측정값**이 되는 것이지, 환자가 참여했다는 사실이 아니다.
+   *
+   * 이걸 안 내보내면 어르신이 하루 세 번 연습해도 보호자 화면에는 "오늘 아무것도
+   * 안 했네"로 보인다. 측정 오염을 막으려다 참여 기록까지 지운 셈이 된다.
+   *
+   * 날짜 경계는 DB 세션 타임존 기준 — 검사의 getActivityDays와 같은 규칙이라
+   * 두 목록을 합쳐도 경계가 어긋나지 않는다.
+   */
+  async getActivityDays(patientId: string, days = 14): Promise<string[]> {
+    const raw = await this.practiceResultRepository
+      .createQueryBuilder('p')
+      .select("to_char(date_trunc('day', p.created_at), 'YYYY-MM-DD')", 'day')
+      .distinct(true)
+      .where('p.patient_id = :pid', { pid: patientId })
+      .andWhere('p.created_at >= now() - make_interval(days => :days)', {
+        days,
+      })
+      .orderBy('day', 'DESC')
+      .getRawMany<{ day: string }>();
+    return raw.map((x) => x.day);
+  }
 }
