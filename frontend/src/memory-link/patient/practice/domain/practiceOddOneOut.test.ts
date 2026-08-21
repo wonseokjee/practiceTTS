@@ -113,6 +113,27 @@ describe('buildOddOneOutItems', () => {
    * body 1 / person 1로 한쪽에 쏠려 있어, 무리로 쓸 수 있는 범주가 실제로
    * 몇 개인지가 이 양식의 상한을 정한다.
    */
+  it('그림이 범주를 못 나르는 place는 무리로 쓰지 않는다', () => {
+    // 도서관은 책 더미로, 수영장은 헤엄치는 사람으로 그려져 있다. 태그는
+    // 맞지만 그림만 보고는 셋이 한 무리인 줄 알 수 없다.
+    const withPlace = [
+      ...words,
+      w('library', 'place'),
+      w('hospital', 'place'),
+      w('pool', 'place'),
+      w('house', 'place'),
+    ];
+    const catOf = (id: string) =>
+      withPlace.find((x) => x.slug === id)?.category ?? '(없음)';
+
+    for (const item of buildOddOneOutItems(withPlace, 4)) {
+      const groupCat = catOf(
+        item.choices.find((c) => !c.isCorrect)?.choiceId ?? '',
+      );
+      expect(groupCat).not.toBe('place');
+    }
+  });
+
   it('실제 낱말 풀에서도 기본 개수만큼 만들어진다', () => {
     const items = buildOddOneOutItems(masterWords(), 2);
 
