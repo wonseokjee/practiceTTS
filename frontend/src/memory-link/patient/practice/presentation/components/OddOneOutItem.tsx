@@ -27,7 +27,23 @@ export function OddOneOutItem({
     <div className="flex flex-col gap-4">
       <p className="text-base text-[#5C6661]">{item.instruction}</p>
 
-      <div className="grid grid-cols-2 gap-3" role="group" aria-label="그림 선택지">
+      {/*
+        격자 폭을 묶는다. 화면 폭(max-w-2xl = 672px)을 다 쓰면 정사각 카드가
+        324px가 되어 두 줄이 648px이고, 높이 720px 화면에서 아래 두 칸이 접힌
+        곳 밑으로 사라진다.
+
+        그림고르기라면 스크롤해서 찾으면 그만이지만 이 과제는 다르다. **넷을
+        한눈에 비교하는 것이 과제 자체다.** 두 개만 보이면 "다른 하나"를 고를
+        방법이 없다 — 어르신이 못 푸는 게 아니라 문항이 성립하지 않는다.
+
+        440px면 카드가 약 214px이라 두 줄이 440px, 안내 문구와 진행 표시를
+        더해도 접히지 않는다. 손가락 목표로도 여전히 크다.
+      */}
+      <div
+        className="mx-auto grid w-full max-w-[440px] grid-cols-2 gap-3"
+        role="group"
+        aria-label="그림 선택지"
+      >
         {item.choices.map((choice) => {
           const isChosen = selectedChoiceId === choice.choiceId;
 
