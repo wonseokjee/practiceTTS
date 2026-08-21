@@ -114,7 +114,7 @@ export const WORD_CATEGORY: Record<string, string> = {
   house: 'place', truck: 'vehicle',
 };
 
-interface MasterWord {
+export interface MasterWord {
   slug: string;
   label: string;
   imageUrl: string;
@@ -138,6 +138,20 @@ const MASTER_WORDS: MasterWord[] = (() => {
   }
   return [...bySlug.values()];
 })();
+
+/**
+ * 마스터 낱말 풀 읽기 접근자 (낱말 + 범주 + 그림).
+ *
+ * 연습 모드가 그림선택 말고 다른 양식(무리에서 빼기, 범주 분류)을 조립할 때
+ * 필요한 최소 재료다. `buildControlledChoices`가 이미 이 풀을 유인지 후보로
+ * 쓰고 있으므로 새 개념이 아니라 이미 있던 것을 밖에서 볼 수 있게 하는 것뿐이다.
+ *
+ * 배열을 그대로 넘기지 않고 복사본을 준다 — 호출자가 정렬·셔플해도 뱅크의
+ * 원본이 흔들리지 않게.
+ */
+export function masterWords(): MasterWord[] {
+  return [...MASTER_WORDS];
+}
 
 // ── 레벨별 렌더 난이도 스펙 ─────────────────────────────────────
 //

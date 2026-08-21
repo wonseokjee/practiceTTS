@@ -30,6 +30,7 @@ import { copulaSuffix } from '../../../../shared/domain/korean.js';
 import { QuizProgressBar } from '../../quiz/presentation/QuizProgressBar.js';
 import { ImageChoiceQuizItem } from '../../quiz/presentation/components/ImageChoiceQuizItem.js';
 import { SpellTileItem } from '../../quiz/presentation/components/SpellTileItem.js';
+import { OddOneOutItem } from './components/OddOneOutItem.js';
 import { WordChoiceItem } from './components/WordChoiceItem.js';
 
 interface PracticeScreenProps {
@@ -95,6 +96,16 @@ function PracticeItemBody({
       // 연습 전용 컴포넌트라 선택 prop이 없다 — 처음부터 연습 규칙만 갖는다.
       return (
         <WordChoiceItem
+          item={playable.item}
+          isSelectable={isSelectable}
+          showAnswer={isRevealed}
+          selectedChoiceId={selectedValue}
+          onSelect={onAnswer}
+        />
+      );
+    case 'oddOneOut':
+      return (
+        <OddOneOutItem
           item={playable.item}
           isSelectable={isSelectable}
           showAnswer={isRevealed}

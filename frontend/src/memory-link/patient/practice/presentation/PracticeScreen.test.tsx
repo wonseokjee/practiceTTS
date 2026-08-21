@@ -60,6 +60,7 @@ describe('PracticeScreen', () => {
     imageChoiceCount: 2,
     // 이 파일의 테스트는 그림고르기 흐름만 본다.
     wordChoiceCount: 0,
+    oddOneOutCount: 0,
     spellCount: 0,
     ...over,
   });
