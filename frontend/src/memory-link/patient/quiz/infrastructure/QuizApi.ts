@@ -76,7 +76,7 @@ export interface IQuizApi {
   getQabTrend(weeks?: number): Promise<QabTrendSeries[]>;
   /** GET /quiz/skill-levels — 스킬별 현재 난이도 레벨 + 매니페스트 버전 */
   getSkillLevels(): Promise<SkillLevels>;
-  /** GET /quiz/activity-days — 연습 완료 날짜(YYYY-MM-DD) — 솔로 홈 스트릭용 */
+  /** GET /quiz/activity-days — 검사·연습을 한 날짜(YYYY-MM-DD) — 솔로 홈 스트릭용 */
   getActivityDays(days?: number): Promise<string[]>;
   /** GET /quiz/session-stats — 최근 N일 세션 완료율 (보호자용) */
   getSessionStats(days?: number): Promise<SessionStats>;
