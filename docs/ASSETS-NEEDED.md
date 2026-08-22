@@ -146,3 +146,47 @@ Fluent에 도서관·수영장 아이콘이 **없다**(`swimming-pool` 404, 도�
 2. `WORD_CATEGORY`에 하위 범주 태그 (TODO-116)
 3. `practiceOddOneOut.ts`의 `UNUSABLE_AS_GROUP`에서 `place` 빼기, `object`는 유지
 4. 이름대기 사진 촬영 (급하지 않음)
+
+## 생성 기록
+
+### 2026-08-22 — 낱말 그림 13장 뽑음
+
+`scripts/build_wordcomp_fluent.py`의 `NEW`에 13줄을 더하고 한 번 돌렸다.
+**생성 90 / 실패 0**, 기존 77장은 바이트 단위로 그대로다(`git status`로 확인).
+
+```
+body     hand foot eye ear nose mouth      손 발 눈 귀 코 입
+person   doctor baby firefighter           의사 아기 소방관
+object   soap screwdriver                  비누 드라이버
+place    school bank                       학교 은행
+```
+
+스크립트가 기준 낱말 목록을 읽던 `scripts/_wordmap.json`이 저장소에 없어서
+(커밋된 적 없는 작업용 파일) 그대로는 돌지 않았다. 기준을 `qabWordPool.json`의
+정답 선택지에서 읽도록 바꿨다. 앱이 실제로 쓰는 낱말과 어긋날 수 없고 다시
+돌릴 수 있다.
+
+**도서관·수영장은 아직 지우지 않았다.** `qabWordPool.json`이 두 그림을 참조하고
+있어 지금 지우면 검사 화면이 깨진 이미지로 뜬다. 제거는 풀 편집과 같은 커밋에서.
+
+### 뽑고 나서 눈으로 본 것 (브라우저 확인)
+
+13장 다 알아볼 수 있게 그려졌다. 다만 세 가지는 쓰기 전에 정해야 한다.
+
+1. **입(`mouth`)은 👄 — 립스틱 바른 입술이다.** 무리에서 빼기는 라벨이 없으니
+   상관없지만, **이름대기에서는 "입술"이라고 답할 수 있다.** 지금 채점은 정답
+   문자열 비교라 오답 처리된다. 이름대기 풀에서 빼거나 실물 사진을 찍어 덮는다.
+2. **소방관(`firefighter`)이 도끼를 들고 있다.** 연장 무리(망치·사다리·드라이버)
+   옆에 "다른 하나"로 뽑히면 화면에 연장이 넷 보인다. `buildOddOneOutItems`는
+   다른 하나를 아무 범주에서나 뽑으므로 실제로 일어날 수 있다.
+3. **은행(`bank`)의 화폐 기호가 `$`다.** 건물 형태는 뚜렷해서 은행으로 읽히지만
+   원화가 아니다. 거슬리면 우체국(`post-office`)·백화점(`department-store`)·
+   교회(`church`)로 바꾸면 된다. 전부 Fluent에 있다.
+
+### 남은 배선 (그림만으로는 화면에 안 나온다)
+
+1. `qabWordPool.json`에 13개 낱말의 문항 추가 — 없으면 `MASTER_WORDS`에 안 들어간다
+2. `QabItemBank.ts`의 `WORD_CATEGORY`에 범주 태그 (body·person·place는 그대로,
+   soap·screwdriver는 TODO-116의 하위 범주와 함께)
+3. `practiceOddOneOut.ts`의 `UNUSABLE_AS_GROUP`에서 `place` 빼기
+4. 도서관·수영장 제거 + `REMOVED`에 추가
