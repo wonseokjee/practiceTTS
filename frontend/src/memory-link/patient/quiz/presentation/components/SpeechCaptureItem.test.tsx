@@ -9,8 +9,15 @@
 //  - 피드백: ✓/✗ + 오답 시 정답 노출
 
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import {
+  render,
+  screen,
+  fireEvent,
+  act,
+  waitFor,
+} from '@testing-library/react';
 import { SpeechCaptureItem } from './SpeechCaptureItem.js';
+import { TTS_FAILURE_MESSAGE } from './TtsFailureNotice.js';
 
 interface MockSttInstance {
   onResult: ((r: { transcript: string; confidence: number }) => void) | null;
@@ -132,5 +139,30 @@ describe('SpeechCaptureItem', () => {
     const { onOverride } = renderItem({ showFeedback: true, isCorrect: true });
     fireEvent.click(screen.getByRole('button', { name: '오답으로 정정' }));
     expect(onOverride).toHaveBeenCalledWith(false);
+  });
+});
+
+describe('SpeechCaptureItem — 소리 실패 안내', () => {
+  beforeEach(() => {
+    sttInstances.length = 0;
+    ttsSpeak.mockClear();
+  });
+
+  it('모범 발음이 안 나면 환자에게 알린다', async () => {
+    ttsSpeak.mockRejectedValueOnce(new Error('TTS 502'));
+    renderItem({ showModel: true, text: '바다' });
+
+    fireEvent.click(screen.getByRole('button', { name: '모범 발음 들어보기' }));
+
+    expect(await screen.findByText(TTS_FAILURE_MESSAGE)).toBeInTheDocument();
+  });
+
+  it('스스로 읽기(showModel=false)에는 안내가 뜨지 않는다', async () => {
+    // 들어보기 버튼이 없는 과제다. 누른 적 없는 소리의 실패를 알릴 이유가 없다.
+    ttsSpeak.mockRejectedValueOnce(new Error('TTS 502'));
+    renderItem({ showModel: false });
+
+    await waitFor(() => expect(ttsSpeak).not.toHaveBeenCalled());
+    expect(screen.queryByText(TTS_FAILURE_MESSAGE)).toBeNull();
   });
 });

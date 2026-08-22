@@ -5,11 +5,13 @@
 // 피드백 단계: 정답 카드 초록 + ✓, 내가 고른 오답 카드 빨강 + ✗.
 //
 // 로딩 중에는 그림의 정답(라벨)을 절대 노출하지 않는다 — 중립 로딩/에러 표시만 사용.
+// 소리가 끝내 안 나면(서버·브라우저 음성 둘 다 실패) 듣기 버튼 위에 안내를 띄운다.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTTS } from '../../../../../shared/hooks/useTTS.js';
 import { createTtsService } from '../../../../../shared/infrastructure/ttsFactory.js';
 import type { QabImageItem } from '../../domain/MixedQuiz.js';
+import { TtsFailureNotice } from './TtsFailureNotice.js';
 
 /**
  * 선택지 그림 — 로딩/실패 상태를 자체 관리한다.
@@ -78,7 +80,7 @@ export function ImageChoiceQuizItem({
   onSelect,
 }: ImageChoiceQuizItemProps) {
   const ttsService = useMemo(() => createTtsService(), []);
-  const { isPlaying, speak } = useTTS(ttsService);
+  const { isPlaying, error: ttsError, speak } = useTTS(ttsService);
 
   // 문항 진입 시 1회 자동 발음 (브라우저 정책상 막히면 버튼으로 재생).
   const autoPlayedRef = useRef(false);
@@ -93,6 +95,9 @@ export function ImageChoiceQuizItem({
   return (
     <div className="flex flex-col gap-4">
       <p className="text-base text-[#5C6661]">{item.instruction}</p>
+
+      {/* 소리가 안 났으면 알린다 — 듣기가 이 문항의 전부다. */}
+      {ttsError !== null && <TtsFailureNotice />}
 
       <button
         type="button"
