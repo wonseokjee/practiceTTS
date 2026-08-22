@@ -109,9 +109,10 @@ describe('buildOddOneOutItems', () => {
    * 실제 뱅크로 한 번 돌려본다.
    *
    * 위 테스트들은 손으로 만든 낱말 목록을 쓴다. 진짜 데이터의 범주 분포는
-   * object 46 / food 17 / animal 12 / vehicle 7 / place 6 / plant 4 /
-   * body 1 / person 1로 한쪽에 쏠려 있어, 무리로 쓸 수 있는 범주가 실제로
-   * 몇 개인지가 이 양식의 상한을 정한다.
+   * object 34 / food 15 / animal 12 / vehicle 7 / place 4 / plant 4 /
+   * person 1 / body 0으로 한쪽에 쏠려 있어, 무리로 쓸 수 있는 범주가 실제로
+   * 몇 개인지가 이 양식의 상한을 정한다(2026-08-22 실측, 낱말 77개).
+   * 늘리는 방법은 `docs/ASSETS-NEEDED.md`에 있다.
    */
   it('그림이 범주를 못 나르는 place는 무리로 쓰지 않는다', () => {
     // 도서관은 책 더미로, 수영장은 헤엄치는 사람으로 그려져 있다. 태그는
