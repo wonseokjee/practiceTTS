@@ -183,10 +183,25 @@ place    school bank                       학교 은행
    원화가 아니다. 거슬리면 우체국(`post-office`)·백화점(`department-store`)·
    교회(`church`)로 바꾸면 된다. 전부 Fluent에 있다.
 
-### 남은 배선 (그림만으로는 화면에 안 나온다)
+### 배선 완료 (2026-08-22)
 
-1. `qabWordPool.json`에 13개 낱말의 문항 추가 — 없으면 `MASTER_WORDS`에 안 들어간다
-2. `QabItemBank.ts`의 `WORD_CATEGORY`에 범주 태그 (body·person·place는 그대로,
-   soap·screwdriver는 TODO-116의 하위 범주와 함께)
-3. `practiceOddOneOut.ts`의 `UNUSABLE_AS_GROUP`에서 `place` 빼기
-4. 도서관·수영장 제거 + `REMOVED`에 추가
+1. `qabWordPool.json`에 13개 문항 추가 → 낱말 **77 → 90**
+2. `WORD_CATEGORY`에 태그 13개 추가 + `object` 34개를 여덟으로 쪼갬 (TODO-116)
+3. `practiceOddOneOut.ts`의 `UNUSABLE_AS_GROUP`에서 `place` 뺌
+4. 무리 범주 **4개 → 15개**. 15개 무리를 브라우저로 다 확인했다.
+
+**도서관·수영장은 지우지 않는다.** 표준 검사(`wordComprehensionItems.json`)와
+발화 자극(`qabSpeechStimuli.json`)이 같은 그림을 쓴다. 막던 것은 범주가 아니라
+그 두 그림이므로, 범주 전체를 빼는 대신 `UNUSABLE_AS_GROUP_WORDS`로 두 낱말만
+무리에서 뺐다. **다른 하나**로는 계속 쓴다 — 동물 셋 사이의 책 더미는 명확하다.
+
+배선 중에 별건이 하나 나왔다. 문항 77개에 itemId가 68개뿐이었다(Fluent 교체 때
+새로 붙은 아홉이 기존 번호와 겹쳤다). 한 세션에 나팔과 곰이 같이 나오면 둘 다
+`qw_069`라서 나중 것이 `ON CONFLICT DO NOTHING`으로 사라진다. `1a9e3f3`에서 고쳤다.
+
+### 아직 남은 것
+
+- 이름대기 실사 사진 **30장** — 기존 17 + 새 낱말 13
+- 도서관·수영장 그림 교체 (TODO-115). 넣으면 `UNUSABLE_AS_GROUP_WORDS`가 빈다
+- 주방·욕실·연장·가구·악기·가전이 각 3개라 레벨 4~5에서 같은 범주 오답 셋을
+  못 채운다. 각 범주에 하나씩만 더 있으면 찬다

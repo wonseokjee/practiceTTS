@@ -59,8 +59,8 @@ describe('buildOddOneOutItems', () => {
   });
 
   it('잡동사니 범주는 무리로 쓰지 않는다', () => {
-    // object는 77개 중 46개가 몰린 통이라 촛불·소파·숟가락 셋을 놓고
-    // "다른 하나"를 물으면 정답이 하나로 정해지지 않는다.
+    // object는 쪼개고 남은 잡동사니 통이라(가방·풍선·양초·돌·열쇠 등 9개)
+    // 촛불·소파·숟가락 셋을 놓고 "다른 하나"를 물으면 정답이 하나로 안 정해진다.
     const catOf = (id: string) =>
       words.find((x) => x.slug === id)?.category ?? '(없음)';
 
@@ -109,30 +109,31 @@ describe('buildOddOneOutItems', () => {
    * 실제 뱅크로 한 번 돌려본다.
    *
    * 위 테스트들은 손으로 만든 낱말 목록을 쓴다. 진짜 데이터의 범주 분포는
-   * object 34 / food 15 / animal 12 / vehicle 7 / place 4 / plant 4 /
-   * person 1 / body 0으로 한쪽에 쏠려 있어, 무리로 쓸 수 있는 범주가 실제로
-   * 몇 개인지가 이 양식의 상한을 정한다(2026-08-22 실측, 낱말 77개).
+   * food 15 / animal 12 / object 9 / vehicle 7 / place 6 / body 6 /
+   * clothing 5 / person 4 / plant 4 / stationery 4 / furniture 3 /
+   * instrument 3 / appliance 3 / kitchen 3 / bathroom 3 / tool 3이고,
+   * 무리로 쓸 수 있는 범주는 object를 뺀 15개다(2026-08-22, 낱말 90개).
    * 늘리는 방법은 `docs/ASSETS-NEEDED.md`에 있다.
    */
-  it('그림이 범주를 못 나르는 place는 무리로 쓰지 않는다', () => {
-    // 도서관은 책 더미로, 수영장은 헤엄치는 사람으로 그려져 있다. 태그는
-    // 맞지만 그림만 보고는 셋이 한 무리인 줄 알 수 없다.
-    const withPlace = [
-      ...words,
-      w('library', 'place'),
-      w('hospital', 'place'),
-      w('pool', 'place'),
-      w('house', 'place'),
-    ];
-    const catOf = (id: string) =>
-      withPlace.find((x) => x.slug === id)?.category ?? '(없음)';
+  it('그림이 장소로 안 보이는 도서관·수영장은 무리에 넣지 않는다', () => {
+    // 태그는 place가 맞지만 도서관은 책 더미로, 수영장은 헤엄치는 사람으로
+    // 그려져 있다. 셋을 늘어놓으면 화면에는 건물·사람·책이 보인다.
+    // place 범주 자체는 병원·집·학교·은행으로 선다 — 문제는 이 두 그림이다.
+    const bank = masterWords();
 
-    for (const item of buildOddOneOutItems(withPlace, 4)) {
-      const groupCat = catOf(
-        item.choices.find((c) => !c.isCorrect)?.choiceId ?? '',
-      );
-      expect(groupCat).not.toBe('place');
+    for (const item of buildOddOneOutItems(bank, 99)) {
+      const group = item.choices.filter((c) => !c.isCorrect);
+      expect(group.map((c) => c.choiceId)).not.toContain('library');
+      expect(group.map((c) => c.choiceId)).not.toContain('pool');
     }
+  });
+
+  it('실제 낱말 풀에서 무리 범주가 15개 선다', () => {
+    // object 하나를 뺀 나머지 전부. 이 수가 곧 이 양식의 상한이다 —
+    // 세션당 2문항을 범주 안 겹치게 뽑으므로 매일 해도 한참 안 겹친다.
+    const items = buildOddOneOutItems(masterWords(), 99);
+
+    expect(items).toHaveLength(15);
   });
 
   it('실제 낱말 풀에서도 기본 개수만큼 만들어진다', () => {

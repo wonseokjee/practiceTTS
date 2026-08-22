@@ -32,26 +32,35 @@ export const ODD_ONE_OUT_SIZE = 4;
 /**
  * 무리 쪽으로 쓸 수 없는 범주.
  *
- * `object` — 77개 중 34개가 몰린 잡동사니 통이다. 촛불·소파·숟가락을 셋 모아
- * 놓고 "다른 하나"를 물으면 정답이 하나로 정해지지 않는다. 어르신이 틀린 게
- * 아니라 문항이 틀린 것이 된다.
+ * `object` — 남은 잡동사니 통이다. 2026-08-22에 34개를 옷·문구·가구·악기·가전·
+ * 주방·욕실·연장으로 쪼개고 나서도 아홉이 남았다(가방·풍선·바구니·양초·우체통·
+ * 돌·우산·열쇠·시계). 이 아홉은 서로 한 무리가 아니라서, 셋을 놓고 "다른 하나"를
+ * 물으면 정답이 하나로 정해지지 않는다. 어르신이 틀린 게 아니라 문항이 틀린 게 된다.
  *
- * `place` — 태그는 맞지만 **그림이 범주를 못 나른다.** 도서관은 책 더미로,
- * 수영장은 헤엄치는 사람으로 그려져 있다. 병원·수영장·도서관을 늘어놓으면
- * 화면에는 건물·사람·책이 보이고, 셋이 한 무리라는 것을 그림만으로 알 수
- * 없다(2026-08-21 브라우저 확인). 낱말을 읽을 수 있어야만 풀리는 문항이
- * 되는데, 그건 이 양식이 재려던 능력이 아니다. 장소를 장소로 그린 그림이
- * 들어오면 푼다(TODO-115).
+ * 반대로 **다른 하나**로는 전부 쓸 수 있다. 동물 셋 사이의 열쇠는 명확하다.
  *
- * `body`(0개)·`person`(1개)은 애초에 셋을 못 채워 아래 길이 조건에서 걸린다.
- *
- * 반대로 **다른 하나**로는 전부 쓸 수 있다. 동물 셋 사이의 숟가락은 명확하다.
- *
- * 남는 무리 범주: plant 4 · vehicle 7 · animal 12 · food 15.
- *
- * 넷을 열다섯으로 늘리는 방법(그릴 그림 0장)은 `docs/ASSETS-NEEDED.md`에 있다.
+ * 무리로 쓸 수 있는 범주 15개: animal 12 · food 15 · vehicle 7 · place 6 ·
+ * body 6 · clothing 5 · person 4 · plant 4 · stationery 4 · furniture 3 ·
+ * instrument 3 · appliance 3 · kitchen 3 · bathroom 3 · tool 3.
  */
-const UNUSABLE_AS_GROUP = new Set(['object', 'place']);
+const UNUSABLE_AS_GROUP = new Set(['object']);
+
+/**
+ * 무리 쪽으로 쓸 수 없는 **낱말**.
+ *
+ * 범주가 아니라 그림이 문제인 경우다. 도서관은 책 더미로, 수영장은 헤엄치는
+ * 사람으로 그려져 있다(2026-08-21 브라우저 확인). 태그는 `place`가 맞지만 셋을
+ * 늘어놓으면 화면에는 건물·사람·책이 보이고, 한 무리라는 것을 그림만으로 알 수
+ * 없다. 낱말을 읽을 수 있어야만 풀리는 문항이 되는데 그건 이 양식이 재려던
+ * 능력이 아니다.
+ *
+ * 처음에는 `place` 범주 전체를 뺐지만 그건 과했다 — 문제는 범주가 아니라 이 두
+ * 그림이다. 병원·집·학교·은행은 건물이 보여서 무리로 선다. 두 낱말의 그림이
+ * 장소로 바뀌면 이 목록에서 지운다(TODO-115).
+ *
+ * **다른 하나**로는 여기 있는 낱말도 쓴다. 동물 셋 사이의 책 더미는 명확하다.
+ */
+const UNUSABLE_AS_GROUP_WORDS = new Set(['library', 'pool']);
 
 function shuffle<T>(items: readonly T[]): T[] {
   const out = [...items];
@@ -86,8 +95,11 @@ export function buildOddOneOutItems(
 ): PracticeOddOneOutItem[] {
   if (count <= 0) return [];
 
+  // 무리 후보를 먼저 거른 뒤에 센다. 못 쓰는 낱말을 세고 나서 빼면 셋이
+  // 있는 줄 알고 골랐다가 둘만 남는 범주가 생긴다.
   const byCategory = new Map<string, MasterWord[]>();
   for (const w of words) {
+    if (UNUSABLE_AS_GROUP_WORDS.has(w.slug)) continue;
     const bucket = byCategory.get(w.category);
     if (bucket) bucket.push(w);
     else byCategory.set(w.category, [w]);

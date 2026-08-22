@@ -74,44 +74,75 @@ function shuffle<T>(items: readonly T[], rng: () => number = Math.random): T[] {
 // 표준 실어증 검사(K-WAB, BNT)처럼 "같은 의미 범주 2 + 무관 1"로 유인지를
 // 구성해, 범주만 알면 못 맞추고 '정확히 그 단어'를 이해해야 맞도록 만든다.
 
-/** slug → 의미 범주. 미등록 slug는 'object'로 폴백(크래시 방지). (테스트 노출) */
+/**
+ * slug → 의미 범주. 미등록 slug는 'object'로 폴백(크래시 방지). (테스트 노출)
+ *
+ * 범주는 두 곳에서 쓰인다. 검사에서는 `buildControlledChoices`가 **같은 범주
+ * 오답**을 뽑는 기준이고, 연습에서는 무리에서 빼기가 **한 무리로 묶을 수 있는가**의
+ * 기준이다. 두 쓰임 다 "이 셋은 한 무리"가 사람 눈에 참이어야 한다.
+ *
+ * 2026-08-22에 `object`(34개)를 쪼갰다. 촛불·소파·숟가락을 셋 놓고 "다른 하나"를
+ * 물으면 정답이 하나로 안 정해졌고, 검사 쪽에서도 숟가락의 "같은 범주 오답"이
+ * 풍선·돌이라 범주가 이름만 범주였다. 쪼갠 뒤에는 숟가락의 오답이 칼·주전자가
+ * 되어 정말로 그 낱말을 알아야 맞는다.
+ *
+ * **레벨 4~5는 이 낱말들에서 조금 쉬워진다.** 오답 3개를 전부 같은 범주로 채우려면
+ * 범주에 넷 이상이 필요한데, 주방·욕실·연장·가구·악기·가전은 셋뿐이라 모자란
+ * 자리를 무관 낱말로 채운다. 쪼개기 전에는 `object`가 34개라 셋이 늘 찼지만 그
+ * 셋이 서로 무관했으니, 이름만 어려웠던 것을 진짜 쉬운 것으로 바꾼 셈이다.
+ * 넷을 채우려면 낱말을 더 넣어야 한다(docs/ASSETS-NEEDED.md).
+ *
+ * 그림이 없는 낱말의 태그는 두지 않는다. 2026-08-22에 빗·책상·국자·수건·모래·
+ * 냉장고·세탁기·비누통 등 그림 없이 남아 있던 16개를 지웠다 — Fluent 교체 때
+ * 그림이 사라진 것들이라 어디서도 안 쓰인다.
+ */
 export const WORD_CATEGORY: Record<string, string> = {
-  // 동물
-  butterfly: 'animal', cat: 'animal', chick: 'animal', dog: 'animal',
-  elephant: 'animal', lion: 'animal', tiger: 'animal', turtle: 'animal',
-  whale: 'animal',
-  // 음식
-  apple: 'food', banana: 'food', bread: 'food', candy: 'food', grape: 'food',
-  juice: 'food', melon: 'food', milk: 'food', orange: 'food', pear: 'food',
-  strawberry: 'food', sweet_potato: 'food', tomato: 'food', watermelon: 'food',
-  // 탈것
+  // 동물 12
+  bear: 'animal', butterfly: 'animal', cat: 'animal', chick: 'animal',
+  dog: 'animal', elephant: 'animal', lion: 'animal', pig: 'animal',
+  rabbit: 'animal', tiger: 'animal', turtle: 'animal', whale: 'animal',
+  // 음식 15
+  apple: 'food', banana: 'food', bread: 'food', cake: 'food', candy: 'food',
+  carrot: 'food', corn: 'food', grape: 'food', juice: 'food', melon: 'food',
+  milk: 'food', orange: 'food', strawberry: 'food', tomato: 'food',
+  watermelon: 'food',
+  // 탈것 7
   airplane: 'vehicle', bicycle: 'vehicle', bus: 'vehicle', car: 'vehicle',
-  ship: 'vehicle', train: 'vehicle',
-  // 식물
-  flower: 'plant', tree: 'plant',
-  // 장소
-  hospital: 'place', library: 'place', pharmacy: 'place', pool: 'place',
-  school: 'place',
-  // 사물(가장 큰 범주 — 생활용품·도구·의류 등)
-  bag: 'object', balloon: 'object', basket: 'object', bed: 'object',
-  blanket: 'object', book: 'object', chair: 'object', clock: 'object',
-  comb: 'object', computer: 'object', desk: 'object', glasses: 'object',
-  gloves: 'object', guitar: 'object', hammer: 'object', hat: 'object',
-  kettle: 'object', key: 'object', knife: 'object', ladder: 'object',
-  ladle: 'object', mailbox: 'object', mirror: 'object', notebook: 'object',
-  pencil: 'object', phone: 'object', piano: 'object', pot: 'object',
-  refrigerator: 'object', rice_cooker: 'object', sand: 'object',
-  scissors: 'object', shoes: 'object', soap: 'object', socks: 'object',
-  toothbrush: 'object', toothpaste: 'object', towel: 'object',
-  trumpet: 'object', umbrella: 'object', washing_machine: 'object',
-  spine: 'body', student: 'person',
-  // Fluent 전면 교체 시 추가/교체된 단어(상업 라이선스). mirror는 위에 이미 있음.
-  candle: 'object', couch: 'object', spoon: 'object', rock: 'object',
-  television: 'object',
-  bear: 'animal', rabbit: 'animal', pig: 'animal',
-  corn: 'food', carrot: 'food', cake: 'food',
-  cactus: 'plant', mushroom: 'plant',
-  house: 'place', truck: 'vehicle',
+  ship: 'vehicle', train: 'vehicle', truck: 'vehicle',
+  // 식물 4
+  cactus: 'plant', flower: 'plant', mushroom: 'plant', tree: 'plant',
+  // 장소 6 — library·pool은 태그는 맞지만 그림이 장소로 안 보인다.
+  // 무리 쪽으로 못 쓰는 이유는 practiceOddOneOut.ts의 UNUSABLE_AS_GROUP_WORDS.
+  bank: 'place', hospital: 'place', house: 'place', library: 'place',
+  pool: 'place', school: 'place',
+  // 신체 6
+  ear: 'body', eye: 'body', foot: 'body', hand: 'body', mouth: 'body',
+  nose: 'body',
+  // 사람 4
+  baby: 'person', doctor: 'person', firefighter: 'person', student: 'person',
+  // 옷·착용 5
+  glasses: 'clothing', gloves: 'clothing', hat: 'clothing', shoes: 'clothing',
+  socks: 'clothing',
+  // 문구 4
+  book: 'stationery', notebook: 'stationery', pencil: 'stationery',
+  scissors: 'stationery',
+  // 가구 3
+  bed: 'furniture', chair: 'furniture', couch: 'furniture',
+  // 악기 3
+  guitar: 'instrument', piano: 'instrument', trumpet: 'instrument',
+  // 가전 3
+  computer: 'appliance', phone: 'appliance', television: 'appliance',
+  // 주방 3
+  kettle: 'kitchen', knife: 'kitchen', spoon: 'kitchen',
+  // 욕실 3
+  mirror: 'bathroom', soap: 'bathroom', toothbrush: 'bathroom',
+  // 연장 3
+  hammer: 'tool', ladder: 'tool', screwdriver: 'tool',
+  // 남은 잡동사니 9 — 서로 한 무리가 아니라서 무리 쪽으로는 못 쓴다.
+  // "다른 하나"로는 얼마든지 쓴다(동물 셋 사이의 열쇠는 명확하다).
+  bag: 'object', balloon: 'object', basket: 'object', candle: 'object',
+  clock: 'object', key: 'object', mailbox: 'object', rock: 'object',
+  umbrella: 'object',
 };
 
 export interface MasterWord {
