@@ -48,6 +48,8 @@ export const ODD_ONE_OUT_SIZE = 4;
  * 반대로 **다른 하나**로는 전부 쓸 수 있다. 동물 셋 사이의 숟가락은 명확하다.
  *
  * 남는 무리 범주: plant 4 · vehicle 7 · animal 12 · food 15.
+ *
+ * 넷을 열다섯으로 늘리는 방법(그릴 그림 0장)은 `docs/ASSETS-NEEDED.md`에 있다.
  */
 const UNUSABLE_AS_GROUP = new Set(['object', 'place']);
 
