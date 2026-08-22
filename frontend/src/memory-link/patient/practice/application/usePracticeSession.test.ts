@@ -2,6 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { QabImageItem, QabSpellItem } from '../../quiz/domain/MixedQuiz.js';
 import type { PracticeAttemptInput } from '../domain/Practice.js';
+import { PRACTICE_MAX_LEVEL } from '../domain/practiceDifficulty.js';
 import {
   usePracticeSession,
   type UsePracticeDeps,
@@ -62,16 +63,25 @@ describe('usePracticeSession', () => {
   const deps = (over?: Partial<UsePracticeDeps>): UsePracticeDeps => ({
     practiceApi: { submitResults: (t, r) => submitResults(t, r) },
     // 뱅크를 고정해 조립을 결정론적으로 만든다(순서는 여전히 섞인다).
-    pickQabItems: ((n: number) =>
+    pickWordItems: ((n: number) =>
       Array.from({ length: n }, (_, i) =>
         imageItem('img_' + String(i)),
-      )) as UsePracticeDeps['pickQabItems'],
+      )) as UsePracticeDeps['pickWordItems'],
+    // 문장은 기본 0이지만, 테스트에서 "0이라 안 불렸다"와 "빼먹었다"를
+    // 구별하려면 주입해 두고 호출 인자를 봐야 한다.
+    pickSentItems: ((n: number) =>
+      Array.from({ length: n }, (_, i) =>
+        imageItem('snt_' + String(i)),
+      )) as UsePracticeDeps['pickSentItems'],
     pickSpellItems: ((n: number) =>
       Array.from({ length: n }, (_, i) =>
         spellItem('sp_' + String(i)),
       )) as UsePracticeDeps['pickSpellItems'],
     generateSessionToken: () => 'tok-1',
     imageChoiceCount: 2,
+    // 이 파일의 테스트는 그림고르기 흐름만 본다.
+    wordChoiceCount: 0,
+    oddOneOutCount: 0,
     spellCount: 0,
     ...over,
   });
@@ -345,6 +355,85 @@ describe('usePracticeSession', () => {
         second,
       ]);
       warn.mockRestore();
+    });
+  });
+
+  describe('낱말 고르기', () => {
+    /** 그림고르기 0개 + 낱말고르기 1개짜리 세션. */
+    const wordChoiceOnly = (): UsePracticeDeps =>
+      deps({ imageChoiceCount: 0, wordChoiceCount: 1, spellCount: 0 });
+
+    it('그림 문항을 뒤집어 낱말고르기로 낸다', () => {
+      const { result } = renderHook(() => usePracticeSession(wordChoiceOnly()));
+
+      const [s] = result.current;
+      expect(s.totalCount).toBe(1);
+      expect(s.currentItem?.kind).toBe('wordChoice');
+    });
+
+    it('저장되는 item_ref에 접두사가 붙는다', async () => {
+      // 접두사가 없으면 같은 낱말을 두 양식으로 낸 세션에서 두 번째 시도가
+      // practice_results의 UNIQUE(patient, session, item_ref, attempt)에 걸려
+      // ON CONFLICT DO NOTHING으로 조용히 사라진다.
+      const { result } = renderHook(() => usePracticeSession(wordChoiceOnly()));
+
+      act(() => result.current[1].answer('img_0_ok'));
+      await goNext(result);
+
+      expect(submitted[0].results).toEqual([
+        {
+          itemKind: 'wordChoice',
+          itemRef: 'wc_img_0',
+          attempt: 1,
+          isCorrect: true,
+          tier: 0,
+        },
+      ]);
+    });
+
+    it('그림고르기와 같은 낱말을 쓰지 않는다', () => {
+      const { result } = renderHook(() =>
+        usePracticeSession(
+          deps({ imageChoiceCount: 2, wordChoiceCount: 2, spellCount: 0 }),
+        ),
+      );
+
+      // 한 번에 뽑아 나누므로 자극이 겹치지 않는다. 겹치면 어르신에게는
+      // "아까 그거 또 나왔네"로 읽힌다.
+      expect(result.current[0].totalCount).toBe(4);
+    });
+  });
+
+  describe('난이도 상한', () => {
+    it('문장이해는 기본 구성에 넣지 않는다', () => {
+      const pickSent = vi.fn(() => []);
+      renderHook(() =>
+        usePracticeSession(
+          deps({
+            pickSentItems:
+              pickSent as unknown as UsePracticeDeps['pickSentItems'],
+          }),
+        ),
+      );
+
+      // 0을 넘겼는지까지 본다 — 아예 안 부르는 것과 0개를 요청하는 것은
+      // 나중에 문장을 다시 넣을 때 다른 이야기가 된다.
+      expect(pickSent).toHaveBeenCalledWith(0, PRACTICE_MAX_LEVEL);
+    });
+
+    it('검사 레벨이 높아도 상한 레벨로 문항을 뽑는다', () => {
+      const pickWord = vi.fn(() => []);
+      renderHook(() =>
+        usePracticeSession(
+          deps({
+            examLevel: 5,
+            pickWordItems:
+              pickWord as unknown as UsePracticeDeps['pickWordItems'],
+          }),
+        ),
+      );
+
+      expect(pickWord).toHaveBeenCalledWith(2, PRACTICE_MAX_LEVEL);
     });
   });
 

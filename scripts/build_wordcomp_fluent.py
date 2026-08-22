@@ -36,6 +36,28 @@ NEW = {
     "house": ("집", "place", "house"),
     "truck": ("트럭", "vehicle", "delivery-truck"),
 }
+# 2026-08-22 추가 — 무리 범주를 넷에서 늘리기 위한 낱말(docs/ASSETS-NEEDED.md).
+# 그릴 그림은 없다. 전부 Fluent에 이미 있어 이름만 대면 된다.
+NEW.update({
+    # object를 하위 범주로 쪼갤 때 셋을 못 채우는 통 둘을 메운다.
+    "soap": ("비누", "object", "soap"),              # 욕실: 칫솔·거울과 함께 셋
+    "screwdriver": ("드라이버", "object", "screwdriver"),  # 연장: 망치·사다리와 함께 셋
+    # 비어 있던 범주 둘을 연다. body는 0개, person은 학생 하나뿐이었다.
+    "hand": ("손", "body", "hand-with-fingers-splayed"),
+    "foot": ("발", "body", "foot"),
+    "eye": ("눈", "body", "eye"),
+    "ear": ("귀", "body", "ear"),
+    "nose": ("코", "body", "nose"),
+    "mouth": ("입", "body", "mouth"),
+    "doctor": ("의사", "person", "health-worker"),
+    "baby": ("아기", "person", "baby"),
+    "firefighter": ("소방관", "person", "firefighter"),
+    # 장소 교체용(TODO-115). 도서관은 책 더미, 수영장은 헤엄치는 사람으로 그려져
+    # 있는데 Fluent에 대체 아이콘이 없다(swimming-pool 404). 건물이 보이는 장소
+    # 낱말을 새로 넣고, 도서관·수영장 제거는 qabWordPool 편집과 같이 한다.
+    "school": ("학교", "place", "school"),
+    "bank": ("은행", "place", "bank"),
+})
 # 기존 단어의 이름 교정/명시(오매칭 방지). slug -> fluent-name
 EXPLICIT = {
     "flower": "tulip", "melon": "melon", "phone": "telephone",
@@ -103,8 +125,29 @@ def fetch_wrap(name):
     svg = raw.decode("utf-8", "replace")
     return wrap(svg) if svg.strip().startswith("<svg") else None
 
-# 최종 단어 목록: 기존 68 - 제거 6 + 신규 15
-base = json.load(open(r"scripts/_wordmap.json", encoding="utf-8"))
+# 기준 낱말 목록.
+#
+# 처음 실행할 때는 손으로 만든 scripts/_wordmap.json을 썼지만 그 파일은 저장소에
+# 없다(커밋된 적 없는 작업용 스크래치였다). 기준을 qabWordPool.json의 정답
+# 선택지에서 읽으면 앱이 실제로 쓰는 낱말과 어긋날 수 없고, 스크립트가 다시
+# 돌아간다. REMOVED에 남은 여섯은 이미 풀에 없으므로 아래 필터는 무해하다.
+WORD_POOL = r"frontend/src/assets/data/qabWordPool.json"
+
+def load_base():
+    legacy = r"scripts/_wordmap.json"
+    if os.path.exists(legacy):
+        return json.load(open(legacy, encoding="utf-8"))
+    pool = json.load(open(WORD_POOL, encoding="utf-8"))["items"]
+    out = {}
+    for it in pool:
+        correct = next((c for c in it["choices"] if c["isCorrect"]), None)
+        if not correct:
+            continue
+        slug = os.path.splitext(os.path.basename(correct["imageUrl"]))[0]
+        out.setdefault(slug, correct["label"])
+    return out
+
+base = load_base()
 final = {s: ko for s, ko in base.items() if s not in REMOVED}
 for s, (ko, cat, name) in NEW.items():
     final[s] = ko
