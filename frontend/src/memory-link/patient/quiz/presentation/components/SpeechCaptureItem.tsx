@@ -8,6 +8,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useTTS } from '../../../../../shared/hooks/useTTS.js';
+import { TtsFailureNotice } from './TtsFailureNotice.js';
 import { createTtsService } from '../../../../../shared/infrastructure/ttsFactory.js';
 import { createSpeechCaptureService } from '../../infrastructure/SpeechCaptureService.js';
 import type { AzurePronunciationScores } from '../../domain/pronunciationScore.js';
@@ -55,7 +56,7 @@ export function SpeechCaptureItem({
 
   const stt = useMemo(() => createSpeechCaptureService(), []);
   const ttsService = useMemo(() => createTtsService(), []);
-  const { isPlaying, speak } = useTTS(ttsService);
+  const { isPlaying, error: ttsError, speak } = useTTS(ttsService);
 
   // 캡처 콜백 프로퍼티 할당(TrainingScreen 등과 동일한 코드베이스 공통 패턴).
   /* eslint-disable react-hooks/immutability */
@@ -137,6 +138,9 @@ export function SpeechCaptureItem({
           {text || '—'}
         </span>
       </div>
+
+      {/* 소리가 안 났으면 알린다 — 못 들은 발음은 따라 할 수 없다. */}
+      {showModel && !showFeedback && ttsError !== null && <TtsFailureNotice />}
 
       {/* 모범 발음 듣기 (따라말하기 전용) — 피드백 단계엔 숨김 */}
       {showModel && !showFeedback && (
