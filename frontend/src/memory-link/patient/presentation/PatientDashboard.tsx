@@ -10,6 +10,11 @@ import { QuizListScreen } from '../quiz/presentation/QuizListScreen.js';
 import { QuizScreen } from '../quiz/presentation/QuizScreen.js';
 import { PracticeScreen } from '../practice/presentation/PracticeScreen.js';
 import { SoloDailyHome } from './SoloDailyHome.js';
+import { SoundCheckScreen } from './SoundCheckScreen.js';
+import {
+  isSoundCheckedToday,
+  markSoundCheckedToday,
+} from '../domain/soundCheck.js';
 import { buildWeekStreak } from '../domain/streak.js';
 import { quizApi } from '../quiz/infrastructure/QuizApi.js';
 import { extractErrorMessage } from '../../shared/extractErrorMessage.js';
@@ -31,7 +36,8 @@ type DashboardPhase =
   | 'QUIZ_HOME'
   | 'QUIZ_LIST'
   | 'QUIZ_PLAY'
-  | 'PRACTICE';
+  | 'PRACTICE'
+  | 'SOUND_CHECK';
 
 /** 선택된 훈련 정보 */
 interface SelectedTraining {
@@ -85,6 +91,10 @@ export function PatientDashboard() {
    */
   const [activityDays, setActivityDays] = useState<string[]>([]);
   const [selectedTraining, setSelectedTraining] = useState<SelectedTraining | null>(null);
+  /** 소리 확인을 통과하면 갈 곳. SOUND_CHECK 단계에서만 채워져 있다. */
+  const [pendingPhase, setPendingPhase] = useState<
+    'QUIZ_PLAY' | 'PRACTICE' | null
+  >(null);
   const [selectedQuizSetId, setSelectedQuizSetId] = useState<string | null>(null);
   const [entries, setEntries] = useState<AvailableEntry[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -116,11 +126,30 @@ export function PatientDashboard() {
     };
   }, [phase]);
 
-  /** 퀴즈 선택 → 풀이 화면 진입 */
-  const handleSelectQuiz = useCallback((quizSetId: string) => {
-    setSelectedQuizSetId(quizSetId);
-    setPhase('QUIZ_PLAY');
+  /**
+   * 세션으로 가되, 오늘 소리 확인이 안 끝났으면 확인 화면을 먼저 세운다.
+   *
+   * 검사·연습 둘 다 듣고 답하는 문항이 있다. 소리가 안 나는 채로 끝까지 가면
+   * 듣기 문항 기록이 전부 찍기가 되고, 검사 쪽은 그 기록이 회복 추세로
+   * 들어간다. 문 앞에서 한 문장 들려보는 값이 훨씬 싸다.
+   */
+  const goWithSoundCheck = useCallback((next: 'QUIZ_PLAY' | 'PRACTICE') => {
+    if (isSoundCheckedToday()) {
+      setPhase(next);
+      return;
+    }
+    setPendingPhase(next);
+    setPhase('SOUND_CHECK');
   }, []);
+
+  /** 퀴즈 선택 → (소리 확인 →) 풀이 화면 진입 */
+  const handleSelectQuiz = useCallback(
+    (quizSetId: string) => {
+      setSelectedQuizSetId(quizSetId);
+      goWithSoundCheck('QUIZ_PLAY');
+    },
+    [goWithSoundCheck],
+  );
 
   /** 퀴즈 종료/완료 → 퀴즈 목록으로 복귀 */
   const handleQuizExit = useCallback(() => {
@@ -183,6 +212,34 @@ export function PatientDashboard() {
     );
   }
 
+  // 소리 사전 점검 — 검사·연습 앞의 문 하나. 하루 한 번만 선다.
+  //
+  // 통과("잘 들려요")할 때만 오늘 날짜를 적는다. 소리 없이 시작한 경우에는
+  // 적지 않으므로 다음 세션에 다시 묻는다 — 소리를 켜고 오면 그때 통과한다.
+  if (phase === 'SOUND_CHECK' && pendingPhase !== null) {
+    const proceed = () => {
+      setPhase(pendingPhase);
+      setPendingPhase(null);
+    };
+    return (
+      <div className="min-h-screen" style={{ background: WARM_SCREEN_BG }}>
+        <SoundCheckScreen
+          destination={pendingPhase === 'PRACTICE' ? '연습' : '검사'}
+          onPass={() => {
+            markSoundCheckedToday();
+            proceed();
+          }}
+          onSkip={proceed}
+          onCancel={() => {
+            setPendingPhase(null);
+            setSelectedQuizSetId(null);
+            setPhase('QUIZ_HOME');
+          }}
+        />
+      </div>
+    );
+  }
+
   // 연습 모드 — 터치 중심. 문항별로는 정답을 알려주지만(가르친다) 점수·정답률
   // 같은 집계는 내지 않는다. 결과는 검사와 다른 테이블(practice_results)로
   // 나가므로 회복 추세·레벨을 건드리지 않는다. 활동 일자만 스트릭에 합쳐진다.
@@ -233,7 +290,7 @@ export function PatientDashboard() {
           )}
           streakDays={buildWeekStreak(new Set(activityDays))}
           onStart={() => setPhase('QUIZ_LIST')}
-          onPractice={() => setPhase('PRACTICE')}
+          onPractice={() => goWithSoundCheck('PRACTICE')}
           onReview={() => setPhase('QUIZ_LIST')}
         />
       </div>
