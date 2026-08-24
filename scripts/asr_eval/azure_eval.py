@@ -189,6 +189,79 @@ def stratified_head(rows: list[dict], n: int) -> list[dict]:
     return [rows[i] for i in sorted(picked)]
 
 
+def mismatch_refs(rows: list[dict], seed: int = 0) -> list[str | None]:
+    """각 문항에 **음절 수가 같은 다른 문항의 참조 텍스트**를 붙인다.
+
+    음향 채점기 계획 0단계 측정 B의 대조군이다. 채점기가 오디오를 실제로 보는지,
+    아니면 참조 텍스트만 보고 그럴듯한 숫자를 뱉는지를 가른다.
+
+    **왜 음절 수를 맞추는가.** 그냥 무작위로 섞으면 참조 길이가 달라져서,
+    채점기가 발음이 아니라 **길이 불일치**를 잡고 낮은 점수를 준다. 그러면
+    "오디오를 본다"는 잘못된 결론이 나온다. 길이를 고정해야 남는 변수가
+    발음뿐이다.
+
+    같은 task_type 안에서만 고른다(단어에 문장을 붙이면 그것도 길이 단서다).
+    """
+    import random
+    rng = random.Random(seed)
+
+    def syl(s: str) -> int:
+        return len(re.sub(r"\s+", "", norm(s)))
+
+    sy = [syl(r["text"]) for r in rows]
+    out: list[str | None] = []
+    for i, r in enumerate(rows):
+        cands = [j for j in range(len(rows))
+                 if rows[j].get("task_type") == r.get("task_type")
+                 and norm(rows[j]["text"]) != norm(r["text"])]
+        if not cands:
+            out.append(None)          # 짝을 만들 수 없다 — 측정에서 제외된다
+            continue
+        best = min(abs(sy[j] - sy[i]) for j in cands)
+        pool = [j for j in cands if abs(sy[j] - sy[i]) == best]
+        out.append(rows[rng.choice(pool)]["text"])
+    return out
+
+
+def _ranks(xs: list[float]) -> list[float]:
+    """동점은 평균 순위를 준다(Spearman·AUC 둘 다 이게 맞다)."""
+    order = sorted(range(len(xs)), key=lambda i: xs[i])
+    out = [0.0] * len(xs)
+    i = 0
+    while i < len(order):
+        j = i
+        while j + 1 < len(order) and xs[order[j + 1]] == xs[order[i]]:
+            j += 1
+        avg = (i + j) / 2.0 + 1.0
+        for k in range(i, j + 1):
+            out[order[k]] = avg
+        i = j + 1
+    return out
+
+
+def spearman(xs: list[float], ys: list[float]) -> float:
+    """순위 상관. 표준편차가 0이면 정의되지 않으므로 0.0을 준다."""
+    if len(xs) < 2:
+        return 0.0
+    rx, ry = _ranks(xs), _ranks(ys)
+    mx, my = sum(rx) / len(rx), sum(ry) / len(ry)
+    num = sum((a - mx) * (b - my) for a, b in zip(rx, ry))
+    dx = sum((a - mx) ** 2 for a in rx) ** 0.5
+    dy = sum((b - my) ** 2 for b in ry) ** 0.5
+    return num / (dx * dy) if dx and dy else 0.0
+
+
+def auc(pos: list[float], neg: list[float]) -> float:
+    """pos가 neg보다 높을 확률(Mann-Whitney U / n1n2). 동점은 0.5로 센다."""
+    if not pos or not neg:
+        return 0.0
+    allv = pos + neg
+    r = _ranks(allv)
+    r1 = sum(r[: len(pos)])
+    u = r1 - len(pos) * (len(pos) + 1) / 2.0
+    return u / (len(pos) * len(neg))
+
+
 def wav_seconds(p: Path) -> float | None:
     try:
         with wave.open(str(p), "rb") as w:
@@ -340,12 +413,81 @@ def report(rows: list[dict], results: dict[str, dict], mode: str,
                     print(f"  {k:>13}: 최소 {v[0]:.0f} · 25% {q(.25):.0f} · 중앙 {q(.5):.0f}"
                           f" · 75% {q(.75):.0f} · 최대 {v[-1]:.0f}")
 
+    if mode == "pa":
+        xs, ys = [], []
+        for r in rows:
+            res = results.get(r["audio"])
+            if not res or not res.get("pa"):
+                continue
+            m = "word" if r.get("task_type") == "wordlist" else "sentence"
+            xs.append(res["pa"]["accuracy"])
+            ys.append(app_scorer.speech_error_rate(res["text"], r["text"], m))
+        if len(xs) >= 2:
+            rho = spearman(xs, ys)
+            ok = abs(rho) >= 0.6
+            print(f"\n  ── C. 두 잣대의 일치도 (n={len(xs)}) ──")
+            print(f"  Spearman(Azure accuracy, 앱 오류율) = {rho:+.3f}")
+            print("  음의 상관이 정상이다 — 점수가 높으면 앱 오류율은 낮아야 한다.")
+            print(f"  판정: |rho| {abs(rho):.3f} {'>=' if ok else '<'} 0.6 → "
+                  + ("통과" if ok else "**실패** — 폴백이 발생할 때마다 환자 점수가 튄다. "
+                                     "1단계(폴백 차단)를 최우선으로 올린다"))
+
     print()
     print("  비교 대상 — 같은 시험지의 자체 ASR(7차재현) / 범용 whisper zero-shot:")
     print("    단어 정확도  81.5% / 51.4%")
     print("    단어 CER     0.329 / 0.895")
     print("    문장 CER     0.132 / 0.191")
     print("    앱 검사 통과율 87.0% / 59.6%")
+
+
+def report_contrast(rows: list[dict], paired: dict[str, dict],
+                    mism: dict[str, dict]) -> None:
+    """0단계 측정 B — 정답 참조 vs 음절 수를 맞춘 오답 참조.
+
+    라벨 없이 타당도를 재는 유일한 방법이고, 가장 나쁜 실패 방식을 직접 겨눈다:
+    채점기가 오디오를 거의 안 보고 참조 텍스트만으로 그럴듯한 숫자를 뱉는 경우.
+    """
+    both_pos, both_neg = [], []       # 양쪽 다 점수가 나온 것
+    app_pos, app_neg = [], []         # 앱처럼 NoMatch를 0점으로 채운 것
+    drop = 0
+    for r in rows:
+        a, b = paired.get(r["audio"]), mism.get(r["audio"])
+        if a is None or b is None:
+            continue
+        pa_a, pa_b = a.get("pa"), b.get("pa")
+        app_pos.append(pa_a["accuracy"] if pa_a else 0.0)
+        app_neg.append(pa_b["accuracy"] if pa_b else 0.0)
+        if pa_a and pa_b:
+            both_pos.append(pa_a["accuracy"])
+            both_neg.append(pa_b["accuracy"])
+        else:
+            drop += 1
+
+    if not app_pos:
+        print("\n  B: 두 캐시가 겹치는 문항이 없다.")
+        return
+
+    print("\n" + "─" * 62)
+    print("  ── B. 참조 대조 — 채점기가 오디오를 실제로 보는가 ──")
+    print(f"  오답 참조는 **음절 수를 맞춰** 골랐다(같은 task_type 안에서).")
+    print("  길이를 안 맞추면 채점기가 발음이 아니라 길이 불일치를 잡는다.")
+
+    for label, pos, neg, note in (
+        ("점수가 나온 것만", both_pos, both_neg, f"NoMatch 포함 {drop}건 제외"),
+        ("앱과 같게(NoMatch=0)", app_pos, app_neg, "앱이 실제로 보는 값"),
+    ):
+        if not pos:
+            continue
+        mp, mn = sum(pos) / len(pos), sum(neg) / len(neg)
+        a = auc(pos, neg)
+        print(f"\n  [{label}]  n={len(pos)}  ({note})")
+        print(f"    정답 참조 평균 {mp:5.1f}  ·  오답 참조 평균 {mn:5.1f}"
+              f"  ·  차이 **{mp-mn:+.1f}점**")
+        print(f"    분리 AUC {a:.3f}")
+        ok = (mp - mn) >= 20 and a >= 0.80
+        print("    판정: 평균차 ≥20 그리고 AUC ≥0.80 → "
+              + ("통과" if ok else "**실패 — Azure를 채점 경로에서 내린다.**"
+                                  " 재조정으로 못 고친다"))
 
 
 # ── 메인 ──────────────────────────────────────────────────────────────
@@ -356,6 +498,9 @@ def main() -> int:
     ap.add_argument("--mode", choices=["stt", "pa"], default="stt",
                     help="stt=순수 인식(ASR 비교용) · pa=발음 평가(채점기 0단계용)")
     ap.add_argument("--lang", default="ko-KR")
+    ap.add_argument("--mismatch", action="store_true",
+                    help="[pa 전용] 참조를 '음절 수가 같은 다른 문항'으로 바꿔 채점한다. "
+                         "0단계 측정 B의 대조군 — 채점기가 오디오를 보는지 가른다")
     ap.add_argument("--limit", type=int, default=0, help="N건만 (스모크용 — task_type 비율을 유지해 뽑는다)")
     ap.add_argument("--cache", type=Path, default=None,
                     help="기본: <split과 같은 폴더>/_azure_<mode>_cache.jsonl (리포 밖)")
@@ -373,6 +518,10 @@ def main() -> int:
     ap.add_argument("--retries", type=int, default=2)
     args = ap.parse_args()
 
+    if args.mismatch and args.mode != "pa":
+        print("--mismatch는 --mode pa 에서만 의미가 있다(참조 텍스트를 쓰는 모드).",
+              file=sys.stderr)
+        return 2
     if not args.split.exists():
         print(f"스플릿이 없다: {args.split}", file=sys.stderr)
         return 2
@@ -380,7 +529,9 @@ def main() -> int:
     rows = load_split(args.split)
     if args.limit:
         rows = stratified_head(rows, args.limit)
-    cache_path = args.cache or (args.split.parent / f"_azure_{args.mode}_cache.jsonl")
+    _suffix = "_mismatch" if args.mismatch else ""
+    cache_path = args.cache or (
+        args.split.parent / f"_azure_{args.mode}{_suffix}_cache.jsonl")
     cache = load_cache(cache_path)
 
     missing = [r for r in rows if not r["_wav"].exists()]
@@ -441,10 +592,21 @@ def main() -> int:
                   "ai-service/venv 의 python으로 실행하라.", file=sys.stderr)
             return 2
 
+        wrong = None
+        if args.mismatch:
+            wrong = dict(zip((x["audio"] for x in rows), mismatch_refs(rows)))
+            n_bad = sum(v is None for v in wrong.values())
+            print(f"오답 참조    : 음절 수를 맞춰 생성 "
+                  f"(짝 못 만든 것 {n_bad}건은 건너뛴다)")
+
         t0 = time.time()
         consec_cancel = 0
         for i, r in enumerate(todo, 1):
             ref = r["text"] if args.mode == "pa" else None
+            if args.mismatch:
+                ref = wrong.get(r["audio"])
+                if ref is None:
+                    continue
             res = None
             for attempt in range(args.retries + 1):
                 try:
@@ -460,6 +622,8 @@ def main() -> int:
             assert res is not None
             res["audio"] = r["audio"]
             res["task_type"] = r.get("task_type")
+            if args.mismatch:
+                res["wrong_ref"] = ref
             append_cache(cache_path, res)
             cache[r["audio"]] = res
 
@@ -479,6 +643,16 @@ def main() -> int:
                 time.sleep(args.sleep)
 
     report(rows, cache, args.mode, args.allow_unverified_cer)
+
+    # pa 정상 실행이면, 오답 참조 캐시가 있을 때 B까지 낸다
+    if args.mode == "pa" and not args.mismatch:
+        mp = cache_path.parent / cache_path.name.replace(
+            "_pa_cache", "_pa_mismatch_cache")
+        if mp.exists():
+            report_contrast(rows, cache, load_cache(mp))
+        else:
+            print(f"\n  (측정 B 미실행 — 오답 참조 캐시가 없다: {mp.name})")
+            print("   만들려면: 같은 명령에 --mismatch 를 붙여 한 번 더 돌린다")
     return 0
 
 

@@ -144,3 +144,64 @@ def test_stratified_head_preserves_order():
         r["i"] = i
     picked = A.stratified_head(rows, 20)
     assert [r["i"] for r in picked] == sorted(r["i"] for r in picked)
+
+
+# ── 0단계 측정 B·C의 도구 ─────────────────────────────────────────────
+
+def test_spearman_monotone():
+    # 부동소수점이라 정확히 1.0이 아니다(1.0000000000000002 같은 값이 나온다)
+    assert abs(A.spearman([1, 2, 3, 4], [10, 20, 30, 40]) - 1.0) < 1e-9
+    assert abs(A.spearman([1, 2, 3, 4], [40, 30, 20, 10]) + 1.0) < 1e-9
+
+
+def test_spearman_uses_average_ranks_for_ties():
+    """동점을 순서대로 매기면 없는 상관이 생긴다."""
+    assert A.spearman([1, 1, 1], [3, 2, 1]) == 0.0
+
+
+def test_spearman_degenerate_is_zero():
+    assert A.spearman([5], [5]) == 0.0
+    assert A.spearman([], []) == 0.0
+
+
+def test_auc_separation():
+    assert A.auc([5, 6, 7], [1, 2, 3]) == 1.0
+    assert A.auc([1, 2, 3], [5, 6, 7]) == 0.0
+
+
+def test_auc_ties_are_half():
+    assert A.auc([1, 1], [1, 1]) == 0.5
+
+
+def test_mismatch_refs_matches_syllable_count():
+    """길이를 안 맞추면 채점기가 발음이 아니라 길이 불일치를 잡는다."""
+    rows = [{"text": t, "task_type": "wordlist"} for t in ("가나", "다라", "마바")]
+    got = A.mismatch_refs(rows, seed=1)
+    assert all(len(g) == 2 for g in got)
+
+
+def test_mismatch_refs_never_returns_the_same_text():
+    rows = [{"text": t, "task_type": "wordlist"} for t in ("가나", "다라", "마바")]
+    got = A.mismatch_refs(rows, seed=1)
+    assert all(A.norm(g) != A.norm(r["text"]) for g, r in zip(got, rows))
+
+
+def test_mismatch_refs_stays_within_task_type():
+    """단어에 문장을 붙이면 길이 자체가 단서가 된다."""
+    rows = ([{"text": "가나", "task_type": "wordlist"},
+             {"text": "다라", "task_type": "wordlist"}]
+            + [{"text": "마바사아자차", "task_type": "narrative"},
+               {"text": "카타파하가나", "task_type": "narrative"}])
+    got = A.mismatch_refs(rows, seed=1)
+    assert all(len(g) == 2 for g in got[:2])
+    assert all(len(g) == 6 for g in got[2:])
+
+
+def test_mismatch_refs_no_partner_is_none():
+    """짝을 만들 수 없으면 None — 호출에서 건너뛴다(0점으로 세지 않는다)."""
+    assert A.mismatch_refs([{"text": "가", "task_type": "wordlist"}]) == [None]
+
+
+def test_mismatch_refs_is_deterministic():
+    rows = [{"text": t, "task_type": "wordlist"} for t in ("가나", "다라", "마바", "사아")]
+    assert A.mismatch_refs(rows, seed=7) == A.mismatch_refs(rows, seed=7)
