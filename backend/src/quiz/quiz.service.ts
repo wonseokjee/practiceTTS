@@ -193,6 +193,25 @@ export interface QabSubtestSummary {
   avgScore: number | null;
   /** 마지막 측정 시각(ISO). 없으면 null */
   lastAt: string | null;
+  /**
+   * 오답을 갈래별로 센 것 — 단어 이해에만 값이 있다.
+   *
+   * 정답률은 "몇 개 틀렸나"까지만 말한다. 무엇이 어려운지는 **어떤 오답을
+   * 골랐나**가 말한다. 의미 유인지를 반복해 고르면 의미 체계 쪽, 음운 유인지면
+   * 음운 처리 쪽이다.
+   *
+   * 갈래를 안 남긴 오답(맞힌 문항, 컬럼 이전의 옛 행, 문장 이해)은 세지 않는다.
+   * 셋 다 0이면 null — 볼 것이 없다는 뜻이고, 0으로 채운 막대를 그리면 없는
+   * 사실이 생긴다.
+   *
+   * **주의: 음운 유인지는 눈높이 4단계부터 나온다**(`LEVEL_CHOICE_SPEC`).
+   * 그 아래에서는 고를 기회 자체가 없어 0이 손상 없음을 뜻하지 않는다.
+   */
+  foilKinds: {
+    semantic: number;
+    phonological: number;
+    unrelated: number;
+  } | null;
 }
 
 export interface QabSummaryResult {
@@ -1430,6 +1449,20 @@ export class QuizService {
       .addSelect('MAX(r.metric)', 'maxMetric')
       .addSelect('AVG(r.score)', 'avgScore')
       .addSelect('MAX(r.created_at)', 'lastAt')
+      // 오답 갈래 — total/correct와 같은 기준(도움받은 문항 제외)으로 센다.
+      // foil_kind는 오답에만 값이 있으므로 is_correct 조건은 불필요하다.
+      .addSelect(
+        `COUNT(*) FILTER (WHERE NOT r.assisted AND r.foil_kind = 'semantic')`,
+        'foilSemantic',
+      )
+      .addSelect(
+        `COUNT(*) FILTER (WHERE NOT r.assisted AND r.foil_kind = 'phonological')`,
+        'foilPhonological',
+      )
+      .addSelect(
+        `COUNT(*) FILTER (WHERE NOT r.assisted AND r.foil_kind = 'unrelated')`,
+        'foilUnrelated',
+      )
       .where('r.patient_id = :pid', { pid: effectivePatientId })
       .groupBy('r.subtest')
       .getRawMany<{
@@ -1441,6 +1474,9 @@ export class QuizService {
         maxMetric: string | null;
         avgScore: string | null;
         lastAt: Date | string | null;
+        foilSemantic: string;
+        foilPhonological: string;
+        foilUnrelated: string;
       }>();
 
     const items: QabSubtestSummary[] = raw.map((row) => {
@@ -1460,6 +1496,15 @@ export class QuizService {
           : row.lastAt instanceof Date
             ? row.lastAt.toISOString()
             : new Date(row.lastAt).toISOString();
+      const semantic = Number(row.foilSemantic);
+      const phonological = Number(row.foilPhonological);
+      const unrelated = Number(row.foilUnrelated);
+      // 셋 다 0이면 null. 0으로 채운 값을 내려보내면 화면이 "관계없는 그림 0개"
+      // 같은 없는 사실을 그린다.
+      const foilKinds =
+        semantic + phonological + unrelated > 0
+          ? { semantic, phonological, unrelated }
+          : null;
       return {
         subtest: row.subtest,
         total,
@@ -1470,6 +1515,7 @@ export class QuizService {
         maxMetric,
         avgScore,
         lastAt,
+        foilKinds,
       };
     });
 
