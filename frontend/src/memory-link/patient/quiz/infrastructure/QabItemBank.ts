@@ -21,7 +21,10 @@ import type {
   QabNamingItem,
   QabSpellItem,
 } from '../domain/MixedQuiz.js';
-import { sharesOnsetOrNucleus } from '../../../../shared/domain/korean.js';
+import {
+  sharesInitialConsonant,
+  sharesOnsetOrNucleus,
+} from '../../../../shared/domain/korean.js';
 
 interface RawWordChoice {
   choiceId: string;
@@ -217,15 +220,51 @@ function normalizeLevel(level: number | undefined, fallback: number): number {
 }
 
 export interface ChoiceSpec {
+  /** 정답 포함 선택지 총 개수. */
   total: number;
+  /** 오답 중 **같은 의미 범주**에서 뽑을 개수(의미 유인지). */
   sameCat: number;
+  /** 오답 중 **첫 음절이 닮은 다른 범주** 낱말에서 뽑을 개수(음운 유인지). */
+  phon: number;
 }
+/**
+ * 레벨 → 선택지 구성.
+ *
+ * ── 오답을 두 갈래로 나눈다 ──────────────────────────────────────
+ *
+ * 실어증 단어-그림 대응 검사의 유인지는 원래 두 종류다. **의미 유인지**
+ * ('사과'에 대한 '바나나')는 의미 체계 손상을 잡고, **음운 유인지**('사과'에
+ * 대한 '사자')는 음운 처리 손상을 잡는다. 예전에는 의미 쪽 하나만 썼다.
+ *
+ * | 레벨 | 총 | 의미 | 음운 | 무관 |
+ * |-----|----|-----|-----|-----|
+ * |  1  | 2  |  0  |  0  |  1  |
+ * |  2  | 3  |  1  |  0  |  1  |
+ * |  3  | 4  |  2  |  0  |  1  |
+ * |  4  | 4  |  2  |  1  |  0  |  ← 무관 하나가 음운으로 바뀐다
+ * |  5  | 5  |  2  |  2  |  0  |
+ *
+ * 한 단계에 오답 구성이 한 군데만 바뀐다. 총 개수(2·3·4·4·5)는 예전과 같아
+ * 화면과 집계는 그대로다 — 바뀐 것은 오답의 **질**이다.
+ *
+ * ── 왜 의미 오답을 2에서 멈추나 ─────────────────────────────────
+ *
+ * 예전 매핑은 레벨 4에 같은 범주 3개, 5에 4개를 요구했다. 범주가 3개짜리인
+ * 낱말(주방·욕실·연장·가구·악기·가전)은 채울 수가 없어 {@link buildControlledChoices}가
+ * **무관 오답으로 조용히 메웠다.** 문항은 쉬워지는데 기록은 레벨 5로 남는다.
+ * 실측으로 레벨 4에서 낱말의 20%, 레벨 5에서 33%가 이 구멍에 빠졌다.
+ *
+ * 가장 작은 범주가 3개(정답 + 동료 2)이므로 **의미 2는 모든 낱말이 채운다.**
+ * 난도는 낱말 풀 크기에 안 갇히는 음운 축으로 올린다 — 음운 유인지 2개는
+ * 90개 낱말 전부가 채울 수 있다(꽃·빵만 어두 초성이 유일해 느슨한 기준으로
+ * 내려간다). **새 낱말도 새 그림도 필요 없다.**
+ */
 export const LEVEL_CHOICE_SPEC: Record<number, ChoiceSpec> = {
-  1: { total: 2, sameCat: 0 }, // 정답 + 무관 1
-  2: { total: 3, sameCat: 1 }, // 정답 + 같은범주1 + 무관1
-  3: { total: 4, sameCat: 2 }, // 정답 + 같은범주2 + 무관1 (기존 기본)
-  4: { total: 4, sameCat: 3 }, // 정답 + 같은범주3 (전부 근접)
-  5: { total: 5, sameCat: 4 }, // 선택지 늘고 전부 근접
+  1: { total: 2, sameCat: 0, phon: 0 }, // 정답 + 무관1
+  2: { total: 3, sameCat: 1, phon: 0 }, // 정답 + 의미1 + 무관1
+  3: { total: 4, sameCat: 2, phon: 0 }, // 정답 + 의미2 + 무관1 (기존 기본)
+  4: { total: 4, sameCat: 2, phon: 1 }, // 정답 + 의미2 + 음운1
+  5: { total: 5, sameCat: 2, phon: 2 }, // 정답 + 의미2 + 음운2
 };
 
 /** 레벨을 [1..5]로 클램프하고 해당 스펙을 돌려준다(미지정/범위밖은 3=기본). */
@@ -236,9 +275,12 @@ function choiceSpecForLevel(level?: number): ChoiceSpec {
 
 /**
  * 통제된 유인지를 골라 정답과 함께 레벨별 보기를 만든다.
- * spec.total개(정답 1 + 오답 total-1)를 만들되, 오답 중 spec.sameCat개는 같은
- * 의미 범주, 나머지는 무관 범주에서 뽑는다. 풀이 모자라면 가능한 만큼만 채운다.
- * level 미지정 시 레벨 3(같은범주2+무관1) — 기존 동작 보존. (테스트 노출)
+ *
+ * 오답은 세 갈래로 채운다 — **의미**(같은 범주) → **음운**(다른 범주, 첫 음절이
+ * 닮음) → **무관**(나머지). 순서가 곧 우선순위다. {@link LEVEL_CHOICE_SPEC}에
+ * 레벨별 배분이 있다.
+ *
+ * level 미지정 시 레벨 3(의미2 + 무관1) — 기존 동작 보존. (테스트 노출)
  */
 export function buildControlledChoices(target: MasterWord, level?: number) {
   const spec = choiceSpecForLevel(level);
@@ -256,6 +298,34 @@ export function buildControlledChoices(target: MasterWord, level?: number) {
 
   const foils: MasterWord[] = [];
   foils.push(...sameCat.slice(0, sameCatWanted)); // 같은 범주(부족하면 그만큼만)
+
+  // ── 음운 유인지 ────────────────────────────────────────────────
+  //
+  // **다른 범주에서만 뽑는다.** 의미와 음운이 한 오답에 겹치면 환자가 그걸
+  // 골랐을 때 의미에서 틀린 건지 소리에서 틀린 건지 읽을 수 없다. 두 축을
+  // 나눈 목적이 바로 그 구분이다.
+  //
+  // 1순위는 첫 음절 초성이 같은 낱말('사과'→'사자'). 어두 음소가 겹쳐야 진짜
+  // 유인지다. 초성이 유일한 낱말(꽃·빵)은 1순위 후보가 0개라, 초성이나 중성을
+  // 공유하는 2순위로 내려가 채운다 — 개수를 줄이면 문항만 쉬워지고 기록은
+  // 그대로라 레벨이 거짓말을 한다.
+  const phonWanted = Math.min(spec.phon, foilTotal - foils.length);
+  if (phonWanted > 0) {
+    const taken = new Set(foils.map((f) => f.slug));
+    const pool = otherCat.filter((w) => !taken.has(w.slug));
+    const near = shuffle(
+      pool.filter((w) => sharesInitialConsonant(target.label, w.label)),
+    );
+    const loose = shuffle(
+      pool.filter(
+        (w) =>
+          !sharesInitialConsonant(target.label, w.label) &&
+          sharesOnsetOrNucleus(target.label.charAt(0), w.label.charAt(0)),
+      ),
+    );
+    foils.push(...[...near, ...loose].slice(0, phonWanted));
+  }
+
   for (const w of otherCat) {
     // 무관 오답으로 나머지를 채운다(같은 범주가 모자랄 때도 여기서 보충).
     if (foils.length >= foilTotal) break;
