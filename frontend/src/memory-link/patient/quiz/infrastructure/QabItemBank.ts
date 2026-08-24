@@ -21,6 +21,7 @@ import type {
   QabNamingItem,
   QabSpellItem,
 } from '../domain/MixedQuiz.js';
+import { sharesOnsetOrNucleus } from '../../../../shared/domain/korean.js';
 
 interface RawWordChoice {
   choiceId: string;
@@ -400,6 +401,10 @@ const SPELL_MAX_TILES = 8;
  * 상용 실어증 치료 도구가 이 과제를 단어 길이 × 방해 글자 **0 / 2 / 4개**로
  * 등급화하는 것을 그대로 따른다. 레벨 1~2에 **방해 0개**(정답 음절 재배열만)를
  * 두는 게 핵심이다 — 예전 구현은 늘 3개라 가장 쉬운 진입 단계가 없었다.
+ *
+ * 꺾이는 자리는 3과 4다(0·0·2·4·4). 예전엔 2와 4에서 꺾여(0·0·2·2·4) 음절 축과
+ * **같은 자리**에서 움직였고, 그래서 5단계가 실제로는 3단계였다. 자세한 표는
+ * {@link syllableRangeForLevel} 위에 있다.
  */
 export function distractorCountForLevel(level?: number): number {
   // 레벨을 모를 때(스킬 레벨 조회 실패)는 **백엔드 콜드스타트와 같은 값**을 쓴다.
@@ -410,13 +415,17 @@ export function distractorCountForLevel(level?: number): number {
   // 프론트의 기본값이다.
   const lv = normalizeLevel(level, COLD_START_LEVEL);
   if (lv <= 2) return 0;
-  if (lv <= 4) return 2;
+  if (lv === 3) return 2;
   return 4;
 }
 
 /**
  * 목표 단어를 음절로 쪼개고 방해 음절을 섞어 셔플한 타일을 만든다.
  * 정답 음절의 중복은 보존한다(예: '바나나' → 바·나·나).
+ *
+ * 최고 레벨에서는 정답 음절과 초성·중성을 공유하는 방해 타일을 **먼저** 쓴다.
+ * 닮은 후보가 모자라면 나머지를 무작위로 채운다 — 개수를 줄이면 레벨이 약속한
+ * 난도보다 쉬워지고, 그 문항이 레벨 5로 기록된다.
  */
 export function buildSpellTiles(
   targetWord: string,
@@ -428,11 +437,20 @@ export function buildSpellTiles(
   const answerSet = new Set(answer);
   const room = Math.max(0, SPELL_MAX_TILES - answer.length);
   const wanted = Math.min(distractorCountForLevel(level), room);
-  const distractors = shuffle(
-    SPELL_DISTRACTOR_POOL.filter((s) => !answerSet.has(s)),
-    rng,
-  ).slice(0, wanted);
-  return shuffle([...answer, ...distractors], rng);
+  const pool = SPELL_DISTRACTOR_POOL.filter((s) => !answerSet.has(s));
+  const ranked = usesSimilarDistractors(level)
+    ? [
+        ...shuffle(
+          pool.filter((s) => answer.some((a) => sharesOnsetOrNucleus(s, a))),
+          rng,
+        ),
+        ...shuffle(
+          pool.filter((s) => !answer.some((a) => sharesOnsetOrNucleus(s, a))),
+          rng,
+        ),
+      ]
+    : shuffle(pool, rng);
+  return shuffle([...answer, ...ranked.slice(0, wanted)], rng);
 }
 
 /**
@@ -443,13 +461,42 @@ export function buildSpellTiles(
  * 정답률이 어휘·순서 부하와 교란됐다("이 환자는 방해 2개에서 잘한다"가 아니라
  * "짧은 단어가 운 좋게 많이 나왔다"를 학습한다).
  *
- * 길이와 방해 수를 함께 올려 두 축이 같은 방향을 보게 한다.
+ * ── 세 축을 엇갈리게 놓는다 ──────────────────────────────────────
+ *
+ * | 레벨 | 방해 수 | 음절 | 방해 종류 | 타일 |
+ * |-----|--------|------|----------|------|
+ * |  1  |   0    |  2   |    —     |  2   |
+ * |  2  |   0    | 3~4  |    —     | 3~4  |
+ * |  3  |   2    | 3~4  |  무작위   | 5~6  |
+ * |  4  |   4    | 3~4  |  무작위   | 7~8  |
+ * |  5  |   4    | 3~4  | 음운 유사 | 7~8  |
+ *
+ * **한 단계에 한 축만 움직인다.** 예전에는 방해 수와 음절 범위가 둘 다
+ * `lv<=2` / `lv<=4`에서 꺾여, 레벨 1과 2가 같은 문제였고 3과 4도 같았다.
+ * 5단계 표시가 실제로는 3단계였다는 뜻이다. 게다가 4→5에서 두 축이 동시에
+ * 뛰어 그 자리만 절벽이었다.
+ *
+ * 4음절 낱말은 풀에 2개뿐이라 `3~4`는 실질 3음절이다. 음절 축이 두 칸(2·3)밖에
+ * 없어서 방해 수 세 칸(0·2·4)과 곱해도 **두 축만으로는 5단계를 못 만든다** —
+ * 두 축 모두 단조로운 사슬의 최대 길이가 4다. 그래서 코드 주석에 후속 과제로
+ * 적혀 있던 **음운 유사 방해자**를 세 번째 축으로 세웠다
+ * ({@link usesSimilarDistractors}). 새 낱말도 새 그림도 필요 없다.
  */
 function syllableRangeForLevel(level?: number): { min: number; max: number } {
   const lv = normalizeLevel(level, COLD_START_LEVEL);
-  if (lv <= 2) return { min: 2, max: 2 };
-  if (lv <= 4) return { min: 2, max: 3 };
+  if (lv <= 1) return { min: 2, max: 2 };
   return { min: 3, max: 4 };
+}
+
+/**
+ * 최고 레벨에서만 방해 타일을 **정답 음절과 닮은 것**으로 고른다.
+ *
+ * 무작위 방해 타일은 눈으로 걸러진다 — '바다'에 '꽃'이 섞여 있으면 고민이 없다.
+ * 초성이나 중성을 공유하는 음절은 그 걸러내기를 막는다. 타일 수는 그대로 4개인데
+ * 과제만 어려워지므로, 낱말을 더 넣지 않고도 레벨 4와 5를 가른다.
+ */
+function usesSimilarDistractors(level?: number): boolean {
+  return normalizeLevel(level, COLD_START_LEVEL) >= 5;
 }
 
 /** 공백 제외 음절 수. */
@@ -535,6 +582,11 @@ export function pickSpellItems(
 
   // 레벨 범위에 맞는 단어가 부족하면 범위를 풀어 세션이 비지 않게 한다
   // (문항이 조용히 사라지는 것보다 난이도가 조금 어긋나는 편이 낫다).
+  //
+  // **우선순위(재출제)는 이 범위를 못 넘는다.** 최근에 틀린 문항이라도 지금
+  // 레벨의 음절 범위 밖이면 후보에 없어 그냥 빠진다. 끌어올리면 환자가 푼
+  // 난이도와 `presentedLevel`이 어긋나는데, 그 어긋남이 적응 레벨링이 없애려는
+  // 교란 그 자체다 — 재출제보다 레벨이 세다.
   const pool = eligible.length >= want
     ? eligible
     : WORD_ITEMS.filter((it) => {

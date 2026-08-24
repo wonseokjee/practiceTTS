@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { copulaSuffix, hasFinalConsonant } from './korean.js';
+import { copulaSuffix, sharesOnsetOrNucleus, hasFinalConsonant } from './korean.js';
 
 /**
  * 실제로 깨졌던 문구에서 출발한다.
@@ -53,5 +53,35 @@ describe('copulaSuffix', () => {
   it('한글이 아니면 예요로 둔다', () => {
     expect(copulaSuffix('apple')).toBe('예요');
     expect(copulaSuffix('')).toBe('예요');
+  });
+});
+
+describe('sharesOnsetOrNucleus', () => {
+  it('초성이 같으면 닮았다', () => {
+    // 바 · 보 — 초성 ㅂ 공유, 중성은 다르다.
+    expect(sharesOnsetOrNucleus('바', '보')).toBe(true);
+  });
+
+  it('중성이 같으면 닮았다', () => {
+    // 바 · 사 — 중성 ㅏ 공유, 초성은 다르다.
+    expect(sharesOnsetOrNucleus('바', '사')).toBe(true);
+  });
+
+  it('초성도 중성도 다르면 안 닮았다', () => {
+    expect(sharesOnsetOrNucleus('바', '초')).toBe(false);
+  });
+
+  it('종성은 보지 않는다', () => {
+    // 바 · 밤 — 받침만 다르다. 받침까지 맞추라고 하면 방해 타일 풀에서 후보가
+    // 거의 안 남아, 부족분을 무작위로 채우다 레벨이 도로 내려간다.
+    expect(sharesOnsetOrNucleus('바', '밤')).toBe(true);
+    expect(sharesOnsetOrNucleus('강', '가')).toBe(true);
+  });
+
+  it('한글이 아니면 안 닮은 것으로 본다', () => {
+    // 모를 때 난도를 올리지 않는다.
+    expect(sharesOnsetOrNucleus('a', '바')).toBe(false);
+    expect(sharesOnsetOrNucleus('바', '')).toBe(false);
+    expect(sharesOnsetOrNucleus('1', '2')).toBe(false);
   });
 });
