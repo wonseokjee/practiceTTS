@@ -55,6 +55,19 @@ export class QabResult {
   @Column({ name: 'assisted', type: 'boolean', default: false })
   assisted: boolean;
 
+  /**
+   * 채점 불가 — 음향 발음 평가를 얻지 못해 **판정을 내리지 않은** 문항.
+   *
+   * assisted와 다르다. assisted는 "보호자가 도와서 통과시켰다"(수행은 있었으나
+   * 환자 혼자 한 것이 아니다)이고, unscored는 "**잴 수 없었다**"이다. 오답이
+   * 아니라 측정 실패다.
+   *
+   * 이 행의 is_correct는 의미가 없다(false로 들어온다). 집계·레벨링은 반드시
+   * 이 플래그로 걸러야 한다 — 아래 쿼리들이 그렇게 한다.
+   */
+  @Column({ name: 'unscored', type: 'boolean', default: false })
+  unscored: boolean;
+
   // ddk 감지 횟수 등 수치 지표(없으면 null)
   @Column({ name: 'metric', type: 'int', nullable: true })
   metric: number | null;

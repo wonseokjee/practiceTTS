@@ -178,13 +178,20 @@ export interface SkillLevelsResult {
 /** QAB 검사별 회복 추적 요약 (보호자용) */
 export interface QabSubtestSummary {
   subtest: string;
-  /** 보호자 도움(넘어가기) 제외한 실제 응답 수 */
+  /** 보호자 도움(assisted)·채점 불가(unscored)를 뺀 실제 채점된 응답 수 */
   total: number;
   correct: number;
-  /** 0..100 정확도 (도움 제외 기준) */
+  /** 0..100 정확도 (도움·채점 불가 제외 기준) */
   accuracy: number;
   /** 보호자가 넘어가기로 통과시킨 문항 수 */
   assisted: number;
+  /**
+   * 음향 발음 평가를 얻지 못해 채점하지 못한 문항 수. total에 포함되지 않는다.
+   *
+   * 오답이 아니라 측정 실패다. 이 수가 커지면 정확도가 아니라 **채점 경로**를
+   * 의심해야 한다 — 그래서 숨기지 않고 내보낸다.
+   */
+  unscored: number;
   /** 수치 지표 평균(ddk 등). 없으면 null */
   avgMetric: number | null;
   /** 수치 지표 최고값(ddk 최고 횟수 등). 없으면 null */
@@ -1017,6 +1024,10 @@ export class QuizService {
             `(patient=${effectivePatientId}, subtest=${r.subtest})`,
         );
       }
+      // 채점 불가면 점수를 받지 않는다. "못 쟀다"고 표시해 놓고 점수를 함께
+      // 보내면 그 점수가 발음 평균(AVG(score))에 섞여 들어간다 — 플래그의
+      // 목적이 정확히 그걸 막는 것이다. 클라이언트를 믿지 않고 서버가 지운다.
+      const unscored = r.unscored ?? false;
       return this.qabResultRepository.create({
         patientId: effectivePatientId,
         sessionToken: dto.sessionToken,
@@ -1024,8 +1035,9 @@ export class QuizService {
         itemRef: r.itemRef,
         isCorrect: r.isCorrect,
         assisted: r.assisted ?? false,
+        unscored,
         metric: r.metric ?? null,
-        score: r.score ?? null,
+        score: unscored ? null : (r.score ?? null),
         presentedLevel: serverLevel,
       });
     });
@@ -1085,6 +1097,7 @@ export class QuizService {
    * 윈도우 필터:
    *  - presented_level = 현재 레벨(승급 후 유도 하락을 퇴행으로 오독하는 교란 차단)
    *  - assisted = false(보호자 도움은 환자 수행 아님)
+   *  - unscored = false(채점 불가는 오답이 아니라 측정 실패 → 레벨 자연 홀드)
    *  - 발화 서브테스트는 score IS NOT NULL(Azure 불가 항목 제외 → 자연 홀드)
    *  - created_at DESC, 동시각 타이는 id DESC로 결정론, 최근 LEVEL_WINDOW개
    */
@@ -1105,6 +1118,7 @@ export class QuizService {
       .andWhere('r.subtest = :subtest', { subtest })
       .andWhere('r.presented_level = :lvl', { lvl: currentLevel })
       .andWhere('r.assisted = false')
+      .andWhere('r.unscored = false')
       .orderBy('r.created_at', 'DESC')
       .addOrderBy('r.id', 'DESC')
       .limit(LEVEL_WINDOW);
@@ -1230,6 +1244,9 @@ export class QuizService {
       .andWhere('r.subtest = :subtest', { subtest })
       // 보호자가 넘어가기로 통과시킨 건 실력 근거가 아니라 재출제 판단에서 뺀다.
       .andWhere('r.assisted = false')
+      // 채점 불가도 뺀다. is_correct가 false로 들어 있어 그대로 두면 "방금 틀린
+      // 문항"으로 잡혀 재출제 1순위가 된다 — 실제로는 못 잰 것뿐이다.
+      .andWhere('r.unscored = false')
       .andWhere('r.created_at >= now() - make_interval(days => :days)', { days })
       .groupBy('r.item_ref')
       // 1순위: 최근에 틀린 문항(false < true). 2순위: 마지막 출제가 오래된 것 —
@@ -1339,9 +1356,14 @@ export class QuizService {
       .createQueryBuilder('r')
       .select("to_char(date_trunc('week', r.created_at), 'YYYY-MM-DD')", 'weekStart')
       .addSelect('r.subtest', 'subtest')
-      .addSelect('COUNT(*) FILTER (WHERE NOT r.assisted)', 'total')
+      // 채점 불가(unscored)는 오답이 아니라 측정 실패다. 분모에서 뺀다 —
+      // 넣으면 Azure가 흔들린 날마다 환자가 퇴행한 것처럼 보인다.
       .addSelect(
-        'SUM(CASE WHEN r.is_correct AND NOT r.assisted THEN 1 ELSE 0 END)',
+        'COUNT(*) FILTER (WHERE NOT r.assisted AND NOT r.unscored)',
+        'total',
+      )
+      .addSelect(
+        'SUM(CASE WHEN r.is_correct AND NOT r.assisted AND NOT r.unscored THEN 1 ELSE 0 END)',
         'correct',
       )
       .addSelect('AVG(r.score)', 'avgScore')
@@ -1407,14 +1429,22 @@ export class QuizService {
   ): Promise<QabSummaryResult> {
     const raw = await this.qabResultRepository
       .createQueryBuilder('r')
-      // total/correct는 보호자 도움(assisted) 문항을 제외해 환자 실제 수행만 집계한다.
+      // total/correct는 두 종류를 제외해 "환자가 혼자 했고, 실제로 잰" 것만
+      // 남긴다 — 보호자 도움(assisted)과 채점 불가(unscored). 앞은 수행이
+      // 환자 것이 아니고, 뒤는 수행은 있었으나 **측정에 실패**한 것이다.
+      // 둘 다 오답이 아니므로 분모에 있으면 정확도를 끌어내린다.
       .select('r.subtest', 'subtest')
-      .addSelect('COUNT(*) FILTER (WHERE NOT r.assisted)', 'total')
       .addSelect(
-        'SUM(CASE WHEN r.is_correct AND NOT r.assisted THEN 1 ELSE 0 END)',
+        'COUNT(*) FILTER (WHERE NOT r.assisted AND NOT r.unscored)',
+        'total',
+      )
+      .addSelect(
+        'SUM(CASE WHEN r.is_correct AND NOT r.assisted AND NOT r.unscored THEN 1 ELSE 0 END)',
         'correct',
       )
       .addSelect('SUM(CASE WHEN r.assisted THEN 1 ELSE 0 END)', 'assisted')
+      // 세어서 내보낸다. 채점 실패율을 아무도 볼 수 없으면 조용히 망가진다.
+      .addSelect('SUM(CASE WHEN r.unscored THEN 1 ELSE 0 END)', 'unscored')
       .addSelect('AVG(r.metric)', 'avgMetric')
       .addSelect('MAX(r.metric)', 'maxMetric')
       .addSelect('AVG(r.score)', 'avgScore')
@@ -1426,6 +1456,7 @@ export class QuizService {
         total: string;
         correct: string;
         assisted: string;
+        unscored: string;
         avgMetric: string | null;
         maxMetric: string | null;
         avgScore: string | null;
@@ -1436,6 +1467,7 @@ export class QuizService {
       const total = Number(row.total);
       const correct = Number(row.correct);
       const assisted = Number(row.assisted);
+      const unscored = Number(row.unscored);
       const avgMetric =
         row.avgMetric === null ? null : Math.round(Number(row.avgMetric) * 10) / 10;
       const maxMetric = row.maxMetric === null ? null : Number(row.maxMetric);
@@ -1453,6 +1485,7 @@ export class QuizService {
         correct,
         accuracy: total > 0 ? Math.round((correct / total) * 100) : 0,
         assisted,
+        unscored,
         avgMetric,
         maxMetric,
         avgScore,

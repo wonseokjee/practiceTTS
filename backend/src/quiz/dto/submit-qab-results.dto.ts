@@ -32,6 +32,13 @@ export class QabResultItemDto {
   @IsBoolean()
   assisted?: boolean;
 
+  // 채점 불가 — 음향 발음 평가를 얻지 못해 판정을 내리지 않은 문항.
+  // true면 isCorrect는 무의미하며(false로 온다) 정확도 분모에서 빠진다.
+  // "못 쟀다"를 "못했다"로 기록하지 않기 위한 플래그다.
+  @IsOptional()
+  @IsBoolean()
+  unscored?: boolean;
+
   // ddk 감지 횟수 등(없으면 생략). 비현실적 값 방지로 0..1000 범위.
   @IsOptional()
   @IsInt()
