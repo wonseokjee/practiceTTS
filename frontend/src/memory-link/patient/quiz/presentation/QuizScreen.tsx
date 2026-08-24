@@ -8,7 +8,7 @@
 //   key(item.id)로 리마운트해 선택 상태를 초기화한다.
 // - qab_word 항목: WordCompQuizItem(듣고 그림 고르기)을 렌더하고 로컬 채점한다.
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMixedQuizSession } from '../application/useMixedQuizSession.js';
 import type { UseMixedQuizDeps } from '../application/useMixedQuizSession.js';
 import type { AttemptResult, QuizQuestionPublic, YesNoAnswer } from '../domain/Quiz.js';
@@ -40,6 +40,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
   const [state, actions] = useMixedQuizSession(quizSetId, deps);
   // Phase 6: 보호자 한마디 카드를 퀴즈 앞에 한 번 노출 (있을 때만).
   const [wishDismissed, setWishDismissed] = useState(false);
+  const feedbackRef = useRef<HTMLDivElement>(null);
   const {
     phase,
     currentIndex,
@@ -54,6 +55,30 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
     isSessionExpired,
     attempt,
   } = state;
+  // 답한 뒤 "다음 문제"를 화면 안으로 끌어온다(연습 화면 ISSUE-001과 같은 수정).
+  //
+  // **실측(400×720, 2026-08-24).** 그림 격자는 2열이고 카드 178px + 간격 12px,
+  // 격자 top 180px이다. 피드백 블록(문구 + 버튼)은 124px.
+  //
+  //   레벨 1    보기 2개    1행   버튼 바닥 482   들어옴
+  //   레벨 2~4  보기 3~4개  2행   버튼 바닥 672   들어옴
+  //   레벨 5    보기 5개    3행   버튼 바닥 862   **접힘**
+  //
+  // TODO-112는 "4지선다에서 y=888"로 적혀 있었지만 그건 적응 레벨이 붙기 전
+  // 기준이다. 지금 4지선다는 672로 들어오고, 레벨 5의 5지선다만 밀려난다.
+  // 화면에는 카드만 남고 앞으로 갈 방법이 안 보인다 — 어르신에게는 막다른 길이다.
+  //
+  // block:'nearest'는 필요한 만큼만 스크롤하므로 이미 보이는 레벨 1~4와 큰
+  // 화면에서는 아무 일도 하지 않는다. **훅은 조기 반환보다 위에 있어야 한다** —
+  // 로딩·에러·한마디 카드가 아래에서 먼저 반환하므로 여기가 유일하게 맞는 자리다.
+  useEffect(() => {
+    if (phase !== 'feedback') return;
+    const el = feedbackRef.current;
+    // jsdom에는 scrollIntoView가 없다.
+    if (!el || typeof el.scrollIntoView !== 'function') return;
+    el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [phase, currentIndex]);
+
 
   // ── 로딩 ──────────────────────────────────────────────────────
   if (phase === 'loading') {
@@ -257,7 +282,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
 
       {/* 피드백 + 다음 버튼 */}
       {showFeedback && lastResult !== null && (
-        <div className="mt-6">
+        <div className="mt-6" ref={feedbackRef}>
           <p
             className={`mb-4 text-center text-lg font-bold ${
               lastResult.isCorrect ? 'text-[#1F5240]' : 'text-[#7A2E15]'
