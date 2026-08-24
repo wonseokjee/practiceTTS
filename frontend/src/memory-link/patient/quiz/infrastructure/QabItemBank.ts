@@ -719,26 +719,57 @@ export function pickWordItems(count: number, level?: number): QabImageItem[] {
  * "레벨 5 정답률"이 실제로는 레벨 1과 같은 문항의 정답률이라, 보호자가 보는
  * 눈높이가 회복을 뜻하지 않게 된다.
  */
-const SENT_TYPES_BY_LEVEL: Record<number, readonly string[]> = {
-  1: ['active-passive'],
-  2: ['active-passive'],
-  3: ['active-passive', 'relative-clause'],
-  4: ['active-passive', 'relative-clause'],
-  5: ['active-passive', 'relative-clause', 'embedded-clause'],
+/**
+ * 레벨 → 통사 유형. **밴드는 셋이다.**
+ *
+ * | 레벨 | 유형 | 문항 수 |
+ * |-----|------|--------|
+ * | 1~2 | 능동/수동 | 14 |
+ * | 3~4 | 관계절   |  8 |
+ * |  5  | 내포절   |  4 |
+ *
+ * ── 5단계인 척을 하지 않는다 ────────────────────────────────────
+ *
+ * 자극이 3유형뿐이라 밴드도 셋이다. 5행으로 적으면 5단계인 것처럼 보이지만
+ * 실제로는 셋이고, 그 거짓말은 이 저장소에서 이미 두 번 났다(글자 조합의
+ * glyph-level-axis, 단어 이해의 word-foil-axis). 여기서는 밴드가 셋이라고
+ * 적고, 늘리는 조건은 TODOS의 sent-level-axis에 적어 둔다.
+ *
+ * ── 누적을 끊었다 ───────────────────────────────────────────────
+ *
+ * 예전에는 허용 유형이 **누적**이었다(레벨 5 = 능동수동 + 관계절 + 내포절).
+ * 그러면 레벨 안에서 난이도가 희석된다 — 레벨 5에서 내포절이 뽑힐 확률이
+ * 4/26 = **15%**뿐이라 "레벨 5 정답률"의 85%가 낮은 레벨과 같은 문항이었다.
+ * 적응 레벨링은 그 부풀린 값을 보고 승급을 판단한다.
+ *
+ * 단어 이해는 오답을 코드가 조립하므로 축을 새로 세울 수 있었지만, 문장은
+ * 선택지가 JSON 고정 그림 쌍이라(`sentComp_01_correct.png` / `_distractor.png`)
+ * 변형할 여지가 없다. 여기서 쓸 수 있는 손잡이는 **어느 유형을 내는가**뿐이다.
+ */
+const SENT_TYPE_BY_LEVEL: Record<number, string> = {
+  1: 'active-passive',
+  2: 'active-passive',
+  3: 'relative-clause',
+  4: 'relative-clause',
+  5: 'embedded-clause',
 };
 
-/** 이 레벨에서 낼 수 있는 통사 유형. (테스트 노출) */
-export function sentTypesForLevel(level?: number): readonly string[] {
-  return SENT_TYPES_BY_LEVEL[normalizeLevel(level, COLD_START_LEVEL)];
+/** 이 레벨이 내는 통사 유형 하나. (테스트 노출) */
+export function sentTypeForLevel(level?: number): string {
+  return SENT_TYPE_BY_LEVEL[normalizeLevel(level, COLD_START_LEVEL)];
 }
 
 /**
- * 레벨이 허용하는 통사 유형만 남긴다. 모자라면 전체 풀로 되돌려
- * 세션이 비지 않게 한다(난이도가 어긋나는 편이 문항이 사라지는 것보다 낫다).
+ * 이 레벨의 통사 유형만 남긴다. 모자라면 전체 풀로 되돌려 세션이 비지 않게
+ * 한다(난이도가 어긋나는 편이 문항이 사라지는 것보다 낫다).
+ *
+ * 가장 얇은 밴드가 내포절 **4문항**이다. 한 세션의 문장 슬롯은 0~2개라 되돌림은
+ * 사실상 안 걸리지만, 같은 문항이 자주 돌아오는 것은 남는 위험이다 —
+ * 2지선다라 외우면 그냥 맞는다. TODOS의 sent-level-axis에 적어 뒀다.
  */
 function sentPoolForLevel(want: number, level?: number): RawSentItem[] {
-  const allowed = new Set(sentTypesForLevel(level));
-  const eligible = SENT_ITEMS.filter((it) => allowed.has(it.sentenceType));
+  const type = sentTypeForLevel(level);
+  const eligible = SENT_ITEMS.filter((it) => it.sentenceType === type);
   return eligible.length >= want ? eligible : [...SENT_ITEMS];
 }
 
@@ -756,19 +787,35 @@ export function pickSentItems(count: number, level?: number): QabImageItem[] {
  * 두 뱅크를 합쳐 셔플 → count개. 한쪽이 부족하면 다른 쪽에서 더 채워진다.
  * levels로 단어/문장 각각의 제시 레벨을 지정한다(미지정 시 기존 동작=레벨 3).
  */
+/**
+ * QAB 슬롯 하나가 문장 이해로 갈 확률 — 낱말 90 : 문장 26.
+ *
+ * **레벨과 무관해야 한다.** 예전에는 문장 풀을 단어 풀과 한 통에 붓고 섞어서,
+ * 레벨이 허용하는 문장 수가 곧 추첨 가중치가 됐다. 환자의 문장 레벨이 오를수록
+ * 문장 문항이 더 자주 나온 것이다 — 실측으로 레벨 1~2에서 13.7%, 3~4에서 20.3%,
+ * 5에서 22.7%였다. 검사 구성이 환자 실력에 따라 달라지면 하위검사끼리 비교가
+ * 깨지고, 통사 유형을 바꾸는 이번 수정에서는 더 심해진다(내포절 4문항 → 4%).
+ *
+ * 몫은 자료가 정한다. 다른 근거가 없어 낱말과 문장의 문항 수 비를 그대로 쓴다.
+ */
+const SENT_SLOT_SHARE =
+  SENT_ITEMS.length / (WORD_ITEMS.length + SENT_ITEMS.length);
+
 export function pickQabItems(
   count: number,
   levels?: { word?: number; sentence?: number },
+  rng: () => number = Math.random,
 ): QabImageItem[] {
-  const pool: QabImageItem[] = [
-    ...WORD_ITEMS.map((it) => toWordItem(it, levels?.word)),
-    // 문장은 레벨이 허용하는 통사 유형만 — 단어처럼 오답거리를 조절할 수 없는
-    // 대신 자극의 복잡도로 난이도를 준다.
-    ...sentPoolForLevel(count, levels?.sentence).map((it) =>
-      toSentItem(it, levels?.sentence),
-    ),
-  ];
-  return shuffle(pool).slice(0, Math.max(0, count));
+  const want = Math.max(0, count);
+  // 슬롯마다 단어/문장을 먼저 정하고, 그 다음 각 풀에서 뽑는다. 풀 크기가
+  // 추첨에 새어 들어가지 않게 하는 것이 요점이다.
+  let sentWanted = 0;
+  for (let i = 0; i < want; i += 1) {
+    if (rng() < SENT_SLOT_SHARE) sentWanted += 1;
+  }
+  const sent = pickSentItems(sentWanted, levels?.sentence);
+  const words = pickWordItems(want - sent.length, levels?.word);
+  return shuffle([...sent, ...words]);
 }
 
 /** 뱅크 문항 수 (단어/문장 합계) */

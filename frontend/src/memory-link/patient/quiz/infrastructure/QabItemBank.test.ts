@@ -6,7 +6,7 @@ import sentMirrorRaw from '../../../../assets/data/qabSentMirror.json';
 import sentGeneratedRaw from '../../../../assets/data/qabSentGenerated.json';
 import {
   WORD_CATEGORY,
-  sentTypesForLevel,
+  sentTypeForLevel,
   asItemRef,
   asWordLabel,
   buildSpellTiles,
@@ -542,27 +542,76 @@ describe('pickSentItems — 통사 복잡도 위계', () => {
     }
   });
 
-  it('레벨 5는 내포절까지 낸다 — 작업기억 부담이 최대인 유형', () => {
-    const types = new Set(반복추출(5, 40).map(typeOf));
-
-    expect(types.has('embedded-clause')).toBe(true);
-  });
-
-  it('레벨 3~4는 관계절을 포함하되 내포절은 내지 않는다', () => {
-    const types = new Set(반복추출(3, 40).map(typeOf));
-
-    expect(types.has('relative-clause')).toBe(true);
-    expect(types.has('embedded-clause')).toBe(false);
-  });
-
-  it('레벨을 안 주면 콜드스타트(2)의 유형만 낸다', () => {
-    expect(sentTypesForLevel()).toEqual(sentTypesForLevel(2));
+  it('레벨을 안 주면 콜드스타트(2)의 유형을 낸다', () => {
+    expect(sentTypeForLevel()).toBe(sentTypeForLevel(2));
   });
 
   it('허용 유형이 부족하면 전체 풀로 되돌려 세션이 비지 않게 한다', () => {
     // 문항이 조용히 사라지는 것보다 난이도가 어긋나는 편이 낫다.
-    expect(pickSentItems(100, 1).length).toBeGreaterThan(
-      sentTypesForLevel(1).length,
-    );
+    // 내포절 밴드가 4문항이라, 100개를 달라고 하면 되돌림이 걸린다.
+    expect(pickSentItems(100, 5).length).toBeGreaterThan(4);
+  });
+
+  /**
+   * **밴드가 누적이면 레벨 안에서 난이도가 희석된다.**
+   *
+   * 예전에는 허용 유형이 누적이라(레벨 5 = 능동수동 + 관계절 + 내포절) 레벨 5에서
+   * 내포절이 뽑힐 확률이 4/26 = 15%뿐이었다. "레벨 5 정답률"의 85%가 낮은 레벨과
+   * 같은 문항이었고, 적응 레벨링은 그 부풀린 값으로 승급을 판단했다.
+   */
+  it('각 레벨은 자기 유형만 낸다 — 누적이 아니다', () => {
+    const expected: Array<[number, string]> = [
+      [1, 'active-passive'],
+      [2, 'active-passive'],
+      [3, 'relative-clause'],
+      [4, 'relative-clause'],
+      [5, 'embedded-clause'],
+    ];
+    for (const [lv, type] of expected) {
+      const seen = new Set(반복추출(lv, 40).map(typeOf));
+      expect([...seen]).toEqual([type]);
+    }
+  });
+});
+
+/**
+ * **검사 구성이 환자 실력에 따라 달라지면 안 된다.**
+ *
+ * 예전에는 단어 풀과 문장 풀을 한 통에 붓고 섞어서, 레벨이 허용하는 문장 수가
+ * 곧 추첨 가중치가 됐다. 환자의 문장 레벨이 오를수록 문장 문항이 더 자주 나온다 —
+ * 실측 13.7%(레벨 1~2) → 20.3%(3~4) → 22.7%(5). 하위검사끼리 비교가 깨진다.
+ *
+ * 통사 유형을 비누적으로 바꾸면 이 새는 구멍이 더 커진다(내포절 4문항 → 4%).
+ * 그래서 두 수정이 한 묶음이다.
+ */
+describe('pickQabItems — 단어/문장 몫', () => {
+  /** 레벨 lv에서 QAB 슬롯 중 문장이 차지한 비율. */
+  function sentShare(lv: number, draws = 3000): number {
+    let sent = 0;
+    let total = 0;
+    for (let i = 0; i < draws; i += 1) {
+      for (const it of pickQabItems(2, { word: 3, sentence: lv })) {
+        total += 1;
+        if (it.category === 'sentence') sent += 1;
+      }
+    }
+    return sent / total;
+  }
+
+  it('문장 출제 비율이 문장 레벨에 흔들리지 않는다', () => {
+    const shares = [1, 3, 5].map((lv) => sentShare(lv));
+    // 통사 유형별 풀 크기는 14 / 8 / 4로 3.5배 차이가 난다. 그게 비율에 새면
+    // 여기서 벌어진다. 무작위 추출이라 폭을 조금 준다.
+    for (const sh of shares) {
+      expect(Math.abs(sh - shares[0])).toBeLessThan(0.03);
+    }
+  });
+
+  it('요청 개수를 정확히 채운다', () => {
+    for (const lv of [1, 3, 5]) {
+      for (let i = 0; i < 50; i += 1) {
+        expect(pickQabItems(2, { word: 3, sentence: lv })).toHaveLength(2);
+      }
+    }
   });
 });
