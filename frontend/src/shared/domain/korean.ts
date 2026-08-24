@@ -72,3 +72,21 @@ export function sharesOnsetOrNucleus(a: string, b: string): boolean {
   if (x === null || y === null) return false;
   return x.onset === y.onset || x.nucleus === y.nucleus;
 }
+
+/**
+ * 두 **낱말**의 첫 음절 초성이 같은가 — 음운 유인지의 표준 기준.
+ *
+ * 실어증 단어-그림 대응 검사에서 유인지는 두 갈래다. 의미 유인지('사과'에 대한
+ * '바나나')는 의미 체계 손상을 잡고, **음운 유인지**('사과'에 대한 '사자')는
+ * 음운 처리 손상을 잡는다. 둘은 다른 것을 재므로 한 문항에서 섞지 않는다.
+ *
+ * 어두 음소 겹침을 기준으로 삼는 이유는 한국어 낱말 인지가 초성에 크게 기대기
+ * 때문이다. {@link sharesOnsetOrNucleus}처럼 중성까지 허용하면 '가위'가 '사과'의
+ * 음운 유인지가 되는데(ㅏ만 공유), 그건 유인지로서 너무 약하다.
+ */
+export function sharesInitialConsonant(a: string, b: string): boolean {
+  const x = onsetAndNucleus(a.trimStart().charAt(0));
+  const y = onsetAndNucleus(b.trimStart().charAt(0));
+  if (x === null || y === null) return false;
+  return x.onset === y.onset;
+}

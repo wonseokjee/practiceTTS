@@ -18,7 +18,10 @@ import {
   pickWordItems,
   qabItemCount,
 } from './QabItemBank.js';
-import { sharesOnsetOrNucleus } from '../../../../shared/domain/korean.js';
+import {
+  sharesInitialConsonant,
+  sharesOnsetOrNucleus,
+} from '../../../../shared/domain/korean.js';
 
 /** 선택지 imageUrl("/…/apple.svg")에서 slug를 뽑는다. */
 function slugOf(url: string): string {
@@ -145,20 +148,97 @@ describe('QabItemBank', () => {
       }
     });
 
-    it('높은 레벨(4)일수록 큰 범주 정답의 같은 범주 오답이 많다(변별↑)', () => {
-      const big = new Set(['animal', 'food', 'object']);
-      for (const item of pickWordItems(60, 4)) {
-        const correct = item.choices.find((c) => c.isCorrect)!;
-        const cat = WORD_CATEGORY[slugOf(correct.imageUrl)] ?? 'object';
-        if (!big.has(cat)) continue;
-        const sameCat = item.choices.filter(
-          (c) =>
-            !c.isCorrect &&
-            (WORD_CATEGORY[slugOf(c.imageUrl)] ?? 'object') === cat,
+    /**
+     * **오답 두 갈래가 레벨대로 채워지는가.**
+     *
+     * 예전 테스트는 `big = animal|food|object`로 **큰 범주만 검사했다.** 작은
+     * 범주는 같은 범주 오답 3~4개를 못 채워 통과할 수 없었기 때문이다. 면제가
+     * 곧 버그의 자백이었다 — 못 채운 자리는 무관 오답으로 조용히 메워져
+     * 문항은 쉬워지고 기록만 레벨 4·5로 남았다(실측 20%·33%).
+     *
+     * 의미 오답을 2로 고정하니(최소 범주가 3개 = 정답 + 동료 2) 면제가 필요
+     * 없다. 아래 테스트는 **90개 낱말 전부**를 훑는다.
+     */
+    describe('오답 구성이 레벨을 따른다', () => {
+      const catOf = (url: string) => WORD_CATEGORY[slugOf(url)] ?? 'object';
+
+      /** 정답 기준으로 오답 하나를 의미/음운/무관으로 가른다. */
+      function classify(targetLabel: string, targetCat: string, foil: {
+        label: string;
+        imageUrl: string;
+      }): 'semantic' | 'phonological' | 'unrelated' {
+        if (catOf(foil.imageUrl) === targetCat) return 'semantic';
+        const near = sharesInitialConsonant(targetLabel, foil.label);
+        const loose = sharesOnsetOrNucleus(
+          targetLabel.charAt(0),
+          foil.label.charAt(0),
         );
-        // 레벨4 = 오답 3개 전부 같은 범주
-        expect(sameCat.length).toBeGreaterThanOrEqual(3);
+        return near || loose ? 'phonological' : 'unrelated';
       }
+
+      function tally(level: number) {
+        const out = { semantic: 0, phonological: 0, unrelated: 0, items: 0 };
+        for (const item of pickWordItems(90, level)) {
+          const correct = item.choices.find((c) => c.isCorrect)!;
+          const cat = catOf(correct.imageUrl);
+          out.items += 1;
+          for (const f of item.choices.filter((c) => !c.isCorrect)) {
+            out[classify(correct.label, cat, f)] += 1;
+          }
+        }
+        return out;
+      }
+
+      it('의미 오답은 낱말 90개 전부에서 스펙만큼 채워진다', () => {
+        // 작은 범주(주방·욕실·연장·가구·악기·가전 = 3개짜리)도 예외가 아니다.
+        // 여기가 무너지면 못 채운 자리가 무관 오답으로 메워져, 환자가 푼 문항은
+        // 쉬운데 기록은 레벨 4·5가 된다.
+        for (const [level, want] of [[3, 2], [4, 2], [5, 2]] as const) {
+          const t = tally(level);
+          expect(t.semantic).toBe(t.items * want);
+        }
+      });
+
+      it('레벨 4·5에는 무관 오답이 없다', () => {
+        // 무관 오답은 눈으로 바로 걸러진다. 최고 난도에 섞이면 그 문항은
+        // 레벨이 약속한 난도가 아니다.
+        expect(tally(4).unrelated).toBe(0);
+        expect(tally(5).unrelated).toBe(0);
+      });
+
+      it('음운 오답 개수는 레벨 4에서 1개, 5에서 2개다', () => {
+        // 어두 초성이 유일한 낱말(꽃·빵)은 1순위 후보가 0개라 느슨한 기준으로
+        // 내려가 채운다. 개수를 줄이지 않는 것이 요점이다.
+        const four = tally(4);
+        const five = tally(5);
+        expect(four.phonological).toBe(four.items);
+        expect(five.phonological).toBe(five.items * 2);
+      });
+
+      it('음운 오답은 정답과 다른 범주에서 온다', () => {
+        // 의미와 음운이 한 오답에 겹치면 환자가 그걸 골랐을 때 어느 축에서
+        // 틀렸는지 못 읽는다. 두 축을 나눈 목적이 그 구분이다.
+        for (const item of pickWordItems(90, 5)) {
+          const correct = item.choices.find((c) => c.isCorrect)!;
+          const cat = catOf(correct.imageUrl);
+          const phon = item.choices.filter(
+            (c) =>
+              !c.isCorrect &&
+              classify(correct.label, cat, c) === 'phonological',
+          );
+          for (const f of phon) expect(catOf(f.imageUrl)).not.toBe(cat);
+        }
+      });
+
+      it('레벨 3→4는 선택지 수가 같고 오답의 질만 바뀐다', () => {
+        // 한 단계에 한 군데만 움직인다. 무관 1개가 음운 1개로 교체된다.
+        const three = tally(3);
+        const four = tally(4);
+        expect(three.items).toBe(four.items);
+        expect(three.semantic).toBe(four.semantic);
+        expect(three.unrelated).toBeGreaterThan(0);
+        expect(four.unrelated).toBe(0);
+      });
     });
 
     it('presentedLevel을 항목에 스탬핑한다', () => {
