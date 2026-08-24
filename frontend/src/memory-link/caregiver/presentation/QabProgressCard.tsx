@@ -47,6 +47,55 @@ const IS_REACTION_BASED = (subtest: string): boolean => subtest === 'loc';
  */
 const IS_DRILL_BASED = (subtest: string): boolean => subtest === 'spell';
 
+/**
+ * 오답 갈래를 말하기 시작하는 최소 표본.
+ *
+ * 두세 개로 "소리에서 어려워한다"고 말하면 우연을 손상으로 읽는 것이다. 보호자는
+ * 이 문장을 근거로 연습 방향을 바꾸므로, 말할 수 없을 때는 **아무 말도 안 하는
+ * 편이 낫다.**
+ */
+const MIN_FOIL_SAMPLE = 5;
+
+/**
+ * 오답 갈래 한 줄 — 정답률이 못 하는 말을 한다.
+ *
+ * "정답률 24%"는 몇 개 틀렸는지까지만 말한다. 무엇이 어려운지는 **어떤 오답을
+ * 골랐는가**가 말한다. 뜻이 가까운 그림을 반복해 고르면 의미 쪽, 소리가 닮은
+ * 그림이면 음운 쪽이다.
+ *
+ * **0을 안전하게 읽으면 안 된다.** 소리가 닮은 그림은 눈높이 4단계부터 나오므로
+ * (`LEVEL_CHOICE_SPEC`), 그 아래 환자는 고를 기회 자체가 없어 0이 된다. 0은
+ * "소리는 괜찮다"가 아니라 "아직 안 물어봤다"이다 — 그래서 안내에 그 사실을
+ * 같이 적는다.
+ */
+function FoilKindLine({
+  foilKinds,
+}: {
+  foilKinds: NonNullable<QabSubtestSummary['foilKinds']>;
+}) {
+  const { semantic, phonological } = foilKinds;
+  // 무관 오답은 세지 않는다. 어느 축의 어려움도 가리키지 않아, 넣으면 분모만
+  // 키워 두 갈래의 대비를 흐린다.
+  const counted = semantic + phonological;
+  if (counted < MIN_FOIL_SAMPLE) return null;
+
+  return (
+    <p
+      className="mt-2 text-sm leading-relaxed text-[#5C6661]"
+      title="소리가 닮은 그림은 눈높이 4단계부터 나와요. 그 아래에서는 고를 기회가 없어 0으로 보입니다."
+    >
+      고른 오답 {counted}개 중{' '}
+      <span className="font-semibold text-[#1F2A26]">
+        뜻이 가까운 그림 {semantic}개
+      </span>
+      ,{' '}
+      <span className="font-semibold text-[#1F2A26]">
+        소리가 닮은 그림 {phonological}개
+      </span>
+    </p>
+  );
+}
+
 type LoadState = 'loading' | 'ready' | 'error';
 
 export function QabProgressCard({
@@ -189,6 +238,11 @@ export function QabProgressCard({
                     style={{ width: `${it.accuracy}%` }}
                   />
                 </div>
+              )}
+              {/* 오답 갈래 — 단어 이해에만 값이 있다(오답을 코드가 조립하는
+                  유일한 과제라 갈래를 알 수 있다). */}
+              {it.foilKinds != null && (
+                <FoilKindLine foilKinds={it.foilKinds} />
               )}
             </li>
           );
