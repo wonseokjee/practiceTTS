@@ -384,6 +384,53 @@ score만 받아 **영역 외 터치도 '무반응'으로 기록**했다. 라벨�
 **Context:** `backend/src/auth/effective-patient-id.util.ts` + saveQabResults. 레벨 재계산 시 세션 출처 플래그를 보고 patient-origin 결과만 반영. 관측성으로 오염 빈도 먼저 실측 후 결정 가능.
 **Depends on:** skill_levels + 레벨 재계산 구현.
 
+## [foil-kind] 오답 갈래를 기록한다 — 절반 해결 (2026-08-23)
+
+**What:** 환자가 고른 오답이 **의미 유인지**였는지 **음운 유인지**였는지를
+`qab_results.foil_kind`에 남긴다.
+**Why:** word-foil-axis(#59)가 오답을 두 갈래로 갈라 내기 시작했는데, 어느 쪽을
+골랐는지 안 남기면 그 구분이 화면까지 못 온다. 보호자 화면은 "단어 이해 정답률 24%"
+까지만 말하고, 그 24%가 의미를 못 잡아서인지 소리를 못 잡아서인지는 말하지 못한다.
+실어증에서 그 둘은 다른 손상이고 재활에서 다른 대응을 부른다.
+
+**해결한 쪽 — 기록한다.** 갈래는 **뽑는 자리에서** 붙인다
+(`buildControlledChoices` → `QabImageChoice.foilKind`). 나중에 라벨과 범주를 보고
+되짚을 수도 있지만, 같은 낱말이 두 조건을 동시에 만족하면 실제로 어느 통에서
+왔는지와 어긋난다. 만든 쪽이 아는 사실을 그대로 들고 다니게 했다.
+
+M21 마이그레이션이 `foil_kind VARCHAR(16) NULL` + 부분 인덱스를 더한다. **NULL이
+정상이다** — 맞힌 문항, 단어이해가 아닌 하위검사, 컬럼 이전의 옛 행. 기본값을 채워
+"모름"을 "무관"으로 바꾸면 없는 사실이 생긴다.
+
+**채점에 안 물린다.** 낱말 뱅크가 프론트에 있어 서버가 되짚을 수 없는 클라이언트
+관측값이라(`presented_level`은 서버가 확정하는 것과 대비된다) 측정에 물리면 조작으로
+레벨이 움직인다. 정확도·레벨 재계산 어디도 이 값을 보지 않으며, 테스트로 못을 박았다.
+
+**실측(브라우저 → DB):**
+
+```
+item_ref  is_correct  foil_kind    at
+qw_019    false       unrelated    08-24 20:18   ← 이번 세션
+qw_054    true        (null)       08-24 20:17   ← 맞히면 안 남는다
+qw_026    false       (null)       08-17 15:24   ← 컬럼 이전의 옛 행
+```
+최근 30분 내 "오답인데 갈래 없는 word 행" = 0.
+
+**안 한 쪽 — 보여준다.** 집계와 보호자 화면이 아직 없다. `getQabSummary`가
+GROUP BY subtest로 도는 자리에 갈래별 오답 수를 두 줄 더하고, 단어 이해 카드에
+한 줄("틀린 6개 중 소리에서 4개")을 붙이면 된다. **데이터가 먼저 쌓여야 화면이 뜻을
+갖는다**는 판단으로 끊었다.
+
+**곁다리로 처리한 것 — `QAB_MANIFEST_VERSION` 2 → 3.** 이 상수의 주석은 "문항 풀과
+난이도 의미가 바뀌면 올리라"고 적혀 있는데, 오늘 머지된 #58·#59·#60이 정확히 세
+하위검사의 레벨→난이도 매핑을 바꿔놓고 안 올렸다. 세 PR에서 "presented_level의 뜻이
+앞뒤로 다르다"고 반복해 적었던 그 경계를 표시하는 장치가 이미 있었던 셈이다.
+
+**관련 파일:** `backend/src/database/migrations/1785100000000-add-qab-foil-kind.ts`,
+`backend/src/quiz/constants/qab-foil-kind.ts`,
+`frontend/src/memory-link/patient/quiz/infrastructure/QabItemBank.ts`
+(`buildControlledChoices`)
+
 ## ~~[word-foil-axis] 단어 이해 레벨 4·5가 조용히 쉬워진다~~ — 해결 (2026-08-23)
 
 **What:** `LEVEL_CHOICE_SPEC`이 레벨 4에 같은 범주 오답 3개, 5에 4개를 요구했다.

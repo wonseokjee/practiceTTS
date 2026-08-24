@@ -20,6 +20,7 @@ import type {
   QabImageItem,
   QabNamingItem,
   QabSpellItem,
+  QabFoilKind,
 } from '../domain/MixedQuiz.js';
 import {
   sharesInitialConsonant,
@@ -296,8 +297,16 @@ export function buildControlledChoices(target: MasterWord, level?: number) {
     MASTER_WORDS.filter((w) => w.category !== target.category),
   );
 
-  const foils: MasterWord[] = [];
-  foils.push(...sameCat.slice(0, sameCatWanted)); // 같은 범주(부족하면 그만큼만)
+  // 갈래를 **뽑는 자리에서** 붙여 들고 다닌다. 나중에 되짚으면 같은 낱말이 두
+  // 조건을 동시에 만족할 때 실제로 어느 통에서 왔는지와 어긋난다.
+  const foils: Array<{ word: MasterWord; kind: QabFoilKind }> = [];
+  const has = (w: MasterWord) => foils.some((f) => f.word.slug === w.slug);
+  // 같은 범주(부족하면 그만큼만)
+  foils.push(
+    ...sameCat
+      .slice(0, sameCatWanted)
+      .map((w) => ({ word: w, kind: 'semantic' as const })),
+  );
 
   // ── 음운 유인지 ────────────────────────────────────────────────
   //
@@ -311,8 +320,7 @@ export function buildControlledChoices(target: MasterWord, level?: number) {
   // 그대로라 레벨이 거짓말을 한다.
   const phonWanted = Math.min(spec.phon, foilTotal - foils.length);
   if (phonWanted > 0) {
-    const taken = new Set(foils.map((f) => f.slug));
-    const pool = otherCat.filter((w) => !taken.has(w.slug));
+    const pool = otherCat.filter((w) => !has(w));
     const near = shuffle(
       pool.filter((w) => sharesInitialConsonant(target.label, w.label)),
     );
@@ -323,28 +331,46 @@ export function buildControlledChoices(target: MasterWord, level?: number) {
           sharesOnsetOrNucleus(target.label.charAt(0), w.label.charAt(0)),
       ),
     );
-    foils.push(...[...near, ...loose].slice(0, phonWanted));
+    foils.push(
+      ...[...near, ...loose]
+        .slice(0, phonWanted)
+        .map((w) => ({ word: w, kind: 'phonological' as const })),
+    );
   }
 
   for (const w of otherCat) {
     // 무관 오답으로 나머지를 채운다(같은 범주가 모자랄 때도 여기서 보충).
     if (foils.length >= foilTotal) break;
-    if (!foils.some((f) => f.slug === w.slug)) foils.push(w);
+    if (!has(w)) foils.push({ word: w, kind: 'unrelated' });
   }
-  // 그래도 부족하면(풀이 아주 작을 때) 아무거나 채운다.
+  // 그래도 부족하면(풀이 아주 작을 때) 아무거나 채운다. 이때만 같은 범주가
+  // 무관 자리에 올 수 있어, 갈래는 실제 범주를 보고 정한다.
   if (foils.length < foilTotal) {
     for (const w of shuffle(MASTER_WORDS)) {
       if (foils.length >= foilTotal) break;
-      if (w.slug !== target.slug && !foils.some((f) => f.slug === w.slug)) {
-        foils.push(w);
+      if (w.slug !== target.slug && !has(w)) {
+        foils.push({
+          word: w,
+          kind: w.category === target.category ? 'semantic' : 'unrelated',
+        });
       }
     }
   }
 
   const raw = [
-    { slug: target.slug, label: target.label, imageUrl: target.imageUrl, isCorrect: true },
+    {
+      slug: target.slug,
+      label: target.label,
+      imageUrl: target.imageUrl,
+      isCorrect: true,
+      kind: undefined as QabFoilKind | undefined,
+    },
     ...foils.slice(0, foilTotal).map((f) => ({
-      slug: f.slug, label: f.label, imageUrl: f.imageUrl, isCorrect: false,
+      slug: f.word.slug,
+      label: f.word.label,
+      imageUrl: f.word.imageUrl,
+      isCorrect: false,
+      kind: f.kind as QabFoilKind | undefined,
     })),
   ];
   return shuffle(raw).map((c, idx) => ({
@@ -352,6 +378,7 @@ export function buildControlledChoices(target: MasterWord, level?: number) {
     label: c.label,
     imageUrl: c.imageUrl,
     isCorrect: c.isCorrect,
+    ...(c.kind !== undefined ? { foilKind: c.kind } : {}),
   }));
 }
 
