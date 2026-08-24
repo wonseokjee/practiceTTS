@@ -294,6 +294,143 @@ describe('useMixedQuizSession', () => {
     expect(result.current[0].lastResult?.isCorrect).toBe(true);
   });
 
+  /**
+   * **오답의 갈래를 남긴다.**
+   *
+   * 정답률 하나로는 "무엇이 어려운지"를 말할 수 없다. 의미 오답('사과'에 대한
+   * '바나나')을 반복해 고르는 것과 음운 오답('사자')을 반복해 고르는 것은 서로
+   * 다른 손상이다. 뱅크가 뽑을 때 붙여 둔 갈래를 그대로 실어 보낸다.
+   */
+  describe('오답 갈래(foilKind) 전송', () => {
+    /** 갈래가 붙은 4지선다 단어이해 1문항. */
+    function taggedWordItem(): QabImageItem {
+      return {
+        itemId: 'qw_001',
+        category: 'word',
+        promptText: '사과',
+        instruction: '들으신 낱말의 그림을 골라주세요',
+        choices: [
+          { choiceId: 'c_ok', label: '사과', imageUrl: '/a.svg', isCorrect: true },
+          {
+            choiceId: 'c_sem',
+            label: '바나나',
+            imageUrl: '/b.svg',
+            isCorrect: false,
+            foilKind: 'semantic',
+          },
+          {
+            choiceId: 'c_phon',
+            label: '사자',
+            imageUrl: '/c.svg',
+            isCorrect: false,
+            foilKind: 'phonological',
+          },
+        ],
+      };
+    }
+
+    function renderWordOnly(submitQabResults: ReturnType<typeof vi.fn>) {
+      return renderHook(() =>
+        useMixedQuizSession(QUIZ_SET_ID, {
+          quizApi: makeApi({ submitQabResults }),
+          pickQabItems: () => [taggedWordItem()],
+          generateSessionToken: () => 'tok-1',
+          dailyCount: 0,
+          qabCount: 1,
+          ...NO_SPEECH,
+        }),
+      );
+    }
+
+    it('음운 오답을 고르면 그 갈래가 실려 나간다', async () => {
+      const submitQabResults = vi.fn().mockResolvedValue({ saved: 1 });
+      const { result } = renderWordOnly(submitQabResults);
+      await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+      act(() => result.current[1].submitQabChoice('c_phon'));
+      await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+      act(() => result.current[1].next());
+      await waitFor(() => expect(result.current[0].phase).toBe('result'));
+
+      expect(submitQabResults.mock.calls[0][1]).toEqual([
+        {
+          subtest: 'word',
+          itemRef: 'qw_001',
+          isCorrect: false,
+          foilKind: 'phonological',
+        },
+      ]);
+    });
+
+    it('의미 오답을 고르면 그 갈래가 실려 나간다', async () => {
+      const submitQabResults = vi.fn().mockResolvedValue({ saved: 1 });
+      const { result } = renderWordOnly(submitQabResults);
+      await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+      act(() => result.current[1].submitQabChoice('c_sem'));
+      await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+      act(() => result.current[1].next());
+      await waitFor(() => expect(result.current[0].phase).toBe('result'));
+
+      expect(submitQabResults.mock.calls[0][1][0]).toMatchObject({
+        foilKind: 'semantic',
+      });
+    });
+
+    it('맞히면 갈래를 보내지 않는다', async () => {
+      // 정답에는 갈래가 없다. 맞힌 행에 갈래가 붙으면 갈래별 집계가 틀어진다.
+      const submitQabResults = vi.fn().mockResolvedValue({ saved: 1 });
+      const { result } = renderWordOnly(submitQabResults);
+      await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+      act(() => result.current[1].submitQabChoice('c_ok'));
+      await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+      act(() => result.current[1].next());
+      await waitFor(() => expect(result.current[0].phase).toBe('result'));
+
+      expect(submitQabResults.mock.calls[0][1][0]).not.toHaveProperty(
+        'foilKind',
+      );
+    });
+
+    it('갈래가 없는 선택지(문장이해)는 필드를 만들지 않는다', async () => {
+      // 문장이해는 선택지가 JSON 고정 그림 쌍이라 갈래가 없다. 없는 것을
+      // 'unrelated'로 채우면 없는 사실이 생긴다.
+      const submitQabResults = vi.fn().mockResolvedValue({ saved: 1 });
+      const { result } = renderHook(() =>
+        useMixedQuizSession(QUIZ_SET_ID, {
+          quizApi: makeApi({ submitQabResults }),
+          pickQabItems: () => [
+            {
+              itemId: 'sentComp_01',
+              category: 'sentence' as const,
+              promptText: '남자가 여자를 쫓는다',
+              instruction: '들으신 문장의 그림을 골라주세요',
+              choices: [
+                { choiceId: 's_ok', label: 'A', imageUrl: '/x.png', isCorrect: true },
+                { choiceId: 's_no', label: 'B', imageUrl: '/y.png', isCorrect: false },
+              ],
+            },
+          ],
+          generateSessionToken: () => 'tok-1',
+          dailyCount: 0,
+          qabCount: 1,
+          ...NO_SPEECH,
+        }),
+      );
+      await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+      act(() => result.current[1].submitQabChoice('s_no'));
+      await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+      act(() => result.current[1].next());
+      await waitFor(() => expect(result.current[0].phase).toBe('result'));
+
+      expect(submitQabResults.mock.calls[0][1][0]).not.toHaveProperty(
+        'foilKind',
+      );
+    });
+  });
+
   it('보호자 정정: 자동 오답을 정답으로 뒤집으면 판정·점수가 반영되고, 미보조 정답으로 기록된다', async () => {
     const submitQabResults = vi.fn().mockResolvedValue({ saved: 1 });
     const { result } = renderHook(() =>

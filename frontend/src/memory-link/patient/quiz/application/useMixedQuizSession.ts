@@ -463,6 +463,12 @@ export function useMixedQuizSession(
         ...(item.item.presentedLevel !== undefined
           ? { presentedLevel: item.item.presentedLevel }
           : {}),
+        // 틀렸을 때만, 그리고 갈래를 아는 선택지일 때만 보낸다. 단어이해
+        // 선택지는 뱅크가 뽑으면서 갈래를 붙여 두고(QabFoilKind), 문장이해는
+        // 선택지가 JSON 고정 쌍이라 갈래가 없다.
+        ...(!isCorrect && chosen?.foilKind !== undefined
+          ? { foilKind: chosen.foilKind }
+          : {}),
       });
       applyResult(
         { isCorrect, correctLabel: correct?.label ?? null },

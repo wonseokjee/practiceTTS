@@ -14,6 +14,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { QAB_SUBTESTS, type QabSubtest } from '../constants/qab-subtest';
+import { QAB_FOIL_KINDS, type QabFoilKind } from '../constants/qab-foil-kind';
 
 /** 단일 QAB 항목 결과 */
 export class QabResultItemDto {
@@ -54,6 +55,15 @@ export class QabResultItemDto {
   @Min(1)
   @Max(5)
   presentedLevel?: number;
+
+  // 틀렸을 때 고른 오답의 갈래(단어이해만). 맞혔거나 갈래를 모르면 생략한다.
+  //
+  // presented_level과 달리 **서버가 되짚을 수 없다** — 낱말 뱅크와 오답 선택
+  // 로직이 프론트에 있다. 그래서 클라이언트 값을 그대로 저장하되, 채점·레벨링
+  // 어디에도 물리지 않는다. 관측만 하는 값이라 조작해도 성적이 안 움직인다.
+  @IsOptional()
+  @IsIn(QAB_FOIL_KINDS)
+  foilKind?: QabFoilKind;
 }
 
 /**

@@ -18,10 +18,7 @@ import { QUIZ_SCORER } from './interfaces/IQuizScorer';
 import { WISH_CONVERSION_CLIENT } from './interfaces/IWishConversionClient';
 import { FastApiClientService } from '../memory/services/fast-api-client.service';
 import { PersonaContextService } from '../profile/services/persona-context.service';
-import type {
-  PersonaSource,
-  ProfileService,
-} from '../profile/profile.service';
+import type { PersonaSource, ProfileService } from '../profile/profile.service';
 import { QuizService } from './quiz.service';
 
 /**
@@ -232,7 +229,9 @@ describe('QuizService', () => {
                     if (entity === SkillLevel) {
                       return skillLevelRepo.findOne(opts);
                     }
-                    throw new Error('예상치 못한 엔티티: 트랜잭션 findOne mock');
+                    throw new Error(
+                      '예상치 못한 엔티티: 트랜잭션 findOne mock',
+                    );
                   },
                   // 두 경로가 이 빌더를 쓴다:
                   //  (1) QAB 결과 INSERT ... ON CONFLICT DO NOTHING (insert 체인)
@@ -259,10 +258,16 @@ describe('QuizService', () => {
                       return this;
                     }),
                     execute: jest.fn(() =>
-                      qabResultRepo.save(insertedValues[insertedValues.length - 1]),
+                      qabResultRepo.save(
+                        insertedValues[insertedValues.length - 1],
+                      ),
                     ),
                   }),
-                  upsert: (entity: unknown, values: unknown, conflict: unknown) => {
+                  upsert: (
+                    entity: unknown,
+                    values: unknown,
+                    conflict: unknown,
+                  ) => {
                     if (entity === SkillLevel) {
                       return skillLevelRepo.upsert(values, conflict);
                     }
@@ -1587,7 +1592,11 @@ describe('QuizService', () => {
   describe('getWishPractice', () => {
     const WISH_RESULT = {
       echoSentence: '사랑해 우리 손녀',
-      fillBlank: { prompt: '사랑해 우리 ___', answer: '손녀', hintFirstChar: '손' },
+      fillBlank: {
+        prompt: '사랑해 우리 ___',
+        answer: '손녀',
+        hintFirstChar: '손',
+      },
       model: 'gemini-2.5-flash-lite',
       fallbackUsed: false,
     };
@@ -1732,7 +1741,12 @@ describe('QuizService', () => {
         sessionToken: SESSION_TOKEN,
         results: [
           // 클라이언트가 보낸 3은 무시되고, 서버의 현재 레벨 4가 저장돼야 한다.
-          { subtest: 'word', itemRef: 'qw_001', isCorrect: true, presentedLevel: 3 },
+          {
+            subtest: 'word',
+            itemRef: 'qw_001',
+            isCorrect: true,
+            presentedLevel: 3,
+          },
           { subtest: 'naming', itemRef: 'nm_001', isCorrect: false },
         ],
         manifestVersion: 1,
@@ -1741,9 +1755,76 @@ describe('QuizService', () => {
       await service.saveQabResults(PATIENT_ID, dto);
 
       const savedRows = qabResultRepo.create.mock.calls.map((c) => c[0]);
-      expect(savedRows[0]).toMatchObject({ subtest: 'word', presentedLevel: 4 });
+      expect(savedRows[0]).toMatchObject({
+        subtest: 'word',
+        presentedLevel: 4,
+      });
       // 레벨 이력 없는 서브테스트는 콜드스타트(2)로 확정된다(null이 아니다).
-      expect(savedRows[1]).toMatchObject({ subtest: 'naming', presentedLevel: 2 });
+      expect(savedRows[1]).toMatchObject({
+        subtest: 'naming',
+        presentedLevel: 2,
+      });
+    });
+
+    it('오답 갈래는 틀린 문항에만 저장한다', async () => {
+      // 맞힌 행에 갈래가 붙으면 "오답이 아닌데 오답 갈래가 있는 행"이 생겨
+      // 갈래별 집계가 조용히 틀린다. 프론트가 안 보내는 것이 정상이지만
+      // 서버에서도 떨군다 — 관측값이라 서버가 되짚을 수 없기 때문이다.
+      skillLevelRepo.find.mockResolvedValue([]);
+      qabResultRepo.save.mockResolvedValue([]);
+      const dto: SubmitQabResultsDto = {
+        sessionToken: SESSION_TOKEN,
+        results: [
+          {
+            subtest: 'word',
+            itemRef: 'qw_001',
+            isCorrect: false,
+            foilKind: 'phonological',
+          },
+          // 맞혔는데 갈래가 온 경우 — 떨궈야 한다.
+          {
+            subtest: 'word',
+            itemRef: 'qw_002',
+            isCorrect: true,
+            foilKind: 'semantic',
+          },
+          // 안 보낸 경우 — null.
+          { subtest: 'word', itemRef: 'qw_003', isCorrect: false },
+        ],
+      };
+
+      await service.saveQabResults(PATIENT_ID, dto);
+
+      const savedRows = qabResultRepo.create.mock.calls.map((c) => c[0]);
+      expect(savedRows[0]).toMatchObject({ foilKind: 'phonological' });
+      expect(savedRows[1]).toMatchObject({ foilKind: null });
+      expect(savedRows[2]).toMatchObject({ foilKind: null });
+    });
+
+    it('오답 갈래는 레벨 재계산에 끼어들지 않는다', async () => {
+      // 관측 전용이다. 클라이언트가 보내는 값이 측정에 물리면 조작으로 레벨이
+      // 움직인다 — presented_level을 서버가 확정하는 것과 같은 이유다.
+      skillLevelRepo.find.mockResolvedValue([{ subtest: 'word', level: 3 }]);
+      qabResultRepo.save.mockResolvedValue([]);
+      const base = {
+        subtest: 'word' as const,
+        itemRef: 'qw_001',
+        isCorrect: false,
+      };
+
+      await service.saveQabResults(PATIENT_ID, {
+        sessionToken: SESSION_TOKEN,
+        results: [{ ...base, foilKind: 'semantic' as const }],
+      });
+      const withKind = skillLevelRepo.upsert.mock.calls.length;
+      skillLevelRepo.upsert.mockClear();
+
+      await service.saveQabResults(PATIENT_ID, {
+        sessionToken: SESSION_TOKEN,
+        results: [base],
+      });
+
+      expect(skillLevelRepo.upsert.mock.calls.length).toBe(withKind);
     });
 
     it('completed=true면 완료 마커를 남긴다(완료 vs 중단 구분)', async () => {
@@ -1924,7 +2005,9 @@ describe('QuizService', () => {
 
       const selected = qb.addSelect.mock.calls.map((c) => String(c[0]));
       expect(selected).toContainEqual(
-        expect.stringContaining('array_agg(r.is_correct ORDER BY r.created_at DESC'),
+        expect.stringContaining(
+          'array_agg(r.is_correct ORDER BY r.created_at DESC',
+        ),
       );
       expect(selected.join(' ')).not.toContain('bool_or');
     });

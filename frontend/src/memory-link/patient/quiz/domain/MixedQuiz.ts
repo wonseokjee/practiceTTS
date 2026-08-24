@@ -10,12 +10,27 @@ import type { QuizQuestionPublic } from './Quiz.js';
 import type { PronunciationGrade } from './pronunciationScore.js';
 
 /** QAB 이미지 선택지 (프론트 로컬 채점을 위해 isCorrect 포함). */
+/**
+ * 오답이 어느 갈래인가 — 단어이해 문항에만 붙는다.
+ *
+ * 실어증 단어-그림 대응에서 유인지는 두 종류이고 서로 **다른 손상**을 잡는다.
+ * `semantic`을 반복해 고르면 의미 체계 쪽, `phonological`이면 음운 처리 쪽이다.
+ * 정답률 하나로는 둘을 구분할 수 없다.
+ *
+ * **뽑을 때 붙인다.** 나중에 라벨과 범주를 보고 되짚을 수도 있지만, 그러면
+ * 실제로 어느 통에서 뽑혔는지와 어긋날 수 있다(같은 낱말이 두 조건을 동시에
+ * 만족하는 경우). 만든 쪽이 아는 사실을 그대로 들고 다니게 한다.
+ */
+export type QabFoilKind = 'semantic' | 'phonological' | 'unrelated';
+
 export interface QabImageChoice {
   choiceId: string;
   /** 이미지 설명/라벨 (단어 or altText) */
   label: string;
   imageUrl: string;
   isCorrect: boolean;
+  /** 오답의 갈래. 정답과 문장이해 선택지에는 없다. */
+  foilKind?: QabFoilKind;
 }
 
 /** QAB 질문형 문항 (들려준 단어/문장에 맞는 그림 고르기). */

@@ -1005,7 +1005,8 @@ export class QuizService {
       currentLevelRows.map((row) => [row.subtest, row.level]),
     );
     const resolvePresentedLevel = (subtest: QabSubtest): SkillLevelValue =>
-      (currentLevelBySubtest.get(subtest) ?? COLD_START_LEVEL) as SkillLevelValue;
+      (currentLevelBySubtest.get(subtest) ??
+        COLD_START_LEVEL) as SkillLevelValue;
 
     const rows = dto.results.map((r) => {
       const serverLevel = resolvePresentedLevel(r.subtest);
@@ -1027,6 +1028,10 @@ export class QuizService {
         metric: r.metric ?? null,
         score: r.score ?? null,
         presentedLevel: serverLevel,
+        // 갈래는 **틀린 문항에만** 남는다. 맞힌 행에 갈래가 붙으면 "오답이
+        // 아닌데 오답 갈래가 있는 행"이 생겨 집계가 조용히 틀린다. 프론트가
+        // 안 보내는 것이 정상이지만 여기서도 떨군다.
+        foilKind: r.isCorrect ? null : (r.foilKind ?? null),
       });
     });
 
@@ -1096,7 +1101,8 @@ export class QuizService {
     const existing = await manager.findOne(SkillLevel, {
       where: { patientId, subtest },
     });
-    const currentLevel = (existing?.level ?? COLD_START_LEVEL) as SkillLevelValue;
+    const currentLevel = (existing?.level ??
+      COLD_START_LEVEL) as SkillLevelValue;
 
     const qb = manager
       .createQueryBuilder(QabResult, 'r')
@@ -1189,7 +1195,9 @@ export class QuizService {
       .select("to_char(date_trunc('day', r.created_at), 'YYYY-MM-DD')", 'day')
       .distinct(true)
       .where('r.patient_id = :pid', { pid: effectivePatientId })
-      .andWhere("r.created_at >= now() - make_interval(days => :days)", { days })
+      .andWhere('r.created_at >= now() - make_interval(days => :days)', {
+        days,
+      })
       .orderBy('day', 'DESC')
       .getRawMany<{ day: string }>();
     return raw.map((x) => x.day);
@@ -1230,7 +1238,9 @@ export class QuizService {
       .andWhere('r.subtest = :subtest', { subtest })
       // 보호자가 넘어가기로 통과시킨 건 실력 근거가 아니라 재출제 판단에서 뺀다.
       .andWhere('r.assisted = false')
-      .andWhere('r.created_at >= now() - make_interval(days => :days)', { days })
+      .andWhere('r.created_at >= now() - make_interval(days => :days)', {
+        days,
+      })
       .groupBy('r.item_ref')
       // 1순위: 최근에 틀린 문항(false < true). 2순위: 마지막 출제가 오래된 것 —
       // 여기서 간격이 생긴다. 프론트는 이 순서를 재정렬 없이 우선순위로 쓴다.
@@ -1337,7 +1347,10 @@ export class QuizService {
   ): Promise<QabTrendResult> {
     const raw = await this.qabResultRepository
       .createQueryBuilder('r')
-      .select("to_char(date_trunc('week', r.created_at), 'YYYY-MM-DD')", 'weekStart')
+      .select(
+        "to_char(date_trunc('week', r.created_at), 'YYYY-MM-DD')",
+        'weekStart',
+      )
       .addSelect('r.subtest', 'subtest')
       .addSelect('COUNT(*) FILTER (WHERE NOT r.assisted)', 'total')
       .addSelect(
@@ -1402,9 +1415,7 @@ export class QuizService {
     return { series };
   }
 
-  async getQabSummary(
-    effectivePatientId: string,
-  ): Promise<QabSummaryResult> {
+  async getQabSummary(effectivePatientId: string): Promise<QabSummaryResult> {
     const raw = await this.qabResultRepository
       .createQueryBuilder('r')
       // total/correct는 보호자 도움(assisted) 문항을 제외해 환자 실제 수행만 집계한다.
@@ -1437,7 +1448,9 @@ export class QuizService {
       const correct = Number(row.correct);
       const assisted = Number(row.assisted);
       const avgMetric =
-        row.avgMetric === null ? null : Math.round(Number(row.avgMetric) * 10) / 10;
+        row.avgMetric === null
+          ? null
+          : Math.round(Number(row.avgMetric) * 10) / 10;
       const maxMetric = row.maxMetric === null ? null : Number(row.maxMetric);
       const avgScore =
         row.avgScore === null ? null : Math.round(Number(row.avgScore));
@@ -1716,5 +1729,4 @@ export class QuizService {
       );
     }
   }
-
 }
