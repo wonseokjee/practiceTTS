@@ -145,5 +145,83 @@ describe('반복 훈련 과제 구분 표시', () => {
     );
     expect(screen.queryByText('반복 연습')).toBeNull();
   });
+
+  /**
+   * **정답률이 못 하는 말을 한다.**
+   *
+   * "정답률 24%"는 몇 개 틀렸는지까지다. 무엇이 어려운지는 어떤 오답을 골랐는가가
+   * 말한다. 다만 표본이 적을 때 말하면 우연을 손상으로 읽게 되므로, 말할 수 없을
+   * 때는 아무 말도 안 한다.
+   */
+  describe('오답 갈래 한 줄', () => {
+    const kinds = (semantic: number, phonological: number, unrelated = 0) => ({
+      foilKinds: { semantic, phonological, unrelated },
+    });
+
+    it('표본이 충분하면 갈래별 개수를 말한다', async () => {
+      const fetchSummary = vi
+        .fn()
+        .mockResolvedValue([summary({ total: 20, correct: 12, accuracy: 60, ...kinds(5, 3) })]);
+      render(<QabProgressCard fetchSummary={fetchSummary} />);
+
+      await waitFor(() =>
+        expect(screen.getByText(/뜻이 가까운 그림 5개/)).toBeInTheDocument(),
+      );
+      expect(screen.getByText(/소리가 닮은 그림 3개/)).toBeInTheDocument();
+      expect(screen.getByText(/고른 오답 8개 중/)).toBeInTheDocument();
+    });
+
+    it('표본이 적으면 아무 말도 하지 않는다', async () => {
+      // 두세 개로 "소리에서 어려워한다"고 말하면 우연을 손상으로 읽는 것이다.
+      const fetchSummary = vi
+        .fn()
+        .mockResolvedValue([summary(kinds(2, 1))]);
+      render(<QabProgressCard fetchSummary={fetchSummary} />);
+
+      await waitFor(() =>
+        expect(screen.getByText('단어 이해')).toBeInTheDocument(),
+      );
+      expect(screen.queryByText(/뜻이 가까운 그림/)).toBeNull();
+    });
+
+    it('무관 오답은 분모에 넣지 않는다', async () => {
+      // 어느 축의 어려움도 가리키지 않는다. 넣으면 분모만 키워 두 갈래의 대비를
+      // 흐린다.
+      const fetchSummary = vi
+        .fn()
+        .mockResolvedValue([summary(kinds(4, 2, 30))]);
+      render(<QabProgressCard fetchSummary={fetchSummary} />);
+
+      await waitFor(() =>
+        expect(screen.getByText(/고른 오답 6개 중/)).toBeInTheDocument(),
+      );
+    });
+
+    it('갈래 기록이 없으면 줄 자체가 없다', async () => {
+      // 컬럼 이전의 옛 행만 있는 환자, 단어 이해가 아닌 하위검사.
+      const fetchSummary = vi.fn().mockResolvedValue([summary()]);
+      render(<QabProgressCard fetchSummary={fetchSummary} />);
+
+      await waitFor(() =>
+        expect(screen.getByText('단어 이해')).toBeInTheDocument(),
+      );
+      expect(screen.queryByText(/고른 오답/)).toBeNull();
+    });
+
+    it('0을 안전하게 읽지 않도록 안내를 단다', async () => {
+      // 소리가 닮은 그림은 눈높이 4단계부터 나온다. 그 아래 환자의 0은
+      // "소리는 괜찮다"가 아니라 "아직 안 물어봤다"이다.
+      const fetchSummary = vi
+        .fn()
+        .mockResolvedValue([summary(kinds(7, 0))]);
+      render(<QabProgressCard fetchSummary={fetchSummary} />);
+
+      const line = await screen.findByText(/고른 오답 7개 중/);
+      expect(line).toHaveAttribute(
+        'title',
+        expect.stringContaining('눈높이 4단계부터'),
+      );
+    });
+  });
 });
 

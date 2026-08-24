@@ -76,6 +76,18 @@ export interface QabSubtestSummary {
   /** 발음 정확도 평균(0..100). 발화 기록 없으면 null */
   avgScore: number | null;
   lastAt: string | null;
+  /**
+   * 오답을 갈래별로 센 것 — 단어 이해에만 값이 있다. 없으면 null.
+   *
+   * **음운 유인지는 눈높이 4단계부터 나온다.** 그 아래에서는 고를 기회 자체가
+   * 없어 `phonological: 0`이 "소리는 괜찮다"를 뜻하지 않는다. 화면은 이 사실을
+   * 같이 말해야 한다.
+   */
+  foilKinds?: {
+    semantic: number;
+    phonological: number;
+    unrelated: number;
+  } | null;
 }
 
 /** 한 검사의 특정 주차 성적 (백엔드 QabWeeklyPoint 미러) */
