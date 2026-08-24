@@ -35,3 +35,40 @@ export function hasFinalConsonant(word: string): boolean | null {
 export function copulaSuffix(word: string): '이에요' | '예요' {
   return hasFinalConsonant(word) === true ? '이에요' : '예요';
 }
+
+// ─── 음운 유사도 ────────────────────────────────────────────────────
+
+const JUNGSEONG_COUNT = 21; // 중성 21종 (초성 수는 나눗셈에 안 쓰여 상수가 없다)
+
+/** 한글 음절 하나를 초성·중성 인덱스로 쪼갠다. 한글 음절이 아니면 null. */
+function onsetAndNucleus(ch: string): { onset: number; nucleus: number } | null {
+  const code = ch.codePointAt(0);
+  if (code === undefined || code < HANGUL_FIRST || code > HANGUL_LAST) {
+    return null;
+  }
+  const offset = code - HANGUL_FIRST;
+  return {
+    onset: Math.floor(offset / (JUNGSEONG_COUNT * JONGSEONG_COUNT)),
+    nucleus: Math.floor(offset / JONGSEONG_COUNT) % JUNGSEONG_COUNT,
+  };
+}
+
+/**
+ * 두 음절이 초성 **또는** 중성을 공유하는가 — 헷갈릴 만큼 닮았는가.
+ *
+ * 글자 조합 최고 레벨의 방해 타일을 고르는 데 쓴다. 무작위 방해 타일은 정답
+ * 음절과 아무 관계가 없어 눈으로 걸러진다("바다"에 '꽃'이 섞여 있으면 고민이
+ * 없다). 초성이나 중성을 공유하는 음절은 그 걸러내기를 못 하게 한다 — 실어증
+ * 치료에서 음운 유사 방해자가 난도를 올리는 자리가 여기다.
+ *
+ * 종성은 보지 않는다. 받침까지 맞추라고 하면 40자 풀에서 후보가 거의 안 남고,
+ * 부족분을 무작위로 채우면 레벨이 도로 내려간다.
+ *
+ * 한글이 아닌 글자는 **닮지 않았다**로 본다 — 모를 때 난도를 올리지 않는다.
+ */
+export function sharesOnsetOrNucleus(a: string, b: string): boolean {
+  const x = onsetAndNucleus(a);
+  const y = onsetAndNucleus(b);
+  if (x === null || y === null) return false;
+  return x.onset === y.onset || x.nucleus === y.nucleus;
+}

@@ -18,6 +18,7 @@ import {
   pickWordItems,
   qabItemCount,
 } from './QabItemBank.js';
+import { sharesOnsetOrNucleus } from '../../../../shared/domain/korean.js';
 
 /** 선택지 imageUrl("/…/apple.svg")에서 slug를 뽑는다. */
 function slugOf(url: string): string {
@@ -194,11 +195,20 @@ describe('distractorCountForLevel', () => {
     expect(distractorCountForLevel(2)).toBe(0);
   });
 
-  it('레벨 3~4는 2개, 5는 4개', () => {
-    // 상용 실어증 치료 도구의 등급(방해 글자 0/2/4개)을 그대로 따른다.
+  it('레벨 3은 2개, 4~5는 4개', () => {
+    // 등급값은 상용 실어증 치료 도구를 따라 0/2/4 그대로다. 바뀐 것은 **꺾이는
+    // 자리**뿐이다 — 예전엔 2와 4에서 꺾여 음절 축과 같은 자리에서 움직였다.
     expect(distractorCountForLevel(3)).toBe(2);
-    expect(distractorCountForLevel(4)).toBe(2);
+    expect(distractorCountForLevel(4)).toBe(4);
     expect(distractorCountForLevel(5)).toBe(4);
+  });
+
+  it('0·2·4 말고 다른 값은 쓰지 않는다', () => {
+    // 등급값 자체는 임상 관례라 마음대로 늘리지 않는다. 5단계를 만드는 일은
+    // 축을 엇갈리게 놓아서 하지, 중간값(1·3)을 지어내서 하지 않는다.
+    for (const lv of [1, 2, 3, 4, 5]) {
+      expect([0, 2, 4]).toContain(distractorCountForLevel(lv));
+    }
   });
 
   it('레벨 미지정이면 백엔드 콜드스타트(2)와 같은 난이도를 쓴다', () => {
@@ -260,6 +270,70 @@ describe('buildSpellTiles', () => {
   });
 });
 
+/**
+ * **5단계 표시가 사실인가.**
+ *
+ * 이 앱은 환자에게 "레벨 3"을 보여주고 서버는 그 값을 회복 추세의 근거로 쓴다.
+ * 레벨이 올라도 문제가 안 바뀌면 그 숫자는 거짓말이다. 2026-08-17 리뷰에서
+ * 지적됐고(glyph-level-axis), 방해 수와 음절 범위가 **같은 자리에서 꺾여**
+ * 레벨 1=2, 3=4였다. 이 describe가 그 회귀를 잡는다.
+ */
+describe('글자 조합 레벨이 실제로 5단계다', () => {
+  /**
+   * 그 레벨에서 나올 수 있는 타일 수의 범위.
+   *
+   * 표본을 20개로 잡는 이유가 있다. 3~4음절 낱말은 풀에 28개뿐이라 그보다 많이
+   * 달라고 하면 `pickSpellItems`가 "세션이 비는 것보다 낫다"며 범위를 풀어
+   * 2음절까지 섞어 준다. 그 폴백을 밟으면 레벨 구분을 재는 게 아니라 폴백을
+   * 재게 된다.
+   */
+  function tileRange(level: number): { min: number; max: number } {
+    const items = pickSpellItems(20, level);
+    expect(items).toHaveLength(20);
+    const counts = items.map((it) => it.tiles.length);
+    return { min: Math.min(...counts), max: Math.max(...counts) };
+  }
+
+  it('레벨 1→4는 타일 수 구간이 겹치지 않는다', () => {
+    // 구간이 겹치면 두 레벨이 같은 문제를 낼 수 있다는 뜻이다. 예전 매핑에서는
+    // 1과 2가 통째로 같았다(둘 다 2음절·방해 0 → 타일 2개).
+    const ranges = [1, 2, 3, 4].map(tileRange);
+    for (let i = 0; i + 1 < ranges.length; i += 1) {
+      expect(ranges[i].max).toBeLessThan(ranges[i + 1].min);
+    }
+  });
+
+  it('한 단계에 한 축만 움직인다 — 4→5는 절벽이 아니다', () => {
+    // 예전에는 4→5에서 음절과 방해가 동시에 뛰었다. 지금 5는 4와 타일 수가
+    // 같고 방해자의 **종류**만 다르다.
+    expect(tileRange(5)).toEqual(tileRange(4));
+  });
+
+  it('레벨 5의 방해 타일은 정답 음절과 초성이나 중성을 공유한다', () => {
+    // 무작위 방해자는 눈으로 걸러진다. 이게 레벨 4와 5를 가르는 유일한 축이라
+    // 여기가 무너지면 5단계가 다시 4단계가 된다.
+    const target = '바다';
+    const tiles = buildSpellTiles(target, 5, () => 0);
+    const extras = [...tiles];
+    for (const ch of Array.from(target)) extras.splice(extras.indexOf(ch), 1);
+
+    expect(extras).toHaveLength(4);
+    for (const ex of extras) {
+      expect(
+        Array.from(target).some((a) => sharesOnsetOrNucleus(ex, a)),
+      ).toBe(true);
+    }
+  });
+
+  it('닮은 후보가 없어도 방해 타일 수는 줄지 않는다', () => {
+    // 개수를 줄이면 환자가 푼 문항은 쉬워지는데 기록은 레벨 5로 남는다.
+    // '켜터'는 방해 풀과 초성·중성이 하나도 안 겹친다(ㅋ·ㅌ / ㅕ·ㅓ).
+    const tiles = buildSpellTiles('켜터', 5, () => 0);
+
+    expect(tiles).toHaveLength(2 + 4);
+  });
+});
+
 describe('pickSpellItems', () => {
   it('요청 개수만큼 커리큘럼 단어에서 뽑는다', () => {
     const items = pickSpellItems(3, 3);
@@ -318,12 +392,28 @@ describe('pickSpellItems — 난이도·중복·반복', () => {
 
   it('우선순위 문항을 앞으로 당긴다', () => {
     // 최근에 틀린 문항을 다시 내야 반복 훈련이 성립한다.
-    const pool = pickSpellItems(50, 3);
+    //
+    // 표본을 레벨 3의 낱말 수(3~4음절 28개) 안에서 잡는다. 넘겨서 달라고 하면
+    // 범위를 푸는 폴백이 걸려 레벨 밖 낱말이 target이 되고, 그건 애초에 다시
+    // 낼 수 없는 문항이라 우선순위가 아니라 폴백을 재게 된다.
+    const pool = pickSpellItems(20, 3);
     const target = pool[pool.length - 1];
 
     const items = pickSpellItems(1, 3, { priority: [asItemRef(target.itemId)] });
 
     expect(items[0].itemId).toBe(target.itemId);
+  });
+
+  it('레벨 범위 밖 문항은 우선순위로도 끌어올리지 않는다', () => {
+    // 재출제보다 레벨이 세다. 범위 밖 낱말을 우선순위로 끌어올리면 환자가 푼
+    // 난이도와 `presentedLevel`이 어긋나는데, 그 어긋남이야말로 적응 레벨링이
+    // 없애려는 교란이다. 조용히 빠지는 동작이라 여기 못으로 박아 둔다.
+    const short = pickSpellItems(20, 1); // 레벨 1 = 2음절
+    const items = pickSpellItems(1, 3, {
+      priority: [asItemRef(short[0].itemId)],
+    });
+
+    expect(items[0].itemId).not.toBe(short[0].itemId);
   });
 
   it('레벨 범위에 맞는 단어가 부족하면 범위를 풀어 문항을 채운다', () => {
