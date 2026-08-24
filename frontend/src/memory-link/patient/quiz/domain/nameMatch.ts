@@ -25,6 +25,10 @@ const PARTIAL_MIN_RATIO = 0.6;
 const PHONETIC_PASS_THRESHOLD = 0.34;
 
 /** STT 인식 텍스트가 정답 이름과 일치하는지(관대) 판정. */
+// **채점 경로에서 빠졌다(2026-08-24, 음향 채점기 1단계).** 예전에는 이름대기에서
+// 음향 발음 평가가 없을 때 이 함수로 폴백했는데, 문자열 근접도는 음향 채점과
+// 같은 것을 재지 않는다(순위상관 −0.376, 0단계 측정 C). 지금은 음향 점수가
+// 없으면 채점하지 않는다. 이 함수를 채점에 다시 물리지 말 것.
 export function isNameMatch(transcript: string, targetWord: string): boolean {
   const said = normalizeName(transcript);
   const target = normalizeName(targetWord);

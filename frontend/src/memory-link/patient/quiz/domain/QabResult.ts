@@ -24,6 +24,14 @@ export interface QabResultInput {
   isCorrect: boolean;
   /** 보호자가 "넘어가기"로 통과시킨 문항이면 true. 정확도 집계에서 제외 */
   assisted?: boolean;
+  /**
+   * 채점 불가 — 음향 발음 평가를 얻지 못해 판정을 내리지 않은 문항.
+   *
+   * assisted와 다르다. assisted는 "보호자가 도와서 통과시켰다"이고, unscored는
+   * "잴 수 없었다"이다. true면 isCorrect는 의미가 없고(false로 보낸다) 서버가
+   * 정확도 분모·발음 평균·레벨링 윈도우에서 모두 제외한다.
+   */
+  unscored?: boolean;
   /** 수치 지표(ddk 감지 횟수 등). 없으면 생략 */
   metric?: number;
   /**
@@ -60,6 +68,11 @@ export interface QabSubtestSummary {
   accuracy: number;
   /** 보호자가 넘어가기로 통과시킨 문항 수 */
   assisted: number;
+  /**
+   * 채점하지 못한 문항 수(total에 포함되지 않는다). 오답이 아니라 측정 실패다.
+   * 이 수가 커지면 정확도가 아니라 **채점 경로**를 의심해야 한다.
+   */
+  unscored: number;
   avgMetric: number | null;
   maxMetric: number | null;
   /** 발음 정확도 평균(0..100). 발화 기록 없으면 null */

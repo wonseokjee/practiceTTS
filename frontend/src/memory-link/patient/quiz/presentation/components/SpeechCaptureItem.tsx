@@ -113,16 +113,23 @@ export function SpeechCaptureItem({
       onSkip();
       return;
     }
-    // 통과 처리는 목표 텍스트를 그대로 제출(문자열 채점 → 정답). 음소 점수는 없음.
+    // onSkip이 없는 경우(테스트 등)의 최소 동작. 음소 점수가 없으므로 상위는
+    // 이것을 **채점 불가**로 받는다 — 예전처럼 문자열 채점으로 정답 처리되지
+    // 않는다. 앱에서는 QuizScreen이 항상 onSkip을 넘기므로 이 줄은 안 탄다.
     onSubmit(text, null);
   };
 
+  // 피드백 단계의 isCorrect === null은 **채점 불가**다(미응답이 아니다 —
+  // 미응답이면 showFeedback이 false다). 정답도 오답도 아니므로 중립색으로 둔다.
+  const isUnscored = showFeedback && isCorrect === null;
   let resultBoxClass = 'border-[#D4D8D4] bg-white text-[#1F2A26]';
   if (showFeedback) {
     resultBoxClass =
       isCorrect === true
         ? 'border-[#2D6A56] bg-[#EBF4F0] text-[#1F5240]'
-        : 'border-[#E07B54] bg-[#FBE9E2] text-[#7A2E15]';
+        : isCorrect === false
+          ? 'border-[#E07B54] bg-[#FBE9E2] text-[#7A2E15]'
+          : 'border-[#D4D8D4] bg-[#F2F1ED] text-[#5C6661]';
   }
 
   return (
@@ -166,7 +173,7 @@ export function SpeechCaptureItem({
           <span className="text-lg font-bold">{transcript || '—'}</span>
           {showFeedback && (
             <span className="text-2xl" aria-hidden="true">
-              {isCorrect === true ? '✓' : '✗'}
+              {isCorrect === true ? '✓' : isCorrect === false ? '✗' : '…'}
             </span>
           )}
         </div>
@@ -179,12 +186,15 @@ export function SpeechCaptureItem({
         </p>
       )}
 
-      {/* 보호자 정정 — 발음 평가 불가 시 문자열 채점(불신뢰 STT)으로 폴백하므로
-          경계 사례에서 옆의 보호자가 최종 판정한다. 현재 판정의 반대로 뒤집는다. */}
-      {showFeedback && onOverride && isCorrect !== null && (
+      {/* 보호자 정정 — 경계 사례에서 옆의 보호자가 최종 판정한다.
+          채점 불가(isCorrect === null)일 때도 낸다. 그때는 정정이 아니라
+          **유일하게 남은 잣대**다 — 기계가 판정을 못 냈으니 사람이 낸다. */}
+      {showFeedback && onOverride && (
         <div className="flex items-center justify-between gap-3 rounded-md bg-[#F2F1ED] px-4 py-2.5">
           <span className="text-sm text-[#5C6661]">
-            보호자님, 자동 채점이 맞나요?
+            {isUnscored
+              ? '보호자님, 이번엔 확인하지 못했어요. 맞게 말씀하셨나요?'
+              : '보호자님, 자동 채점이 맞나요?'}
           </span>
           <button
             type="button"

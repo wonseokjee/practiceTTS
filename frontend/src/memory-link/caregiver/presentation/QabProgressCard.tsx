@@ -124,6 +124,11 @@ export function QabProgressCard({
           const label = subtestLabel(it.subtest);
           const assistedSuffix =
             it.assisted > 0 ? ` · 도움 ${it.assisted}회` : '';
+          // 채점하지 못한 문항. 오답이 아니라 측정 실패라 정확도 분모 밖에
+          // 있는데, 그러면 "몇 번 했는지"와 화면의 수가 어긋나 보인다.
+          // 숨기면 그 어긋남이 설명되지 않고, 채점 실패가 계속돼도 아무도 모른다.
+          const unscoredSuffix =
+            it.unscored > 0 ? ` · 못 잰 ${it.unscored}회` : '';
           return (
             <li key={it.subtest} className="flex flex-col gap-1">
               <div className="flex items-baseline justify-between">
@@ -155,6 +160,7 @@ export function QabProgressCard({
                         {it.accuracy}%
                       </span>{' '}
                       ({it.correct}/{it.total}){assistedSuffix}
+                      {unscoredSuffix}
                       {/* 발화 항목은 발음 정확도(0~100), loc는 의식 수준 점수(0~3) */}
                       {it.avgScore !== null && (
                         <>
@@ -170,7 +176,10 @@ export function QabProgressCard({
                     </>
                   ) : (
                     // 환자 직접 응답이 아직 없고 도움만 있는 경우.
-                    <>아직 직접 푼 기록 없음{assistedSuffix}</>
+                    <>
+                      아직 직접 푼 기록 없음{assistedSuffix}
+                      {unscoredSuffix}
+                    </>
                   )}
                 </span>
               </div>

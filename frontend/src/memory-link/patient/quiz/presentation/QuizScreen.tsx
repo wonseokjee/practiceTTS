@@ -140,11 +140,14 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
   const isLastQuestion = currentIndex + 1 >= total;
 
   // 데일리 항목의 피드백을 QuestionBody가 기대하는 AttemptResult 형태로 합성.
+  // 채점 불가(isCorrect === null)는 발화 문항에만 생긴다 — 데일리는 백엔드가
+  // 정오답을 확정해 돌려주므로 여기서 null이면 그건 배선 버그다. 그때도 화면은
+  // 살려 두되 오답 쪽으로 붙인다(정답이라고 지어내지 않는다).
   const dailyResult: AttemptResult | null =
     showFeedback && lastResult !== null && currentItem.kind === 'daily'
       ? {
           questionId: currentItem.id,
-          isCorrect: lastResult.isCorrect,
+          isCorrect: lastResult.isCorrect === true,
           correctAnswer: lastResult.correctLabel ?? '',
         }
       : null;
@@ -258,9 +261,15 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
       {/* 피드백 + 다음 버튼 */}
       {showFeedback && lastResult !== null && (
         <div className="mt-6">
+          {/* 색이 셋인 이유: 채점 불가(null)는 정답도 오답도 아니다. 빨강으로
+              칠하면 못 잰 것을 못했다고 말하는 셈이라 폴백을 없앤 뜻이 사라진다. */}
           <p
             className={`mb-4 text-center text-lg font-bold ${
-              lastResult.isCorrect ? 'text-[#1F5240]' : 'text-[#7A2E15]'
+              lastResult.isCorrect === true
+                ? 'text-[#1F5240]'
+                : lastResult.isCorrect === false
+                  ? 'text-[#7A2E15]'
+                  : 'text-[#5C6661]'
             }`}
             role="status"
             aria-live="polite"
@@ -269,12 +278,13 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
             {lastResult.encouragement ??
               (lastResult.isCorrect ? '정답이에요!' : '아쉬워요')}
           </p>
-          {/* 발화/이름대기 오답이면 같은 문항을 다시 말할 수 있게 한다
-              (격려 문구 "다시 말해볼까요?"를 실제로 행동으로 이어준다). */}
+          {/* 발화/이름대기가 정답이 아니면 같은 문항을 다시 말할 수 있게 한다
+              (격려 문구 "다시 말해볼까요?"를 실제로 행동으로 이어준다).
+              채점 불가(null)에도 준다 — 오히려 그때 다시 말해 봐야 한다. */}
           {(currentItem.kind === 'naming' ||
             currentItem.kind === 'repeat' ||
             currentItem.kind === 'reading') &&
-            lastResult.isCorrect === false && (
+            lastResult.isCorrect !== true && (
               <button
                 type="button"
                 onClick={actions.answerAgain}
