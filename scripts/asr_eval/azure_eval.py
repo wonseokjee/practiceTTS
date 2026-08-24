@@ -364,6 +364,9 @@ def main() -> int:
     ap.add_argument("--yes", action="store_true", help="추정치를 확인했고 호출을 진행한다")
     ap.add_argument("--price-per-hour", type=float, default=1.0,
                     help="오디오 시간당 단가(USD). 기본 1.0은 S0 표준 가정이다 — 직접 확인하라")
+    ap.add_argument("--env-file", type=Path, default=None,
+                    help="자격증명 .env 경로. 기본은 <리포>/ai-service/.env 와 <리포>/.env — "
+                         "git worktree에서 돌리면 .env가 없으므로 여기서 지정한다")
     ap.add_argument("--allow-unverified-cer", action="store_true",
                     help="evaluate 없이도 진행한다(잣대 미검증 — 권장하지 않음)")
     ap.add_argument("--sleep", type=float, default=0.0, help="호출 사이 대기(초)")
@@ -416,8 +419,10 @@ def main() -> int:
 
         try:
             from dotenv import load_dotenv
-            for env in (REPO / "ai-service" / ".env", REPO / ".env"):
-                if env.exists():
+            cands = [args.env_file] if args.env_file else [
+                REPO / "ai-service" / ".env", REPO / ".env"]
+            for env in cands:
+                if env and env.exists():
                     load_dotenv(env, override=False)
         except ImportError:
             pass
