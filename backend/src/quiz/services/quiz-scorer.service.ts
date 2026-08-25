@@ -45,9 +45,13 @@ export class QuizScorerService implements IQuizScorer {
           this.normalizeYesNo(userAnswer) ===
           this.normalizeYesNo(question.correctAnswer)
         );
+      // 아래 셋은 **의도적으로 묶었다.** tile_arrange(타일 조합)·speech(말하기)는
+      // 정답이 모두 텍스트이므로 빈칸 채점 규칙(공백 제거 + 끝 음절 받침 무시)을
+      // 그대로 재사용한다.
+      //
+      // 주석을 case 사이에 두면 eslint가 "빈 case"로 안 봐서 no-fallthrough가
+      // 뜬다(allowEmptyCase 기본값). 흘러내림 버그가 아니라 주석 위치 문제였다.
       case 'fill_blank':
-      // tile_arrange(타일 조합)·speech(말하기)는 정답이 모두 텍스트이므로
-      // 빈칸 채점 규칙(공백 제거 + 끝 음절 받침 무시)을 그대로 재사용한다.
       case 'tile_arrange':
       case 'speech':
         return (

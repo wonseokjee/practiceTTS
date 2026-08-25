@@ -407,6 +407,48 @@ score만 받아 **영역 외 터치도 '무반응'으로 기록**했다. 라벨�
 **Context:** `frontend/.../useMixedQuizSession.ts` next()의 세션끝 submitQabResults를 문항별/주기 플러시로. 백엔드 `qab_results` dedup 유니크 인덱스가 멱등 보장. Phase 1 관측성 정확도 확보 후 다음 스프린트 1순위.
 **Depends on:** 적응형 Phase 1 착수.
 
+### backend lint 부채 — 실제 코드 정리 완료, spec 93건 남음 (2026-08-25)
+
+`.gitattributes`(#65)로 CRLF 잡음 561건을 걷어내니 진짜 문제 115건이 드러났다.
+그중 **실제 코드 21건을 정리했다.** 남은 93건은 전부 `.spec.ts`다.
+
+**고친 것 — 대부분 타입 잡음이었지만 하나는 진짜였다.**
+
+- `main.ts` — `bootstrap()`이 떠 있는 채로 버려졌다(floating promise). 부팅이
+  실패해도 프로세스가 0으로 종료돼 **프로세스 관리자가 재시작하지 않는다.**
+  `.catch()`로 로그를 남기고 `exit(1)`로 바꿨다. 이번 21건 중 유일하게 운영에
+  영향이 있던 것이다.
+- `quiz-scorer.service.ts` — `no-fallthrough`가 떴지만 **버그가 아니었다.**
+  `fill_blank`·`tile_arrange`·`speech`를 의도적으로 묶은 것인데, case 사이에
+  주석이 있어 eslint가 "빈 case"로 안 봤다(`allowEmptyCase` 기본값). 주석을
+  그룹 위로 올렸다.
+- `training.service.ts` — `let chatResult;`가 암묵 `any`가 되어 `ai_message`·
+  `hint_*` 접근이 전부 무검사였다. `chat()`은 이미 `ChatResponse`를 준다.
+- `auth.service.ts` — `keys().next().value`가 `any`로 샜다. 타입 주석은 소용이
+  없고(대입 대상만 바꾼다) 배열 구조분해로 받아야 요소 타입이 산다.
+- enum 비교 5건 — `upstreamStatus()`·`getStatus()`는 **임의의 HTTP 숫자**라
+  `HttpStatus` 멤버라는 보장이 없다. 경고가 맞았다. 이름은 지키고 비교만
+  숫자로 하도록 상수를 하나 뒀다.
+- 마이그레이션 2건 — `queryRunner.query()`가 주는 `any`를 `unknown`으로 받아
+  `Array.isArray`로 좁힌다.
+- `no-unused-vars` 3건 — `const { passwordHash: _pw, ...response } = user`는
+  "안 쓰는 변수"가 아니라 **응답에서 뺀 필드**다. 규칙을 끄지 않고
+  `ignoreRestSiblings: true`만 켰다 — 진짜 미사용 변수는 그대로 잡힌다.
+
+**남은 93건은 전부 `.spec.ts`다.**
+
+```
+34 auth.service.spec.ts        22 quiz.service.spec.ts
+16 speech-data.service.spec.ts 10 ai-proxy.rate-limit.spec.ts
+ 4 quiz-generation.client.spec  나머지 7건 흩어져 있음
+```
+
+거의 다 목이 `any`를 돌려줘 생기는 `no-unsafe-*`다. **이 저장소의 방침은 이미
+정해져 있다** — `practice.service.spec.ts`에 "체이닝 목은 명시 타입을 붙인다
+(mockReturnThis는 any로 새어 no-unsafe-return에 걸린다)"고 적혀 있다. 규칙을
+끄는 게 아니라 목에 타입을 붙이는 쪽이다. 기계적이지만 파일당 손이 많이 가서
+이번 범위에서 뺐다.
+
 ### TODO-ADP-002: 보호자 effectivePatientId 레벨 오염 가드 — **전제가 틀렸다** (조사 2026-08-25)
 
 **원래 What:** 보호자가 환자 대신 세션을 돌릴 때 그 결과가 환자 skill_levels를 움직이지 않도록 구분.
