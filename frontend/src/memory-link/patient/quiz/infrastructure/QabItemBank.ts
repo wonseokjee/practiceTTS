@@ -10,6 +10,7 @@
 // (표준 wordComp 검사 JSON은 그대로 두고, 혼합 퀴즈용 풀만 별도로 확장한다.)
 import wordPoolData from '../../../../assets/data/qabWordPool.json';
 import namingPhotos from '../../../../assets/data/namingPhotos.json';
+import namingOnlyWords from '../../../../assets/data/namingOnlyWords.json';
 import sentCompData from '../../../../assets/data/sentCompItems.json';
 // 거울 문항(정답/오답 반전)으로 문장이해 풀을 새 이미지 없이 2배로 확장한다.
 import sentMirrorData from '../../../../assets/data/qabSentMirror.json';
@@ -431,6 +432,27 @@ function toSentItem(it: RawSentItem, level?: number): QabImageItem {
 /** 실물 사진이 준비된 단어 slug 집합. */
 const NAMING_PHOTO_SLUGS = new Set<string>(namingPhotos.slugs);
 
+/**
+ * 이름대기 전용 낱말 — 사진은 있으나 그림 고르기용 아이콘이 없는 것들.
+ *
+ * **왜 낱말 풀에 안 넣나.** 풀(`qabWordPool`)은 4지선다를 전제해 정답에 SVG를
+ * 요구한다. 사진으로 대신할 수 없다 — 한 선택지만 사진이면 낱말을 몰라도 그것만
+ * 골라 다 맞아 그 문항이 '사진 찾기'가 된다.
+ *
+ * 이름대기는 자극이 한 장뿐이라 선택지 격자가 없고, 따라서 SVG도 필요 없다.
+ * 그 비대칭을 자료로 드러낸다 — 예전에는 이름대기가 선택지 풀에 얹혀 있어서
+ * 아이콘 없는 낱말은 사진이 있어도 쓸 수 없었다.
+ *
+ * **`MASTER_WORDS`에는 안 들어간다.** 그림 고르기의 정답으로도 오답으로도 나오면
+ * 안 되므로, 범주 크기(욕실·가구·가전)에도 영향을 주지 않는다.
+ */
+const NAMING_ONLY_ITEMS: QabNamingItem[] = namingOnlyWords.items.map((w) => ({
+  itemId: `naming_only_${w.slug}`,
+  imageUrl: `/assets/images/naming/${w.slug}.png`,
+  targetWord: w.label,
+  instruction: NAMING_INSTRUCTION,
+}));
+
 /** 이미지 URL에서 파일명 slug를 뽑는다. "/a/b/apple.svg" → "apple". */
 function slugFromUrl(url: string): string {
   return url.split('/').pop()!.replace(/\.[^.]+$/, '');
@@ -471,10 +493,16 @@ function toNamingItem(it: RawWordItem, level?: number): QabNamingItem | null {
 
 /** 그림 이름대기 문항을 무작위 count개 추출. level은 제시 레벨로 스탬핑된다. */
 export function pickNamingItems(count: number, level?: number): QabNamingItem[] {
-  return shuffle(WORD_ITEMS)
-    .map((it) => toNamingItem(it, level))
-    .filter((x): x is QabNamingItem => x !== null)
-    .slice(0, Math.max(0, count));
+  const fromPool = WORD_ITEMS.map((it) => toNamingItem(it, level)).filter(
+    (x): x is QabNamingItem => x !== null,
+  );
+  // 전용 낱말도 같은 통에 넣고 함께 섞는다. 뒤에 붙이면 count가 작을 때 영영
+  // 안 나온다 — 세션당 이름대기는 1문항이다.
+  const namingOnly = NAMING_ONLY_ITEMS.map((it) => ({
+    ...it,
+    presentedLevel: level,
+  }));
+  return shuffle([...fromPool, ...namingOnly]).slice(0, Math.max(0, count));
 }
 
 // ─── 글자 조합(spell) ─────────────────────────────────────────────

@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest';
 import sentCompRaw from '../../../../assets/data/sentCompItems.json';
 import sentMirrorRaw from '../../../../assets/data/qabSentMirror.json';
 import sentGeneratedRaw from '../../../../assets/data/qabSentGenerated.json';
+import namingOnlyWords from '../../../../assets/data/namingOnlyWords.json';
+import namingPhotos from '../../../../assets/data/namingPhotos.json';
 import {
   WORD_CATEGORY,
   sentTypeForLevel,
@@ -515,6 +517,61 @@ describe('pickSpellItems — 난이도·중복·반복', () => {
  * "레벨 5 정답률"이 실제로는 레벨 1과 같은 문항의 정답률이라, 보호자가 보는
  * 눈높이가 회복을 뜻하지 않는다.
  */
+/**
+ * **이름대기 전용 낱말.**
+ *
+ * 실사 사진은 있으나 Fluent에 아이콘이 없는 낱말들(빗·책상·수건·냉장고)이
+ * 사진만 남은 채 한 번도 안 나오고 있었다. 이름대기는 자극이 한 장뿐이라
+ * 선택지 격자가 없고 SVG도 필요 없는데, `pickNamingItems`가 선택지 풀에서
+ * 파생하는 바람에 둘이 묶여 있었다.
+ *
+ * **그림 고르기로 새면 안 된다.** 한 선택지만 사진이면 낱말을 몰라도 그것만
+ * 골라 다 맞아 그 문항이 '사진 찾기'가 된다.
+ */
+describe('이름대기 전용 낱말', () => {
+  const ONLY = namingOnlyWords.items.map((w) => w.slug);
+
+  it('이름대기에 실제로 나온다', () => {
+    const naming = pickNamingItems(500, 3);
+    for (const slug of ONLY) {
+      expect(
+        naming.some((n) => n.imageUrl === `/assets/images/naming/${slug}.png`),
+      ).toBe(true);
+    }
+  });
+
+  it('그림 고르기에는 정답으로도 오답으로도 안 나온다', () => {
+    // 여기가 무너지면 그 문항은 낱말을 몰라도 사진만 골라 맞는 문항이 된다.
+    for (const it of pickWordItems(200, 5)) {
+      for (const c of it.choices) {
+        for (const slug of ONLY) expect(c.imageUrl).not.toContain(`/${slug}.`);
+      }
+    }
+  });
+
+  it('WORD_CATEGORY에 없다 — 범주 크기를 부풀리지 않는다', () => {
+    // 그림 고르기에 안 나오므로 같은범주 오답 후보도 아니다. 욕실·가구·가전이
+    // 늘어난 것처럼 보이면 레벨 4~5 오답 구성이 거짓말을 하게 된다.
+    for (const slug of ONLY) expect(WORD_CATEGORY[slug]).toBeUndefined();
+  });
+
+  it('사진이 실제로 등록된 낱말만 둔다', () => {
+    // 여기 slug에 사진이 없으면 환자 화면에 깨진 이미지가 뜬다.
+    const photos = new Set<string>(namingPhotos.slugs);
+    for (const slug of ONLY) expect(photos.has(slug)).toBe(true);
+  });
+
+  it('itemRef가 풀 문항과 구별된다', () => {
+    // qab_results의 UNIQUE는 (patient, session, subtest, itemRef)다. 접두사가
+    // 겹치면 다른 문항이 같은 행으로 접힌다.
+    const naming = pickNamingItems(500, 3);
+    const only = naming.filter((n) =>
+      ONLY.some((s) => n.imageUrl.includes(`/${s}.`)),
+    );
+    for (const n of only) expect(n.itemId).toMatch(/^naming_only_/);
+  });
+});
+
 describe('pickSentItems — 통사 복잡도 위계', () => {
   const 반복추출 = (lv: number, times = 20): string[] =>
     Array.from({ length: times }, () => pickSentItems(2, lv))
