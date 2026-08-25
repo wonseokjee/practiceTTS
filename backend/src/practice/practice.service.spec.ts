@@ -22,11 +22,15 @@ describe('PracticeService', () => {
   let insertTargets: unknown[];
   /** orIgnore() 호출 여부 — 멱등이 DB 수준(ON CONFLICT)인지 확인 */
   let orIgnoreCalls: number;
+  /** RETURNING이 돌려줄 행. 테스트가 "실제로 몇 행 들어갔는지"를 정한다. */
+  let returnedRows: unknown[];
 
   beforeEach(async () => {
     insertedValues = [];
     insertTargets = [];
     orIgnoreCalls = 0;
+    // 기본은 "보낸 만큼 다 들어갔다". 중복 시나리오는 각 테스트가 덮어쓴다.
+    returnedRows = [];
 
     // 체이닝 목: 각 단계가 자기 자신을 돌려주도록 명시 타입을 붙인다
     // (mockReturnThis/암묵 반환은 any로 새어 no-unsafe-return에 걸린다).
@@ -35,7 +39,8 @@ describe('PracticeService', () => {
       into: (target: unknown) => QueryBuilderMock;
       values: (rows: unknown[]) => QueryBuilderMock;
       orIgnore: () => QueryBuilderMock;
-      execute: () => Promise<{ identifiers: unknown[] }>;
+      returning: (cols: string) => QueryBuilderMock;
+      execute: () => Promise<{ identifiers: unknown[]; raw: unknown[] }>;
     }
 
     const queryBuilder: QueryBuilderMock = {
@@ -52,7 +57,10 @@ describe('PracticeService', () => {
         orIgnoreCalls += 1;
         return queryBuilder;
       }),
-      execute: jest.fn(() => Promise.resolve({ identifiers: [] })),
+      returning: jest.fn((): QueryBuilderMock => queryBuilder),
+      execute: jest.fn(() =>
+        Promise.resolve({ identifiers: [], raw: returnedRows }),
+      ),
     };
 
     const repoMock = {
@@ -167,6 +175,69 @@ describe('PracticeService', () => {
   });
 
   describe('멱등·경계', () => {
+    /**
+     * **`saved`는 저장된 행을 센다. 접수한 행이 아니다.**
+     *
+     * 예전에는 `rows.length`(보낸 개수)를 그대로 돌려줬다. 중복 제출이면 DB에는
+     * `ON CONFLICT DO NOTHING`으로 0행이 들어가는데 `saved`는 1이었다. 지금은
+     * 아무도 이 값을 안 봐서 무해하지만, "저장했다"는 이름을 달고 저장 안 된
+     * 것을 세는 값은 언젠가 조용히 틀린다(ISSUE-004).
+     */
+    describe('saved가 세는 것', () => {
+      const two: SubmitPracticeResultsDto = {
+        sessionToken: SESSION_TOKEN,
+        results: [
+          {
+            itemKind: 'imageChoice',
+            itemRef: 'qw_001',
+            isCorrect: true,
+            tier: 0,
+          },
+          {
+            itemKind: 'imageChoice',
+            itemRef: 'qw_002',
+            isCorrect: false,
+            tier: 0,
+          },
+        ],
+      };
+
+      it('전부 새 행이면 보낸 수와 같다', async () => {
+        returnedRows = [{ id: 'a' }, { id: 'b' }];
+
+        expect(await service.saveResults(PATIENT_ID, two)).toEqual({
+          saved: 2,
+        });
+      });
+
+      it('전부 중복이면 0이다 — 보낸 수를 돌려주지 않는다', async () => {
+        // RETURNING이 빈 배열 = ON CONFLICT로 한 행도 안 들어갔다.
+        returnedRows = [];
+
+        expect(await service.saveResults(PATIENT_ID, two)).toEqual({
+          saved: 0,
+        });
+      });
+
+      it('일부만 중복이면 실제로 들어간 만큼만 센다', async () => {
+        returnedRows = [{ id: 'a' }];
+
+        expect(await service.saveResults(PATIENT_ID, two)).toEqual({
+          saved: 1,
+        });
+      });
+
+      it('RETURNING을 못 받으면 접수 수로 물러난다', async () => {
+        // 드라이버가 raw를 안 주는 경우(다른 DB·목). 숫자를 지어내는 것보다
+        // 접수 수가 낫다 — 적어도 요청은 그만큼 왔다.
+        returnedRows = undefined as unknown as unknown[];
+
+        expect(await service.saveResults(PATIENT_ID, two)).toEqual({
+          saved: 2,
+        });
+      });
+    });
+
     it('INSERT는 orIgnore(ON CONFLICT DO NOTHING)로 나간다', async () => {
       await service.saveResults(
         PATIENT_ID,
