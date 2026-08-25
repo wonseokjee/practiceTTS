@@ -226,7 +226,26 @@ function isQabSubtestSummary(value: unknown): value is QabSubtestSummary {
     (obj.avgMetric === null || typeof obj.avgMetric === 'number') &&
     (obj.maxMetric === null || typeof obj.maxMetric === 'number') &&
     (obj.avgScore === null || typeof obj.avgScore === 'number') &&
-    (obj.lastAt === null || typeof obj.lastAt === 'string')
+    (obj.lastAt === null || typeof obj.lastAt === 'string') &&
+    isFoilKinds(obj.foilKinds)
+  );
+}
+
+/**
+ * 오답 갈래 묶음 검증.
+ *
+ * `undefined`도 통과시킨다 — 이 필드가 없는 옛 백엔드와 붙어도 카드 전체가
+ * "서버 응답 형식이 올바르지 않습니다"로 죽지 않게 한다. 갈래는 있으면 좋은
+ * 한 줄이지 정답률을 못 보게 만들 이유가 아니다.
+ */
+function isFoilKinds(value: unknown): boolean {
+  if (value === null || value === undefined) return true;
+  const obj = asRecord(value);
+  if (obj === null) return false;
+  return (
+    typeof obj.semantic === 'number' &&
+    typeof obj.phonological === 'number' &&
+    typeof obj.unrelated === 'number'
   );
 }
 

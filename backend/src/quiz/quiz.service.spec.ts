@@ -2183,6 +2183,56 @@ describe('QuizService', () => {
   });
 
   describe('getQabSummary', () => {
+    it('오답 갈래를 세어 함께 내려보낸다', async () => {
+      // 정답률은 몇 개 틀렸는지까지만 말한다. 무엇이 어려운지는 어떤 오답을
+      // 골랐는가가 말한다.
+      const qb = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([
+          {
+            subtest: 'word',
+            total: '20',
+            correct: '12',
+            assisted: '0',
+            avgMetric: null,
+            maxMetric: null,
+            avgScore: null,
+            lastAt: new Date('2026-08-23T00:00:00.000Z'),
+            foilSemantic: '5',
+            foilPhonological: '3',
+            foilUnrelated: '0',
+          },
+          {
+            // 갈래가 하나도 없는 하위검사는 null이어야 한다.
+            subtest: 'naming',
+            total: '3',
+            correct: '3',
+            assisted: '0',
+            avgMetric: null,
+            maxMetric: null,
+            avgScore: null,
+            lastAt: new Date('2026-08-23T00:00:00.000Z'),
+            foilSemantic: '0',
+            foilPhonological: '0',
+            foilUnrelated: '0',
+          },
+        ]),
+      };
+      qabResultRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const res = await service.getQabSummary(PATIENT_ID);
+
+      expect(res.items[0].foilKinds).toEqual({
+        semantic: 5,
+        phonological: 3,
+        unrelated: 0,
+      });
+      expect(res.items[1].foilKinds).toBeNull();
+    });
+
     it('검사별 정확도/지표를 집계해 반환한다', async () => {
       const qb = {
         select: jest.fn().mockReturnThis(),
@@ -2230,6 +2280,9 @@ describe('QuizService', () => {
           maxMetric: null,
           avgScore: 82,
           lastAt: '2026-06-20T00:00:00.000Z',
+          // 갈래 집계 컬럼이 없는 행은 null이다. 0으로 채우면 "관계없는 그림
+          // 0개" 같은 없는 사실이 화면에 그려진다.
+          foilKinds: null,
         },
         {
           subtest: 'ddk',
@@ -2241,6 +2294,7 @@ describe('QuizService', () => {
           maxMetric: 11,
           avgScore: null,
           lastAt: '2026-06-21T00:00:00.000Z',
+          foilKinds: null,
         },
       ]);
     });
