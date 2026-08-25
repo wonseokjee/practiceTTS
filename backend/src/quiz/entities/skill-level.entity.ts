@@ -31,7 +31,10 @@ export class SkillLevel {
   id: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'patient_id', foreignKeyConstraintName: 'FK_skill_levels_patient' })
+  @JoinColumn({
+    name: 'patient_id',
+    foreignKeyConstraintName: 'FK_skill_levels_patient',
+  })
   patient: User;
 
   @Column({ name: 'patient_id', type: 'uuid' })

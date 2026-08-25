@@ -25,14 +25,20 @@ export class QuizBestScore {
   id: string;
 
   @ManyToOne(() => QuizSet, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'quiz_set_id', foreignKeyConstraintName: 'FK_quiz_best_scores_set' })
+  @JoinColumn({
+    name: 'quiz_set_id',
+    foreignKeyConstraintName: 'FK_quiz_best_scores_set',
+  })
   quizSet: QuizSet;
 
   @Column({ name: 'quiz_set_id', type: 'uuid' })
   quizSetId: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'patient_id', foreignKeyConstraintName: 'FK_quiz_best_scores_patient' })
+  @JoinColumn({
+    name: 'patient_id',
+    foreignKeyConstraintName: 'FK_quiz_best_scores_patient',
+  })
   patient: User;
 
   @Column({ name: 'patient_id', type: 'uuid' })

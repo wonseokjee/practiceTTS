@@ -29,7 +29,10 @@ describe('AuthService', () => {
     Pick<Repository<User>, 'createQueryBuilder' | 'findOne' | 'create' | 'save'>
   >;
   let identityRepository: jest.Mocked<
-    Pick<Repository<SocialIdentity>, 'findOne' | 'find' | 'create' | 'save' | 'delete'>
+    Pick<
+      Repository<SocialIdentity>,
+      'findOne' | 'find' | 'create' | 'save' | 'delete'
+    >
   >;
   let dataSource: { transaction: jest.Mock };
   let jwtService: { sign: jest.Mock };
@@ -68,8 +71,7 @@ describe('AuthService', () => {
     idRepo: Record<string, jest.Mock>,
   ) {
     return {
-      getRepository: (entity: unknown) =>
-        entity === User ? userRepo : idRepo,
+      getRepository: (entity: unknown) => (entity === User ? userRepo : idRepo),
     };
   }
 
@@ -561,7 +563,10 @@ describe('AuthService', () => {
     it('유저가 같은 provider를 이미 붙였으면 409(유저당 provider 1개)', async () => {
       identityRepository.findOne
         .mockResolvedValueOnce(null) // 소셜계정 미사용
-        .mockResolvedValueOnce({ userId: 'u1', provider: 'google' } as SocialIdentity);
+        .mockResolvedValueOnce({
+          userId: 'u1',
+          provider: 'google',
+        } as SocialIdentity);
 
       await expect(
         service.linkSocialIdentity('u1', profile),
@@ -757,7 +762,10 @@ describe('AuthService', () => {
 
       expect(res).toEqual({ targetUserId: 'A' });
       // C의 카카오 신원을 A로 이전
-      expect(idRepo.update).toHaveBeenCalledWith({ id: 'si1' }, { userId: 'A' });
+      expect(idRepo.update).toHaveBeenCalledWith(
+        { id: 'si1' },
+        { userId: 'A' },
+      );
       // 빈 소스 삭제
       expect(userRepo.delete).toHaveBeenCalledWith({ id: 'C' });
     });
@@ -765,9 +773,9 @@ describe('AuthService', () => {
     it('그 로그인으로 가입된 기존 계정이 없으면 404(신규 생성 안 함)', async () => {
       identityRepository.findOne.mockResolvedValueOnce(null);
 
-      await expect(
-        service.mergeAccounts('C', profile),
-      ).rejects.toBeInstanceOf(NotFoundException);
+      await expect(service.mergeAccounts('C', profile)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
     });
 
     it('같은 계정으로 로그인하면 409', async () => {
@@ -775,9 +783,9 @@ describe('AuthService', () => {
         user: { id: 'C' },
       } as SocialIdentity);
 
-      await expect(
-        service.mergeAccounts('C', profile),
-      ).rejects.toBeInstanceOf(ConflictException);
+      await expect(service.mergeAccounts('C', profile)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
     });
 
     it('데이터 있는 소스(patient_id 있음)는 병합 불가 409', async () => {
@@ -789,9 +797,9 @@ describe('AuthService', () => {
         patientId: 'p1',
       } as User);
 
-      await expect(
-        service.mergeAccounts('C', profile),
-      ).rejects.toBeInstanceOf(ConflictException);
+      await expect(service.mergeAccounts('C', profile)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
     });
 
     it('트랜잭션 내 재확인: 소스가 그 사이 온보딩되면 롤백(409·삭제 안 함)', async () => {
@@ -811,9 +819,9 @@ describe('AuthService', () => {
       };
       mergeManager(idRepo, userRepo);
 
-      await expect(
-        service.mergeAccounts('C', profile),
-      ).rejects.toBeInstanceOf(ConflictException);
+      await expect(service.mergeAccounts('C', profile)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
       expect(userRepo.delete).not.toHaveBeenCalled(); // 롤백 — 데이터 유실 없음
     });
 
@@ -839,9 +847,9 @@ describe('AuthService', () => {
       };
       mergeManager(idRepo, userRepo);
 
-      await expect(
-        service.mergeAccounts('C', profile),
-      ).rejects.toBeInstanceOf(ConflictException);
+      await expect(service.mergeAccounts('C', profile)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
       expect(idRepo.update).not.toHaveBeenCalled(); // 이전 안 함
       expect(userRepo.delete).not.toHaveBeenCalled(); // 소스 안 지움(조용한 유실 방지)
     });

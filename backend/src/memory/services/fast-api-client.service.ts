@@ -112,9 +112,9 @@ export class FastApiClientService implements IFastApiClient {
               `${this.baseUrl}/mask`,
               { raw_text: rawText, memory_entry_id: memoryEntryId },
               {
-            timeout: FastApiClientService.DEFAULT_TIMEOUT_MS,
-            headers: aiServiceHeaders(this.configService),
-          },
+                timeout: FastApiClientService.DEFAULT_TIMEOUT_MS,
+                headers: aiServiceHeaders(this.configService),
+              },
             ),
           ),
         {},

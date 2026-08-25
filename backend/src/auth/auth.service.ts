@@ -647,9 +647,7 @@ export class AuthService {
     });
     if (existing) {
       if (existing.userId === userId) return; // 이미 연결됨(멱등)
-      throw new ConflictException(
-        '이미 다른 계정에 연결된 소셜 계정입니다.',
-      );
+      throw new ConflictException('이미 다른 계정에 연결된 소셜 계정입니다.');
     }
     const sameProvider = await this.identityRepository.findOne({
       where: { userId, provider: profile.provider },
@@ -764,11 +762,12 @@ export class AuthService {
     sourceUserId: string,
     profile: SocialProfile,
   ): Promise<{ targetUserId: string }> {
-    const target = await this.findIdentityUser(this.identityRepository, profile);
+    const target = await this.findIdentityUser(
+      this.identityRepository,
+      profile,
+    );
     if (!target) {
-      throw new NotFoundException(
-        '그 로그인으로 가입된 기존 계정이 없습니다.',
-      );
+      throw new NotFoundException('그 로그인으로 가입된 기존 계정이 없습니다.');
     }
     if (target.id === sourceUserId) {
       throw new ConflictException(

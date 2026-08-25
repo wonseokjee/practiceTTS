@@ -89,8 +89,14 @@ describe('AiProxyController 레이트리밋', () => {
     // 한도를 넘긴 요청도 업로드 본문을 메모리에 다 올리게 된다.
     const reflector = new Reflector();
 
-    const sttMeta = reflector.get(RATE_LIMIT_KEY, AiProxyController.prototype.stt);
-    const ttsMeta = reflector.get(RATE_LIMIT_KEY, AiProxyController.prototype.tts);
+    const sttMeta = reflector.get(
+      RATE_LIMIT_KEY,
+      AiProxyController.prototype.stt,
+    );
+    const ttsMeta = reflector.get(
+      RATE_LIMIT_KEY,
+      AiProxyController.prototype.tts,
+    );
     const pronMeta = reflector.get(
       RATE_LIMIT_KEY,
       AiProxyController.prototype.pronunciation,

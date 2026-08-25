@@ -56,7 +56,9 @@ describe('resolveUploadDir', () => {
   it('UPLOAD_DIR이 상대 경로면 cwd 기준으로 해석한다', () => {
     process.env['UPLOAD_DIR'] = 'custom/photos';
 
-    expect(resolveUploadDir()).toBe(resolve(join(process.cwd(), 'custom/photos')));
+    expect(resolveUploadDir()).toBe(
+      resolve(join(process.cwd(), 'custom/photos')),
+    );
   });
 
   it('명시 인자가 환경변수보다 우선한다', () => {

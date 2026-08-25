@@ -9,9 +9,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * 이탈이다. 보호자 대시보드의 완료율/이탈 통계가 이 테이블을 기반으로 한다
  * (통계 조회 자체는 후속).
  */
-export class CreateQabSessionCompletions1784900000000
-  implements MigrationInterface
-{
+export class CreateQabSessionCompletions1784900000000 implements MigrationInterface {
   name = 'CreateQabSessionCompletions1784900000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

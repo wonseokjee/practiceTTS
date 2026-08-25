@@ -14,7 +14,12 @@ describe('HealingMessageService', () => {
   const repoMock = { find: jest.fn() };
 
   function msg(id: string, orderIndex: number): HealingMessage {
-    return { id, text: `메시지-${id}`, isActive: true, orderIndex } as HealingMessage;
+    return {
+      id,
+      text: `메시지-${id}`,
+      isActive: true,
+      orderIndex,
+    } as HealingMessage;
   }
 
   beforeEach(async () => {

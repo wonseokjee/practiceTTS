@@ -30,7 +30,10 @@ export class FamilyMember {
   id: string;
 
   @ManyToOne(() => PatientProfile, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'profile_id', foreignKeyConstraintName: 'FK_family_members_profile' })
+  @JoinColumn({
+    name: 'profile_id',
+    foreignKeyConstraintName: 'FK_family_members_profile',
+  })
   profile: PatientProfile;
 
   @Column({ name: 'profile_id', type: 'uuid' })

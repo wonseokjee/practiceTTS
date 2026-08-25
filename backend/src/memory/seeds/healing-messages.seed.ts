@@ -60,9 +60,7 @@ export async function seedHealingMessagesIfMissing(
       skipped += 1;
       continue;
     }
-    await repo.save(
-      repo.create({ text, isActive: true, orderIndex: i }),
-    );
+    await repo.save(repo.create({ text, isActive: true, orderIndex: i }));
     inserted += 1;
   }
 

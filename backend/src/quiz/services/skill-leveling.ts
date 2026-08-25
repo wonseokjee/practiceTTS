@@ -51,7 +51,10 @@ export const SPEECH_SCORED_SUBTESTS: readonly QabSubtest[] = [
 
 /** 임의의 정수를 유효 레벨 범위 [1..5]로 클램프. */
 export function clampLevel(level: number): SkillLevel {
-  return Math.max(MIN_LEVEL, Math.min(MAX_LEVEL, Math.round(level))) as SkillLevel;
+  return Math.max(
+    MIN_LEVEL,
+    Math.min(MAX_LEVEL, Math.round(level)),
+  ) as SkillLevel;
 }
 
 /**
