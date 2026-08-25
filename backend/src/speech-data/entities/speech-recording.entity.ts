@@ -10,7 +10,12 @@ import {
 import { User } from '../../auth/entities/user.entity';
 
 /** 보존된 발화의 과제 종류. */
-export type SpeechTask = 'pronunciation' | 'stt' | 'naming' | 'repeat' | 'reading';
+export type SpeechTask =
+  | 'pronunciation'
+  | 'stt'
+  | 'naming'
+  | 'repeat'
+  | 'reading';
 
 /**
  * 동의 기반으로 보존된 환자 발화 1건.

@@ -14,9 +14,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * 기존 프로필은 현재 살아있는 서수의 MAX로 백필한다 — 그보다 위로 발급된
  * 서수의 기록은 남아있지 않지만, 최소한 지금 존재하는 구성원과의 충돌은 막는다.
  */
-export class AddRelationOrdinalHighWater1784200000000
-  implements MigrationInterface
-{
+export class AddRelationOrdinalHighWater1784200000000 implements MigrationInterface {
   name = 'AddRelationOrdinalHighWater1784200000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

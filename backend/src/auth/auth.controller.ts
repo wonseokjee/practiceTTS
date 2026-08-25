@@ -279,7 +279,8 @@ export class AuthController {
         res.redirect(`${frontend}/caregiver?linked=${provider}`);
       } catch (err) {
         const reason =
-          err instanceof HttpException && err.getStatus() === HttpStatus.CONFLICT
+          err instanceof HttpException &&
+          err.getStatus() === HttpStatus.CONFLICT
             ? 'conflict'
             : 'unknown';
         res.redirect(`${frontend}/caregiver?linkError=${reason}`);

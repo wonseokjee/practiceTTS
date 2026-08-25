@@ -7,12 +7,10 @@ function httpError(status: number): unknown {
 
 /** 지수 백오프 대기를 즉시 통과시켜 테스트를 빠르게 유지한다. */
 function useFakeTimers(): void {
-  jest
-    .spyOn(global, 'setTimeout')
-    .mockImplementation(((fn: () => void) => {
-      fn();
-      return 0 as unknown as NodeJS.Timeout;
-    }) as unknown as typeof setTimeout);
+  jest.spyOn(global, 'setTimeout').mockImplementation(((fn: () => void) => {
+    fn();
+    return 0 as unknown as NodeJS.Timeout;
+  }) as unknown as typeof setTimeout);
 }
 
 describe('isRetryable', () => {

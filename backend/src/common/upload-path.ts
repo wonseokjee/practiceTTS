@@ -15,7 +15,8 @@ export const DEFAULT_UPLOAD_DIR = 'tts-cache/memory-images';
  * UPLOAD_DIR이 절대 경로면 그대로, 상대 경로면 cwd 기준으로 해석한다.
  */
 export function resolveUploadDir(uploadDir?: string): string {
-  const configured = uploadDir ?? process.env['UPLOAD_DIR'] ?? DEFAULT_UPLOAD_DIR;
+  const configured =
+    uploadDir ?? process.env['UPLOAD_DIR'] ?? DEFAULT_UPLOAD_DIR;
   return isAbsolute(configured)
     ? configured
     : resolve(join(process.cwd(), configured));

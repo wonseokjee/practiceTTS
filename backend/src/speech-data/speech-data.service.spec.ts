@@ -9,7 +9,12 @@ import { SpeechDataService } from './speech-data.service';
  */
 describe('SpeechDataService', () => {
   let tmp: string;
-  let recordings: { insert: jest.Mock; find: jest.Mock; delete: jest.Mock; count: jest.Mock };
+  let recordings: {
+    insert: jest.Mock;
+    find: jest.Mock;
+    delete: jest.Mock;
+    count: jest.Mock;
+  };
   let users: { findOne: jest.Mock; update: jest.Mock };
   let svc: SpeechDataService;
 
@@ -24,7 +29,9 @@ describe('SpeechDataService', () => {
       count: jest.fn().mockResolvedValue(0),
     };
     users = { findOne: jest.fn(), update: jest.fn().mockResolvedValue({}) };
-    const config = { get: (_k: string, d: string) => (_k === 'SPEECH_DATA_DIR' ? tmp : d) };
+    const config = {
+      get: (_k: string, d: string) => (_k === 'SPEECH_DATA_DIR' ? tmp : d),
+    };
     svc = new SpeechDataService(
       recordings as never,
       users as never,

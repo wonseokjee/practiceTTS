@@ -169,10 +169,7 @@ export class PersonaContextService implements IPersonaContextService {
   }
 
   /** 직업·취미·고향을 LLM 컨텍스트용 배경 문장으로 구성 */
-  private buildBackground(
-    source: PersonaSource,
-    pairs: ReplacePair[],
-  ): string {
+  private buildBackground(source: PersonaSource, pairs: ReplacePair[]): string {
     const parts: string[] = [];
     if (source.occupation?.trim()) {
       parts.push(`직업은 ${source.occupation.trim()}`);

@@ -37,7 +37,9 @@ export class CreateSkillLevels1784800000000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE "qab_results" DROP COLUMN "presented_level"`);
+    await queryRunner.query(
+      `ALTER TABLE "qab_results" DROP COLUMN "presented_level"`,
+    );
     await queryRunner.query(`DROP TABLE "skill_levels"`);
   }
 }

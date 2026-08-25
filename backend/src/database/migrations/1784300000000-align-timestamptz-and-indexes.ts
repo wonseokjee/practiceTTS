@@ -21,9 +21,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  *
  * 함께: 엔티티에만 있고 마이그레이션에 없던 인덱스를 추가한다.
  */
-export class AlignTimestamptzAndIndexes1784300000000
-  implements MigrationInterface
-{
+export class AlignTimestamptzAndIndexes1784300000000 implements MigrationInterface {
   name = 'AlignTimestamptzAndIndexes1784300000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

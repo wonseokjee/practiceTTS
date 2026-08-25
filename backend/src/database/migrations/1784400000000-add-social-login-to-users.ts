@@ -40,9 +40,7 @@ export class AddSocialLoginToUsers1784400000000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "UQ_users_provider_account"`,
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "UQ_users_provider_account"`);
 
     // 소셜 유저가 이미 있으면 되돌리기를 거부한다. auth_provider·provider_user_id를
     // 드롭하면 그들의 제공자 신원이 사라지고, email/password도 NULL이라 로그인이

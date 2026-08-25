@@ -28,21 +28,30 @@ export class QuizAttempt {
   id: string;
 
   @ManyToOne(() => QuizSet, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'quiz_set_id', foreignKeyConstraintName: 'FK_quiz_attempts_set' })
+  @JoinColumn({
+    name: 'quiz_set_id',
+    foreignKeyConstraintName: 'FK_quiz_attempts_set',
+  })
   quizSet: QuizSet;
 
   @Column({ name: 'quiz_set_id', type: 'uuid' })
   quizSetId: string;
 
   @ManyToOne(() => QuizQuestion, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'question_id', foreignKeyConstraintName: 'FK_quiz_attempts_question' })
+  @JoinColumn({
+    name: 'question_id',
+    foreignKeyConstraintName: 'FK_quiz_attempts_question',
+  })
   question: QuizQuestion;
 
   @Column({ name: 'question_id', type: 'uuid' })
   questionId: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'patient_id', foreignKeyConstraintName: 'FK_quiz_attempts_patient' })
+  @JoinColumn({
+    name: 'patient_id',
+    foreignKeyConstraintName: 'FK_quiz_attempts_patient',
+  })
   patient: User;
 
   @Column({ name: 'patient_id', type: 'uuid' })

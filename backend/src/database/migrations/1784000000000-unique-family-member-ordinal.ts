@@ -13,9 +13,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * 주의: 기존 데이터에 중복 서수가 있으면 인덱스 생성이 실패한다. 그 경우
  * (profile_id, relation)별로 relation_ordinal을 재부여한 뒤 다시 실행해야 한다.
  */
-export class UniqueFamilyMemberOrdinal1784000000000
-  implements MigrationInterface
-{
+export class UniqueFamilyMemberOrdinal1784000000000 implements MigrationInterface {
   name = 'UniqueFamilyMemberOrdinal1784000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
