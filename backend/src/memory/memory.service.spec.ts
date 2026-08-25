@@ -86,13 +86,13 @@ describe('MemoryEntryService.create() — 3-step 트랜잭션 회귀', () => {
 
   // 프로필 미등록 기본값 — 개인화 생략(baseContext 그대로) 흐름을 재현
   const personaContextMock = {
-    buildPersonaContext: jest.fn(
-      async (_patientId: string, baseContext: string) => ({
+    buildPersonaContext: jest.fn((_patientId: string, baseContext: string) =>
+      Promise.resolve({
         tokenizedContext: baseContext,
         tokenMap: {},
       }),
     ),
-    buildTokenMap: jest.fn(async () => ({})),
+    buildTokenMap: jest.fn(() => Promise.resolve({})),
     restorePersonaText: jest.fn((text: string) => text),
   };
 

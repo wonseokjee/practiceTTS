@@ -148,11 +148,11 @@ describe('QuizService', () => {
     // 기본값: 프로필 미등록 → 개인화 생략(원문 그대로 통과)
     personaSource = null;
     personaContextMock = new PersonaContextService({
-      getPersonaSource: jest.fn(async () => personaSource),
+      getPersonaSource: jest.fn(() => Promise.resolve(personaSource)),
     } as unknown as ProfileService);
 
     fastApiClientMock = {
-      mask: jest.fn(async (text: string) => ({ maskedText: text })),
+      mask: jest.fn((text: string) => Promise.resolve({ maskedText: text })),
     };
 
     quizSetRepo = buildRepoMock();
