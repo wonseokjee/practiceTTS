@@ -17,7 +17,7 @@ describe('PersonaContextService', () => {
   beforeEach(() => {
     personaSource = null;
     const profileServiceStub = {
-      getPersonaSource: jest.fn(async () => personaSource),
+      getPersonaSource: jest.fn(() => Promise.resolve(personaSource)),
     } as unknown as ProfileService;
     service = new PersonaContextService(profileServiceStub);
   });

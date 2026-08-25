@@ -19,7 +19,7 @@ function fakeQueryBuilder(result: User | null) {
   qb.addSelect = jest.fn(() => qb);
   qb.setLock = jest.fn(() => qb);
   qb.where = jest.fn(() => qb);
-  qb.getOne = jest.fn(async () => result);
+  qb.getOne = jest.fn(() => Promise.resolve(result));
   return qb;
 }
 
@@ -42,14 +42,16 @@ describe('AuthService', () => {
       createQueryBuilder: jest.fn(),
       findOne: jest.fn(),
       create: jest.fn((e: Partial<User>) => e as User),
-      save: jest.fn(async (e: Partial<User>) => e as User),
+      save: jest.fn((e: Partial<User>) => Promise.resolve(e as User)),
     } as never;
     identityRepository = {
       findOne: jest.fn(),
-      find: jest.fn(async () => [] as SocialIdentity[]),
+      find: jest.fn(() => Promise.resolve([] as SocialIdentity[])),
       create: jest.fn((e: Partial<SocialIdentity>) => e as SocialIdentity),
-      save: jest.fn(async (e: Partial<SocialIdentity>) => e as SocialIdentity),
-      delete: jest.fn(async () => ({ affected: 1 })),
+      save: jest.fn((e: Partial<SocialIdentity>) =>
+        Promise.resolve(e as SocialIdentity),
+      ),
+      delete: jest.fn(() => Promise.resolve({ affected: 1 })),
     } as never;
     dataSource = { transaction: jest.fn() };
     jwtService = { sign: jest.fn(() => 'signed-token') };
@@ -84,7 +86,7 @@ describe('AuthService', () => {
             created.push(e);
             return e;
           },
-          save: async (e: Partial<User>) => e,
+          save: (e: Partial<User>) => Promise.resolve(e),
         }),
       };
       dataSource.transaction.mockImplementation(
@@ -115,7 +117,7 @@ describe('AuthService', () => {
       const fakeManager = {
         getRepository: () => ({
           create: (e: Partial<User>) => e,
-          save: async (e: Partial<User>) => e,
+          save: (e: Partial<User>) => Promise.resolve(e),
         }),
       };
       dataSource.transaction.mockImplementation(
@@ -284,7 +286,7 @@ describe('AuthService', () => {
       const idRepo = {
         findOne: jest.fn().mockResolvedValueOnce(null), // 트랜잭션 내 재확인: 없음
         create: jest.fn((e: Partial<SocialIdentity>) => e),
-        save: jest.fn(async (e: Partial<SocialIdentity>) => e),
+        save: jest.fn((e: Partial<SocialIdentity>) => Promise.resolve(e)),
       };
       dataSource.transaction.mockImplementation(
         async (cb: (m: unknown) => Promise<unknown>) =>
@@ -316,12 +318,14 @@ describe('AuthService', () => {
         // 이메일 사전체크 → 같은 이메일이 물려 있어 email을 비운다.
         findOne: jest.fn().mockResolvedValue(patientRecord),
         create: jest.fn((e: Partial<User>) => e),
-        save: jest.fn(async (e: Partial<User>) => ({ id: 'new', ...e })),
+        save: jest.fn((e: Partial<User>) =>
+          Promise.resolve({ id: 'new', ...e }),
+        ),
       };
       const idRepo = {
         findOne: jest.fn().mockResolvedValueOnce(null),
         create: jest.fn((e: Partial<SocialIdentity>) => e),
-        save: jest.fn(async (e: Partial<SocialIdentity>) => e),
+        save: jest.fn((e: Partial<SocialIdentity>) => Promise.resolve(e)),
       };
       dataSource.transaction.mockImplementation(
         async (cb: (m: unknown) => Promise<unknown>) =>
@@ -342,12 +346,14 @@ describe('AuthService', () => {
         // createSocialUser의 이메일 사전체크만 호출된다(미사용 이메일)
         findOne: jest.fn().mockResolvedValueOnce(null),
         create: jest.fn((e: Partial<User>) => e),
-        save: jest.fn(async (e: Partial<User>) => ({ id: 'new', ...e })),
+        save: jest.fn((e: Partial<User>) =>
+          Promise.resolve({ id: 'new', ...e }),
+        ),
       };
       const idRepo = {
         findOne: jest.fn().mockResolvedValueOnce(null),
         create: jest.fn((e: Partial<SocialIdentity>) => e),
-        save: jest.fn(async (e: Partial<SocialIdentity>) => e),
+        save: jest.fn((e: Partial<SocialIdentity>) => Promise.resolve(e)),
       };
       dataSource.transaction.mockImplementation(
         async (cb: (m: unknown) => Promise<unknown>) =>
@@ -370,12 +376,14 @@ describe('AuthService', () => {
       const userRepo = {
         findOne: jest.fn(),
         create: jest.fn((e: Partial<User>) => e),
-        save: jest.fn(async (e: Partial<User>) => ({ id: 'new', ...e })),
+        save: jest.fn((e: Partial<User>) =>
+          Promise.resolve({ id: 'new', ...e }),
+        ),
       };
       const idRepo = {
         findOne: jest.fn().mockResolvedValueOnce(null),
         create: jest.fn((e: Partial<SocialIdentity>) => e),
-        save: jest.fn(async (e: Partial<SocialIdentity>) => e),
+        save: jest.fn((e: Partial<SocialIdentity>) => Promise.resolve(e)),
       };
       dataSource.transaction.mockImplementation(
         async (cb: (m: unknown) => Promise<unknown>) =>
@@ -429,15 +437,15 @@ describe('AuthService', () => {
             created.push(e);
             return e;
           },
-          save: async (e: Partial<User>) => e,
+          save: (e: Partial<User>) => Promise.resolve(e),
           // 조건부 갱신이 1행 잡혔다(경합 없음).
-          update: jest.fn(async () => ({ affected: 1 })),
-          findOne: async () =>
-            ({
+          update: jest.fn(() => Promise.resolve({ affected: 1 })),
+          findOne: () =>
+            Promise.resolve({
               id: 'u1',
               patientId: 'p-new',
               role: 'caregiver',
-            }) as User,
+            } as User),
         }),
       };
       dataSource.transaction.mockImplementation(
@@ -466,9 +474,9 @@ describe('AuthService', () => {
       const fakeManager = {
         getRepository: () => ({
           create: (e: Partial<User>) => e,
-          save: async (e: Partial<User>) => e,
-          update: jest.fn(async () => ({ affected: 0 })), // 경합 패배
-          findOne: async () => null,
+          save: (e: Partial<User>) => Promise.resolve(e),
+          update: jest.fn(() => Promise.resolve({ affected: 0 })), // 경합 패배
+          findOne: () => Promise.resolve(null),
         }),
       };
       dataSource.transaction.mockImplementation(
@@ -585,12 +593,12 @@ describe('AuthService', () => {
     ) {
       const userRepo = {
         createQueryBuilder: jest.fn(() => fakeQueryBuilder(user as User)),
-        update: jest.fn(async () => ({ affected: 1 })),
+        update: jest.fn(() => Promise.resolve({ affected: 1 })),
         ...userExtra,
       };
       const idRepo = {
-        find: jest.fn(async () => identities as SocialIdentity[]),
-        delete: jest.fn(async () => ({ affected: 1 })),
+        find: jest.fn(() => Promise.resolve(identities as SocialIdentity[])),
+        delete: jest.fn(() => Promise.resolve({ affected: 1 })),
         ...idExtra,
       };
       dataSource.transaction.mockImplementation(
@@ -664,14 +672,16 @@ describe('AuthService', () => {
       } as User);
       const userRepo = {
         createQueryBuilder: jest.fn(() => qb),
-        update: jest.fn(async () => ({ affected: 1 })),
+        update: jest.fn(() => Promise.resolve({ affected: 1 })),
       };
       const idRepo = {
-        find: jest.fn(async () => [
-          { provider: 'kakao', providerUserId: 'k1' },
-          { provider: 'google', providerUserId: 'g1' },
-        ]),
-        delete: jest.fn(async () => ({ affected: 1 })),
+        find: jest.fn(() =>
+          Promise.resolve([
+            { provider: 'kakao', providerUserId: 'k1' },
+            { provider: 'google', providerUserId: 'g1' },
+          ]),
+        ),
+        delete: jest.fn(() => Promise.resolve({ affected: 1 })),
       };
       dataSource.transaction.mockImplementation(
         async (cb: (m: unknown) => Promise<unknown>) =>
@@ -750,11 +760,11 @@ describe('AuthService', () => {
           .fn()
           .mockResolvedValueOnce([{ provider: 'google', id: 'ti1' }]) // A의 신원
           .mockResolvedValueOnce([{ provider: 'kakao', id: 'si1' }]), // C의 신원
-        update: jest.fn(async () => ({ affected: 1 })),
+        update: jest.fn(() => Promise.resolve({ affected: 1 })),
       };
       const userRepo = {
-        findOne: jest.fn(async () => ({ id: 'C', patientId: null })),
-        delete: jest.fn(async () => ({ affected: 1 })),
+        findOne: jest.fn(() => Promise.resolve({ id: 'C', patientId: null })),
+        delete: jest.fn(() => Promise.resolve({ affected: 1 })),
       };
       mergeManager(idRepo, userRepo);
 
@@ -811,10 +821,15 @@ describe('AuthService', () => {
         id: 'C',
         patientId: null,
       } as User);
-      const idRepo = { find: jest.fn(async () => []), update: jest.fn() };
+      const idRepo = {
+        find: jest.fn(() => Promise.resolve([])),
+        update: jest.fn(),
+      };
       const userRepo = {
         // 트랜잭션 진입 후 재확인: 그 사이 온보딩돼 patient_id가 생김
-        findOne: jest.fn(async () => ({ id: 'C', patientId: 'p-new' })),
+        findOne: jest.fn(() =>
+          Promise.resolve({ id: 'C', patientId: 'p-new' }),
+        ),
         delete: jest.fn(),
       };
       mergeManager(idRepo, userRepo);
@@ -842,7 +857,7 @@ describe('AuthService', () => {
         update: jest.fn(),
       };
       const userRepo = {
-        findOne: jest.fn(async () => ({ id: 'C', patientId: null })), // in-tx TOCTOU 통과
+        findOne: jest.fn(() => Promise.resolve({ id: 'C', patientId: null })), // in-tx TOCTOU 통과
         delete: jest.fn(),
       };
       mergeManager(idRepo, userRepo);
@@ -863,12 +878,12 @@ describe('AuthService', () => {
       const userRepo = {
         findOne: jest.fn(),
         create: jest.fn(() => newUser),
-        save: jest.fn(async () => newUser),
+        save: jest.fn(() => Promise.resolve(newUser)),
       };
       const idRepo = {
         findOne: jest.fn().mockResolvedValueOnce(null),
         create: jest.fn((e: Partial<SocialIdentity>) => e),
-        save: jest.fn(async (e: Partial<SocialIdentity>) => e),
+        save: jest.fn((e: Partial<SocialIdentity>) => Promise.resolve(e)),
       };
       dataSource.transaction.mockImplementation(
         async (cb: (m: unknown) => Promise<unknown>) =>
