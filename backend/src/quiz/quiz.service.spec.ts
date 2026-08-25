@@ -218,14 +218,14 @@ describe('QuizService', () => {
                   },
                   // saveQabResults 경로: manager.save(QabResult, rows)는 동일한
                   // qabResultRepo mock으로 위임해 기존 assertion을 유지한다.
-                  save: (entity: unknown, rows: unknown) => {
+                  save: (entity: unknown, rows: unknown): unknown => {
                     if (entity === QabResult) {
                       return qabResultRepo.save(rows);
                     }
                     throw new Error('예상치 못한 엔티티: 트랜잭션 save mock');
                   },
                   // 레벨 재계산: 기본은 행 없음(콜드스타트) + 빈 윈도우 → 레벨 불변.
-                  findOne: (entity: unknown, opts: unknown) => {
+                  findOne: (entity: unknown, opts: unknown): unknown => {
                     if (entity === SkillLevel) {
                       return skillLevelRepo.findOne(opts);
                     }
@@ -257,7 +257,7 @@ describe('QuizService', () => {
                       orIgnoreCalls.push(true);
                       return this;
                     }),
-                    execute: jest.fn(() =>
+                    execute: jest.fn((): unknown =>
                       qabResultRepo.save(
                         insertedValues[insertedValues.length - 1],
                       ),
@@ -267,7 +267,7 @@ describe('QuizService', () => {
                     entity: unknown,
                     values: unknown,
                     conflict: unknown,
-                  ) => {
+                  ): unknown => {
                     if (entity === SkillLevel) {
                       return skillLevelRepo.upsert(values, conflict);
                     }

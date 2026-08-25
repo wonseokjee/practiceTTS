@@ -435,19 +435,30 @@ score만 받아 **영역 외 터치도 '무반응'으로 기록**했다. 라벨�
   "안 쓰는 변수"가 아니라 **응답에서 뺀 필드**다. 규칙을 끄지 않고
   `ignoreRestSiblings: true`만 켰다 — 진짜 미사용 변수는 그대로 잡힌다.
 
-**남은 93건은 전부 `.spec.ts`다.**
+**spec 정리 — 93 → 47 (2026-08-25)**
+
+- **`require-await` 41건 전량.** `jest.fn(async () => value)`처럼 await 없는 async가
+  41곳 있었다. `async`는 "안에서 기다린다"는 신호인데 기다릴 것이 없으니 읽는 사람에게
+  거짓말을 한다. `(...) => Promise.resolve(value)`로 바꿨다 — 목이 Promise를 돌려줘야
+  하는 것뿐이라면 그게 뜻 그대로다. 문자열·주석·중첩 괄호를 건너뛰는 스캐너로 본문
+  범위를 잡아 여러 줄 본문도 처리했다.
+- **`quiz.service.spec`의 가짜 manager 반환 타입 5건.** 목이 `any`를 주더라도 경계에
+  `: unknown`을 붙여 그 아래로 번지지 않게 했다.
+
+**남은 47건 — 뿌리는 하나다.** `jest.fn()`을 맨몸으로 쓰면 `jest.Mock<any, any>`가
+되어 `.mock.calls[0][0]`이 `any`로 나온다. 그러면 "목에 무엇이 넘어왔는지" 확인하는
+단언이 타입 검사를 통과하는 게 아니라 **건너뛴다.**
 
 ```
-34 auth.service.spec.ts        22 quiz.service.spec.ts
-16 speech-data.service.spec.ts 10 ai-proxy.rate-limit.spec.ts
- 4 quiz-generation.client.spec  나머지 7건 흩어져 있음
+16 speech-data.service.spec    15 quiz.service.spec
+10 ai-proxy.rate-limit.spec     4 quiz-generation.client.spec
+ 2 retry.util.spec
 ```
 
-거의 다 목이 `any`를 돌려줘 생기는 `no-unsafe-*`다. **이 저장소의 방침은 이미
-정해져 있다** — `practice.service.spec.ts`에 "체이닝 목은 명시 타입을 붙인다
-(mockReturnThis는 any로 새어 no-unsafe-return에 걸린다)"고 적혀 있다. 규칙을
-끄는 게 아니라 목에 타입을 붙이는 쪽이다. 기계적이지만 파일당 손이 많이 가서
-이번 범위에서 뺐다.
+`buildRepoMock`에 `jest.Mock<unknown, unknown[]>`를 한 번에 씌워 뿌리를 뽑으려
+했으나 이 jest 버전의 제네릭 인자 순서와 안 맞아 tsc가 깨졌다(되돌렸다). 목마다
+**실제 시그니처를 찾아 붙여야** 하고, 그게 이 저장소의 방침이다 —
+`practice.service.spec.ts`에 "체이닝 목은 명시 타입을 붙인다"고 적혀 있다.
 
 ### TODO-ADP-002: 보호자 effectivePatientId 레벨 오염 가드 — **전제가 틀렸다** (조사 2026-08-25)
 
