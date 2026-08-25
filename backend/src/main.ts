@@ -40,4 +40,9 @@ async function bootstrap() {
 
   await app.listen(process.env.PORT ?? 3000);
 }
-bootstrap();
+// 부팅 실패를 삼키지 않는다. 떠 있지도 않은 서버를 정상 종료로 보고하면
+// 프로세스 관리자가 재시작하지 않는다.
+bootstrap().catch((err: unknown) => {
+  console.error('부팅 실패:', err);
+  process.exit(1);
+});
