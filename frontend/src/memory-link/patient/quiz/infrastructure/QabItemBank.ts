@@ -106,10 +106,11 @@ export const WORD_CATEGORY: Record<string, string> = {
   bear: 'animal', butterfly: 'animal', cat: 'animal', chick: 'animal',
   dog: 'animal', elephant: 'animal', lion: 'animal', pig: 'animal',
   rabbit: 'animal', tiger: 'animal', turtle: 'animal', whale: 'animal',
-  // 음식 15
+  // 음식 16
   apple: 'food', banana: 'food', bread: 'food', cake: 'food', candy: 'food',
   carrot: 'food', corn: 'food', grape: 'food', juice: 'food', melon: 'food',
-  milk: 'food', orange: 'food', strawberry: 'food', tomato: 'food',
+  milk: 'food', orange: 'food', strawberry: 'food', sweet_potato: 'food',
+  tomato: 'food',
   watermelon: 'food',
   // 탈것 7
   airplane: 'vehicle', bicycle: 'vehicle', bus: 'vehicle', car: 'vehicle',

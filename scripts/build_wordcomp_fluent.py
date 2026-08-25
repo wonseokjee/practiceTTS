@@ -15,8 +15,14 @@ MAP_OUT = r"scripts/_fluent_final.json"
 UA = {"User-Agent": "Mozilla/5.0 icon/1.0"}
 CDN = "https://api.iconify.design/fluent-emoji-flat/{name}.svg"
 
-# 제거(고구마 1 + 컬러 이모지 없어 교체된 6: 빗·책상·국자·수건·모래·냉장고)
-REMOVED = ["sweet_potato", "comb", "desk", "ladle", "towel", "sand", "refrigerator"]
+# 제거(컬러 이모지가 없어 교체된 5: 빗·책상·수건·냉장고 + 안 쓰기로 한 국자·모래)
+#
+# 고구마는 2026-08-25에 목록에서 뺐다 — Fluent에 roasted-sweet-potato가 있는데도
+# 함께 지워져 있었다. 실사 사진도 있어 이름대기까지 바로 쓸 수 있다.
+#
+# 국자·모래는 아이콘이 없고 낱말로도 안 쓰기로 정했다(2026-08-25). 실사 사진도
+# 지웠다 — 쓸 수 없는 파일을 남겨두면 다음 사람이 또 "왜 안 쓰지"를 묻는다.
+REMOVED = ["comb", "desk", "ladle", "towel", "sand", "refrigerator"]
 # 신규(교체 6 + 추가 10): slug -> (한국어, 범주, fluent-name)
 NEW = {
     "candle": ("양초", "object", "candle"),
@@ -39,6 +45,8 @@ NEW = {
 # 2026-08-22 추가 — 무리 범주를 넷에서 늘리기 위한 낱말(docs/ASSETS-NEEDED.md).
 # 그릴 그림은 없다. 전부 Fluent에 이미 있어 이름만 대면 된다.
 NEW.update({
+    # 실사 사진이 이미 있어 이름대기까지 바로 쓴다.
+    "sweet_potato": ("고구마", "food", "roasted-sweet-potato"),
     # object를 하위 범주로 쪼갤 때 셋을 못 채우는 통 둘을 메운다.
     "soap": ("비누", "object", "soap"),              # 욕실: 칫솔·거울과 함께 셋
     "screwdriver": ("드라이버", "object", "screwdriver"),  # 연장: 망치·사다리와 함께 셋
@@ -171,7 +179,10 @@ for slug in sorted(final):
     svg = fetch_wrap(name) if name else None
     if not svg:
         failed.append(slug); continue
-    open(os.path.join(OUT_DIR, f"{slug}.svg"), "w", encoding="utf-8").write(svg)
+    # newline="" 로 LF를 그대로 쓴다. 저장소가 LF로 고정돼 있어(.gitattributes)
+    # CRLF로 쓰면 매번 작업 트리만 더러워진다.
+    open(os.path.join(OUT_DIR, f"{slug}.svg"), "w", encoding="utf-8",
+         newline="").write(svg)
     written.append(slug)
 
 # 제거 슬러그 이미지 삭제
@@ -187,7 +198,8 @@ for s, (ko, cat, name) in NEW.items():
     cats[s] = cat
 json.dump({"final": final, "namemap": namemap, "new_categories": cats,
            "removed": REMOVED, "new": {s: NEW[s][0] for s in NEW}},
-          open(MAP_OUT, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+          open(MAP_OUT, "w", encoding="utf-8", newline=""),
+          ensure_ascii=False, indent=1)
 
 print(f"\n생성 {len(written)} / 실패 {len(failed)} {failed} / 삭제 {len(deleted)}")
 print("최종 단어 수:", len(final))
