@@ -329,7 +329,10 @@ describe('useMixedQuizSession', () => {
       };
     }
 
-    function renderWordOnly(submitQabResults: ReturnType<typeof vi.fn>) {
+    // `ReturnType<typeof vi.fn>`은 Mock<Procedure | Constructable>로 너무 넓어
+    // IQuizApi.submitQabResults 자리에 안 들어간다. 목이 흉내 내는 실제
+    // 시그니처를 그대로 쓴다 — tsc -b가 잡아준 오류다(--noEmit은 침묵했다).
+    function renderWordOnly(submitQabResults: IQuizApi['submitQabResults']) {
       return renderHook(() =>
         useMixedQuizSession(QUIZ_SET_ID, {
           quizApi: makeApi({ submitQabResults }),
