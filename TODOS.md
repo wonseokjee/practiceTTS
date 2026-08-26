@@ -601,6 +601,91 @@ qw_026    false       (null)       08-17 15:24   ← 컬럼 이전의 옛 행
 `frontend/src/memory-link/patient/quiz/infrastructure/QabItemBank.ts`
 (`buildControlledChoices`)
 
+## [eng-review-2026-08-26] 문항 뱅크 계층 엔지니어링 리뷰
+
+`/plan-eng-review` 결과. 대상은 `QabItemBank.ts`(880줄) + 호출자
+(`useMixedQuizSession.ts`) + 소비자(`quiz.service.ts`의 `saveQabResults`·
+`recomputeSkillLevel`). 발견 21건(내부 6 + 외부 15), 결정 7건.
+
+### 리뷰 중 이미 고친 것
+
+**프론트 빌드가 깨져 있었다 (#72, 머지됨).** `npm run build`(= `tsc -b && vite build`)가
+main에서 실패하고 있었다. 원인은 `npx tsc --noEmit`을 타입 검사로 쓴 것 —
+루트 tsconfig가 `files:[] + references`라 **아무것도 검사하지 않는다**(실측: 일부러 넣은
+타입 오류에 exit 0). 이 함정은 `learnings: frontend-tsc-noemit-is-a-noop`에
+2026-08-17부터 기록돼 있었고 "#37 이후 빌드가 깨진 채 병합됨"이라고까지 적혀 있었다.
+**앞으로 프론트 타입 검사는 `npx tsc -b`를 쓴다.**
+
+### 결정 D7 — 적응 레벨링을 세션 내 적응으로 바꾼다 (C안)
+
+**Why:** 루프가 안 돈다. 실측 수율(세션당 시행):
+
+```
+word      1.556 → 1레벨 이동 최소  3.2세션
+naming·spell·repeat·reading·ddk  1.000 → 5.0세션
+sentence  0.444 → 11.3세션   (세션의 60.5%는 문장 0문항)
+```
+
+여기에 곱해지는 것들 — 문장은 5레벨 중 2번의 승급이 난이도 무변화, ddk는 실질
+밴드 2개, naming은 축이 **0개**, 연습은 레벨링에 전혀 기여하지 않음, 그리고 문장은
+전 문항 2지선다라 `MIN_TRIALS=5`에서 실력 75% 환자의 오승급률이 63%다.
+
+**지연 5~11일 · 게인 ±1 · 측정 SNR ≤1인 열린 루프**다. 매 제출마다 재계산하지만
+실제 정보량은 하루 1비트고, 재활 환자의 일간 변동(피로·시간대·투약)이 그 지연보다
+훨씬 빠르다. 학습하는 것은 능력이 아니라 최근 5일의 컨디션 노이즈다.
+
+**세션 내 적응:** 같은 하위검사에서 2연속 오답이면 그 세션 안에서 다음 문항을 한 칸
+내리고, 3연속 정답이면 올린다. 판정 지연이 5일 → 1문항이 되고 `presented_level`이
+실제 제시값이 된다. 무오류 학습·단서 위계는 실어증 치료의 표준 방식이다.
+
+**뼈대가 이미 있다.** `useMixedQuizSession.ts:390`의 `trailingWrong()`이 연속 오답을
+세고 `shouldFatigueExit`(`sessionSafeguards.ts:18`)이 그걸 쓴다. 연속 정답 카운터와
+문항 재조립만 얹으면 된다.
+
+**C가 지우는 것:** `recomputeSkillLevel`(41줄), `skill-leveling.ts`(88줄) +
+spec(81줄), `LEVEL_WINDOW`/`presented_level = currentLevel` 윈도우 개념 전체.
+`skill_levels`는 컨트롤러가 아니라 **시작 티어 + 리포트**로 남는다(12개 파일 참조).
+
+**C가 자동으로 없애는 발견:** E3(독립 검사 윈도우 덮어쓰기) · E4(핑퐁) ·
+E5(세션 중 레벨 변동) · E7(문장 헛걸음 승급) · E13(uuid 타이브레이크) ·
+D1(레벨 fallback 불일치) · D6(제출당 재계산).
+
+### 남은 결정과 작업
+
+아래는 C를 해도 **살아남는** 것들이다. `E`는 외부 리뷰(서브에이전트) 번호.
+
+| | 내용 | 결정 |
+|---|---|---|
+| **E1** `P1` | naming은 축이 0개인데 `LEVELED_SUBTESTS`에 있다. `toNamingItem`에서 `level`이 닿는 곳은 `presentedLevel: level` 한 줄뿐 | 축을 세우거나 비레벨화 |
+| **E6** `P1` | ddk가 누적 밴드(`allowSmr \|\| syllableCount === 1`). #60에서 문장을 고친 그 버그 | 비누적으로 |
+| **E8** `P1` | 문장 전 문항이 2지선다. 우연수준 0.5 = `DEMOTE_ACCURACY` | 우연수준 보정 또는 표본 증가 |
+| **E10** `P2` | `object`는 "한 무리가 아니다"라고 적어놓고 의미 유인지로 쓴다. 91개 중 9개(9.9%)가 거짓 `foil_kind='semantic'` | 범주를 null로 |
+| **E11** `P2` | 이름대기 자극의 33%(30/91)가 조용히 SVG 폴백. 어느 쪽이었는지 기록 없음 | D3(B)와 같은 통로 |
+| **E12** `P2` | 보호자 "넘어가기"가 `recentCorrectRef`에 `true`로 들어가 **세션 점수 100점** + 피로 탈출 무력화 | 분모에서 제외 |
+| **E9** `P2` | 매니페스트 버전이 행에 저장 안 됨. "v2와 v3은 같은 축이 아니다"라고 적어놓고 같은 윈도우에서 섞어 쓴다 | 컬럼 추가 또는 개념 삭제 |
+| **E14** `P3` | `active-passive` 밴드에 수동문이 **0개**. sg_02·sg_06은 역방향이 화용적으로 불가능해 통사 없이 풀린다 | 유형명 정정 + 문항 교체 |
+| **E15** `P3` | `QabItemBank.ts:101` 주석이 이미 거짓("빗·책상·수건·냉장고 어디서도 안 쓰인다" — #71에서 쓰기 시작) | 주석 정정 |
+| **D2** `P2` | 난이도 규칙을 `domain/`으로 분리 | 결정됨(B) |
+| **D3** `P2` | 폴백 발동을 기록한다 | 결정됨(B) |
+| **D4** `P1` | `QabItemBank.test.ts:252` 삭제 — 모순된 fallback을 "기존 동작"으로 고정하고 있다 | 결정됨(A) |
+| **D5** `P2` | `풀 ⊆ WORD_CATEGORY` 테스트 | 결정됨(A) |
+| **E2** `P2` | 가드 테스트(`qabSubtestLabels.test.ts:114`)가 word·naming에 대해 항진명제 — `itemId`만 보는데 word의 난이도는 `choices`에 있다 | 단언 대상 변경 |
+| — `P3` | `shuffle`이 7곳에 복붙. `QabItemBank`의 것만 `rng` 주입을 받아 테스트가 결정적이고 나머지 6개는 `Math.random` 고정 | 공용 유틸로 |
+
+### NOT in scope
+
+- **낱말 풀 확장 35개** — 리뷰 대상이 아니었고, D5(태그 테스트)가 먼저 들어가야 안전하다.
+- **`/assessment/*` 트리 자체의 재설계** — E3이 그쪽에서 오지만 C가 윈도우를 없애 문제가 소멸한다.
+- **TODO-102(`presented_level` 제시 시점 기록)** — C가 이 문제를 정의째로 없앤다. C 착수 시 닫는다.
+- **백엔드 spec lint 47건** — 별건으로 이미 TODOS에 있다.
+
+### What already exists (다시 만들지 말 것)
+
+- **연속 오답 카운터** — `useMixedQuizSession.ts:390` `trailingWrong()`. 세션 내 적응이 쓸 절반이 이미 있다.
+- **피로 탈출 임계** — `sessionSafeguards.ts:18` `shouldFatigueExit`. 같은 신호를 다른 목적에 쓴다.
+- **온보딩 스크리닝** — `assessments/` 트리(`App.tsx:142`)가 표준 20문항 검사다. 시작 티어 산출에 그대로 쓸 수 있다(E3이 지적한 "적응 루프를 망가뜨리는" 그 경로가, C에서는 오히려 올바른 용도가 된다).
+- **오답 갈래 기록** — `qab_results.foil_kind`(#61·#64). E10·E11이 쓸 통로가 이미 있다.
+
 ## ~~[word-foil-axis] 단어 이해 레벨 4·5가 조용히 쉬워진다~~ — 해결 (2026-08-23)
 
 **What:** `LEVEL_CHOICE_SPEC`이 레벨 4에 같은 범주 오답 3개, 5에 4개를 요구했다.
