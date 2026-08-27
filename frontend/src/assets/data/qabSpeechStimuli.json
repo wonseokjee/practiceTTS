@@ -71,21 +71,16 @@
     "봄이 되면 가족과 강가에 나가 김밥을 먹어요"
   ],
   "ddk": [
-    {
-      "syllable": "퍼",
-      "label": "퍼"
-    },
-    {
-      "syllable": "터",
-      "label": "터"
-    },
-    {
-      "syllable": "커",
-      "label": "커"
-    },
-    {
-      "syllable": "퍼터커",
-      "label": "퍼-터-커"
-    }
+    { "syllable": "퍼", "label": "퍼" },
+    { "syllable": "터", "label": "터" },
+    { "syllable": "커", "label": "커" },
+
+    { "syllable": "퍼터", "label": "퍼-터" },
+    { "syllable": "터커", "label": "터-커" },
+    { "syllable": "퍼커", "label": "퍼-커" },
+
+    { "syllable": "퍼터커", "label": "퍼-터-커" },
+    { "syllable": "커터퍼", "label": "커-터-퍼" },
+    { "syllable": "터커퍼", "label": "터-커-퍼" }
   ]
 }

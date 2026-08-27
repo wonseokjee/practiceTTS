@@ -715,7 +715,7 @@ daily 4.000 / word 1.556 / sentence 0.444 / naming·spell·repeat·reading·ddk 
 | **D5** `P2` | `풀 ⊆ WORD_CATEGORY` 테스트 | 결정됨(A) |
 | **E2** `P2` | 가드 테스트(`qabSubtestLabels.test.ts:114`)가 word·naming에 대해 항진명제 — `itemId`만 보는데 word의 난이도는 `choices`에 있다 | 단언 대상 변경 |
 | **E17** `P2` | `QabItemBank.test.ts`의 `한 단계에 한 축만 움직인다`가 **불안정**하다. 3회 중 1회 실패(`{min:7,max:8}` vs `{min:7,max:7}`) — `tileRange`가 무작위 표본이라 레벨 4·5의 최대 타일 수가 실행마다 다르다. main에 이미 있던 문제다 | 표본을 전수로 바꾸거나 rng 고정 |
-| **E16** `P1` | 말운동 SMR 자극이 1개라 로테이션의 3문항을 채울 수 없다. `#73`(비누적)과 로테이션이 여기서 충돌한다 | SMR 자극 추가 vs 말운동만 시행 수 축소 — **미결** |
+| ~~**E16** `P1`~~ | ~~말운동 SMR 자극이 1개라 로테이션의 3문항을 채울 수 없다~~ | **해결 — 자극 추가.** SMR을 **전환 수**로 갈랐다(2음절=전환1, 3음절=전환2). 밴드마다 자극 3개라 폴백 없이 채운다 |
 | — `P3` | `shuffle`이 7곳에 복붙. `QabItemBank`의 것만 `rng` 주입을 받아 테스트가 결정적이고 나머지 6개는 `Math.random` 고정 | 공용 유틸로 |
 
 ### NOT in scope
