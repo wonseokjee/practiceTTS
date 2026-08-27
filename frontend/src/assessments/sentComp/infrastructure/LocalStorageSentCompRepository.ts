@@ -187,7 +187,7 @@ export class SessionLocalStorageSentCompRepository
       };
       // byType을 SentenceType Record로 변환
       const sentenceTypes: SentenceType[] = [
-        'active-passive',
+        'reversible',
         'relative-clause',
         'embedded-clause',
       ];

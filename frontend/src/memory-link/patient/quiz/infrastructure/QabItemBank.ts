@@ -669,7 +669,7 @@ export function pickWordItems(count: number, level?: number): QabImageItem[] {
  * 때문이다(toSentItem 참고). 대신 자극 자체에 이미 축이 들어 있다 — `sentenceType`.
  *
  * 실어증 문장이해의 복잡도 위계는 확립돼 있다:
- *   active-passive   능동/수동 가역문 — 어순 단서만으로는 못 풀지만 절이 하나다
+ *   reversible       가역문 — 어순으로만 행위자·대상이 갈리고 절이 하나다
  *   relative-clause  관계절 — 논항이 원위치를 벗어나 흔적 처리가 필요하다
  *   embedded-clause  내포절 — 절 경계를 유지한 채 처리해야 해 작업기억 부담이 최대
  *

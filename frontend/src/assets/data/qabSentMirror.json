@@ -6,7 +6,7 @@
       "itemId": "sentComp_01_m",
       "sentence": "고양이가 개를 쫓고 있어요",
       "sentenceAudioUrl": "",
-      "sentenceType": "active-passive",
+      "sentenceType": "reversible",
       "choices": [
         { "imageUrl": "/assets/images/sentComp/sentComp_01_distractor.png", "altText": "고양이가 개를 쫓는 장면", "isCorrect": true },
         { "imageUrl": "/assets/images/sentComp/sentComp_01_correct.png", "altText": "개가 고양이를 쫓는 장면", "isCorrect": false }
@@ -16,7 +16,7 @@
       "itemId": "sentComp_02_m",
       "sentence": "아이가 엄마에게 밥을 먹이고 있어요",
       "sentenceAudioUrl": "",
-      "sentenceType": "active-passive",
+      "sentenceType": "reversible",
       "choices": [
         { "imageUrl": "/assets/images/sentComp/sentComp_02_distractor.png", "altText": "아이가 엄마에게 밥을 먹이는 장면", "isCorrect": true },
         { "imageUrl": "/assets/images/sentComp/sentComp_02_correct.png", "altText": "엄마가 아이에게 밥을 먹이는 장면", "isCorrect": false }
@@ -26,7 +26,7 @@
       "itemId": "sentComp_03_m",
       "sentence": "소녀가 소년에게 꽃을 주고 있어요",
       "sentenceAudioUrl": "",
-      "sentenceType": "active-passive",
+      "sentenceType": "reversible",
       "choices": [
         { "imageUrl": "/assets/images/sentComp/sentComp_03_distractor.png", "altText": "소녀가 소년에게 꽃을 주는 장면", "isCorrect": true },
         { "imageUrl": "/assets/images/sentComp/sentComp_03_correct.png", "altText": "소년이 소녀에게 꽃을 주는 장면", "isCorrect": false }
@@ -36,7 +36,7 @@
       "itemId": "sentComp_04_m",
       "sentence": "학생이 선생님에게 책을 건네주고 있어요",
       "sentenceAudioUrl": "",
-      "sentenceType": "active-passive",
+      "sentenceType": "reversible",
       "choices": [
         { "imageUrl": "/assets/images/sentComp/sentComp_04_distractor.png", "altText": "학생이 선생님에게 책을 건네주는 장면", "isCorrect": true },
         { "imageUrl": "/assets/images/sentComp/sentComp_04_correct.png", "altText": "선생님이 학생에게 책을 건네주는 장면", "isCorrect": false }
