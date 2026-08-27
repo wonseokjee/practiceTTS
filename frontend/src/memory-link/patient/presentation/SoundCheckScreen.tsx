@@ -116,7 +116,7 @@ export function SoundCheckScreen({
           <button
             type="button"
             onClick={onSkip}
-            className="min-h-[48px] w-full text-base text-[#8B928D] underline underline-offset-4"
+            className="min-h-[48px] w-full text-base text-[#6B6560] underline underline-offset-4"
           >
             소리 없이 시작하기
           </button>
@@ -164,7 +164,7 @@ export function SoundCheckScreen({
       <button
         type="button"
         onClick={onCancel}
-        className="min-h-[48px] w-full text-base text-[#8B928D] underline underline-offset-4"
+        className="min-h-[48px] w-full text-base text-[#6B6560] underline underline-offset-4"
       >
         돌아가기
       </button>

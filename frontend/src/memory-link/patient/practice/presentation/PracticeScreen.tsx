@@ -242,7 +242,7 @@ export function PracticeScreen({ onExit, deps }: PracticeScreenProps) {
         <button
           type="button"
           onClick={actions.endSession}
-          className="mt-8 min-h-[48px] w-full text-base text-[#8B928D] underline underline-offset-4"
+          className="mt-8 min-h-[48px] w-full text-base text-[#6B6560] underline underline-offset-4"
           aria-label="오늘은 그만하기"
         >
           오늘은 그만하기
