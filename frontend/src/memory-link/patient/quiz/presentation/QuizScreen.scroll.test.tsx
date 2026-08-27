@@ -74,7 +74,11 @@ function renderQuiz() {
           getRecentItems: vi.fn().mockResolvedValue([]),
           getQabTrend: vi.fn().mockResolvedValue([]),
         },
-        pickQabItems: () => [fiveChoiceItem()],
+        // rotation: [] — 기본 구성은 오늘 날짜의 로테이션이라, 끄지 않으면
+        // 이 테스트가 요일에 따라 다른 문항을 받는다.
+        rotation: [],
+        pickWordItems: () => [fiveChoiceItem()],
+        pickSentItems: () => [],
         pickNamingItems: () => [],
         pickRepeatItems: () => [],
         pickReadingItems: () => [],
@@ -82,7 +86,8 @@ function renderQuiz() {
         pickDdkItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 1,
+        wordCount: 1,
+        sentenceCount: 0,
         namingCount: 0,
         repeatCount: 0,
         readingCount: 0,

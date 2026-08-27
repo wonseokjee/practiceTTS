@@ -117,18 +117,27 @@ function makeNamingItems(): QabNamingItem[] {
   ];
 }
 
-/** 산출 과제(음성·글자조합·DDK) 카운트를 모두 0으로 끄는 공통 옵션. */
-const NO_SPEECH = {
+/**
+ * 세션 구성을 테스트가 완전히 통제한다.
+ *
+ * 기본 구성은 **오늘 날짜의 로테이션**(하루 세 검사)이라, 비워 두면 같은 테스트가
+ * 요일에 따라 통과하거나 실패한다. `rotation: []`로 끄고, 필요한 검사만 각
+ * 테스트가 개수로 켠다. 산출 과제(음성·글자조합·DDK)와 문장도 여기서 0으로 둔다.
+ */
+const ISOLATED = {
+  rotation: [],
   pickNamingItems: () => [],
   pickRepeatItems: () => [],
   pickReadingItems: () => [],
   pickSpellItems: () => [],
   pickDdkItems: () => [],
+  pickSentItems: () => [],
   namingCount: 0,
   repeatCount: 0,
   readingCount: 0,
   spellCount: 0,
   ddkCount: 0,
+  sentenceCount: 0,
 } as const;
 
 function makeSpellItems(): QabSpellItem[] {
@@ -148,11 +157,11 @@ function renderMixed(api: IQuizApi) {
   return renderHook(() =>
     useMixedQuizSession(QUIZ_SET_ID, {
       quizApi: api,
-      pickQabItems: () => makeQabItems(),
+      pickWordItems: () => makeQabItems(),
       generateSessionToken: () => 'tok-1',
       dailyCount: 2,
-      qabCount: 2,
-      ...NO_SPEECH,
+      wordCount: 2,
+      ...ISOLATED,
     }),
   );
 }
@@ -223,11 +232,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickNamingItems: () => makeNamingItems(),
         namingCount: 1,
       }),
@@ -248,11 +257,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickNamingItems: () => makeNamingItems(),
         namingCount: 1,
       }),
@@ -268,11 +277,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickNamingItems: () => makeNamingItems(),
         namingCount: 1,
       }),
@@ -336,11 +345,11 @@ describe('useMixedQuizSession', () => {
       return renderHook(() =>
         useMixedQuizSession(QUIZ_SET_ID, {
           quizApi: makeApi({ submitQabResults }),
-          pickQabItems: () => [taggedWordItem()],
+          pickWordItems: () => [taggedWordItem()],
           generateSessionToken: () => 'tok-1',
           dailyCount: 0,
-          qabCount: 1,
-          ...NO_SPEECH,
+          wordCount: 1,
+          ...ISOLATED,
         }),
       );
     }
@@ -403,7 +412,7 @@ describe('useMixedQuizSession', () => {
       const { result } = renderHook(() =>
         useMixedQuizSession(QUIZ_SET_ID, {
           quizApi: makeApi({ submitQabResults }),
-          pickQabItems: () => [
+          pickWordItems: () => [
             {
               itemId: 'sentComp_01',
               category: 'sentence' as const,
@@ -417,8 +426,8 @@ describe('useMixedQuizSession', () => {
           ],
           generateSessionToken: () => 'tok-1',
           dailyCount: 0,
-          qabCount: 1,
-          ...NO_SPEECH,
+          wordCount: 1,
+          ...ISOLATED,
         }),
       );
       await waitFor(() => expect(result.current[0].phase).toBe('answering'));
@@ -439,11 +448,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi({ submitQabResults }),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickNamingItems: () => makeNamingItems(),
         namingCount: 1,
       }),
@@ -482,11 +491,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi({ submitQabResults }),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickNamingItems: () => twoNaming,
         namingCount: 2,
       }),
@@ -517,11 +526,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi({ submitQabResults }),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickNamingItems: () => twoNaming,
         namingCount: 2,
       }),
@@ -553,11 +562,11 @@ describe('useMixedQuizSession', () => {
     const { result, unmount } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi({ submitQabResults }),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickNamingItems: () => twoNaming,
         namingCount: 2,
       }),
@@ -586,11 +595,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickNamingItems: () => fourNaming,
         namingCount: 4,
       }),
@@ -620,11 +629,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickNamingItems: () => fourNaming,
         namingCount: 4,
       }),
@@ -656,11 +665,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickNamingItems: () => fourNaming,
         namingCount: 4,
       }),
@@ -683,11 +692,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickNamingItems: () => makeNamingItems(),
         namingCount: 1,
       }),
@@ -707,11 +716,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickRepeatItems: () => [
           {
             itemId: 'rp1',
@@ -736,11 +745,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi({ submitQabResults }),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickRepeatItems: () => [
           {
             itemId: 'rp1',
@@ -777,11 +786,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickReadingItems: () => [
           {
             itemId: 'rd1',
@@ -805,11 +814,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickReadingItems: () => [
           { itemId: 'rd1', text: '산 위에 해가 떠올라요', instruction: '읽어주세요' },
         ],
@@ -844,11 +853,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickDdkItems: () => [
           {
             itemId: 'dk1',
@@ -877,11 +886,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi({ submitQabResults }),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickDdkItems: () => [
           {
             itemId: 'ddk_0',
@@ -914,11 +923,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi({ submitQabResults }),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickNamingItems: () => makeNamingItems(),
         namingCount: 1,
       }),
@@ -952,11 +961,11 @@ describe('글자 조합(spell)', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-spell',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickSpellItems: () => makeSpellItems(),
         spellCount: 1,
       }),
@@ -975,11 +984,11 @@ describe('글자 조합(spell)', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-spell2',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickSpellItems: () => makeSpellItems(),
         spellCount: 1,
       }),
@@ -1000,11 +1009,11 @@ describe('글자 조합(spell)', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: api,
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-spell3',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickSpellItems: () => makeSpellItems(),
         spellCount: 1,
       }),
@@ -1032,11 +1041,11 @@ describe('글자 조합(spell)', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: api,
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-spell4',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickSpellItems: () => makeSpellItems(),
         spellCount: 1,
       }),
@@ -1080,11 +1089,11 @@ describe('발화 검사 — 눈높이 배선', () => {
     renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: api,
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => token,
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickRepeatItems: repeat,
         pickReadingItems: reading,
         pickDdkItems: ddk,
@@ -1117,11 +1126,11 @@ describe('발화 검사 — 눈높이 배선', () => {
     renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: api,
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-speech-fail',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickRepeatItems: repeat,
         repeatCount: 1,
       }),
@@ -1145,11 +1154,11 @@ describe('글자 조합 — 반복과 중복 방지', () => {
     renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: api,
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => token,
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickSpellItems: spy,
         spellCount: 1,
       }),
@@ -1197,7 +1206,7 @@ describe('글자 조합 — 반복과 중복 방지', () => {
     renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
-        pickQabItems: () => [
+        pickWordItems: () => [
           {
             itemId: 'w_apple',
             category: 'word',
@@ -1210,8 +1219,8 @@ describe('글자 조합 — 반복과 중복 방지', () => {
         ],
         generateSessionToken: () => 'tok-dup',
         dailyCount: 0,
-        qabCount: 1,
-        ...NO_SPEECH,
+        wordCount: 1,
+        ...ISOLATED,
         pickSpellItems: spy,
         spellCount: 1,
       }),
@@ -1230,11 +1239,11 @@ describe('글자 조합 — 반복과 중복 방지', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: api,
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-fail',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickSpellItems: spy,
         spellCount: 1,
       }),

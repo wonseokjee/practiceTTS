@@ -32,7 +32,8 @@ import type { QabResultInput, QabSubtest } from '../domain/QabResult.js';
 import { quizApi } from '../infrastructure/QuizApi.js';
 import type { IQuizApi } from '../infrastructure/QuizApi.js';
 import {
-  pickQabItems,
+  pickWordItems,
+  pickSentItems,
   pickNamingItems,
   pickSpellItems,
   asItemRef,
@@ -46,6 +47,10 @@ import {
   moveEasiestLast,
   shouldFatigueExit,
 } from '../domain/sessionSafeguards.js';
+import {
+  itemCountFor,
+  rotationForToday,
+} from '../domain/subtestRotation.js';
 import {
   pickRepeatItems,
   pickReadingItems,
@@ -114,11 +119,17 @@ export type UseMixedQuizReturn = [UseMixedQuizState, UseMixedQuizActions];
 
 export interface UseMixedQuizDeps {
   quizApi?: IQuizApi;
-  /** QAB 질문형(단어/문장) 문항 추출기 (테스트 주입용). levels로 제시 난이도 지정. */
-  pickQabItems?: (
-    count: number,
-    levels?: { word?: number; sentence?: number },
-  ) => QabImageItem[];
+  /**
+   * 낱말 이해 문항 추출기 (테스트 주입용). level로 제시 난이도 지정.
+   *
+   * 예전에는 낱말과 문장을 `pickQabItems` 하나가 슬롯 추첨으로 섞었다. 그래서
+   * 문장이 세션당 0.444문항밖에 안 나왔고(세션의 60%는 문장 0문항), 문장만
+   * 판정 지연이 11세션이었다. 로테이션은 어느 검사를 낼지 명시적으로 정하므로
+   * 추첨이 필요 없다 — 두 풀을 따로 뽑는다.
+   */
+  pickWordItems?: (count: number, level?: number) => QabImageItem[];
+  /** 문장 이해 문항 추출기 (테스트 주입용). level로 제시 난이도 지정. */
+  pickSentItems?: (count: number, level?: number) => QabImageItem[];
   /** QAB 그림 이름대기 문항 추출기 (테스트 주입용). level로 제시 난이도 지정. */
   pickNamingItems?: (count: number, level?: number) => QabNamingItem[];
   /** 글자 조합 문항 추출(테스트 주입용). level이 방해 타일 수를 정한다. */
@@ -134,19 +145,26 @@ export interface UseMixedQuizDeps {
   /** QAB 말운동(DDK) 문항 추출기 (테스트 주입용) */
   pickDdkItems?: (count: number, level?: number) => QabDdkItem[];
   generateSessionToken?: () => string;
-  /** 데일리 문항 최대 개수 (기본 4) */
+  /**
+   * 오늘 낼 하위검사 세 개 (테스트 주입용). 미지정 시 오늘 날짜의 로테이션.
+   * 개수 옵션을 따로 주면 그쪽이 이긴다.
+   */
+  rotation?: readonly QabSubtest[];
+  /** 데일리 문항 개수 (기본 2) */
   dailyCount?: number;
-  /** QAB 듣고 그림 고르기 개수 (기본 2) */
-  qabCount?: number;
-  /** QAB 그림 이름대기 개수 (기본 1) */
+  /** 낱말 이해 개수 (기본: 로테이션에 있으면 3, 없으면 0) */
+  wordCount?: number;
+  /** 문장 이해 개수 (기본: 로테이션에 있으면 3, 없으면 0) */
+  sentenceCount?: number;
+  /** 그림 이름대기 개수 (기본: 로테이션) */
   namingCount?: number;
-  /** 글자 조합 문항 수(기본 1). */
+  /** 글자 조합 개수 (기본: 로테이션) */
   spellCount?: number;
-  /** QAB 따라말하기 개수 (기본 1) */
+  /** 따라말하기 개수 (기본: 로테이션) */
   repeatCount?: number;
-  /** QAB 소리 내어 읽기 개수 (기본 1) */
+  /** 소리 내어 읽기 개수 (기본: 로테이션) */
   readingCount?: number;
-  /** QAB 말운동(DDK) 개수 (기본 1) */
+  /** 말운동(DDK) 개수 (기본: 로테이션) */
   ddkCount?: number;
 }
 
@@ -161,13 +179,14 @@ const SUCCESS_RANK: Record<PlayableItem['kind'], number> = {
   ddk: 1,
 };
 
-const DEFAULT_DAILY_COUNT = 4;
-const DEFAULT_QAB_COUNT = 2;
-const DEFAULT_SPELL_COUNT = 1;
-const DEFAULT_NAMING_COUNT = 1;
-const DEFAULT_REPEAT_COUNT = 1;
-const DEFAULT_READING_COUNT = 1;
-const DEFAULT_DDK_COUNT = 1;
+/**
+ * 데일리 문항 수 4 → 2.
+ *
+ * 로테이션이 QAB에 9문항(3검사 × 3)을 쓰므로, 세션 길이 11을 지키려면 데일리가
+ * 2로 내려와야 한다. 길이를 늘리는 쪽(18문항)은 고령·실어증 환자의 순응도를
+ * 사서 쓰는 것이라 택하지 않았다.
+ */
+const DEFAULT_DAILY_COUNT = 2;
 
 const INITIAL_STATE: UseMixedQuizState = Object.freeze({
   phase: 'loading',
@@ -203,20 +222,27 @@ export function useMixedQuizSession(
   deps?: UseMixedQuizDeps,
 ): UseMixedQuizReturn {
   const apiRef = useRef<IQuizApi>(deps?.quizApi ?? quizApi);
-  const pickRef = useRef(deps?.pickQabItems ?? pickQabItems);
+  const pickWordRef = useRef(deps?.pickWordItems ?? pickWordItems);
+  const pickSentRef = useRef(deps?.pickSentItems ?? pickSentItems);
   const pickNamingRef = useRef(deps?.pickNamingItems ?? pickNamingItems);
   const pickSpellRef = useRef(deps?.pickSpellItems ?? pickSpellItems);
   const pickRepeatRef = useRef(deps?.pickRepeatItems ?? pickRepeatItems);
   const pickReadingRef = useRef(deps?.pickReadingItems ?? pickReadingItems);
   const pickDdkRef = useRef(deps?.pickDdkItems ?? pickDdkItems);
   const tokenGenRef = useRef(deps?.generateSessionToken ?? defaultGenerateToken);
+  // 오늘의 하위검사 세 개. 마운트 때 한 번 정해 자정을 넘겨도 안 바뀐다 —
+  // 세션 도중에 구성이 바뀌면 남은 문항이 다른 검사로 갈아끼워진다.
+  const [rotation] = useState<readonly QabSubtest[]>(
+    () => deps?.rotation ?? rotationForToday(),
+  );
   const dailyCount = deps?.dailyCount ?? DEFAULT_DAILY_COUNT;
-  const qabCount = deps?.qabCount ?? DEFAULT_QAB_COUNT;
-  const namingCount = deps?.namingCount ?? DEFAULT_NAMING_COUNT;
-  const spellCount = deps?.spellCount ?? DEFAULT_SPELL_COUNT;
-  const repeatCount = deps?.repeatCount ?? DEFAULT_REPEAT_COUNT;
-  const readingCount = deps?.readingCount ?? DEFAULT_READING_COUNT;
-  const ddkCount = deps?.ddkCount ?? DEFAULT_DDK_COUNT;
+  const wordCount = deps?.wordCount ?? itemCountFor('word', rotation);
+  const sentenceCount = deps?.sentenceCount ?? itemCountFor('sentence', rotation);
+  const namingCount = deps?.namingCount ?? itemCountFor('naming', rotation);
+  const spellCount = deps?.spellCount ?? itemCountFor('spell', rotation);
+  const repeatCount = deps?.repeatCount ?? itemCountFor('repeat', rotation);
+  const readingCount = deps?.readingCount ?? itemCountFor('reading', rotation);
+  const ddkCount = deps?.ddkCount ?? itemCountFor('ddk', rotation);
 
   const [state, setState] = useState<UseMixedQuizState>({ ...INITIAL_STATE });
 
@@ -261,14 +287,12 @@ export function useMixedQuizSession(
       const dailyItems: PlayableItem[] = dailySorted
         .slice(0, dailyCount)
         .map((q) => ({ kind: 'daily', id: q.id, question: q }));
-      const qabItems: PlayableItem[] = pickRef.current(
-        qabCount,
-        levels ? { word: levels.word, sentence: levels.sentence } : undefined,
-      ).map((it) => ({
-        kind: 'qab',
-        id: it.itemId,
-        item: it,
-      }));
+      // 낱말과 문장은 화면에선 같은 종류('듣고 그림 고르기')지만 하위검사로는
+      // 별개다. 로테이션이 둘 중 무엇을 낼지 정하므로 각 풀에서 따로 뽑는다.
+      const qabItems: PlayableItem[] = [
+        ...pickWordRef.current(wordCount, levels?.word),
+        ...pickSentRef.current(sentenceCount, levels?.sentence),
+      ].map((it) => ({ kind: 'qab', id: it.itemId, item: it }));
       const namingItems: PlayableItem[] = pickNamingRef
         .current(namingCount, levels?.naming)
         .map((it) => ({ kind: 'naming', id: it.itemId, item: it }));
@@ -373,7 +397,8 @@ export function useMixedQuizSession(
   }, [
     quizSetId,
     dailyCount,
-    qabCount,
+    wordCount,
+    sentenceCount,
     namingCount,
     repeatCount,
     readingCount,
