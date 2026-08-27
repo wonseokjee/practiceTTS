@@ -81,7 +81,7 @@ function shuffle<T>(items: readonly T[], rng: () => number = Math.random): T[] {
 // 구성해, 범주만 알면 못 맞추고 '정확히 그 단어'를 이해해야 맞도록 만든다.
 
 /**
- * slug → 의미 범주. 미등록 slug는 'object'로 폴백(크래시 방지). (테스트 노출)
+ * slug → 의미 범주. **범주가 없는 낱말은 `null`이다.** (테스트 노출)
  *
  * 범주는 두 곳에서 쓰인다. 검사에서는 `buildControlledChoices`가 **같은 범주
  * 오답**을 뽑는 기준이고, 연습에서는 무리에서 빼기가 **한 무리로 묶을 수 있는가**의
@@ -102,7 +102,7 @@ function shuffle<T>(items: readonly T[], rng: () => number = Math.random): T[] {
  * 냉장고·세탁기·비누통 등 그림 없이 남아 있던 16개를 지웠다 — Fluent 교체 때
  * 그림이 사라진 것들이라 어디서도 안 쓰인다.
  */
-export const WORD_CATEGORY: Record<string, string> = {
+export const WORD_CATEGORY: Record<string, string | null> = {
   // 동물 12
   bear: 'animal', butterfly: 'animal', cat: 'animal', chick: 'animal',
   dog: 'animal', elephant: 'animal', lion: 'animal', pig: 'animal',
@@ -145,18 +145,40 @@ export const WORD_CATEGORY: Record<string, string> = {
   mirror: 'bathroom', soap: 'bathroom', toothbrush: 'bathroom',
   // 연장 3
   hammer: 'tool', ladder: 'tool', screwdriver: 'tool',
-  // 남은 잡동사니 9 — 서로 한 무리가 아니라서 무리 쪽으로는 못 쓴다.
-  // "다른 하나"로는 얼마든지 쓴다(동물 셋 사이의 열쇠는 명확하다).
-  bag: 'object', balloon: 'object', basket: 'object', candle: 'object',
-  clock: 'object', key: 'object', mailbox: 'object', rock: 'object',
-  umbrella: 'object',
+  // ── 범주 없음 9 ───────────────────────────────────────────────
+  //
+  // 서로 한 무리가 아니다. 예전에는 이 아홉을 `'object'`라는 이름의 범주로 묶어
+  // 뒀는데, 그러면 `buildControlledChoices`가 가방의 "같은 범주 오답"으로 풍선·돌을
+  // 뽑고 그 행에 `foil_kind='semantic'`을 찍었다. 91개 중 9개(9.9%)가 **거짓
+  // 의미 오답**이었다.
+  //
+  // 갈래를 나눈 이유가 "의미 오답을 반복해 고르는 것과 음운 오답을 반복해 고르는
+  // 것은 서로 다른 손상"을 읽기 위해서인데, 이름만 범주인 묶음이 그 신호를
+  // 오염시킨다. `null`로 두면 이 낱말들은 의미 오답을 **못 가지고**, 그 자리는
+  // 음운 오답으로 넘어간다(아래 buildControlledChoices).
+  //
+  // "다른 하나"(연습)로는 얼마든지 쓴다 — 동물 셋 사이의 열쇠는 명확하다.
+  bag: null, balloon: null, basket: null, candle: null,
+  clock: null, key: null, mailbox: null, rock: null,
+  umbrella: null,
 };
+
+/**
+ * 두 낱말이 **같은 의미 범주**인가.
+ *
+ * `null === null`을 참으로 보면 안 된다. 범주 없음끼리는 "둘 다 무리가 아니다"라는
+ * 뜻이지 같은 무리라는 뜻이 아니다.
+ */
+function sameCategory(a: string | null, b: string | null): boolean {
+  return a !== null && a === b;
+}
 
 export interface MasterWord {
   slug: string;
   label: string;
   imageUrl: string;
-  category: string;
+  /** 의미 범주. `null`이면 어느 무리에도 안 든다(의미 오답을 못 가진다). */
+  category: string | null;
 }
 
 /** 정답 선택지 기준 마스터 단어 풀(유인지 후보). slug 기준 중복 제거. */
@@ -171,7 +193,10 @@ const MASTER_WORDS: MasterWord[] = (() => {
       slug,
       label: correct.label,
       imageUrl: correct.imageUrl,
-      category: WORD_CATEGORY[slug] ?? 'object',
+      // 미등록 slug는 폴백하지 않고 `null`로 둔다. 예전엔 `?? 'object'`라
+      // 태그를 빠뜨린 낱말이 조용히 잡동사니 범주에 섞였다. 풀의 모든 slug가
+      // 등록돼 있다는 것은 테스트가 지킨다(`풀 ⊆ WORD_CATEGORY`).
+      category: slug in WORD_CATEGORY ? WORD_CATEGORY[slug] : null,
     });
   }
   return [...bySlug.values()];
@@ -295,11 +320,17 @@ export function buildControlledChoices(target: MasterWord, level?: number) {
 
   const sameCat = shuffle(
     MASTER_WORDS.filter(
-      (w) => w.slug !== target.slug && w.category === target.category,
+      (w) => w.slug !== target.slug && sameCategory(w.category, target.category),
     ),
   );
+  // `w.slug !== target.slug`를 여기서도 건다. 예전엔 범주 비교만으로 자기 자신이
+  // 걸러졌는데(자기 범주는 늘 같으니까), 범주 없음(null)끼리는 "같은 범주"가
+  // 아니므로 정답이 자기 오답 후보에 들어온다.
   const otherCat = shuffle(
-    MASTER_WORDS.filter((w) => w.category !== target.category),
+    MASTER_WORDS.filter(
+      (w) =>
+        w.slug !== target.slug && !sameCategory(w.category, target.category),
+    ),
   );
 
   // 갈래를 **뽑는 자리에서** 붙여 들고 다닌다. 나중에 되짚으면 같은 낱말이 두
@@ -323,7 +354,14 @@ export function buildControlledChoices(target: MasterWord, level?: number) {
   // 유인지다. 초성이 유일한 낱말(꽃·빵)은 1순위 후보가 0개라, 초성이나 중성을
   // 공유하는 2순위로 내려가 채운다 — 개수를 줄이면 문항만 쉬워지고 기록은
   // 그대로라 레벨이 거짓말을 한다.
-  const phonWanted = Math.min(spec.phon, foilTotal - foils.length);
+  // 같은 범주가 모자란 만큼 **음운 자리로 넘긴다.** 무관으로 흘려보내면 문항만
+  // 쉬워지고 기록은 그대로라 레벨이 거짓말을 한다. 음운 오답은 90개 낱말 전부가
+  // 채울 수 있으므로(초성 1순위, 없으면 초·중성 2순위) 이 이동은 늘 성립한다.
+  const sameCatShort = sameCatWanted - foils.length;
+  const phonWanted = Math.min(
+    spec.phon + sameCatShort,
+    foilTotal - foils.length,
+  );
   if (phonWanted > 0) {
     const pool = otherCat.filter((w) => !has(w));
     const near = shuffle(
@@ -356,7 +394,9 @@ export function buildControlledChoices(target: MasterWord, level?: number) {
       if (w.slug !== target.slug && !has(w)) {
         foils.push({
           word: w,
-          kind: w.category === target.category ? 'semantic' : 'unrelated',
+          kind: sameCategory(w.category, target.category)
+            ? 'semantic'
+            : 'unrelated',
         });
       }
     }

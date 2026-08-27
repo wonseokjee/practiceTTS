@@ -9,14 +9,20 @@ import {
   buildOddOneOutItems,
 } from './practiceOddOneOut.js';
 
-const w = (slug: string, category: string): MasterWord => ({
+const w = (slug: string, category: string | null): MasterWord => ({
   slug,
   label: slug,
   imageUrl: `/${slug}.svg`,
   category,
 });
 
-/** 무리로 쓸 수 있는 범주 셋 + 잡동사니. */
+/**
+ * 무리로 쓸 수 있는 범주 셋 + **범주 없는 낱말** 넷.
+ *
+ * 예전엔 넷을 `'object'`라는 범주로 묶고 `UNUSABLE_AS_GROUP`이 그 이름을 걸렀다.
+ * 지금은 범주 자체가 `null`이다(E10) — 이름만 범주인 묶음이 검사 쪽에서
+ * `foil_kind='semantic'`을 오염시켰기 때문이다.
+ */
 const words: MasterWord[] = [
   w('dog', 'animal'),
   w('cat', 'animal'),
@@ -28,10 +34,10 @@ const words: MasterWord[] = [
   w('bus', 'vehicle'),
   w('truck', 'vehicle'),
   w('train', 'vehicle'),
-  w('spoon', 'object'),
-  w('couch', 'object'),
-  w('candle', 'object'),
-  w('rock', 'object'),
+  w('spoon', null),
+  w('couch', null),
+  w('candle', null),
+  w('rock', null),
 ];
 
 describe('buildOddOneOutItems', () => {
@@ -58,17 +64,17 @@ describe('buildOddOneOutItems', () => {
     }
   });
 
-  it('잡동사니 범주는 무리로 쓰지 않는다', () => {
-    // object는 쪼개고 남은 잡동사니 통이라(가방·풍선·양초·돌·열쇠 등 9개)
+  it('범주 없는 낱말은 무리로 쓰지 않는다', () => {
     // 촛불·소파·숟가락 셋을 놓고 "다른 하나"를 물으면 정답이 하나로 안 정해진다.
+    // 어르신이 틀린 게 아니라 문항이 틀린 게 된다.
     const catOf = (id: string) =>
-      words.find((x) => x.slug === id)?.category ?? '(없음)';
+      words.find((x) => x.slug === id)?.category ?? null;
 
     for (const item of buildOddOneOutItems(words, 3)) {
       const groupCat = catOf(
         item.choices.find((c) => !c.isCorrect)?.choiceId ?? '',
       );
-      expect(groupCat).not.toBe('object');
+      expect(groupCat).not.toBeNull();
     }
   });
 

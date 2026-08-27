@@ -42,8 +42,13 @@ export const ODD_ONE_OUT_SIZE = 4;
  * 무리로 쓸 수 있는 범주 15개: animal 12 · food 15 · vehicle 7 · place 6 ·
  * body 6 · clothing 5 · person 4 · plant 4 · stationery 4 · furniture 3 ·
  * instrument 3 · appliance 3 · kitchen 3 · bathroom 3 · tool 3.
+ *
+ * 예전에는 여기에 `'object'`가 있었다. 지금은 그 아홉 낱말의 범주 자체가 `null`이라
+ * (E10 — 이름만 범주인 묶음이 `foil_kind='semantic'`을 오염시켰다) 아래에서 범주
+ * 없는 낱말을 걸러내는 것으로 같은 일이 된다. 목록은 비었지만 남겨 둔다 —
+ * "이 범주는 무리로 못 쓴다"가 또 필요해질 자리다.
  */
-const UNUSABLE_AS_GROUP = new Set(['object']);
+const UNUSABLE_AS_GROUP = new Set<string>();
 
 /**
  * 무리 쪽으로 쓸 수 없는 **낱말**.
@@ -100,6 +105,9 @@ export function buildOddOneOutItems(
   const byCategory = new Map<string, MasterWord[]>();
   for (const w of words) {
     if (UNUSABLE_AS_GROUP_WORDS.has(w.slug)) continue;
+    // 범주 없는 낱말(가방·풍선·돌…)은 무리를 못 만든다. 셋을 놓고 "다른 하나"를
+    // 물으면 정답이 하나로 안 정해진다.
+    if (w.category === null) continue;
     const bucket = byCategory.get(w.category);
     if (bucket) bucket.push(w);
     else byCategory.set(w.category, [w]);
