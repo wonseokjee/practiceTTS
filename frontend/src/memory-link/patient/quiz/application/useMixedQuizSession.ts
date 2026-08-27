@@ -131,7 +131,8 @@ export interface UseMixedQuizDeps {
   /** 문장 이해 문항 추출기 (테스트 주입용). level로 제시 난이도 지정. */
   pickSentItems?: (count: number, level?: number) => QabImageItem[];
   /** QAB 그림 이름대기 문항 추출기 (테스트 주입용). level로 제시 난이도 지정. */
-  pickNamingItems?: (count: number, level?: number) => QabNamingItem[];
+  /** 이름대기 문항 추출기 (테스트 주입용). 이름대기는 비레벨 검사라 level이 없다. */
+  pickNamingItems?: (count: number) => QabNamingItem[];
   /** 글자 조합 문항 추출(테스트 주입용). level이 방해 타일 수를 정한다. */
   pickSpellItems?: (
     count: number,
@@ -293,8 +294,9 @@ export function useMixedQuizSession(
         ...pickWordRef.current(wordCount, levels?.word),
         ...pickSentRef.current(sentenceCount, levels?.sentence),
       ].map((it) => ({ kind: 'qab', id: it.itemId, item: it }));
+      // 이름대기는 비레벨 검사다 — levels.naming을 넘기지 않는다.
       const namingItems: PlayableItem[] = pickNamingRef
-        .current(namingCount, levels?.naming)
+        .current(namingCount)
         .map((it) => ({ kind: 'naming', id: it.itemId, item: it }));
       // 재출제 순서 = 간격 반복. 백엔드가 (틀린 것 먼저, 그 안에서 마지막 출제가
       // 오래된 것 먼저) 순으로 주므로 **응답 순서를 그대로 넘긴다.** 여기서

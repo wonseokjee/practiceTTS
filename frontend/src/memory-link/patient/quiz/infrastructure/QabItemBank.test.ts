@@ -10,6 +10,9 @@ import {
   WORD_CATEGORY,
   sentTypeForLevel,
   asItemRef,
+  LEVEL_CHOICE_SPEC,
+  buildControlledChoices,
+  masterWords,
   asWordLabel,
   buildSpellTiles,
   distractorCountForLevel,
@@ -60,28 +63,36 @@ describe('QabItemBank', () => {
     expect(pickSentItems(3).every((i) => i.category === 'sentence')).toBe(true);
   });
 
-  it('단어이해: 4보기가 모두 서로 다른 그림/라벨이다(중복 유인지 없음)', () => {
-    for (const item of pickWordItems(30)) {
-      expect(item.choices).toHaveLength(4);
-      const urls = new Set(item.choices.map((c) => c.imageUrl));
-      const labels = new Set(item.choices.map((c) => c.label));
-      expect(urls.size).toBe(4);
-      expect(labels.size).toBe(4);
-      expect(item.choices.filter((c) => c.isCorrect)).toHaveLength(1);
+  it('단어이해: 보기 수가 레벨이 약속한 값이고 모두 서로 다르다', () => {
+    // 예전엔 레벨을 안 주고 "4보기"를 단언했다. 그건 그림선택만 기본값 3을 쓰던
+    // 시절의 값이라, 기본값을 콜드스타트(2)로 맞추자 명세가 아니라 잔재였음이
+    // 드러났다. 이제 레벨마다 약속한 수를 표에서 읽어 확인한다.
+    for (const lv of [1, 2, 3, 4, 5]) {
+      const total = LEVEL_CHOICE_SPEC[lv].total;
+      for (const item of pickWordItems(20, lv)) {
+        expect(item.choices, `lv${lv}`).toHaveLength(total);
+        expect(new Set(item.choices.map((c) => c.imageUrl)).size).toBe(total);
+        expect(new Set(item.choices.map((c) => c.label)).size).toBe(total);
+        expect(item.choices.filter((c) => c.isCorrect)).toHaveLength(1);
+      }
     }
   });
 
   it('단어이해: 큰 범주(동물/음식/사물) 정답은 같은 범주 유인지를 최소 2개 포함한다', () => {
     // 통제된 유인지: 범주만 알고는 못 맞추도록 같은 범주 오답을 우선 배치한다.
+    // 레벨 3을 명시한다 — 의미 오답 2개는 레벨 3부터의 약속이고, 레벨 2(콜드
+    // 스타트)는 1개다. 레벨을 안 주면 무엇을 재는 테스트인지 알 수 없다.
     const big = new Set(['animal', 'food', 'object']);
-    for (const item of pickWordItems(60)) {
+    for (const item of pickWordItems(60, 3)) {
       const correct = item.choices.find((c) => c.isCorrect)!;
       const cat = WORD_CATEGORY[slugOf(correct.imageUrl)] ?? 'object';
       if (!big.has(cat)) continue;
       const sameCatDistractors = item.choices.filter(
         (c) => !c.isCorrect && (WORD_CATEGORY[slugOf(c.imageUrl)] ?? 'object') === cat,
       );
-      expect(sameCatDistractors.length).toBeGreaterThanOrEqual(2);
+      expect(sameCatDistractors.length).toBeGreaterThanOrEqual(
+        LEVEL_CHOICE_SPEC[3].sameCat,
+      );
     }
   });
 
@@ -246,13 +257,14 @@ describe('QabItemBank', () => {
     it('presentedLevel을 항목에 스탬핑한다', () => {
       expect(pickWordItems(3, 4).every((i) => i.presentedLevel === 4)).toBe(true);
       expect(pickSentItems(3, 2).every((i) => i.presentedLevel === 2)).toBe(true);
-      expect(pickNamingItems(3, 5).every((i) => i.presentedLevel === 5)).toBe(true);
     });
 
-    it('레벨 미지정이면 기존 동작(4보기) + presentedLevel undefined', () => {
-      const items = pickWordItems(5);
-      expect(items.every((i) => i.choices.length === 4)).toBe(true);
-      expect(items.every((i) => i.presentedLevel === undefined)).toBe(true);
+    it('레벨 미지정이면 presentedLevel도 undefined다 — 없는 사실을 만들지 않는다', () => {
+      // 난이도는 콜드스타트(2)로 내지만, 서버가 정한 레벨이 아니므로 스탬핑은
+      // 하지 않는다. 임의의 값을 찍으면 서버 기록과 어긋난다.
+      expect(pickWordItems(5).every((i) => i.presentedLevel === undefined)).toBe(
+        true,
+      );
     });
 
     it('pickQabItems: 단어/문장 레벨을 각각 스탬핑한다', () => {
@@ -269,6 +281,62 @@ describe('QabItemBank', () => {
 // 이 과제는 예전에 보호자 메모 기반으로 만들어져 (a) 기억 회상과 음절 조합이
 // 한 문항에 겹치고 (b) 방해 타일이 늘 3개라 적응 레벨링이 붙지 않았다.
 // 커리큘럼 단어 풀 기반으로 옮기면서 레벨이 난이도를 정하게 했다.
+
+/**
+ * 레벨 미지정(스킬 레벨 조회 실패)은 **모든 축에서 같은 값**이어야 한다.
+ *
+ * 축마다 따로 검증하면 이 어긋남을 못 잡는다. 실제로 그랬다 — 그림선택만
+ * `normalizeLevel(level, 3)`으로 레벨 3을 쓰고 나머지 넷은 콜드스타트 2를 썼다.
+ * 그러면 조회가 실패했을 때 환자는 선택지 4개(레벨 3)를 보는데 서버는 레벨 2로
+ * 기록한다. 본 난이도와 기록이 어긋나면 적응 레벨링의 전제가 통째로 깨진다.
+ *
+ * 더 나쁜 건 그 동작을 **테스트가 "기존 동작"으로 고정하고 있었다**는 점이다.
+ * 모순을 명세로 굳히면 고치려는 쪽이 실패를 본다.
+ *
+ * 그래서 축별이 아니라 **한 테스트**로 본다. 새 축을 만들고 여기 안 넣으면
+ * 그 축만 조용히 다른 기본값을 쓰게 되므로, 축을 추가할 때 여기도 추가한다.
+ */
+describe('레벨 미지정 — 다섯 축이 모두 콜드스타트(2)를 쓴다', () => {
+  const COLD_START = 2;
+  const zero = (): number => 0;
+
+  it('① 선택지 구성(그림선택)', () => {
+    for (const word of ['사과', '가방', '비행기']) {
+      const master = masterWords().find((w) => w.label === word)!;
+      const 미지정 = buildControlledChoices(master, undefined);
+      const 콜드 = buildControlledChoices(master, COLD_START);
+      expect(미지정.length, word).toBe(콜드.length);
+    }
+  });
+
+  it('② 방해 타일 수(글자 조합)', () => {
+    expect(distractorCountForLevel(undefined)).toBe(
+      distractorCountForLevel(COLD_START),
+    );
+  });
+
+  it('③ 음절 범위 + ④ 유사 방해자 — 타일 구성이 통째로 같다', () => {
+    // 두 축 모두 buildSpellTiles를 통해서만 드러난다. rng를 고정해 결정적으로 비교.
+    for (const word of ['바다', '가나', '바나나']) {
+      expect(buildSpellTiles(word, undefined, zero), word).toEqual(
+        buildSpellTiles(word, COLD_START, zero),
+      );
+    }
+  });
+
+  it('⑤ 문장 통사 유형', () => {
+    expect(sentTypeForLevel(undefined)).toBe(sentTypeForLevel(COLD_START));
+  });
+
+  it('레벨 3이 아니다 — 예전 그림선택 기본값이 되살아나면 걸린다', () => {
+    // 이 단언이 이 파일의 요점이다. 레벨 2와 3은 선택지 수가 3개와 4개로 달라
+    // 되돌아가면 여기서 바로 드러난다.
+    const master = masterWords()[0];
+    expect(buildControlledChoices(master, undefined).length).not.toBe(
+      buildControlledChoices(master, 3).length,
+    );
+  });
+});
 
 describe('distractorCountForLevel', () => {
   it('레벨 1~2는 방해 타일이 없다', () => {
@@ -291,14 +359,6 @@ describe('distractorCountForLevel', () => {
     for (const lv of [1, 2, 3, 4, 5]) {
       expect([0, 2, 4]).toContain(distractorCountForLevel(lv));
     }
-  });
-
-  it('레벨 미지정이면 백엔드 콜드스타트(2)와 같은 난이도를 쓴다', () => {
-    // 스킬 레벨 조회가 실패하면 level이 undefined로 온다. 이때 임의의 중간값을
-    // 쓰면 환자는 방해 2개를 푸는데 서버는 레벨 2(방해 0개)로 기록해 본 난이도와
-    // 기록이 어긋난다 — 적응 레벨링의 전제가 깨진다.
-    expect(distractorCountForLevel(undefined)).toBe(distractorCountForLevel(2));
-    expect(distractorCountForLevel(undefined)).toBe(0);
   });
 
   it('범위를 벗어난 레벨은 클램프한다', () => {
@@ -532,7 +592,7 @@ describe('이름대기 전용 낱말', () => {
   const ONLY = namingOnlyWords.items.map((w) => w.slug);
 
   it('이름대기에 실제로 나온다', () => {
-    const naming = pickNamingItems(500, 3);
+    const naming = pickNamingItems(500);
     for (const slug of ONLY) {
       expect(
         naming.some((n) => n.imageUrl === `/assets/images/naming/${slug}.png`),
@@ -564,7 +624,7 @@ describe('이름대기 전용 낱말', () => {
   it('itemRef가 풀 문항과 구별된다', () => {
     // qab_results의 UNIQUE는 (patient, session, subtest, itemRef)다. 접두사가
     // 겹치면 다른 문항이 같은 행으로 접힌다.
-    const naming = pickNamingItems(500, 3);
+    const naming = pickNamingItems(500);
     const only = naming.filter((n) =>
       ONLY.some((s) => n.imageUrl.includes(`/${s}.`)),
     );

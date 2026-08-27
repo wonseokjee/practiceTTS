@@ -700,7 +700,7 @@ daily 4.000 / word 1.556 / sentence 0.444 / naming·spell·repeat·reading·ddk 
 
 | | 내용 | 결정 |
 |---|---|---|
-| **E1** `P1` | naming은 축이 0개인데 `LEVELED_SUBTESTS`에 있다. `toNamingItem`에서 `level`이 닿는 곳은 `presentedLevel: level` 한 줄뿐 | 축을 세우거나 비레벨화 |
+| ~~**E1** `P1`~~ | ~~naming은 축이 0개인데 `LEVELED_SUBTESTS`에 있다~~ | **해결 — 비레벨화.** 음절 분포가 1:13 / 2:49 / 3:27 / **4:2**라 길이 축으로는 3밴드가 최대다. 표준 축인 **단서 위계**는 화면·채점이 함께 바뀌는 별개 기능 → E18 |
 | **E6** `P1` | ddk가 누적 밴드(`allowSmr \|\| syllableCount === 1`). #60에서 문장을 고친 그 버그 | 비누적으로 |
 | **E8** `P1` | 문장 전 문항이 2지선다. 우연수준 0.5 = `DEMOTE_ACCURACY` | 우연수준 보정 또는 표본 증가 |
 | **E10** `P2` | `object`는 "한 무리가 아니다"라고 적어놓고 의미 유인지로 쓴다. 91개 중 9개(9.9%)가 거짓 `foil_kind='semantic'` | 범주를 null로 |
@@ -711,7 +711,8 @@ daily 4.000 / word 1.556 / sentence 0.444 / naming·spell·repeat·reading·ddk 
 | **E15** `P3` | `QabItemBank.ts:101` 주석이 이미 거짓("빗·책상·수건·냉장고 어디서도 안 쓰인다" — #71에서 쓰기 시작) | 주석 정정 |
 | **D2** `P2` | 난이도 규칙을 `domain/`으로 분리 | 결정됨(B) |
 | **D3** `P2` | 폴백 발동을 기록한다 | 결정됨(B) |
-| **D4** `P1` | `QabItemBank.test.ts:252` 삭제 — 모순된 fallback을 "기존 동작"으로 고정하고 있다 | 결정됨(A) |
+| ~~**D4** `P1`~~ | ~~모순된 fallback을 "기존 동작"으로 고정~~ | **해결.** `choiceSpecForLevel`의 기본값 3 → `COLD_START_LEVEL`. 다섯 축을 한 테스트로 묶었다 |
+| **E18** `P2` | 이름대기 난이도 축을 **단서 위계**로 세운다(모델 제공 → 문장 완성 → 첫 음절 → 의미 단서 → 무단서). 새 문항 0개. 화면(단서 표시)과 채점(단서받은 정답의 취급)이 함께 바뀌므로 spec 필요 | **미결** |
 | **D5** `P2` | `풀 ⊆ WORD_CATEGORY` 테스트 | 결정됨(A) |
 | **E2** `P2` | 가드 테스트(`qabSubtestLabels.test.ts:114`)가 word·naming에 대해 항진명제 — `itemId`만 보는데 word의 난이도는 `choices`에 있다 | 단언 대상 변경 |
 | **E17** `P2` | `QabItemBank.test.ts`의 `한 단계에 한 축만 움직인다`가 **불안정**하다. 3회 중 1회 실패(`{min:7,max:8}` vs `{min:7,max:7}`) — `tileRange`가 무작위 표본이라 레벨 4·5의 최대 타일 수가 실행마다 다르다. main에 이미 있던 문제다 | 표본을 전수로 바꾸거나 rng 고정 |
