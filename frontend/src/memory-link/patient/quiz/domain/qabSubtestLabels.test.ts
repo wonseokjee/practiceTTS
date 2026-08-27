@@ -8,7 +8,6 @@ import {
   subtestLabel,
 } from './qabSubtestLabels.js';
 import {
-  pickNamingItems,
   pickQabItems,
   pickSentItems,
   pickSpellItems,
@@ -90,7 +89,6 @@ describe('LEVELED_SUBTESTS — 목록에 있으면 실제로 적응해야 한다
   const 추출: Record<string, (lv: number) => string[]> = {
     word: (lv) => pickQabItems(N, { word: lv, sentence: lv }).map((i) => i.itemId),
     sentence: (lv) => pickSentItems(N, lv).map((i) => i.itemId),
-    naming: (lv) => pickNamingItems(N, lv).map((i) => i.itemId),
     repeat: (lv) => pickRepeatItems(N, lv).map((i) => i.text),
     reading: (lv) => pickReadingItems(N, lv).map((i) => i.text),
     spell: (lv) => pickSpellItems(N, lv).map((i) => i.itemId),
@@ -120,5 +118,12 @@ describe('LEVELED_SUBTESTS — 목록에 있으면 실제로 적응해야 한다
   it('loc는 레벨 대상이 아니다 — 의식 수준은 눈높이 개념이 없다', () => {
     expect(LEVELED_SUBTESTS).not.toContain('loc');
     expect(NON_LEVELED_SUBTESTS).toContain('loc');
+  });
+
+  it('naming도 레벨 대상이 아니다 — 축이 하나도 없다', () => {
+    // 축이 생기면(단서 위계) 이 테스트를 지우고 위 추출기 표에 naming을 넣는다.
+    // 그 전까지 목록에 두면 보호자 화면이 없는 눈높이를 표시한다.
+    expect(LEVELED_SUBTESTS).not.toContain('naming');
+    expect(NON_LEVELED_SUBTESTS).toContain('naming');
   });
 });

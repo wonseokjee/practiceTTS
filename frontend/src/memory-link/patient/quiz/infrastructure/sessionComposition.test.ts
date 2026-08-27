@@ -28,7 +28,8 @@ const 추출: Record<QabSubtest, (n: number, lv: number) => { itemId: string }[]
   {
     word: (n, lv) => pickWordItems(n, lv),
     sentence: (n, lv) => pickSentItems(n, lv),
-    naming: (n, lv) => pickNamingItems(n, lv),
+    // 이름대기는 비레벨 검사라 레벨을 받지 않는다 — 그래도 로테이션에는 든다.
+    naming: (n) => pickNamingItems(n),
     spell: (n, lv) => pickSpellItems(n, lv),
     repeat: (n, lv) => pickRepeatItems(n, lv),
     reading: (n, lv) => pickReadingItems(n, lv),

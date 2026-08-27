@@ -213,9 +213,12 @@ const COLD_START_LEVEL = 2;
  * 축마다 다른 레벨을 보면 "레벨 5인데 방해 타일은 레벨 2 수준" 같은 조합이 나오고,
  * 각 함수를 따로 검증하는 테스트로는 그 어긋남을 잡을 수 없다.
  *
- * `fallback`을 **인자로 강제**하는 건 의도적이다. 그림선택은 기존 동작 보존을 위해
- * 3을 쓰고 글자 조합은 콜드스타트 2를 쓴다 — 서로 다른 게 맞는 값이라, 기본값을
- * 숨기면 호출자가 어느 쪽을 받는지 모르게 된다.
+ * **모든 축이 `COLD_START_LEVEL`을 쓴다.** 예전에는 그림선택만 3을 썼다 — "기존
+ * 동작 보존"이 이유였는데, 그러면 레벨 조회가 실패했을 때 환자는 레벨 3 문항
+ * (선택지 4개)을 보고 서버는 레벨 2로 기록한다. 본 난이도와 기록이 어긋나면
+ * 적응 레벨링의 전제가 깨지므로, 보존할 값이 아니라 고칠 값이었다.
+ *
+ * `fallback`을 인자로 남겨 둔 건 호출부에서 어느 값인지 보이게 하기 위해서다.
  */
 function normalizeLevel(level: number | undefined, fallback: number): number {
   if (level == null) return fallback;
@@ -270,9 +273,9 @@ export const LEVEL_CHOICE_SPEC: Record<number, ChoiceSpec> = {
   5: { total: 5, sameCat: 2, phon: 2 }, // 정답 + 의미2 + 음운2
 };
 
-/** 레벨을 [1..5]로 클램프하고 해당 스펙을 돌려준다(미지정/범위밖은 3=기본). */
+/** 레벨을 [1..5]로 클램프하고 해당 스펙을 돌려준다(미지정은 콜드스타트=2). */
 function choiceSpecForLevel(level?: number): ChoiceSpec {
-  const lv = normalizeLevel(level, 3);
+  const lv = normalizeLevel(level, COLD_START_LEVEL);
   return LEVEL_CHOICE_SPEC[lv];
 }
 
@@ -283,7 +286,7 @@ function choiceSpecForLevel(level?: number): ChoiceSpec {
  * 닮음) → **무관**(나머지). 순서가 곧 우선순위다. {@link LEVEL_CHOICE_SPEC}에
  * 레벨별 배분이 있다.
  *
- * level 미지정 시 레벨 3(의미2 + 무관1) — 기존 동작 보존. (테스트 노출)
+ * level 미지정 시 콜드스타트 레벨 2(의미1 + 무관1) — 다른 축과 같은 값이다.
  */
 export function buildControlledChoices(target: MasterWord, level?: number) {
   const spec = choiceSpecForLevel(level);
@@ -491,16 +494,23 @@ function toNamingItem(it: RawWordItem, level?: number): QabNamingItem | null {
   };
 }
 
-/** 그림 이름대기 문항을 무작위 count개 추출. level은 제시 레벨로 스탬핑된다. */
-export function pickNamingItems(count: number, level?: number): QabNamingItem[] {
-  const fromPool = WORD_ITEMS.map((it) => toNamingItem(it, level)).filter(
+/**
+ * 그림 이름대기 문항을 무작위 count개 추출.
+ *
+ * **레벨 인자를 받지 않는다.** 예전엔 받아서 `presentedLevel`에 찍기만 했다 —
+ * 문항 선택에는 전혀 쓰이지 않아 레벨 1과 5가 같은 문항을 냈고, 그 값이 서버에
+ * 저장돼 보호자 화면에 눈높이 단계로 표시됐다. 없는 사실을 만들지 않으려면
+ * 스탬핑도 하면 안 된다. 자세한 이유는 {@link NON_LEVELED_SUBTESTS}.
+ */
+export function pickNamingItems(count: number): QabNamingItem[] {
+  const fromPool = WORD_ITEMS.map((it) => toNamingItem(it, undefined)).filter(
     (x): x is QabNamingItem => x !== null,
   );
   // 전용 낱말도 같은 통에 넣고 함께 섞는다. 뒤에 붙이면 count가 작을 때 영영
-  // 안 나온다 — 세션당 이름대기는 1문항이다.
+  // 안 나온다.
   const namingOnly = NAMING_ONLY_ITEMS.map((it) => ({
     ...it,
-    presentedLevel: level,
+    presentedLevel: undefined,
   }));
   return shuffle([...fromPool, ...namingOnly]).slice(0, Math.max(0, count));
 }
