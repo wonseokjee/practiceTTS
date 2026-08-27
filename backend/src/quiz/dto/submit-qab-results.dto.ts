@@ -103,6 +103,21 @@ export class QabResultItemDto {
   @IsOptional()
   @IsIn(QAB_FOIL_KINDS)
   foilKind?: QabFoilKind;
+
+  /**
+   * 이 문항이 레벨이 요구한 밴드 밖에서 왔는가(M22).
+   *
+   * `foil_kind`와 같은 성격이다 — 서버가 되짚을 수 없는 관측값이라 그대로 저장하되
+   * 채점·레벨 판정 어디에도 물리지 않는다. 조작해도 성적이 안 움직인다.
+   */
+  @IsOptional()
+  @IsBoolean()
+  bandFallback?: boolean;
+
+  /** 이름대기에서 제시된 그림 종류(M22). 해당 없으면 생략. */
+  @IsOptional()
+  @IsIn(['photo', 'svg'])
+  stimulusKind?: 'photo' | 'svg';
 }
 
 /**

@@ -45,11 +45,16 @@ export interface QabImageItem {
   instruction: string;
   choices: QabImageChoice[];
   /**
-   * 이 문항이 제시된 난이도 레벨(1~5). 적응형 레벨링이 "현재 레벨에서 제시된
-   * 항목"만 윈도우로 세도록 결과 제출 시 백엔드에 함께 보낸다. 미지정(레거시)
-   * 이면 백엔드가 레벨링 윈도우에서 제외한다.
+   * 이 문항이 제시된 난이도 레벨(1~5). 결과 제출 시 실제 제시값으로 기록된다.
    */
   presentedLevel?: number;
+  /**
+   * 이 문항이 **레벨이 요구한 밴드 밖**에서 왔는가.
+   *
+   * 뱅크는 후보가 모자라면 "세션이 비는 것보다 낫다"며 범위를 푼다. 그건 옳은
+   * 선택이지만, 그렇게 나온 문항의 `presentedLevel`은 실제 난이도를 뜻하지 않는다.
+   */
+  bandFallback?: boolean;
 }
 
 /**
@@ -65,8 +70,19 @@ export interface QabNamingItem {
   targetWord: string;
   /** 화면 안내 문구 */
   instruction: string;
-  /** 제시된 난이도 레벨(1~5). 결과 제출 시 백엔드 레벨링 윈도우에 사용. */
+  /**
+   * 이름대기는 **비레벨 검사**다(E1) — 난이도 축이 없어 값을 찍지 않는다.
+   * 필드를 남겨 두는 건 단서 위계(E18)가 들어오면 그때 채우기 위해서다.
+   */
   presentedLevel?: number;
+  /**
+   * 제시된 그림이 **실물 사진인지 아이콘(SVG)인지.**
+   *
+   * 이름대기 자극의 33%(30/91)가 사진이 없어 조용히 SVG로 떨어진다. 실물 사진과
+   * 만화풍 아이콘은 이름을 떠올리는 난이도가 다르므로, 어느 쪽이었는지 안 남기면
+   * 이름대기 정답률이 무엇을 재는 값인지 알 수 없다.
+   */
+  stimulusKind?: 'photo' | 'svg';
 }
 
 /**
@@ -81,6 +97,15 @@ export interface QabRepeatItem {
   instruction: string;
   /** 제시된 난이도 레벨(1~5). 결과 제출 시 실제 제시값으로 기록된다. */
   presentedLevel?: number;
+  /**
+   * 이 문항이 **레벨이 요구한 밴드 밖**에서 왔는가.
+   *
+   * 뱅크는 후보가 모자라면 "세션이 비는 것보다 낫다"며 범위를 푼다. 그건 옳은
+   * 선택이지만, 그렇게 나온 문항의 `presentedLevel`은 실제 난이도를 뜻하지 않는다.
+   * 표시하지 않으면 집계가 조용히 틀린 채로 남는다 — 어느 행이 믿을 수 있는지
+   * 구분할 방법이 없다.
+   */
+  bandFallback?: boolean;
 }
 
 /**
@@ -94,6 +119,15 @@ export interface QabReadingItem {
   instruction: string;
   /** 제시된 난이도 레벨(1~5). 결과 제출 시 실제 제시값으로 기록된다. */
   presentedLevel?: number;
+  /**
+   * 이 문항이 **레벨이 요구한 밴드 밖**에서 왔는가.
+   *
+   * 뱅크는 후보가 모자라면 "세션이 비는 것보다 낫다"며 범위를 푼다. 그건 옳은
+   * 선택이지만, 그렇게 나온 문항의 `presentedLevel`은 실제 난이도를 뜻하지 않는다.
+   * 표시하지 않으면 집계가 조용히 틀린 채로 남는다 — 어느 행이 믿을 수 있는지
+   * 구분할 방법이 없다.
+   */
+  bandFallback?: boolean;
 }
 
 /**
@@ -115,8 +149,15 @@ export interface QabSpellItem {
   /** 셔플된 음절 타일 (정답 음절 + 방해 음절) */
   tiles: string[];
   instruction: string;
-  /** 제시된 난이도 레벨(1~5). 결과 제출 시 백엔드 레벨링 윈도우에 사용. */
+  /** 제시된 난이도 레벨(1~5). 결과 제출 시 실제 제시값으로 기록된다. */
   presentedLevel?: number;
+  /**
+   * 이 문항이 **레벨이 요구한 밴드 밖**에서 왔는가.
+   *
+   * 뱅크는 후보가 모자라면 "세션이 비는 것보다 낫다"며 범위를 푼다. 그건 옳은
+   * 선택이지만, 그렇게 나온 문항의 `presentedLevel`은 실제 난이도를 뜻하지 않는다.
+   */
+  bandFallback?: boolean;
 }
 
 /**
@@ -134,6 +175,15 @@ export interface QabDdkItem {
   instruction: string;
   /** 제시된 난이도 레벨(1~5). 결과 제출 시 실제 제시값으로 기록된다. */
   presentedLevel?: number;
+  /**
+   * 이 문항이 **레벨이 요구한 밴드 밖**에서 왔는가.
+   *
+   * 뱅크는 후보가 모자라면 "세션이 비는 것보다 낫다"며 범위를 푼다. 그건 옳은
+   * 선택이지만, 그렇게 나온 문항의 `presentedLevel`은 실제 난이도를 뜻하지 않는다.
+   * 표시하지 않으면 집계가 조용히 틀린 채로 남는다 — 어느 행이 믿을 수 있는지
+   * 구분할 방법이 없다.
+   */
+  bandFallback?: boolean;
 }
 
 /**

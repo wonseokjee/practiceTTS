@@ -1085,6 +1085,9 @@ export class QuizService {
         // 아닌데 오답 갈래가 있는 행"이 생겨 집계가 조용히 틀린다. 프론트가
         // 안 보내는 것이 정상이지만 여기서도 떨군다.
         foilKind: r.isCorrect ? null : (r.foilKind ?? null),
+        // 관측값 그대로 저장한다. 안 보내면 NULL — "폴백 아님"이 아니라 "모름"이다.
+        bandFallback: r.bandFallback ?? null,
+        stimulusKind: r.stimulusKind ?? null,
       });
     });
 

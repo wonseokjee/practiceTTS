@@ -23,6 +23,7 @@ import {
   pickWordItems,
   qabItemCount,
 } from './QabItemBank.js';
+import { pickDdkItems } from './QabSpeechBank.js';
 import {
   sharesInitialConsonant,
   sharesOnsetOrNucleus,
@@ -842,5 +843,50 @@ describe('의미 범주 태그 (D5·E10)', () => {
         ).toHaveLength(1); // 정답 1개뿐
       }
     }
+  });
+});
+
+describe('폴백·자극 종류를 기록한다 (D3·E11)', () => {
+  it('밴드 안에서 채워지면 표시를 남기지 않는다', () => {
+    // false를 찍지 않는 것이 요점이다. NULL은 "모름", false는 "폴백 아님"이라
+    // 뜻이 다르고, 안 겪은 문항에 false를 찍으면 없는 사실이 생긴다.
+    for (const it of pickSpellItems(1, 2)) {
+      expect(it.bandFallback).toBeUndefined();
+    }
+    for (const it of pickSentItems(1, 3)) {
+      expect(it.bandFallback).toBeUndefined();
+    }
+  });
+
+  it('밴드보다 많이 요청하면 되돌림을 표시한다', () => {
+    // 글자 조합 3~4음절 후보는 28개다. 그보다 많이 달라고 하면 범위가 풀린다.
+    const items = pickSpellItems(40, 3);
+    expect(items.length).toBeGreaterThan(0);
+    expect(items.every((it) => it.bandFallback === true)).toBe(true);
+  });
+
+  it('말운동도 밴드를 못 채우면 표시한다', () => {
+    // 밴드마다 자극이 3개다(E16). 4개를 달라고 하면 되돌림이 걸린다.
+    expect(pickDdkItems(2, 5).every((it) => it.bandFallback === undefined)).toBe(
+      true,
+    );
+    expect(pickDdkItems(4, 5).every((it) => it.bandFallback === true)).toBe(true);
+  });
+
+  it('이름대기는 사진인지 아이콘인지 남긴다', () => {
+    const items = pickNamingItems(200);
+    expect(items.length).toBeGreaterThan(0);
+    for (const it of items) {
+      expect(['photo', 'svg']).toContain(it.stimulusKind);
+      // 표시와 실제 경로가 어긋나면 기록이 거짓이 된다.
+      const 사진경로 = it.imageUrl.includes('/naming/');
+      expect(it.stimulusKind === 'photo', it.imageUrl).toBe(사진경로);
+    }
+  });
+
+  it('이름대기 자극에 사진과 아이콘이 둘 다 있다', () => {
+    // 한쪽만 나오면 위 테스트가 항진명제가 된다. 실측 33%가 SVG다.
+    const kinds = new Set(pickNamingItems(200).map((i) => i.stimulusKind));
+    expect(kinds).toEqual(new Set(['photo', 'svg']));
   });
 });

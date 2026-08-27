@@ -192,6 +192,27 @@ const SUCCESS_RANK: Record<PlayableItem['kind'], number> = {
  */
 const DEFAULT_DAILY_COUNT = 2;
 
+/**
+ * 결과에 함께 싣는 **관측 필드** — 값이 있는 것만 넣는다.
+ *
+ * 셋 다 "그 문항이 실제로 어떤 조건이었나"이고 채점에는 안 쓴다. 한 자리에 모아
+ * 두는 이유는 제출 지점이 여섯 곳이라서다 — 흩어 두면 새 필드를 넣을 때 한둘을
+ * 빠뜨리고, 그러면 그 하위검사만 조용히 기록이 빈다.
+ */
+function observed(item: {
+  presentedLevel?: number;
+  bandFallback?: boolean;
+  stimulusKind?: 'photo' | 'svg';
+}) {
+  return {
+    ...(item.presentedLevel !== undefined
+      ? { presentedLevel: item.presentedLevel }
+      : {}),
+    ...(item.bandFallback ? { bandFallback: true } : {}),
+    ...(item.stimulusKind ? { stimulusKind: item.stimulusKind } : {}),
+  };
+}
+
 /** 답한 문항 하나의 로그. `assisted`는 보호자가 넘긴 문항(환자 수행 아님). */
 interface AnswerLogEntry {
   isCorrect: boolean;
@@ -644,9 +665,7 @@ export function useMixedQuizSession(
         subtest: item.item.category,
         itemRef: item.item.itemId,
         isCorrect,
-        ...(item.item.presentedLevel !== undefined
-          ? { presentedLevel: item.item.presentedLevel }
-          : {}),
+        ...observed(item.item),
         // 틀렸을 때만, 그리고 갈래를 아는 선택지일 때만 보낸다. 단어이해
         // 선택지는 뱅크가 뽑으면서 갈래를 붙여 두고(QabFoilKind), 문장이해는
         // 선택지가 JSON 고정 쌍이라 갈래가 없다.
@@ -681,9 +700,7 @@ export function useMixedQuizSession(
         itemRef: item.item.itemId,
         isCorrect: correct,
         ...(evaluation ? { score: evaluation.score } : {}),
-        ...(item.item.presentedLevel !== undefined
-          ? { presentedLevel: item.item.presentedLevel }
-          : {}),
+        ...observed(item.item),
       });
       applyResult(
         {
@@ -716,9 +733,7 @@ export function useMixedQuizSession(
           itemRef: item.item.itemId,
           isCorrect: evaluation.isCorrect,
           score: evaluation.score,
-          ...(item.item.presentedLevel !== undefined
-            ? { presentedLevel: item.item.presentedLevel }
-            : {}),
+          ...observed(item.item),
         });
         applyResult(
           {
@@ -740,9 +755,7 @@ export function useMixedQuizSession(
           itemRef: item.item.itemId,
           isCorrect: evaluation.isCorrect,
           score: evaluation.score,
-          ...(item.item.presentedLevel !== undefined
-            ? { presentedLevel: item.item.presentedLevel }
-            : {}),
+          ...observed(item.item),
         });
         applyResult(
           {
@@ -772,9 +785,7 @@ export function useMixedQuizSession(
         subtest: 'spell',
         itemRef: item.item.itemId,
         isCorrect: correct,
-        ...(item.item.presentedLevel !== undefined
-          ? { presentedLevel: item.item.presentedLevel }
-          : {}),
+        ...observed(item.item),
       });
       applyResult(
         { isCorrect: correct, correctLabel: item.item.targetWord },
@@ -796,9 +807,7 @@ export function useMixedQuizSession(
         itemRef: item.item.itemId,
         isCorrect: correct,
         metric: count,
-        ...(item.item.presentedLevel !== undefined
-          ? { presentedLevel: item.item.presentedLevel }
-          : {}),
+        ...observed(item.item),
       });
       applyResult(
         {

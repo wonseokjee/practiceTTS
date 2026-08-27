@@ -1834,6 +1834,39 @@ describe('QuizService', () => {
       expect(skillLevelRepo.upsert).not.toHaveBeenCalled();
     });
 
+    it('밴드 되돌림·자극 종류를 관측값 그대로 저장한다 (M22)', async () => {
+      skillLevelRepo.find.mockResolvedValue([]);
+      qabResultRepo.save.mockResolvedValue([]);
+
+      await service.saveQabResults(PATIENT_ID, {
+        sessionToken: SESSION_TOKEN,
+        results: [
+          {
+            subtest: 'spell',
+            itemRef: 'a',
+            isCorrect: true,
+            bandFallback: true,
+          },
+          {
+            subtest: 'naming',
+            itemRef: 'b',
+            isCorrect: true,
+            stimulusKind: 'svg',
+          },
+          { subtest: 'word', itemRef: 'c', isCorrect: true },
+        ],
+      } as SubmitQabResultsDto);
+
+      const rows = qabResultRepo.create.mock.calls.map((c: unknown[]) => c[0]);
+      expect(rows[0]).toMatchObject({ bandFallback: true, stimulusKind: null });
+      expect(rows[1]).toMatchObject({
+        bandFallback: null,
+        stimulusKind: 'svg',
+      });
+      // 안 보낸 값은 NULL이다 — "폴백 아님"(false)이 아니라 "모름".
+      expect(rows[2]).toMatchObject({ bandFallback: null, stimulusKind: null });
+    });
+
     it('오답 갈래는 틀린 문항에만 저장한다', async () => {
       // 맞힌 행에 갈래가 붙으면 "오답이 아닌데 오답 갈래가 있는 행"이 생겨
       // 갈래별 집계가 조용히 틀린다. 프론트가 안 보내는 것이 정상이지만
