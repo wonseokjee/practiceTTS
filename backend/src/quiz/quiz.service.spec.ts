@@ -1834,6 +1834,35 @@ describe('QuizService', () => {
       expect(skillLevelRepo.upsert).not.toHaveBeenCalled();
     });
 
+    it('클라이언트가 낸 매니페스트 버전을 행에 남긴다 (M23)', async () => {
+      // 서버 상수로 덮어쓰면 안 된다. 배포 직후에는 옛 번들을 든 클라이언트가
+      // 정상적으로 존재하고, 그 문항을 새 풀 기준으로 기록하면 경계가 사라진다.
+      skillLevelRepo.find.mockResolvedValue([]);
+      qabResultRepo.save.mockResolvedValue([]);
+
+      await service.saveQabResults(PATIENT_ID, {
+        sessionToken: SESSION_TOKEN,
+        results: [{ subtest: 'word', itemRef: 'a', isCorrect: true }],
+        manifestVersion: 3,
+      } as SubmitQabResultsDto);
+
+      const rows = qabResultRepo.create.mock.calls.map((c: unknown[]) => c[0]);
+      expect(rows[0]).toMatchObject({ manifestVersion: 3 });
+    });
+
+    it('버전을 안 보내면 NULL이다 — 서버 값으로 채우지 않는다', async () => {
+      skillLevelRepo.find.mockResolvedValue([]);
+      qabResultRepo.save.mockResolvedValue([]);
+
+      await service.saveQabResults(PATIENT_ID, {
+        sessionToken: SESSION_TOKEN,
+        results: [{ subtest: 'word', itemRef: 'a', isCorrect: true }],
+      } as SubmitQabResultsDto);
+
+      const rows = qabResultRepo.create.mock.calls.map((c: unknown[]) => c[0]);
+      expect(rows[0]).toMatchObject({ manifestVersion: null });
+    });
+
     it('밴드 되돌림·자극 종류를 관측값 그대로 저장한다 (M22)', async () => {
       skillLevelRepo.find.mockResolvedValue([]);
       qabResultRepo.save.mockResolvedValue([]);

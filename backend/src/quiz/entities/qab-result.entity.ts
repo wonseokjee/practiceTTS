@@ -111,6 +111,18 @@ export class QabResult {
   })
   stimulusKind: string | null;
 
+  /**
+   * 이 행이 어느 정적 문항 풀 기준인가(M23).
+   *
+   * `presented_level`은 "레벨 3에서 제시했다"만 말하고, 그 3이 무엇을 뜻하는지는
+   * 그때의 문항 풀이 정한다. 풀이 바뀌면 같은 숫자가 다른 난이도가 된다.
+   *
+   * **NULL이 정상이다** — 컬럼 이전의 행, 버전을 안 보낸 옛 클라이언트.
+   * 관측값이라 채점에 쓰지 않는다.
+   */
+  @Column({ name: 'manifest_version', type: 'smallint', nullable: true })
+  manifestVersion: number | null;
+
   // ddk 감지 횟수 등 수치 지표(없으면 null)
   @Column({ name: 'metric', type: 'int', nullable: true })
   metric: number | null;

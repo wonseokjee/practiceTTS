@@ -997,9 +997,12 @@ export class QuizService {
     effectivePatientId: string,
     dto: SubmitQabResultsDto,
   ): Promise<SaveQabResultsResult> {
-    // manifest 버전 불일치는 관측용으로만 기록한다. presented_level 자체는
-    // 아래에서 서버 상태로 확정하므로, 오래된 클라이언트가 보낸 값이라도
-    // 레벨링 윈도우를 오염시킬 수 없다.
+    // 클라이언트가 낸 문항 풀 버전. 행에 그대로 남긴다(M23) — 서버 상수로
+    // 덮어쓰면 옛 클라이언트가 낸 문항이 새 풀 기준으로 기록돼 경계가 사라진다.
+    const r_manifest = dto.manifestVersion ?? null;
+
+    // 버전 불일치는 거부하지 않고 경고만 남긴다. 배포 직후에는 옛 번들을 들고
+    // 있는 클라이언트가 정상적으로 존재한다.
     if (
       dto.manifestVersion !== undefined &&
       dto.manifestVersion !== QAB_MANIFEST_VERSION
@@ -1088,6 +1091,9 @@ export class QuizService {
         // 관측값 그대로 저장한다. 안 보내면 NULL — "폴백 아님"이 아니라 "모름"이다.
         bandFallback: r.bandFallback ?? null,
         stimulusKind: r.stimulusKind ?? null,
+        // 클라이언트가 보낸 버전을 그대로 남긴다. 서버 상수로 덮어쓰면 안 된다 —
+        // 옛 클라이언트가 낸 문항이 새 풀 기준으로 기록돼 경계가 사라진다.
+        manifestVersion: r_manifest,
       });
     });
 
