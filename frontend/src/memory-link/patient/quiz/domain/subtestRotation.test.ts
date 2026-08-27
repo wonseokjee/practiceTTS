@@ -1,7 +1,10 @@
 // 하위검사 로테이션 — 순환이 공평한지, 하루 구성이 성립하는지.
 
 import { describe, expect, it } from 'vitest';
-import { LEVELED_SUBTESTS } from './qabSubtestLabels.js';
+import {
+  LEVELED_SUBTESTS,
+  QAB_SUBTEST_ORDER,
+} from './qabSubtestLabels.js';
 import {
   ITEMS_PER_SUBTEST,
   ROTATION_ORDER,
@@ -13,9 +16,19 @@ import {
 } from './subtestRotation.js';
 
 describe('하위검사 로테이션', () => {
-  it('순환 순서가 레벨 있는 검사 전부를 정확히 한 번씩 담는다', () => {
+  it('순환 순서가 문항을 내는 검사 전부를 정확히 한 번씩 담는다', () => {
     // 빠뜨리면 그 검사는 영영 안 나온다. 중복이면 다른 검사가 밀린다.
-    expect([...ROTATION_ORDER].sort()).toEqual([...LEVELED_SUBTESTS].sort());
+    //
+    // 기준은 `LEVELED_SUBTESTS`가 **아니다.** 이름대기는 난이도 축이 없어
+    // 비레벨이지만(E1) 문항은 낸다 — 눈높이가 없는 것과 연습에서 빠지는 것은
+    // 다른 얘기다. `loc`(의식 수준)만 문항이 없어 제외된다.
+    const 문항을내는검사 = QAB_SUBTEST_ORDER.filter((s) => s !== 'loc');
+    expect([...ROTATION_ORDER].sort()).toEqual([...문항을내는검사].sort());
+  });
+
+  it('비레벨 검사도 로테이션에는 든다', () => {
+    expect(ROTATION_ORDER).toContain('naming');
+    expect(LEVELED_SUBTESTS).not.toContain('naming');
   });
 
   it('하루에 서로 다른 세 검사를 낸다', () => {

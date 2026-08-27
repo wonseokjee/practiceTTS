@@ -424,15 +424,22 @@ describe('글자 조합 레벨이 실제로 5단계다', () => {
   /**
    * 그 레벨에서 나올 수 있는 타일 수의 범위.
    *
-   * 표본을 20개로 잡는 이유가 있다. 3~4음절 낱말은 풀에 28개뿐이라 그보다 많이
-   * 달라고 하면 `pickSpellItems`가 "세션이 비는 것보다 낫다"며 범위를 풀어
-   * 2음절까지 섞어 준다. 그 폴백을 밟으면 레벨 구분을 재는 게 아니라 폴백을
-   * 재게 된다.
+   * 한 번에 20개만 요청하는 이유가 있다. 3~4음절 낱말은 풀에 28개뿐이라 그보다
+   * 많이 달라고 하면 `pickSpellItems`가 "세션이 비는 것보다 낫다"며 범위를 풀어
+   * 2음절까지 섞어 준다. 그 폴백을 밟으면 레벨 구분이 아니라 폴백을 재게 된다.
+   *
+   * 대신 **여러 번 뽑아 합친다.** 한 번만 뽑으면 4음절 낱말(풀에 2개)이 표본에서
+   * 통째로 빠져 `max`가 7과 8 사이를 오갔고, 이 describe가 3회 중 1회 실패했다.
+   * 40회면 어떤 낱말이 한 번도 안 나올 확률이 사실상 0이다.
    */
+  const 표본수 = 40;
+
   function tileRange(level: number): { min: number; max: number } {
-    const items = pickSpellItems(20, level);
-    expect(items).toHaveLength(20);
-    const counts = items.map((it) => it.tiles.length);
+    const counts = Array.from({ length: 표본수 }, () => {
+      const items = pickSpellItems(20, level);
+      expect(items).toHaveLength(20);
+      return items.map((it) => it.tiles.length);
+    }).flat();
     return { min: Math.min(...counts), max: Math.max(...counts) };
   }
 
