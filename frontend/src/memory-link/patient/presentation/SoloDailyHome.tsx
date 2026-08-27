@@ -84,7 +84,7 @@ export function SoloDailyHome({
             <button
               type="button"
               onClick={onPractice}
-              className="inline-block px-4 py-2 text-base text-[#6B6560] transition-colors duration-[180ms] ease-out hover:text-[#1A1916]"
+              className="inline-flex min-h-[44px] items-center justify-center px-4 py-2 text-base text-[#6B6560] transition-colors duration-[180ms] ease-out hover:text-[#1A1916]"
             >
               가볍게 연습하기
             </button>
@@ -93,7 +93,7 @@ export function SoloDailyHome({
             <button
               type="button"
               onClick={onReview}
-              className="inline-block px-4 py-2 text-base text-[#6B6560] transition-colors duration-[180ms] ease-out hover:text-[#1A1916]"
+              className="inline-flex min-h-[44px] items-center justify-center px-4 py-2 text-base text-[#6B6560] transition-colors duration-[180ms] ease-out hover:text-[#1A1916]"
             >
               이번 주 돌아보기
             </button>
