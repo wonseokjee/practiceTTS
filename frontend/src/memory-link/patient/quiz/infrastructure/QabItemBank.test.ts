@@ -82,7 +82,8 @@ describe('QabItemBank', () => {
     // 통제된 유인지: 범주만 알고는 못 맞추도록 같은 범주 오답을 우선 배치한다.
     // 레벨 3을 명시한다 — 의미 오답 2개는 레벨 3부터의 약속이고, 레벨 2(콜드
     // 스타트)는 1개다. 레벨을 안 주면 무엇을 재는 테스트인지 알 수 없다.
-    const big = new Set(['animal', 'food', 'object']);
+    // 'object'는 더 이상 범주가 아니다(E10) — 그 아홉은 범주가 null이다.
+    const big = new Set(['animal', 'food']);
     for (const item of pickWordItems(60, 3)) {
       const correct = item.choices.find((c) => c.isCorrect)!;
       const cat = WORD_CATEGORY[slugOf(correct.imageUrl)] ?? 'object';
@@ -173,14 +174,21 @@ describe('QabItemBank', () => {
      * 없다. 아래 테스트는 **90개 낱말 전부**를 훑는다.
      */
     describe('오답 구성이 레벨을 따른다', () => {
-      const catOf = (url: string) => WORD_CATEGORY[slugOf(url)] ?? 'object';
+      const catOf = (url: string): string | null => {
+        const slug = slugOf(url);
+        return slug in WORD_CATEGORY ? WORD_CATEGORY[slug] : null;
+      };
 
       /** 정답 기준으로 오답 하나를 의미/음운/무관으로 가른다. */
-      function classify(targetLabel: string, targetCat: string, foil: {
+      function classify(targetLabel: string, targetCat: string | null, foil: {
         label: string;
         imageUrl: string;
       }): 'semantic' | 'phonological' | 'unrelated' {
-        if (catOf(foil.imageUrl) === targetCat) return 'semantic';
+        // 범주 없음(null)끼리는 같은 무리가 아니다 — `null === null`을 참으로 보면
+        // 가방과 풍선이 의미 오답으로 잡힌다(E10이 고친 그 버그).
+        if (targetCat !== null && catOf(foil.imageUrl) === targetCat) {
+          return 'semantic';
+        }
         const near = sharesInitialConsonant(targetLabel, foil.label);
         const loose = sharesOnsetOrNucleus(
           targetLabel.charAt(0),
@@ -189,11 +197,16 @@ describe('QabItemBank', () => {
         return near || loose ? 'phonological' : 'unrelated';
       }
 
-      function tally(level: number) {
+      /**
+       * @param onlyCategorized 범주 있는 낱말만 셀지. 범주 없는 아홉(가방·풍선·
+       *   돌…)은 의미 오답을 가질 수 없어 섞으면 기대값이 흐려진다(E10).
+       */
+      function tally(level: number, onlyCategorized = false) {
         const out = { semantic: 0, phonological: 0, unrelated: 0, items: 0 };
         for (const item of pickWordItems(90, level)) {
           const correct = item.choices.find((c) => c.isCorrect)!;
           const cat = catOf(correct.imageUrl);
+          if (onlyCategorized && cat === null) continue;
           out.items += 1;
           for (const f of item.choices.filter((c) => !c.isCorrect)) {
             out[classify(correct.label, cat, f)] += 1;
@@ -202,13 +215,37 @@ describe('QabItemBank', () => {
         return out;
       }
 
-      it('의미 오답은 낱말 90개 전부에서 스펙만큼 채워진다', () => {
+      it('의미 오답은 범주 있는 낱말 전부에서 스펙만큼 채워진다', () => {
         // 작은 범주(주방·욕실·연장·가구·악기·가전 = 3개짜리)도 예외가 아니다.
         // 여기가 무너지면 못 채운 자리가 무관 오답으로 메워져, 환자가 푼 문항은
         // 쉬운데 기록은 레벨 4·5가 된다.
+        //
+        // 범주 없는 아홉은 제외한다 — 의미 오답이 **0인 것이 맞는** 낱말들이고,
+        // 그건 바로 아래 테스트가 따로 지킨다.
         for (const [level, want] of [[3, 2], [4, 2], [5, 2]] as const) {
-          const t = tally(level);
+          const t = tally(level, true);
           expect(t.semantic).toBe(t.items * want);
+        }
+      });
+
+      it('범주 없는 낱말의 의미 자리는 음운으로 넘어간다', () => {
+        // 못 채운 자리를 무관으로 흘려보내면 문항만 쉬워지고 기록은 그대로라
+        // 레벨이 거짓말을 한다. 음운 오답은 90개 낱말 전부가 채울 수 있다.
+        for (const target of masterWords().filter((w) => w.category === null)) {
+          for (const lv of [3, 4, 5]) {
+            const foils = buildControlledChoices(target, lv).filter(
+              (c) => !c.isCorrect,
+            );
+            const kinds = foils.map((f) =>
+              classify(target.label, null, f),
+            );
+            expect(kinds.filter((k) => k === 'semantic'), target.label)
+              .toHaveLength(0);
+            expect(
+              kinds.filter((k) => k === 'phonological').length,
+              `${target.label} lv${lv}: ${kinds.join(',')}`,
+            ).toBeGreaterThanOrEqual(LEVEL_CHOICE_SPEC[lv].phon);
+          }
         }
       });
 
@@ -222,8 +259,10 @@ describe('QabItemBank', () => {
       it('음운 오답 개수는 레벨 4에서 1개, 5에서 2개다', () => {
         // 어두 초성이 유일한 낱말(꽃·빵)은 1순위 후보가 0개라 느슨한 기준으로
         // 내려가 채운다. 개수를 줄이지 않는 것이 요점이다.
-        const four = tally(4);
-        const five = tally(5);
+        //
+        // 범주 없는 낱말은 의미 자리까지 음운으로 받으므로 여기서 뺀다.
+        const four = tally(4, true);
+        const five = tally(5, true);
         expect(four.phonological).toBe(four.items);
         expect(five.phonological).toBe(five.items * 2);
       });
@@ -234,6 +273,7 @@ describe('QabItemBank', () => {
         for (const item of pickWordItems(90, 5)) {
           const correct = item.choices.find((c) => c.isCorrect)!;
           const cat = catOf(correct.imageUrl);
+          if (cat === null) continue; // 애초에 같은 범주가 있을 수 없다
           const phon = item.choices.filter(
             (c) =>
               !c.isCorrect &&
@@ -245,10 +285,14 @@ describe('QabItemBank', () => {
 
       it('레벨 3→4는 선택지 수가 같고 오답의 질만 바뀐다', () => {
         // 한 단계에 한 군데만 움직인다. 무관 1개가 음운 1개로 교체된다.
-        const three = tally(3);
-        const four = tally(4);
-        expect(three.items).toBe(four.items);
-        expect(three.semantic).toBe(four.semantic);
+        //
+        // 총합이 아니라 **문항당 값**을 본다. 표본이 무작위라 두 레벨의 문항 수가
+        // 같다는 보장이 없다(범주 없는 낱말을 걸러내면 특히).
+        expect(LEVEL_CHOICE_SPEC[3].total).toBe(LEVEL_CHOICE_SPEC[4].total);
+
+        const three = tally(3, true);
+        const four = tally(4, true);
+        expect(three.semantic / three.items).toBe(four.semantic / four.items);
         expect(three.unrelated).toBeGreaterThan(0);
         expect(four.unrelated).toBe(0);
       });
@@ -735,6 +779,67 @@ describe('pickQabItems — 단어/문장 몫', () => {
     for (const lv of [1, 3, 5]) {
       for (let i = 0; i < 50; i += 1) {
         expect(pickQabItems(2, { word: 3, sentence: lv })).toHaveLength(2);
+      }
+    }
+  });
+});
+
+describe('의미 범주 태그 (D5·E10)', () => {
+  /** 문항 풀에 실제로 등장하는 정답 slug 전부. */
+  function 풀의slug(): string[] {
+    const out = new Set<string>();
+    for (const item of pickWordItems(500, 3)) {
+      const correct = item.choices.find((c) => c.isCorrect)!;
+      out.add(slugOf(correct.imageUrl));
+    }
+    return [...out];
+  }
+
+  it('풀의 모든 낱말이 WORD_CATEGORY에 등록돼 있다', () => {
+    // 예전엔 `WORD_CATEGORY[slug] ?? 'object'`라, 태그를 빠뜨린 낱말이 조용히
+    // 잡동사니 범주에 섞였다. 폴백을 없앤 대신 여기서 지킨다 — 새 낱말을 넣고
+    // 태그를 안 달면 바로 걸린다.
+    const 미등록 = 풀의slug().filter((slug) => !(slug in WORD_CATEGORY));
+    expect(미등록, `태그 없는 낱말: ${미등록.join(', ')}`).toEqual([]);
+  });
+
+  it('범주 없는 낱말은 의미 오답을 갖지 않는다', () => {
+    // 가방의 "같은 범주 오답"이 풍선·돌이던 시절, 그 행에 foil_kind='semantic'이
+    // 찍혔다. 의미 손상과 음운 손상을 가르려고 만든 신호가 오염된 것이다.
+    const 범주없는낱말 = masterWords().filter((w) => w.category === null);
+    expect(범주없는낱말.length).toBeGreaterThan(0);
+
+    for (const target of 범주없는낱말) {
+      for (const lv of [2, 3, 4, 5]) {
+        const foils = buildControlledChoices(target, lv);
+        const semantic = foils.filter((f) => f.foilKind === 'semantic');
+        expect(semantic, `${target.label} lv${lv}`).toHaveLength(0);
+      }
+    }
+  });
+
+  it('범주 없는 낱말도 오답 개수는 레벨이 약속한 만큼 채운다', () => {
+    // 의미 자리를 못 채운다고 문항이 짧아지면 안 된다 — 그 자리는 음운으로 간다.
+    for (const target of masterWords().filter((w) => w.category === null)) {
+      for (const lv of [1, 2, 3, 4, 5]) {
+        expect(buildControlledChoices(target, lv), `${target.label} lv${lv}`)
+          .toHaveLength(LEVEL_CHOICE_SPEC[lv].total);
+      }
+    }
+  });
+
+  it('정답이 자기 오답으로 들어오지 않는다', () => {
+    // 범주 비교만으로 자기 자신을 걸러내던 코드가 있었다. 범주 없음끼리는
+    // "같은 범주"가 아니라서 그 방법이 무너진다.
+    for (const target of masterWords()) {
+      for (const lv of [1, 3, 5]) {
+        const slugs = buildControlledChoices(target, lv).map((c) =>
+          slugOf(c.imageUrl),
+        );
+        expect(
+          slugs.filter((sl) => sl === target.slug),
+          `${target.label} lv${lv}`,
+        ).toHaveLength(1); // 정답 1개뿐
       }
     }
   });
