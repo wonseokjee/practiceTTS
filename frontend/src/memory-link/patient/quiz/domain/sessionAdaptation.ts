@@ -43,7 +43,7 @@ export function adaptedLevel(
   startLevel: number,
   trail: readonly boolean[],
 ): number {
-  let level = clamp(Math.round(startLevel));
+  const level = clamp(Math.round(startLevel));
   let wrongRun = 0;
   let correctRun = 0;
 

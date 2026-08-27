@@ -42,6 +42,7 @@ import {
 import type {
   PickSpellOptions,
   SpellItemRef,
+  SpellWordLabel,
 } from '../infrastructure/QabItemBank.js';
 import {
   moveEasiestLast,
@@ -51,6 +52,8 @@ import {
   itemCountFor,
   rotationForToday,
 } from '../domain/subtestRotation.js';
+import { adaptedLevel } from '../domain/sessionAdaptation.js';
+import { playableSubtest } from '../domain/MixedQuiz.js';
 import {
   pickRepeatItems,
   pickReadingItems,
@@ -264,6 +267,20 @@ export function useMixedQuizSession(
   const submittedCountRef = useRef<number>(0);
   /** 문항 풀 매니페스트 버전(레벨 조회 시 받음). 결과 제출에 함께 보낸다. */
   const manifestVersionRef = useRef<number | undefined>(undefined);
+  /** 세션 시작 시 서버가 준 검사별 레벨. 적응의 기준점이다. */
+  const startLevelsRef = useRef<Partial<Record<QabSubtest, number>>>({});
+  /**
+   * 검사별 이번 세션 정오답 기록. 적응 판정의 입력이다.
+   *
+   * 보호자 "넘어가기"(assisted)는 **넣지 않는다.** 그건 환자가 맞힌 게 아니라
+   * 보호자가 통과시킨 것이라, 세면 연속 정답 3회가 채워져 못 푸는 레벨로 올라간다.
+   */
+  const subtestTrailRef = useRef<Map<QabSubtest, boolean[]>>(new Map());
+  /**
+   * 글자 조합에서 빼야 할 낱말 — 같은 세션의 낱말이해 문항이 TTS로 들려준 정답들.
+   * 적응이 문항을 다시 뽑을 때도 같은 규칙을 지켜야 답을 알려주지 않는다.
+   */
+  const spellExcludeRef = useRef<SpellWordLabel[]>([]);
 
   /** 세트 상세 로드 + 데일리/QAB 인터리브 구성 */
   const fetchAndApply = useCallback(async (): Promise<void> => {
@@ -363,6 +380,9 @@ export function useMixedQuizSession(
       recentCorrectRef.current = [];
       qabResultsRef.current = [];
       submittedCountRef.current = 0;
+      startLevelsRef.current = levels ?? {};
+      subtestTrailRef.current = new Map();
+      spellExcludeRef.current = spokenWords;
 
       if (merged.length === 0) {
         phaseRef.current = 'error';
@@ -412,6 +432,116 @@ export function useMixedQuizSession(
     void fetchAndApply();
   }, [fetchAndApply]);
 
+  /**
+   * 그 검사의 문항을 `need`개 새로 뽑는다 — 이미 낸 것은 피한다.
+   *
+   * **`need`보다 많이 요청하지 않는다.** 뱅크의 폴백은 후보가 모자라면 "세션이
+   * 비는 것보다 낫다"며 레벨 범위를 풀어 버린다. 중복을 피하려고 넉넉히 달라고
+   * 하면 그 폴백을 밟아 밴드가 섞이고, 방금 바꾼 레벨이 거짓이 된다. 그래서
+   * 같은 개수로 여러 번 뽑아 안 쓴 것만 모은다.
+   */
+  const drawFor = useCallback(
+    (subtest: QabSubtest, level: number, need: number, used: Set<string>) => {
+      const draw = (n: number): PlayableItem[] => {
+        switch (subtest) {
+          case 'word':
+            return pickWordRef.current(n, level).map((it) => ({
+              kind: 'qab' as const, id: it.itemId, item: it,
+            }));
+          case 'sentence':
+            return pickSentRef.current(n, level).map((it) => ({
+              kind: 'qab' as const, id: it.itemId, item: it,
+            }));
+          case 'spell':
+            return pickSpellRef.current(n, level, {
+              exclude: spellExcludeRef.current,
+            }).map((it) => ({ kind: 'spell' as const, id: it.itemId, item: it }));
+          case 'repeat':
+            return pickRepeatRef.current(n, level).map((it) => ({
+              kind: 'repeat' as const, id: it.itemId, item: it,
+            }));
+          case 'reading':
+            return pickReadingRef.current(n, level).map((it) => ({
+              kind: 'reading' as const, id: it.itemId, item: it,
+            }));
+          case 'ddk':
+            return pickDdkRef.current(n, level).map((it) => ({
+              kind: 'ddk' as const, id: it.itemId, item: it,
+            }));
+          default:
+            // naming은 비레벨(E1), loc는 문항이 없다.
+            return [];
+        }
+      };
+
+      const out: PlayableItem[] = [];
+      const seen = new Set(used);
+      for (let attempt = 0; attempt < 5 && out.length < need; attempt += 1) {
+        for (const it of draw(need)) {
+          if (out.length >= need) break;
+          if (seen.has(it.id)) continue;
+          seen.add(it.id);
+          out.push(it);
+        }
+      }
+      return out;
+    },
+    [],
+  );
+
+  /**
+   * 적응이 걸리면 **그 검사의 아직 안 푼 문항**을 새 레벨로 갈아끼운다.
+   *
+   * 지금 화면에 떠 있는 문항은 건드리지 않는다 — 답하는 도중에 문제가 바뀌면
+   * 환자에게는 앱이 고장 난 것으로 보인다. 다음 문항부터 적용된다.
+   *
+   * 새로 못 뽑으면(밴드가 바닥) 남은 문항을 그대로 둔다. 같은 문항을 두 번 내면
+   * 세션 안에서 문항 식별자가 겹쳐 결과 한 건이 사라진다.
+   */
+  const repickRemaining = useCallback(
+    (subtest: QabSubtest, level: number): void => {
+      const items = itemsRef.current;
+      const targets: number[] = [];
+      for (let i = indexRef.current + 1; i < items.length; i += 1) {
+        if (playableSubtest(items[i]) === subtest) targets.push(i);
+      }
+      if (targets.length === 0) return;
+
+      const used = new Set(items.map((it) => it.id));
+      const fresh = drawFor(subtest, level, targets.length, used);
+      if (fresh.length < targets.length) {
+        console.warn(
+          `[quiz] ${subtest} 레벨 ${level} 후보가 부족해 ${targets.length - fresh.length}문항은 이전 레벨로 남는다`,
+        );
+      }
+      for (let k = 0; k < fresh.length; k += 1) items[targets[k]] = fresh[k];
+    },
+    [drawFor],
+  );
+
+  /**
+   * 이번 답을 검사별 기록에 넣고, 규칙이 걸리면 남은 문항의 눈높이를 바꾼다.
+   *
+   * 보호자가 넘긴 문항(assisted)은 기록에 넣지 않는다 — 환자가 맞힌 게 아니다.
+   */
+  const recordForAdaptation = useCallback(
+    (item: PlayableItem, isCorrect: boolean, assisted: boolean): void => {
+      if (assisted) return;
+      const subtest = playableSubtest(item);
+      if (subtest === null || subtest === 'naming') return;
+
+      const trail = [...(subtestTrailRef.current.get(subtest) ?? []), isCorrect];
+      subtestTrailRef.current.set(subtest, trail);
+
+      const start = startLevelsRef.current[subtest];
+      if (start === undefined) return;
+      const before = adaptedLevel(start, trail.slice(0, -1));
+      const after = adaptedLevel(start, trail);
+      if (after !== before) repickRemaining(subtest, after);
+    },
+    [repickRemaining],
+  );
+
   /** 채점 결과를 반영해 feedback 단계로 전이 (공통). */
   /** 로그 끝에서부터 연속 오답 수(피로 탈출 판정용). */
   const trailingWrong = (): number => {
@@ -422,7 +552,13 @@ export function useMixedQuizSession(
   };
 
   const applyResult = useCallback(
-    (result: PlayResult, selectedChoiceId: string | null): void => {
+    (
+      result: PlayResult,
+      selectedChoiceId: string | null,
+      assisted = false,
+    ): void => {
+      const item = itemsRef.current[indexRef.current];
+      if (item) recordForAdaptation(item, result.isCorrect, assisted);
       recentCorrectRef.current.push(result.isCorrect);
       phaseRef.current = 'feedback';
       setState((prev) => ({
@@ -432,7 +568,7 @@ export function useMixedQuizSession(
         selectedChoiceId,
       }));
     },
-    [],
+    [recordForAdaptation],
   );
 
   const submitDaily = useCallback(
@@ -694,7 +830,7 @@ export function useMixedQuizSession(
       isCorrect: true,
       assisted: true,
     });
-    applyResult({ isCorrect: true, correctLabel }, null);
+    applyResult({ isCorrect: true, correctLabel }, null, true);
   }, [applyResult]);
 
   // 점진 제출: 아직 안 보낸 결과(tail)만 백엔드에 저장한다. 세션 끝 1회가 아니라
