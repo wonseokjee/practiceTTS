@@ -842,6 +842,19 @@ export function useMixedQuizSession(
   // 보낸다. 백엔드가 완료 마커를 남겨 "완료 vs 중단"을 구분한다(보호자 대시보드
   // 이탈/완료율 통계용) — 언마운트 시 best-effort flush는 completed를 안 보내
   // 중도 이탈로 남는다.
+  /** 검사별 세션 종료 눈높이 — 시작 레벨에 이번 세션 기록을 적용한 값. */
+  const sessionEndingLevels = useCallback(():
+    | Partial<Record<QabSubtest, number>>
+    | undefined => {
+    const out: Partial<Record<QabSubtest, number>> = {};
+    for (const [subtest, trail] of subtestTrailRef.current) {
+      const start = startLevelsRef.current[subtest];
+      if (start === undefined) continue;
+      out[subtest] = adaptedLevel(start, trail);
+    }
+    return Object.keys(out).length > 0 ? out : undefined;
+  }, []);
+
   const flushPending = useCallback((completed = false): void => {
     const all = qabResultsRef.current;
     const pending = all.slice(submittedCountRef.current);
@@ -853,12 +866,16 @@ export function useMixedQuizSession(
     // 보호자는 환자가 자주 포기한다고 오해하게 된다.
     if (pending.length === 0 && !completed) return;
     const targetCount = all.length;
+    // 세션이 끝날 때만 눈높이를 보고한다. 세션 내 적응이 실제로 도달한 값이고,
+    // 서버는 이 값을 저장된 레벨 ±1로 접어 받는다.
+    const endingLevels = completed ? sessionEndingLevels() : undefined;
     void Promise.resolve(
       apiRef.current.submitQabResults(
         sessionTokenRef.current,
         pending,
         manifestVersionRef.current,
         completed,
+        endingLevels,
       ),
     )
       .then(() => {
@@ -868,7 +885,7 @@ export function useMixedQuizSession(
         // 저장 실패는 환자 경험을 막지 않는다. 다음 flush에서 재시도(멱등).
         console.warn('[quiz] QAB 결과 점진 저장 실패:', err);
       });
-  }, []);
+  }, [sessionEndingLevels]);
 
   const next = useCallback((): void => {
     if (phaseRef.current !== 'feedback') return;

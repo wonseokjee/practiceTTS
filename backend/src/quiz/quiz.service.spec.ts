@@ -1733,14 +1733,16 @@ describe('QuizService', () => {
       ).rejects.toMatchObject({ code: '08006' });
     });
 
-    it('presentedLevel은 클라이언트 값을 무시하고 서버의 현재 레벨로 확정한다', async () => {
-      // word는 서버 상태에 레벨 4가 있고, naming은 행이 없어 콜드스타트(2)로 채워진다.
+    it('presentedLevel은 클라이언트가 실제로 낸 값을 저장한다', async () => {
+      // 세션 내 적응(D7-C) 이후 무엇을 냈는지 아는 쪽은 프론트뿐이다. 같은 세션
+      // 안에서 눈높이가 내려가면 서버가 가진 레벨과 달라지고, 그때 서버값으로
+      // 덮어쓰면 기록이 거짓이 된다.
       skillLevelRepo.find.mockResolvedValue([{ subtest: 'word', level: 4 }]);
       qabResultRepo.save.mockResolvedValue([]);
       const dto: SubmitQabResultsDto = {
         sessionToken: SESSION_TOKEN,
         results: [
-          // 클라이언트가 보낸 3은 무시되고, 서버의 현재 레벨 4가 저장돼야 한다.
+          // 저장된 4에서 한 칸 내린 3 — 적응이 실제로 낸 값이다.
           {
             subtest: 'word',
             itemRef: 'qw_001',
@@ -1757,13 +1759,79 @@ describe('QuizService', () => {
       const savedRows = qabResultRepo.create.mock.calls.map((c) => c[0]);
       expect(savedRows[0]).toMatchObject({
         subtest: 'word',
-        presentedLevel: 4,
+        presentedLevel: 3,
       });
-      // 레벨 이력 없는 서브테스트는 콜드스타트(2)로 확정된다(null이 아니다).
+      // 클라이언트가 안 보내면 저장된 레벨로 채운다. 이력이 없으면 콜드스타트(2).
       expect(savedRows[1]).toMatchObject({
         subtest: 'naming',
         presentedLevel: 2,
       });
+    });
+
+    it('presentedLevel이 저장된 레벨에서 ±1을 벗어나면 접는다', async () => {
+      // 적응 규칙이 세션당 한 칸이므로 정상 클라이언트는 이 범위를 안 넘는다.
+      // 조작이든 배선 버그든 레벨이 한 번에 튀지 않게 하는 상한이다.
+      skillLevelRepo.find.mockResolvedValue([{ subtest: 'word', level: 2 }]);
+      qabResultRepo.save.mockResolvedValue([]);
+
+      await service.saveQabResults(PATIENT_ID, {
+        sessionToken: SESSION_TOKEN,
+        results: [
+          { subtest: 'word', itemRef: 'a', isCorrect: true, presentedLevel: 5 },
+          { subtest: 'word', itemRef: 'b', isCorrect: true, presentedLevel: 1 },
+        ],
+      } as SubmitQabResultsDto);
+
+      const savedRows = qabResultRepo.create.mock.calls.map(
+        (c: unknown[]) => c[0],
+      );
+      expect(savedRows[0]).toMatchObject({ presentedLevel: 3 }); // 5 → 2+1
+      expect(savedRows[1]).toMatchObject({ presentedLevel: 1 }); // 2-1, 그대로
+    });
+
+    it('세션이 끝나면 보고된 눈높이를 저장한다', async () => {
+      skillLevelRepo.find.mockResolvedValue([{ subtest: 'word', level: 3 }]);
+      qabResultRepo.save.mockResolvedValue([]);
+
+      await service.saveQabResults(PATIENT_ID, {
+        sessionToken: SESSION_TOKEN,
+        results: [{ subtest: 'word', itemRef: 'a', isCorrect: false }],
+        completed: true,
+        levels: { word: 2 },
+      } as SubmitQabResultsDto);
+
+      expect(skillLevelRepo.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({ subtest: 'word', level: 2 }),
+        ['patientId', 'subtest'],
+      );
+    });
+
+    it('세션이 안 끝났으면 눈높이를 움직이지 않는다', async () => {
+      // 점진 제출의 중간 flush마다 반영하면 한 세션이 레벨을 여러 번 민다.
+      skillLevelRepo.find.mockResolvedValue([{ subtest: 'word', level: 3 }]);
+      qabResultRepo.save.mockResolvedValue([]);
+
+      await service.saveQabResults(PATIENT_ID, {
+        sessionToken: SESSION_TOKEN,
+        results: [{ subtest: 'word', itemRef: 'a', isCorrect: false }],
+        levels: { word: 2 },
+      } as SubmitQabResultsDto);
+
+      expect(skillLevelRepo.upsert).not.toHaveBeenCalled();
+    });
+
+    it('보고된 눈높이가 그대로면 쓰지 않는다', async () => {
+      skillLevelRepo.find.mockResolvedValue([{ subtest: 'word', level: 3 }]);
+      qabResultRepo.save.mockResolvedValue([]);
+
+      await service.saveQabResults(PATIENT_ID, {
+        sessionToken: SESSION_TOKEN,
+        results: [{ subtest: 'word', itemRef: 'a', isCorrect: true }],
+        completed: true,
+        levels: { word: 3 },
+      } as SubmitQabResultsDto);
+
+      expect(skillLevelRepo.upsert).not.toHaveBeenCalled();
     });
 
     it('오답 갈래는 틀린 문항에만 저장한다', async () => {
