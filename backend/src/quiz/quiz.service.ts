@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, In, LessThan, Repository } from 'typeorm';
+import { DataSource, In, LessThan, Repository } from 'typeorm';
 import { MemoryEntry } from '../memory/entities/memory-entry.entity';
 import { PatientMemoryNote } from '../memory/entities/patient-memory-note.entity';
 import { FastApiClientService } from '../memory/services/fast-api-client.service';
@@ -27,9 +27,8 @@ import {
 } from './constants/qab-subtest';
 import {
   COLD_START_LEVEL,
-  LEVEL_WINDOW,
-  SPEECH_SCORED_SUBTESTS,
-  computeLevel,
+  MAX_LEVEL,
+  MIN_LEVEL,
   type SkillLevel as SkillLevelValue,
 } from './services/skill-leveling';
 import { QuizError, QuizErrorCode } from './errors/quiz.errors';
@@ -1013,30 +1012,65 @@ export class QuizService {
     // 제출에 등장한 서브테스트만 레벨 재계산 대상.
     const affectedSubtests = [...new Set(dto.results.map((r) => r.subtest))];
 
-    // presented_level은 클라이언트를 신뢰하지 않는다. 서버가 보유한 현재
-    // 레벨(skill_levels)을 이 서브테스트의 제시 난이도로 확정한다 — 이 값이
-    // 바로 recomputeSkillLevel의 윈도우 필터(presented_level = 현재 레벨)가
-    // 쓰는 값이므로, 클라이언트가 조작된 레벨을 보내도 레벨링에 영향을 줄 수 없다.
-    const currentLevelRows = await this.skillLevelRepository.find({
-      where: { patientId: effectivePatientId, subtest: In(affectedSubtests) },
-    });
+    // 세션 시작 시점의 레벨. 클라이언트가 보낸 값의 허용 범위를 이걸로 정한다.
+    const affectedAndReported = [
+      ...new Set([
+        ...affectedSubtests,
+        ...(Object.keys(dto.levels ?? {}) as QabSubtest[]),
+      ]),
+    ];
+    const currentLevelRows = affectedAndReported.length
+      ? await this.skillLevelRepository.find({
+          where: {
+            patientId: effectivePatientId,
+            subtest: In(affectedAndReported),
+          },
+        })
+      : [];
     const currentLevelBySubtest = new Map(
       currentLevelRows.map((row) => [row.subtest, row.level]),
     );
-    const resolvePresentedLevel = (subtest: QabSubtest): SkillLevelValue =>
+    const storedLevel = (subtest: QabSubtest): SkillLevelValue =>
       (currentLevelBySubtest.get(subtest) ??
         COLD_START_LEVEL) as SkillLevelValue;
 
-    const rows = dto.results.map((r) => {
-      const serverLevel = resolvePresentedLevel(r.subtest);
-      // 클라이언트가 보낸 값은 저장하지 않지만, 서버값과 어긋나면 관측용으로
-      // 남긴다(프론트 배선 버그·구버전 클라이언트 조기 발견용).
-      if (r.presentedLevel !== undefined && r.presentedLevel !== serverLevel) {
+    /**
+     * 클라이언트 값을 저장된 레벨 ±1 · [1..5]로 접는다.
+     *
+     * 세션 내 적응(D7-C) 이후 **무엇을 냈는지 아는 쪽은 프론트뿐이다.** 같은
+     * 세션에서 눈높이가 내려가면 서버가 가진 레벨과 달라지고, 그때 서버값으로
+     * 덮어쓰면 기록이 거짓이 된다. 그래서 클라이언트 값을 받는다.
+     *
+     * 그렇다고 그대로 믿지는 않는다. 적응 규칙이 **세션당 한 칸**이므로 정상
+     * 클라이언트는 ±1을 넘지 않는다. 넘으면 접고 경고를 남긴다 — 조작이든
+     * 배선 버그든 레벨이 한 번에 튀지 않게 하는 상한이다.
+     */
+    const acceptLevel = (
+      subtest: QabSubtest,
+      claimed: number | undefined,
+      what: string,
+    ): SkillLevelValue => {
+      const stored = storedLevel(subtest);
+      if (claimed === undefined) return stored;
+      const bounded = Math.max(
+        Math.max(MIN_LEVEL, stored - 1),
+        Math.min(Math.min(MAX_LEVEL, stored + 1), Math.round(claimed)),
+      );
+      if (bounded !== claimed) {
         this.logger.warn(
-          `presented_level 불일치: client=${r.presentedLevel} server=${serverLevel} ` +
-            `(patient=${effectivePatientId}, subtest=${r.subtest})`,
+          `${what} 범위 밖: client=${claimed} stored=${stored} → ${bounded} ` +
+            `(patient=${effectivePatientId}, subtest=${subtest})`,
         );
       }
+      return bounded as SkillLevelValue;
+    };
+
+    const rows = dto.results.map((r) => {
+      const serverLevel = acceptLevel(
+        r.subtest,
+        r.presentedLevel,
+        'presented_level',
+      );
       return this.qabResultRepository.create({
         patientId: effectivePatientId,
         sessionToken: dto.sessionToken,
@@ -1079,8 +1113,28 @@ export class QuizService {
           .orIgnore()
           .execute();
       }
-      for (const subtest of affectedSubtests) {
-        await this.recomputeSkillLevel(manager, effectivePatientId, subtest);
+      // 레벨은 **세션이 끝날 때 한 번만** 움직인다. 점진 제출의 중간 flush마다
+      // 반영하면 한 세션이 레벨을 여러 번 민다.
+      if (dto.completed && dto.levels) {
+        for (const [subtest, claimed] of Object.entries(dto.levels) as [
+          QabSubtest,
+          number,
+        ][]) {
+          const next = acceptLevel(subtest, claimed, '세션 종료 레벨');
+          // 변화가 없으면 쓰지 않는다. 콜드스타트(행 없음)에서 값이 그대로면
+          // GET이 어차피 COLD_START_LEVEL을 채우므로 행을 만들 필요도 없다.
+          if (next === storedLevel(subtest)) continue;
+          await manager.upsert(
+            SkillLevel,
+            {
+              patientId: effectivePatientId,
+              subtest,
+              level: next,
+              updatedAt: new Date(),
+            },
+            ['patientId', 'subtest'],
+          );
+        }
       }
 
       // 완료 마커: 자연 종료·피로 탈출 등 세션이 의도한 대로 끝났을 때만 프론트가
@@ -1100,58 +1154,6 @@ export class QuizService {
     });
 
     return { saved: rows.length };
-  }
-
-  /**
-   * 한 스킬(서브테스트)의 레벨을 현재 레벨에서 제시된 최근 윈도우로 재계산해
-   * UPSERT한다. 트랜잭션 매니저 안에서 호출한다.
-   *
-   * 윈도우 필터:
-   *  - presented_level = 현재 레벨(승급 후 유도 하락을 퇴행으로 오독하는 교란 차단)
-   *  - assisted = false(보호자 도움은 환자 수행 아님)
-   *  - 발화 서브테스트는 score IS NOT NULL(Azure 불가 항목 제외 → 자연 홀드)
-   *  - created_at DESC, 동시각 타이는 id DESC로 결정론, 최근 LEVEL_WINDOW개
-   */
-  private async recomputeSkillLevel(
-    manager: EntityManager,
-    patientId: string,
-    subtest: QabSubtest,
-  ): Promise<void> {
-    const existing = await manager.findOne(SkillLevel, {
-      where: { patientId, subtest },
-    });
-    const currentLevel = (existing?.level ??
-      COLD_START_LEVEL) as SkillLevelValue;
-
-    const qb = manager
-      .createQueryBuilder(QabResult, 'r')
-      .select('r.is_correct', 'isCorrect')
-      .where('r.patient_id = :pid', { pid: patientId })
-      .andWhere('r.subtest = :subtest', { subtest })
-      .andWhere('r.presented_level = :lvl', { lvl: currentLevel })
-      .andWhere('r.assisted = false')
-      .orderBy('r.created_at', 'DESC')
-      .addOrderBy('r.id', 'DESC')
-      .limit(LEVEL_WINDOW);
-    if (SPEECH_SCORED_SUBTESTS.includes(subtest)) {
-      qb.andWhere('r.score IS NOT NULL');
-    }
-    const raw = await qb.getRawMany<{ isCorrect: boolean }>();
-    const window = raw.map((x) => ({ isCorrect: x.isCorrect }));
-
-    const nextLevel = computeLevel(currentLevel, window);
-
-    // 변화 없으면 쓰지 않는다. 콜드스타트(행 없음)이고 레벨이 그대로면 GET이
-    // 어차피 COLD_START_LEVEL로 채우므로 행을 만들 필요도 없다.
-    if (nextLevel === (existing?.level ?? COLD_START_LEVEL)) {
-      return;
-    }
-
-    await manager.upsert(
-      SkillLevel,
-      { patientId, subtest, level: nextLevel, updatedAt: new Date() },
-      ['patientId', 'subtest'],
-    );
   }
 
   // ══════════════════════════════════════════════════════════════════════

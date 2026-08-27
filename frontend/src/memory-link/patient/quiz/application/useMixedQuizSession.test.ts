@@ -480,6 +480,7 @@ describe('useMixedQuizSession', () => {
       [{ subtest: 'naming', itemRef: 'naming_n1', isCorrect: true }],
       1,
       true, // 마지막 문항 → 세션 자연 종료 → 완료 마커
+      undefined, // 이름대기는 비레벨 검사라 보고할 눈높이가 없다
     );
   });
 
@@ -780,6 +781,8 @@ describe('useMixedQuizSession', () => {
       [{ subtest: 'repeat', itemRef: 'rp1', isCorrect: true, score: expect.any(Number) }],
       1,
       true, // 마지막 문항 → 세션 자연 종료 → 완료 마커
+      // 1문항 정답으로는 승급 임계(3연속)에 못 미쳐 시작 레벨 그대로 보고한다.
+      { repeat: 2 },
     );
   });
 
@@ -916,6 +919,7 @@ describe('useMixedQuizSession', () => {
       [{ subtest: 'ddk', itemRef: 'ddk_0', isCorrect: true, metric: 11 }],
       1,
       true, // 마지막 문항 → 세션 자연 종료 → 완료 마커
+      { ddk: 2 },
     );
   });
 
@@ -949,6 +953,7 @@ describe('useMixedQuizSession', () => {
       [{ subtest: 'naming', itemRef: 'naming_n1', isCorrect: true, assisted: true }],
       1,
       true, // 마지막 문항 → 세션 자연 종료 → 완료 마커
+      undefined, // 도움받은 문항은 적응 기록에 안 들어간다
     );
   });
 

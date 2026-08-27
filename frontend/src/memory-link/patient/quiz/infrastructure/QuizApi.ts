@@ -69,6 +69,11 @@ export interface IQuizApi {
     manifestVersion?: number,
     /** 이 제출로 세션이 끝까지 진행됐는지(완료 vs 중단 구분 마커). */
     completed?: boolean,
+    /**
+     * 세션 종료 시점의 검사별 눈높이 — 세션 내 적응의 결과다.
+     * `completed`인 제출에서만 서버가 반영한다.
+     */
+    levels?: Partial<Record<QabSubtest, number>>,
   ): Promise<{ saved: number }>;
   /** GET /quiz/qab-summary — QAB 검사별 회복 추세 (보호자용) */
   getQabSummary(): Promise<QabSubtestSummary[]>;
@@ -333,12 +338,18 @@ export const quizApi: IQuizApi = {
     results: QabResultInput[],
     manifestVersion?: number,
     completed?: boolean,
+    levels?: Partial<Record<QabSubtest, number>>,
   ): Promise<{ saved: number }> {
     const res = await memoryLinkApi.post<unknown>('/quiz/qab-results', {
       sessionToken,
       results,
       ...(manifestVersion === undefined ? {} : { manifestVersion }),
       ...(completed ? { completed: true } : {}),
+      // 세션이 끝나지 않은 중간 flush에는 싣지 않는다 — 한 세션이 레벨을
+      // 여러 번 미는 것을 막는 건 서버지만, 보내지 않는 편이 의도가 분명하다.
+      ...(completed && levels && Object.keys(levels).length > 0
+        ? { levels }
+        : {}),
     });
     const obj = asRecord(res.data);
     if (obj === null || typeof obj.saved !== 'number') {
