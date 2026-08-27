@@ -2,6 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  ddkSpecForLevel,
   pickDdkItems,
   pickReadingItems,
   pickRepeatItems,
@@ -125,15 +126,45 @@ describe('QabSpeechBank — 레벨별 난이도', () => {
   describe('말운동(DDK)', () => {
     it('낮은 레벨은 AMR(단음절)만 낸다', () => {
       // SMR('퍼터커')은 조음 위치를 바꿔가며 내야 해서 구음장애에서 먼저 무너진다.
-      for (const it of 반복추출(() => pickDdkItems(2, 2))) {
-        expect(음절(it.syllable)).toBe(1);
+      for (const lv of [1, 2, 3]) {
+        for (const it of 반복추출(() => pickDdkItems(1, lv))) {
+          expect(음절(it.syllable)).toBe(1);
+        }
       }
     });
 
-    it('높은 레벨은 SMR(퍼터커)을 낸다', () => {
-      const items = 반복추출(() => pickDdkItems(2, 5));
+    it('높은 레벨은 SMR만 낸다 — 밴드가 누적되지 않는다', () => {
+      // 예전엔 `allowSmr || 단음절`이라 레벨 5가 AMR을 그대로 낼 수 있었다.
+      // 그러면 레벨 5로 기록된 문항이 실제로는 레벨 1 문항이다(#59·#60과 같은 버그).
+      for (const lv of [4, 5]) {
+        for (const it of 반복추출(() => pickDdkItems(1, lv))) {
+          expect(음절(it.syllable)).toBeGreaterThan(1);
+        }
+      }
+    });
 
-      expect(items.some((i) => 음절(i.syllable) > 1)).toBe(true);
+    it('다섯 레벨이 서로 다른 요구를 낸다 — 종류가 같아도 반복 횟수가 다르다', () => {
+      // 종류(AMR/SMR)만으로는 밴드가 둘뿐이다. 표준 자극이 AMR 3 + SMR 1이라
+      // 자극을 늘려 해결할 수 없으므로 반복 요구량이 두 번째 축이다.
+      const 요구 = [1, 2, 3, 4, 5].map((lv) => {
+        const spec = ddkSpecForLevel(lv);
+        return `${spec.kind}:${spec.targetCount}`;
+      });
+
+      expect(new Set(요구).size).toBe(5);
+      // 같은 종류 안에서는 레벨이 오를수록 더 많이 요구한다.
+      expect(ddkSpecForLevel(1).targetCount).toBeLessThan(ddkSpecForLevel(2).targetCount);
+      expect(ddkSpecForLevel(2).targetCount).toBeLessThan(ddkSpecForLevel(3).targetCount);
+      expect(ddkSpecForLevel(4).targetCount).toBeLessThan(ddkSpecForLevel(5).targetCount);
+    });
+
+    it('추출한 문항의 목표 횟수는 레벨이 정한다', () => {
+      for (const lv of [1, 2, 3, 4, 5]) {
+        const spec = ddkSpecForLevel(lv);
+        for (const it of 반복추출(() => pickDdkItems(1, lv))) {
+          expect(it.targetCount).toBe(spec.targetCount);
+        }
+      }
     });
   });
 

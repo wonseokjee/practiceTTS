@@ -73,23 +73,19 @@
   "ddk": [
     {
       "syllable": "퍼",
-      "label": "퍼",
-      "targetCount": 10
+      "label": "퍼"
     },
     {
       "syllable": "터",
-      "label": "터",
-      "targetCount": 10
+      "label": "터"
     },
     {
       "syllable": "커",
-      "label": "커",
-      "targetCount": 10
+      "label": "커"
     },
     {
       "syllable": "퍼터커",
-      "label": "퍼-터-커",
-      "targetCount": 6
+      "label": "퍼-터-커"
     }
   ]
 }
