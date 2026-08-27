@@ -10,6 +10,7 @@
 // ref를 사용하고, setState 업데이터는 순수하게 유지한다.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { shuffle } from '../../../../shared/domain/shuffle.js';
 import type { QuizSetDetail } from '../domain/Quiz.js';
 import type {
   PlayResult,
@@ -238,15 +239,6 @@ function defaultGenerateToken(): string {
   return crypto.randomUUID();
 }
 
-/** Fisher-Yates 셔플 (원본 불변). */
-function shuffle<T>(items: readonly T[]): T[] {
-  const result = [...items];
-  for (let i = result.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-}
 
 export function useMixedQuizSession(
   quizSetId: string,

@@ -9,6 +9,15 @@
 // 단어이해 풀: 기존 wordComp 이미지(74종)로 자동 생성한 확장 뱅크.
 // (표준 wordComp 검사 JSON은 그대로 두고, 혼합 퀴즈용 풀만 별도로 확장한다.)
 import wordPoolData from '../../../../assets/data/qabWordPool.json';
+import { shuffle } from '../../../../shared/domain/shuffle.js';
+import {
+  choiceSpecForLevel,
+  distractorCountForLevel,
+  sentTypeForLevel,
+  syllableCount,
+  syllableRangeForLevel,
+  usesSimilarDistractors,
+} from '../domain/difficultyRules.js';
 import namingPhotos from '../../../../assets/data/namingPhotos.json';
 import namingOnlyWords from '../../../../assets/data/namingOnlyWords.json';
 import sentCompData from '../../../../assets/data/sentCompItems.json';
@@ -63,15 +72,6 @@ const WORD_INSTRUCTION = '들려주는 단어의 그림을 골라주세요';
 const SENT_INSTRUCTION = '들려주는 문장에 맞는 그림을 골라주세요';
 const NAMING_INSTRUCTION = '그림을 보고 이름을 말해주세요';
 
-/** Fisher-Yates 셔플 (원본 불변, 새 배열 반환). */
-function shuffle<T>(items: readonly T[], rng: () => number = Math.random): T[] {
-  const result = [...items];
-  for (let i = result.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(rng() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-}
 
 // ── 통제된 유인지(distractor) 생성 ─────────────────────────────
 //
@@ -224,86 +224,6 @@ export function masterWords(): MasterWord[] {
 //   - sameCat: 같은 의미 범주 오답 수(많을수록 범주만으론 못 맞춤 → 변별↑)
 // 낮은 레벨은 선택지 적고 오답이 무관(먼) 단어라 쉽고, 높은 레벨은 선택지 많고
 // 오답이 전부 같은 범주(근접)라 어렵다.
-/**
- * 레벨을 모를 때 쓰는 기본값. 백엔드 `COLD_START_LEVEL`과 **같아야 한다** —
- * 다르면 환자가 본 난이도와 서버가 기록한 레벨이 어긋난다.
- */
-const COLD_START_LEVEL = 2;
-
-/**
- * 적응 레벨을 [1..5] 정수로 정규화한다. **난이도 축이 여럿이라 반드시 공유해야 한다.**
- *
- * 예전에는 이 식(`level == null ? 기본 : clamp(round(level))`)이 세 함수에 복사돼
- * 있었고, 이미 갈라져 있었다 — 두 곳은 `COLD_START_LEVEL`(=2), 한 곳은 `3`.
- * 축마다 다른 레벨을 보면 "레벨 5인데 방해 타일은 레벨 2 수준" 같은 조합이 나오고,
- * 각 함수를 따로 검증하는 테스트로는 그 어긋남을 잡을 수 없다.
- *
- * **모든 축이 `COLD_START_LEVEL`을 쓴다.** 예전에는 그림선택만 3을 썼다 — "기존
- * 동작 보존"이 이유였는데, 그러면 레벨 조회가 실패했을 때 환자는 레벨 3 문항
- * (선택지 4개)을 보고 서버는 레벨 2로 기록한다. 본 난이도와 기록이 어긋나면
- * 적응 레벨링의 전제가 깨지므로, 보존할 값이 아니라 고칠 값이었다.
- *
- * `fallback`을 인자로 남겨 둔 건 호출부에서 어느 값인지 보이게 하기 위해서다.
- */
-function normalizeLevel(level: number | undefined, fallback: number): number {
-  if (level == null) return fallback;
-  return Math.max(1, Math.min(5, Math.round(level)));
-}
-
-export interface ChoiceSpec {
-  /** 정답 포함 선택지 총 개수. */
-  total: number;
-  /** 오답 중 **같은 의미 범주**에서 뽑을 개수(의미 유인지). */
-  sameCat: number;
-  /** 오답 중 **첫 음절이 닮은 다른 범주** 낱말에서 뽑을 개수(음운 유인지). */
-  phon: number;
-}
-/**
- * 레벨 → 선택지 구성.
- *
- * ── 오답을 두 갈래로 나눈다 ──────────────────────────────────────
- *
- * 실어증 단어-그림 대응 검사의 유인지는 원래 두 종류다. **의미 유인지**
- * ('사과'에 대한 '바나나')는 의미 체계 손상을 잡고, **음운 유인지**('사과'에
- * 대한 '사자')는 음운 처리 손상을 잡는다. 예전에는 의미 쪽 하나만 썼다.
- *
- * | 레벨 | 총 | 의미 | 음운 | 무관 |
- * |-----|----|-----|-----|-----|
- * |  1  | 2  |  0  |  0  |  1  |
- * |  2  | 3  |  1  |  0  |  1  |
- * |  3  | 4  |  2  |  0  |  1  |
- * |  4  | 4  |  2  |  1  |  0  |  ← 무관 하나가 음운으로 바뀐다
- * |  5  | 5  |  2  |  2  |  0  |
- *
- * 한 단계에 오답 구성이 한 군데만 바뀐다. 총 개수(2·3·4·4·5)는 예전과 같아
- * 화면과 집계는 그대로다 — 바뀐 것은 오답의 **질**이다.
- *
- * ── 왜 의미 오답을 2에서 멈추나 ─────────────────────────────────
- *
- * 예전 매핑은 레벨 4에 같은 범주 3개, 5에 4개를 요구했다. 범주가 3개짜리인
- * 낱말(주방·욕실·연장·가구·악기·가전)은 채울 수가 없어 {@link buildControlledChoices}가
- * **무관 오답으로 조용히 메웠다.** 문항은 쉬워지는데 기록은 레벨 5로 남는다.
- * 실측으로 레벨 4에서 낱말의 20%, 레벨 5에서 33%가 이 구멍에 빠졌다.
- *
- * 가장 작은 범주가 3개(정답 + 동료 2)이므로 **의미 2는 모든 낱말이 채운다.**
- * 난도는 낱말 풀 크기에 안 갇히는 음운 축으로 올린다 — 음운 유인지 2개는
- * 90개 낱말 전부가 채울 수 있다(꽃·빵만 어두 초성이 유일해 느슨한 기준으로
- * 내려간다). **새 낱말도 새 그림도 필요 없다.**
- */
-export const LEVEL_CHOICE_SPEC: Record<number, ChoiceSpec> = {
-  1: { total: 2, sameCat: 0, phon: 0 }, // 정답 + 무관1
-  2: { total: 3, sameCat: 1, phon: 0 }, // 정답 + 의미1 + 무관1
-  3: { total: 4, sameCat: 2, phon: 0 }, // 정답 + 의미2 + 무관1 (기존 기본)
-  4: { total: 4, sameCat: 2, phon: 1 }, // 정답 + 의미2 + 음운1
-  5: { total: 5, sameCat: 2, phon: 2 }, // 정답 + 의미2 + 음운2
-};
-
-/** 레벨을 [1..5]로 클램프하고 해당 스펙을 돌려준다(미지정은 콜드스타트=2). */
-function choiceSpecForLevel(level?: number): ChoiceSpec {
-  const lv = normalizeLevel(level, COLD_START_LEVEL);
-  return LEVEL_CHOICE_SPEC[lv];
-}
-
 /**
  * 통제된 유인지를 골라 정답과 함께 레벨별 보기를 만든다.
  *
@@ -577,30 +497,6 @@ const SPELL_DISTRACTOR_POOL: readonly string[] = [
 const SPELL_MAX_TILES = 8;
 
 /**
- * 레벨 → 방해 타일 수.
- *
- * 상용 실어증 치료 도구가 이 과제를 단어 길이 × 방해 글자 **0 / 2 / 4개**로
- * 등급화하는 것을 그대로 따른다. 레벨 1~2에 **방해 0개**(정답 음절 재배열만)를
- * 두는 게 핵심이다 — 예전 구현은 늘 3개라 가장 쉬운 진입 단계가 없었다.
- *
- * 꺾이는 자리는 3과 4다(0·0·2·4·4). 예전엔 2와 4에서 꺾여(0·0·2·2·4) 음절 축과
- * **같은 자리**에서 움직였고, 그래서 5단계가 실제로는 3단계였다. 자세한 표는
- * {@link syllableRangeForLevel} 위에 있다.
- */
-export function distractorCountForLevel(level?: number): number {
-  // 레벨을 모를 때(스킬 레벨 조회 실패)는 **백엔드 콜드스타트와 같은 값**을 쓴다.
-  // 임의의 중간값(3)을 쓰면 환자는 방해 2개짜리를 푸는데 서버는 레벨 2(방해 0개)로
-  // 도장을 찍어, 본 난이도와 기록이 어긋난다. 적응 레벨링의 전제가
-  // "presented_level로 능력과 제시난이도 교란을 제거한다"이므로 그 전제가 깨진다.
-  // 서버가 클라이언트 값을 믿지 않는 건 의도된 설계(eb09bd8)라, 맞춰야 하는 쪽은
-  // 프론트의 기본값이다.
-  const lv = normalizeLevel(level, COLD_START_LEVEL);
-  if (lv <= 2) return 0;
-  if (lv === 3) return 2;
-  return 4;
-}
-
-/**
  * 목표 단어를 음절로 쪼개고 방해 음절을 섞어 셔플한 타일을 만든다.
  * 정답 음절의 중복은 보존한다(예: '바나나' → 바·나·나).
  *
@@ -632,57 +528,6 @@ export function buildSpellTiles(
       ]
     : shuffle(pool, rng);
   return shuffle([...answer, ...ranked.slice(0, wanted)], rng);
-}
-
-/**
- * 레벨 → 목표 단어 음절 수 범위.
- *
- * 방해 타일 수만으로는 난이도가 통제되지 않는다. 4음절 단어에 방해 0개는 2음절
- * 단어에 방해 0개와 전혀 다른 과제인데, 예전에는 2~4음절이 섞여 나와 레벨별
- * 정답률이 어휘·순서 부하와 교란됐다("이 환자는 방해 2개에서 잘한다"가 아니라
- * "짧은 단어가 운 좋게 많이 나왔다"를 학습한다).
- *
- * ── 세 축을 엇갈리게 놓는다 ──────────────────────────────────────
- *
- * | 레벨 | 방해 수 | 음절 | 방해 종류 | 타일 |
- * |-----|--------|------|----------|------|
- * |  1  |   0    |  2   |    —     |  2   |
- * |  2  |   0    | 3~4  |    —     | 3~4  |
- * |  3  |   2    | 3~4  |  무작위   | 5~6  |
- * |  4  |   4    | 3~4  |  무작위   | 7~8  |
- * |  5  |   4    | 3~4  | 음운 유사 | 7~8  |
- *
- * **한 단계에 한 축만 움직인다.** 예전에는 방해 수와 음절 범위가 둘 다
- * `lv<=2` / `lv<=4`에서 꺾여, 레벨 1과 2가 같은 문제였고 3과 4도 같았다.
- * 5단계 표시가 실제로는 3단계였다는 뜻이다. 게다가 4→5에서 두 축이 동시에
- * 뛰어 그 자리만 절벽이었다.
- *
- * 4음절 낱말은 풀에 2개뿐이라 `3~4`는 실질 3음절이다. 음절 축이 두 칸(2·3)밖에
- * 없어서 방해 수 세 칸(0·2·4)과 곱해도 **두 축만으로는 5단계를 못 만든다** —
- * 두 축 모두 단조로운 사슬의 최대 길이가 4다. 그래서 코드 주석에 후속 과제로
- * 적혀 있던 **음운 유사 방해자**를 세 번째 축으로 세웠다
- * ({@link usesSimilarDistractors}). 새 낱말도 새 그림도 필요 없다.
- */
-function syllableRangeForLevel(level?: number): { min: number; max: number } {
-  const lv = normalizeLevel(level, COLD_START_LEVEL);
-  if (lv <= 1) return { min: 2, max: 2 };
-  return { min: 3, max: 4 };
-}
-
-/**
- * 최고 레벨에서만 방해 타일을 **정답 음절과 닮은 것**으로 고른다.
- *
- * 무작위 방해 타일은 눈으로 걸러진다 — '바다'에 '꽃'이 섞여 있으면 고민이 없다.
- * 초성이나 중성을 공유하는 음절은 그 걸러내기를 막는다. 타일 수는 그대로 4개인데
- * 과제만 어려워지므로, 낱말을 더 넣지 않고도 레벨 4와 5를 가른다.
- */
-function usesSimilarDistractors(level?: number): boolean {
-  return normalizeLevel(level, COLD_START_LEVEL) >= 5;
-}
-
-/** 공백 제외 음절 수. */
-function syllableCount(text: string): number {
-  return Array.from(text.replace(/\s+/g, '')).length;
 }
 
 /**
@@ -833,46 +678,6 @@ export function pickWordItems(count: number, level?: number): QabImageItem[] {
  * 눈높이가 회복을 뜻하지 않게 된다.
  */
 /**
- * 레벨 → 통사 유형. **밴드는 셋이다.**
- *
- * | 레벨 | 유형 | 문항 수 |
- * |-----|------|--------|
- * | 1~2 | 능동/수동 | 14 |
- * | 3~4 | 관계절   |  8 |
- * |  5  | 내포절   |  4 |
- *
- * ── 5단계인 척을 하지 않는다 ────────────────────────────────────
- *
- * 자극이 3유형뿐이라 밴드도 셋이다. 5행으로 적으면 5단계인 것처럼 보이지만
- * 실제로는 셋이고, 그 거짓말은 이 저장소에서 이미 두 번 났다(글자 조합의
- * glyph-level-axis, 단어 이해의 word-foil-axis). 여기서는 밴드가 셋이라고
- * 적고, 늘리는 조건은 TODOS의 sent-level-axis에 적어 둔다.
- *
- * ── 누적을 끊었다 ───────────────────────────────────────────────
- *
- * 예전에는 허용 유형이 **누적**이었다(레벨 5 = 능동수동 + 관계절 + 내포절).
- * 그러면 레벨 안에서 난이도가 희석된다 — 레벨 5에서 내포절이 뽑힐 확률이
- * 4/26 = **15%**뿐이라 "레벨 5 정답률"의 85%가 낮은 레벨과 같은 문항이었다.
- * 적응 레벨링은 그 부풀린 값을 보고 승급을 판단한다.
- *
- * 단어 이해는 오답을 코드가 조립하므로 축을 새로 세울 수 있었지만, 문장은
- * 선택지가 JSON 고정 그림 쌍이라(`sentComp_01_correct.png` / `_distractor.png`)
- * 변형할 여지가 없다. 여기서 쓸 수 있는 손잡이는 **어느 유형을 내는가**뿐이다.
- */
-const SENT_TYPE_BY_LEVEL: Record<number, string> = {
-  1: 'active-passive',
-  2: 'active-passive',
-  3: 'relative-clause',
-  4: 'relative-clause',
-  5: 'embedded-clause',
-};
-
-/** 이 레벨이 내는 통사 유형 하나. (테스트 노출) */
-export function sentTypeForLevel(level?: number): string {
-  return SENT_TYPE_BY_LEVEL[normalizeLevel(level, COLD_START_LEVEL)];
-}
-
-/**
  * 이 레벨의 통사 유형만 남긴다. 모자라면 전체 풀로 되돌려 세션이 비지 않게
  * 한다(난이도가 어긋나는 편이 문항이 사라지는 것보다 낫다).
  *
@@ -945,3 +750,13 @@ export function pickQabItems(
 export function qabItemCount(): number {
   return WORD_ITEMS.length + SENT_ITEMS.length;
 }
+
+// 난이도 규칙은 domain/difficultyRules.ts가 집이다(D2). 기존 호출부가 뱅크에서
+// 가져다 쓰고 있어 그대로 다시 내보낸다 — 규칙을 읽고 싶으면 그 파일을 본다.
+export {
+  COLD_START_LEVEL,
+  LEVEL_CHOICE_SPEC,
+  distractorCountForLevel,
+  sentTypeForLevel,
+} from '../domain/difficultyRules.js';
+export type { ChoiceSpec } from '../domain/difficultyRules.js';
