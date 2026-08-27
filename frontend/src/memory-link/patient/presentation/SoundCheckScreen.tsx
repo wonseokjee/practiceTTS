@@ -116,7 +116,7 @@ export function SoundCheckScreen({
           <button
             type="button"
             onClick={onSkip}
-            className="min-h-[48px] w-full text-base text-[#8B928D] underline underline-offset-4"
+            className="min-h-[48px] w-full text-base text-[#6B6560] underline underline-offset-4"
           >
             소리 없이 시작하기
           </button>
@@ -131,11 +131,21 @@ export function SoundCheckScreen({
             >
               소리가 잘 들리셨나요?
             </p>
+            {/*
+              두 답의 **시각적 무게를 같게 둔다.** 예전에는 '잘 들려요'만 채워진
+              버튼이라 눈에 먼저 들어왔다. 사용자는 만족화(satisficing)로 처음
+              그럴듯한 선택지를 고르는데, 그 선택지가 곧 이 화면을 통과시키는
+              쪽이었다 — 소리가 안 들리는 경우를 잡으려고 만든 게이트가 그 경우를
+              시각적으로 억누른 셈이다.
+
+              이건 CTA가 아니라 진단 질문이다. 어느 답도 '원하는 답'이 아니므로
+              둘 다 같은 형태로 두고, 색으로만 갈래를 구분한다.
+            */}
             <div className="flex gap-3">
               <button
                 type="button"
                 onClick={onPass}
-                className="min-h-[64px] flex-1 rounded-full bg-[#2D6A56] px-4 py-3 text-xl font-semibold text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240]"
+                className="min-h-[64px] flex-1 rounded-full border-2 border-[#2D6A56] bg-white px-4 py-3 text-xl font-semibold text-[#2D6A56] transition-colors duration-[180ms] ease-out hover:bg-[#EBF4F0]"
               >
                 잘 들려요
               </button>
@@ -154,7 +164,7 @@ export function SoundCheckScreen({
       <button
         type="button"
         onClick={onCancel}
-        className="min-h-[48px] w-full text-base text-[#8B928D] underline underline-offset-4"
+        className="min-h-[48px] w-full text-base text-[#6B6560] underline underline-offset-4"
       >
         돌아가기
       </button>
