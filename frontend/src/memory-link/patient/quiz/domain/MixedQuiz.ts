@@ -7,6 +7,7 @@
 // "들려주고 → 그림 고르기"로 형태가 같아 하나의 이미지 선택형 타입으로 일반화한다.
 
 import type { QuizQuestionPublic } from './Quiz.js';
+import type { QabSubtest } from './QabResult.js';
 import type { PronunciationGrade } from './pronunciationScore.js';
 
 /** QAB 이미지 선택지 (프론트 로컬 채점을 위해 isCorrect 포함). */
@@ -78,6 +79,8 @@ export interface QabRepeatItem {
   /** 들려주고 따라 말할 내용 */
   text: string;
   instruction: string;
+  /** 제시된 난이도 레벨(1~5). 결과 제출 시 실제 제시값으로 기록된다. */
+  presentedLevel?: number;
 }
 
 /**
@@ -89,6 +92,8 @@ export interface QabReadingItem {
   /** 보고 소리 내어 읽을 내용 */
   text: string;
   instruction: string;
+  /** 제시된 난이도 레벨(1~5). 결과 제출 시 실제 제시값으로 기록된다. */
+  presentedLevel?: number;
 }
 
 /**
@@ -127,6 +132,8 @@ export interface QabDdkItem {
   /** 통과 기준 반복 횟수 */
   targetCount: number;
   instruction: string;
+  /** 제시된 난이도 레벨(1~5). 결과 제출 시 실제 제시값으로 기록된다. */
+  presentedLevel?: number;
 }
 
 /**
@@ -147,6 +154,24 @@ export type PlayableItem =
   | { kind: 'reading'; id: string; item: QabReadingItem }
   | { kind: 'spell'; id: string; item: QabSpellItem }
   | { kind: 'ddk'; id: string; item: QabDdkItem };
+
+/**
+ * 그 항목이 어느 하위검사인가 — 적응·기록의 단위다.
+ *
+ * `daily`는 QAB 검사가 아니라 개인 회상 문항이고, `qab`은 화면상 한 종류지만
+ * 낱말과 문장이 서로 다른 검사라 `category`로 갈라야 한다. 이 대응을 화면 종류
+ * (`kind`)와 섞어 쓰면 문장 결과가 낱말로 기록된다.
+ */
+export function playableSubtest(item: PlayableItem): QabSubtest | null {
+  switch (item.kind) {
+    case 'daily':
+      return null;
+    case 'qab':
+      return item.item.category;
+    default:
+      return item.kind;
+  }
+}
 
 /** 항목 채점 결과 (데일리/QAB 공통) */
 export interface PlayResult {

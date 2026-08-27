@@ -11,6 +11,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { useMixedQuizSession } from './useMixedQuizSession.js';
 import type { IQuizApi } from '../infrastructure/QuizApi.js';
 import type {
+  QabDdkItem,
   QabImageItem,
   QabNamingItem,
   QabSpellItem,
@@ -1254,3 +1255,143 @@ describe('글자 조합 — 반복과 중복 방지', () => {
   });
 });
 
+describe('세션 내 적응 — 같은 검사 안에서 눈높이가 움직인다', () => {
+  /** 요청받은 레벨을 이름에 박아 돌려주는 말운동 추출기. */
+  function 기록추출기() {
+    const calls: Array<number | undefined> = [];
+    const pick = (count: number, level?: number): QabDdkItem[] => {
+      calls.push(level);
+      return Array.from({ length: count }, (_, i) => ({
+        itemId: `ddk_L${level ?? 'x'}_${i}`,
+        syllable: '퍼',
+        label: '퍼',
+        targetCount: 10,
+        instruction: 'x',
+        presentedLevel: level,
+      }));
+    };
+    return { calls, pick };
+  }
+
+  function 말운동세션(pick: (c: number, l?: number) => QabDdkItem[]) {
+    return renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi({
+          getSkillLevels: vi
+            .fn()
+            .mockResolvedValue({ levels: { ddk: 3 }, manifestVersion: 1 }),
+        }),
+        generateSessionToken: () => 'tok-1',
+        ...ISOLATED,
+        pickWordItems: () => [],
+        dailyCount: 0,
+        wordCount: 0,
+        pickDdkItems: pick,
+        ddkCount: 3,
+      }),
+    );
+  }
+
+  type 세션 = ReturnType<typeof 말운동세션>['result'];
+
+  /** 지금 문항을 틀리고 다음으로 넘어간다(감지 0회 = 목표 미달). */
+  async function 틀리고넘기기(result: 세션) {
+    act(() => result.current[1].submitDdk(0));
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    act(() => result.current[1].next());
+  }
+
+  it('2연속 오답이면 남은 문항을 한 칸 내려 다시 뽑는다', async () => {
+    const { calls, pick } = 기록추출기();
+    const { result } = 말운동세션(pick);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    // 세션 시작: 서버 레벨 3으로 3문항
+    expect(calls).toEqual([3]);
+    // 문항 순서는 섞이므로 인덱스가 아니라 **레벨**만 본다.
+    expect(result.current[0].currentItem?.id).toMatch(/^ddk_L3_/);
+
+    await 틀리고넘기기(result);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+    // 한 번 틀린 것으로는 안 움직인다 — 한 문항은 컨디션일 수 있다.
+    expect(calls).toEqual([3]);
+
+    await 틀리고넘기기(result);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    // 두 번째 오답에서 규칙이 걸려 남은 1문항을 레벨 2로 다시 뽑는다.
+    expect(calls).toEqual([3, 2]);
+    expect(result.current[0].currentItem?.id).toMatch(/^ddk_L2_/);
+  });
+
+  it('이미 푼 문항과 지금 화면의 문항은 건드리지 않는다', async () => {
+    // 답하는 도중에 문제가 바뀌면 환자에게는 앱이 고장 난 것으로 보인다.
+    const { pick } = 기록추출기();
+    const { result } = 말운동세션(pick);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    await 틀리고넘기기(result);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+    const 두번째 = result.current[0].currentItem?.id;
+
+    act(() => result.current[1].submitDdk(0));
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    // 규칙이 걸린 직후에도 화면의 문항은 그대로다.
+    expect(result.current[0].currentItem?.id).toBe(두번째);
+  });
+
+  it('보호자가 넘긴 문항(도움받음)은 적응 판정에 세지 않는다', async () => {
+    // 환자가 맞힌 게 아니라 보호자가 통과시킨 것이다. 세면 연속 정답이 채워져
+    // 못 푸는 레벨로 올라간다.
+    const { calls, pick } = 기록추출기();
+    const { result } = 말운동세션(pick);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    await 틀리고넘기기(result);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    // 두 번째는 보호자가 넘긴다 → 오답 연속이 끊기지도, 정답으로 세지지도 않는다.
+    act(() => result.current[1].skipCurrent());
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    act(() => result.current[1].next());
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    expect(calls).toEqual([3]);
+  });
+
+  it('서버 레벨을 못 받으면 적응하지 않는다 — 기준점이 없다', async () => {
+    const calls: Array<number | undefined> = [];
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi({
+          getSkillLevels: vi.fn().mockRejectedValue(new Error('down')),
+        }),
+        generateSessionToken: () => 'tok-1',
+        ...ISOLATED,
+        pickWordItems: () => [],
+        dailyCount: 0,
+        wordCount: 0,
+        pickDdkItems: (count: number, level?: number) => {
+          calls.push(level);
+          return Array.from({ length: count }, (_, i) => ({
+            itemId: `ddk_x_${i}`,
+            syllable: '퍼',
+            label: '퍼',
+            targetCount: 10,
+            instruction: 'x',
+          }));
+        },
+        ddkCount: 3,
+      }),
+    );
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    await 틀리고넘기기(result);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+    await 틀리고넘기기(result);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    // 레벨 조회 실패는 비차단이고, 기준점이 없으면 조정도 없다.
+    expect(calls).toEqual([undefined]);
+  });
+});
