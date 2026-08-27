@@ -13,7 +13,6 @@ import type {
 interface RawDdk {
   syllable: string;
   label: string;
-  targetCount: number;
 }
 interface RawStimuli {
   repeatWords: string[];
@@ -185,35 +184,66 @@ export function pickReadingItems(
 }
 
 /**
- * 말운동 난이도 축 — **AMR과 SMR**. 이건 임상에서 실재하는 구분이다.
+ * 말운동 난이도 축 — **조음 전환(AMR/SMR)** × **반복 요구량**.
  *
  *  - AMR(교대운동속도): 단음절 반복 '퍼', '터', '커' — 한 조음 위치의 속도
  *  - SMR(연속운동속도): 다음절 연쇄 '퍼터커' — 조음 위치를 **바꿔가며** 내야 하고,
  *    구음장애에서 AMR보다 먼저·크게 무너진다
  *
- * 그래서 낮은 레벨은 AMR만, 높은 레벨에서 SMR을 낸다. 길이(음절 수)로 판정하므로
- * 자극이 늘어도 규칙이 그대로 성립한다.
+ * **밴드는 누적되지 않는다.** 예전에는 `allowSmr || 단음절`이라 레벨 4·5가 AMR을
+ * 그대로 낼 수 있었고, 그러면 레벨 5로 기록된 문항이 실제로는 레벨 1 문항이었다.
+ * 문장(#60)·낱말(#59)에서 이미 두 번 나온 같은 버그다. 이제 레벨은 자기 종류만 낸다.
+ *
+ * 종류만으로는 밴드가 둘뿐이라 5레벨을 채우지 못한다. 표준 DDK 자극은 AMR 3개 +
+ * SMR 1개가 전부라 자극을 늘려서 해결할 수 없다. 그래서 두 번째 축으로 **반복
+ * 요구량**을 쓴다 — DDK가 원래 재는 것이 속도·지속이고, 요구 횟수는 환자에게
+ * 그대로 표시되므로("N회 이상 반복하면 통과예요") 난이도가 실제로 달라진다.
+ *
+ *   lv1  AMR  6회   한 조음 위치, 짧게
+ *   lv2  AMR 10회   표준 AMR (자극 데이터의 기본값)
+ *   lv3  AMR 14회   조음 유지·호흡 부담
+ *   lv4  SMR  5회   조음 위치 전환 진입
+ *   lv5  SMR  8회   전환 + 지속
  */
-export function ddkAllowsSmrForLevel(level?: number): boolean {
-  return normalizeLevel(level, COLD_START_LEVEL) >= 4;
+export interface DdkSpec {
+  kind: 'amr' | 'smr';
+  targetCount: number;
 }
 
-/** 말운동(DDK) 문항 추출. 레벨이 AMR만 낼지 SMR까지 낼지를 정한다. */
+const LEVEL_DDK_SPEC: Record<number, DdkSpec> = {
+  1: { kind: 'amr', targetCount: 6 },
+  2: { kind: 'amr', targetCount: 10 },
+  3: { kind: 'amr', targetCount: 14 },
+  4: { kind: 'smr', targetCount: 5 },
+  5: { kind: 'smr', targetCount: 8 },
+};
+
+export function ddkSpecForLevel(level?: number): DdkSpec {
+  return LEVEL_DDK_SPEC[normalizeLevel(level, COLD_START_LEVEL)];
+}
+
+/** 자극의 종류 — 음절 2개 이상이면 SMR('퍼터커'). */
+function ddkKindOf(syllable: string): 'amr' | 'smr' {
+  return syllableCount(syllable) === 1 ? 'amr' : 'smr';
+}
+
+/** 말운동(DDK) 문항 추출. 레벨이 종류와 반복 요구량을 함께 정한다. */
 export function pickDdkItems(count: number, level?: number): QabDdkItem[] {
   const want = Math.max(0, count);
   if (want === 0) return [];
-  const allowSmr = ddkAllowsSmrForLevel(level);
+  const spec = ddkSpecForLevel(level);
 
+  // 목표 횟수는 자극 데이터가 아니라 레벨이 정한다 — 같은 '퍼'라도 레벨마다
+  // 요구가 달라야 5단계가 5단계로 작동한다.
   const items: QabDdkItem[] = STIMULI.ddk.map((d, i) => ({
     itemId: `ddk_${i}`,
     syllable: d.syllable,
     label: d.label,
-    targetCount: d.targetCount,
+    targetCount: spec.targetCount,
     instruction: DDK_INSTRUCTION,
   }));
-  // SMR = 음절 2개 이상('퍼터커'). 낮은 레벨에선 제외한다.
   const inRange = (it: QabDdkItem): boolean =>
-    allowSmr || syllableCount(it.syllable) === 1;
+    ddkKindOf(it.syllable) === spec.kind;
 
   return shuffle(withinOrFallback(items, inRange, want)).slice(0, want);
 }
