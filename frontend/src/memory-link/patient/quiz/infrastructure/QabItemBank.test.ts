@@ -707,7 +707,7 @@ describe('pickSentItems — 통사 복잡도 위계', () => {
 
   it('레벨 1~2는 능동/수동만 낸다 — 절이 하나뿐인 가장 단순한 유형', () => {
     for (const prompt of 반복추출(1)) {
-      expect(typeOf(prompt)).toBe('active-passive');
+      expect(typeOf(prompt)).toBe('reversible');
     }
   });
 
@@ -730,8 +730,8 @@ describe('pickSentItems — 통사 복잡도 위계', () => {
    */
   it('각 레벨은 자기 유형만 낸다 — 누적이 아니다', () => {
     const expected: Array<[number, string]> = [
-      [1, 'active-passive'],
-      [2, 'active-passive'],
+      [1, 'reversible'],
+      [2, 'reversible'],
       [3, 'relative-clause'],
       [4, 'relative-clause'],
       [5, 'embedded-clause'],
@@ -888,5 +888,63 @@ describe('폴백·자극 종류를 기록한다 (D3·E11)', () => {
     // 한쪽만 나오면 위 테스트가 항진명제가 된다. 실측 33%가 SVG다.
     const kinds = new Set(pickNamingItems(200).map((i) => i.stimulusKind));
     expect(kinds).toEqual(new Set(['photo', 'svg']));
+  });
+});
+
+describe('가역문 밴드 (E14)', () => {
+  interface 문장자극 {
+    itemId: string;
+    sentence: string;
+    sentenceType: string;
+    choices: Array<{ altText: string; isCorrect: boolean }>;
+  }
+
+  /**
+   * 세 자극 파일을 합친 전체 문장 문항.
+   *
+   * `sentCompItems`는 배열이고 나머지 둘은 `{ items: [...] }`다 — 원본 형태가
+   * 달라서, 여기서 맞춰 준다.
+   */
+  const 문장전체: 문장자극[] = [
+    ...(sentCompRaw as unknown as 문장자극[]),
+    ...(sentMirrorRaw as unknown as { items: 문장자극[] }).items,
+    ...(sentGeneratedRaw as unknown as { items: 문장자극[] }).items,
+  ];
+
+  const 가역문 = () => 문장전체.filter((i) => i.sentenceType === 'reversible');
+
+  it("유형명이 'reversible'이다 — 이 밴드에 수동문은 한 문장도 없다", () => {
+    // 예전 이름은 'active-passive'였고 보호자 화면에 '능동/수동'으로 떴다.
+    // 재는 것은 태(voice)가 아니라 어순으로 역할을 가르는 능력이다. 이름이
+    // 틀리면 보호자가 "수동문은 75% 한다"고 읽는다 — 검사한 적 없는 것을.
+    expect(가역문().length).toBeGreaterThan(0);
+    expect(문장전체.some((i) => i.sentenceType === 'active-passive')).toBe(false);
+
+    // 한국어 수동 표지: -이/히/리/기-, -되다, -어지다.
+    for (const it of 가역문()) {
+      expect(it.sentence, `${it.itemId}: ${it.sentence}`).not.toMatch(
+        /(되고|되어|졌|지고) 있어요$/,
+      );
+    }
+  });
+
+  it('오답이 정답의 역할을 뒤집은 것이다 — 그게 이 밴드의 축이다', () => {
+    for (const it of 가역문()) {
+      expect(it.choices, it.itemId).toHaveLength(2);
+      expect(it.choices.filter((c) => c.isCorrect), it.itemId).toHaveLength(1);
+    }
+  });
+
+  it('역방향이 화용적으로 불가능한 문항은 빠져 있다', () => {
+    // sg_02(경찰↔도둑 잡다)·sg_06(엄마↔아이 업다)은 뒤집으면 말이 안 되거나
+    // 물리적으로 불가능해, 통사를 못 읽어도 세상 지식만으로 맞는다. 가역문
+    // 밴드에 있으면 그 레벨이 실제보다 쉬워지는데 기록은 그대로다.
+    //
+    // **교체가 아니라 제거다** — 새 문항은 그림 두 장(정답·오답)이 함께 필요하고,
+    // 그건 별개 작업이다. 남은 12문항이면 로테이션(하루 3문항)에 충분하다.
+    const ids = 문장전체.map((i) => i.itemId);
+    expect(ids).not.toContain('sg_02');
+    expect(ids).not.toContain('sg_06');
+    expect(가역문().length).toBeGreaterThanOrEqual(3);
   });
 });

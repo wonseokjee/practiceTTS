@@ -17,7 +17,7 @@ interface ScoreResultPanelProps {
 
 /** 문장 유형 한국어 레이블 */
 const SENTENCE_TYPE_LABELS: Record<string, string> = {
-  'active-passive': '능동/수동',
+  reversible: '가역문(어순)',
   'relative-clause': '관계절',
   'embedded-clause': '내포절',
 };
@@ -34,7 +34,7 @@ export const ScoreResultPanel: React.FC<ScoreResultPanelProps> = ({
   score,
   onProceed,
 }) => {
-  const sentenceTypes = ['active-passive', 'relative-clause', 'embedded-clause'];
+  const sentenceTypes = ['reversible', 'relative-clause', 'embedded-clause'];
 
   return (
     <div className="flex flex-col gap-6 py-4">

@@ -21,7 +21,7 @@ function makeMockItem(itemId: string): SentenceComprehensionItem {
     itemId,
     sentence: `${itemId} 테스트 문장`,
     sentenceAudioUrl: `/audio/${itemId}.mp3`,
-    sentenceType: 'active-passive' as const,
+    sentenceType: 'reversible' as const,
     choices: [
       { imageUrl: `/img/${itemId}_0.webp`, altText: '선택지 0', isCorrect: true },
       { imageUrl: `/img/${itemId}_1.webp`, altText: '선택지 1', isCorrect: false },

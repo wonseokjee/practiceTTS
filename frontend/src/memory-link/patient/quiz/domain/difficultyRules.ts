@@ -205,8 +205,8 @@ export function syllableCount(text: string): number {
  * 변형할 여지가 없다. 여기서 쓸 수 있는 손잡이는 **어느 유형을 내는가**뿐이다.
  */
 export const SENT_TYPE_BY_LEVEL: Record<number, string> = {
-  1: 'active-passive',
-  2: 'active-passive',
+  1: 'reversible',
+  2: 'reversible',
   3: 'relative-clause',
   4: 'relative-clause',
   5: 'embedded-clause',
