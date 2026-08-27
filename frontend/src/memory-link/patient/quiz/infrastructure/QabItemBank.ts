@@ -494,6 +494,8 @@ const NAMING_ONLY_ITEMS: QabNamingItem[] = namingOnlyWords.items.map((w) => ({
   imageUrl: `/assets/images/naming/${w.slug}.png`,
   targetWord: w.label,
   instruction: NAMING_INSTRUCTION,
+  // 이 넷은 애초에 사진만 남은 낱말이다(Fluent 교체 때 아이콘이 사라졌다).
+  stimulusKind: 'photo',
 }));
 
 /** 이미지 URL에서 파일명 slug를 뽑는다. "/a/b/apple.svg" → "apple". */
@@ -522,15 +524,18 @@ function toNamingItem(it: RawWordItem, level?: number): QabNamingItem | null {
   const correct = it.choices.find((c) => c.isCorrect);
   if (!correct) return null;
   const slug = slugFromUrl(correct.imageUrl);
-  const imageUrl = NAMING_PHOTO_SLUGS.has(slug)
-    ? `/assets/images/naming/${slug}.png`
-    : correct.imageUrl;
+  // 사진이 준비된 낱말은 실물 사진, 없으면 SVG 아이콘. 33%(30/91)가 SVG로
+  // 떨어지는데 예전에는 그 사실이 아무 데도 안 남았다 — 실물 사진과 만화풍
+  // 아이콘은 이름을 떠올리는 난이도가 달라서, 남기지 않으면 이름대기 정답률이
+  // 무엇을 재는 값인지 알 수 없다(E11).
+  const hasPhoto = NAMING_PHOTO_SLUGS.has(slug);
   return {
     itemId: `naming_${it.itemId}`,
-    imageUrl,
+    imageUrl: hasPhoto ? `/assets/images/naming/${slug}.png` : correct.imageUrl,
     targetWord: it.targetWord,
     instruction: NAMING_INSTRUCTION,
     presentedLevel: level,
+    stimulusKind: hasPhoto ? 'photo' : 'svg',
   };
 }
 
@@ -763,12 +768,13 @@ export function pickSpellItems(
   // 레벨의 음절 범위 밖이면 후보에 없어 그냥 빠진다. 끌어올리면 환자가 푼
   // 난이도와 `presentedLevel`이 어긋나는데, 그 어긋남이 적응 레벨링이 없애려는
   // 교란 그 자체다 — 재출제보다 레벨이 세다.
-  const pool = eligible.length >= want
-    ? eligible
-    : WORD_ITEMS.filter((it) => {
+  const fellBack = eligible.length < want;
+  const pool = fellBack
+    ? WORD_ITEMS.filter((it) => {
         const label = labelOf(it);
         return label.length > 0 && !excluded.has(label) && syllableCount(label) >= 2;
-      });
+      })
+    : eligible;
 
   const ordered = shuffle(pool).sort((a, b) => {
     const ra = priorityRank.get(refOf(a)) ?? Number.MAX_SAFE_INTEGER;
@@ -780,7 +786,8 @@ export function pickSpellItems(
   for (const it of ordered) {
     if (picked.length >= want) break;
     const item = toSpellItem(it, level);
-    if (item !== null) picked.push(item);
+    // 되돌림으로 나온 문항은 presentedLevel이 실제 음절 난이도를 뜻하지 않는다(D3).
+    if (item !== null) picked.push(fellBack ? { ...item, bandFallback: true } : item);
   }
   return picked;
 }
@@ -873,19 +880,29 @@ export function sentTypeForLevel(level?: number): string {
  * 사실상 안 걸리지만, 같은 문항이 자주 돌아오는 것은 남는 위험이다 —
  * 2지선다라 외우면 그냥 맞는다. TODOS의 sent-level-axis에 적어 뒀다.
  */
-function sentPoolForLevel(want: number, level?: number): RawSentItem[] {
+function sentPoolForLevel(
+  want: number,
+  level?: number,
+): { pool: RawSentItem[]; fellBack: boolean } {
   const type = sentTypeForLevel(level);
   const eligible = SENT_ITEMS.filter((it) => it.sentenceType === type);
-  return eligible.length >= want ? eligible : [...SENT_ITEMS];
+  return eligible.length >= want
+    ? { pool: eligible, fellBack: false }
+    : { pool: [...SENT_ITEMS], fellBack: true };
 }
 
 /** 문장이해 문항을 무작위 count개 추출. */
 export function pickSentItems(count: number, level?: number): QabImageItem[] {
   const want = Math.max(0, count);
   if (want === 0) return [];
-  return shuffle(sentPoolForLevel(want, level))
+  const { pool, fellBack } = sentPoolForLevel(want, level);
+  return shuffle(pool)
     .slice(0, want)
-    .map((it) => toSentItem(it, level));
+    .map((it) => {
+      const item = toSentItem(it, level);
+      // 되돌림으로 나온 문항은 presentedLevel이 실제 난이도를 뜻하지 않는다(D3).
+      return fellBack ? { ...item, bandFallback: true } : item;
+    });
 }
 
 /**

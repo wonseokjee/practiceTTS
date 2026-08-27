@@ -50,13 +50,31 @@ function syllableCount(word: string): number {
  * 요청한 범위로 거르되, 모자라면 범위를 풀어 문항이 조용히 사라지지 않게 한다.
  * (난이도가 조금 어긋나는 편이 세션이 비는 것보다 낫다 — QabItemBank와 같은 원칙.)
  */
+/**
+ * 레벨 밴드에 맞는 후보를 고르되, 모자라면 전체 풀로 되돌린다.
+ *
+ * 되돌림 자체는 옳다 — 문항이 조용히 사라지는 것보다 난이도가 조금 어긋나는 편이
+ * 낫다. 문제는 그게 **조용했다**는 것이다. 그렇게 나온 문항의 `presentedLevel`은
+ * 실제 난이도를 뜻하지 않는데, 집계는 그 사실을 모른 채 레벨별로 센다.
+ * `fellBack`을 함께 돌려줘 호출부가 문항에 표시하게 한다(D3).
+ */
 function withinOrFallback<T>(
   pool: readonly T[],
   inRange: (item: T) => boolean,
   want: number,
-): T[] {
+): { items: T[]; fellBack: boolean } {
   const eligible = pool.filter(inRange);
-  return eligible.length >= want ? [...eligible] : [...pool];
+  return eligible.length >= want
+    ? { items: [...eligible], fellBack: false }
+    : { items: [...pool], fellBack: true };
+}
+
+/** 밴드 밖에서 온 문항에 표시를 남긴다. 값이 false면 필드를 만들지 않는다. */
+function markFallback<T extends { bandFallback?: boolean }>(
+  items: T[],
+  fellBack: boolean,
+): T[] {
+  return fellBack ? items.map((it) => ({ ...it, bandFallback: true })) : items;
 }
 
 const REPEAT_INSTRUCTION = '들려주는 말을 잘 듣고 따라 말해주세요';
@@ -139,7 +157,8 @@ export function pickRepeatItems(
     return n >= spec.min && n <= spec.max;
   };
 
-  return shuffle(withinOrFallback(pool, inRange, want)).slice(0, want);
+  const picked = withinOrFallback(pool, inRange, want);
+  return markFallback(shuffle(picked.items).slice(0, want), picked.fellBack);
 }
 
 /**
@@ -183,7 +202,8 @@ export function pickReadingItems(
     return n >= min && n <= max;
   };
 
-  return shuffle(withinOrFallback(items, inRange, want)).slice(0, want);
+  const picked = withinOrFallback(items, inRange, want);
+  return markFallback(shuffle(picked.items).slice(0, want), picked.fellBack);
 }
 
 /**
@@ -261,5 +281,6 @@ export function pickDdkItems(count: number, level?: number): QabDdkItem[] {
   const inRange = (it: QabDdkItem): boolean =>
     ddkKindOf(it.syllable) === spec.kind;
 
-  return shuffle(withinOrFallback(items, inRange, want)).slice(0, want);
+  const picked = withinOrFallback(items, inRange, want);
+  return markFallback(shuffle(picked.items).slice(0, want), picked.fellBack);
 }

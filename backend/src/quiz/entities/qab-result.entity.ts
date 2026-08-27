@@ -84,6 +84,33 @@ export class QabResult {
   @Column({ name: 'foil_kind', type: 'varchar', length: 16, nullable: true })
   foilKind: QabFoilKind | null;
 
+  /**
+   * 이 문항이 **레벨이 요구한 밴드 밖**에서 왔는가(M22).
+   *
+   * 뱅크는 후보가 모자라면 범위를 풀어 세션이 비지 않게 한다. 옳은 선택이지만
+   * 그렇게 나온 문항의 `presented_level`은 실제 난이도를 뜻하지 않는다.
+   *
+   * **NULL이 정상이다** — 컬럼 이전의 행, 클라이언트가 안 보낸 행. 기본값 false를
+   * 넣으면 "모름"이 "폴백 아님"이 되어 없는 사실이 생긴다. `foil_kind`와 같은
+   * 성격의 관측값이고 채점에 쓰지 않는다.
+   */
+  @Column({ name: 'band_fallback', type: 'boolean', nullable: true })
+  bandFallback: boolean | null;
+
+  /**
+   * 이름대기에서 제시된 그림의 종류 — `'photo'` | `'svg'`(M22).
+   *
+   * 자극의 33%(30/91)가 사진이 없어 SVG로 떨어진다. 둘은 이름을 떠올리는 난이도가
+   * 달라, 안 남기면 이름대기 정답률이 무엇을 잰 값인지 알 수 없다.
+   */
+  @Column({
+    name: 'stimulus_kind',
+    type: 'varchar',
+    length: 16,
+    nullable: true,
+  })
+  stimulusKind: string | null;
+
   // ddk 감지 횟수 등 수치 지표(없으면 null)
   @Column({ name: 'metric', type: 'int', nullable: true })
   metric: number | null;
