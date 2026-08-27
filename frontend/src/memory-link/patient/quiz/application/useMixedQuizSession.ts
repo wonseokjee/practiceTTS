@@ -192,6 +192,12 @@ const SUCCESS_RANK: Record<PlayableItem['kind'], number> = {
  */
 const DEFAULT_DAILY_COUNT = 2;
 
+/** 답한 문항 하나의 로그. `assisted`는 보호자가 넘긴 문항(환자 수행 아님). */
+interface AnswerLogEntry {
+  isCorrect: boolean;
+  assisted: boolean;
+}
+
 const INITIAL_STATE: UseMixedQuizState = Object.freeze({
   phase: 'loading',
   currentIndex: 0,
@@ -255,12 +261,17 @@ export function useMixedQuizSession(
   const phaseRef = useRef<MixedPhase>('loading');
   const indexRef = useRef<number>(0);
   /**
-   * 답한 문항의 정오답 로그(종류 무관, 답한 순서대로). 정답수·연속오답을 여기서
+   * 답한 문항의 로그(종류 무관, 답한 순서대로). 정답수·연속오답을 여기서
    * 파생한다 — 정정(overrideSpeechVerdict)·재시도(answerAgain)가 이 로그만 고치면
    * 점수와 피로 탈출 판정이 자동으로 일관되게 맞는다(각 지점을 따로 갱신하다
    * 어긋나는 버그 방지).
+   *
+   * **`assisted`를 함께 들고 있는다.** 예전에는 정오답만 담았고 보호자 "넘어가기"가
+   * `true`로 들어갔다. 그래서 보호자가 전부 넘기면 점수가 100점이 나오고, 더 나쁘게는
+   * **피로 탈출이 무력화됐다** — 연속 오답 사이에 넘어가기가 하나 끼면 카운터가
+   * 0으로 리셋돼, 힘들어서 넘긴 바로 그 상황에서 안전장치가 꺼졌다.
    */
-  const recentCorrectRef = useRef<boolean[]>([]);
+  const recentCorrectRef = useRef<AnswerLogEntry[]>([]);
   /** QAB 항목 결과 누적 (세션 완료 시 백엔드 일괄 저장용) */
   const qabResultsRef = useRef<QabResultInput[]>([]);
   /** 이미 백엔드에 제출한 결과 수. 점진 제출에서 미전송 tail만 보낸다. */
@@ -543,11 +554,21 @@ export function useMixedQuizSession(
   );
 
   /** 채점 결과를 반영해 feedback 단계로 전이 (공통). */
-  /** 로그 끝에서부터 연속 오답 수(피로 탈출 판정용). */
+  /**
+   * 로그 끝에서부터 연속 오답 수(피로 탈출 판정용).
+   *
+   * 도움받은 문항은 **투명하게 지나친다** — 환자가 맞힌 게 아니니 연속을 끊지 않고,
+   * 환자가 틀린 것도 아니니 세지도 않는다. 끊어 버리면 힘들어서 넘긴 상황에서
+   * 안전장치가 꺼진다.
+   */
   const trailingWrong = (): number => {
     const log = recentCorrectRef.current;
     let n = 0;
-    for (let i = log.length - 1; i >= 0 && !log[i]; i -= 1) n += 1;
+    for (let i = log.length - 1; i >= 0; i -= 1) {
+      if (log[i].assisted) continue;
+      if (log[i].isCorrect) break;
+      n += 1;
+    }
     return n;
   };
 
@@ -559,7 +580,7 @@ export function useMixedQuizSession(
     ): void => {
       const item = itemsRef.current[indexRef.current];
       if (item) recordForAdaptation(item, result.isCorrect, assisted);
-      recentCorrectRef.current.push(result.isCorrect);
+      recentCorrectRef.current.push({ isCorrect: result.isCorrect, assisted });
       phaseRef.current = 'feedback';
       setState((prev) => ({
         ...prev,
@@ -900,10 +921,15 @@ export function useMixedQuizSession(
     // 진짜 끝(자연 종료·피로 탈출)이면 완료 마커도 함께 보낸다.
     flushPending(isSessionEnd);
     if (isSessionEnd) {
-      // 점수 분모는 **실제로 푼 문항 수**다. 피로 탈출 시 안 푼 문항까지 오답으로
-      // 세면(0/10) 배려로 끝낸 세션이 되레 좌절을 준다 — 조기 종료의 목적과 반대.
-      const attempted = recentCorrectRef.current.length;
-      const correct = recentCorrectRef.current.filter(Boolean).length;
+      // 점수 분모는 **환자가 실제로 푼 문항 수**다.
+      //
+      //  - 피로 탈출 시 안 푼 문항까지 오답으로 세면(0/10) 배려로 끝낸 세션이
+      //    되레 좌절을 준다 — 조기 종료의 목적과 반대.
+      //  - 보호자가 넘긴 문항은 분자·분모 **양쪽에서** 뺀다. 정답으로 세면 점수가
+      //    100점까지 부풀고, 오답으로 세면 도움을 처벌하는 셈이 된다.
+      const answered = recentCorrectRef.current.filter((e) => !e.assisted);
+      const attempted = answered.length;
+      const correct = answered.filter((e) => e.isCorrect).length;
       const score =
         attempted > 0 ? Math.round((correct / attempted) * 100) : 0;
       phaseRef.current = 'result';
@@ -976,7 +1002,7 @@ export function useMixedQuizSession(
     // 로그의 마지막 항목도 함께 뒤집는다 — 점수·연속오답이 정정을 반영하게.
     // (안 고치면 정정된 정답인데도 연속오답으로 남아 피로 탈출이 잘못 발동.)
     const log = recentCorrectRef.current;
-    if (log.length > 0) log[log.length - 1] = isCorrect;
+    if (log.length > 0) log[log.length - 1].isCorrect = isCorrect;
     setState((prev) => ({
       ...prev,
       lastResult: prev.lastResult

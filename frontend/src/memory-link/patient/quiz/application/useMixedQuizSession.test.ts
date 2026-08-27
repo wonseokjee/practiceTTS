@@ -1400,3 +1400,104 @@ describe('세션 내 적응 — 같은 검사 안에서 눈높이가 움직인�
     expect(calls).toEqual([undefined]);
   });
 });
+
+describe('보호자 넘어가기는 환자 수행이 아니다 (E12)', () => {
+  /** 이름대기 N문항짜리 세션. 넘어가기·오답을 섞어 넣기 좋다. */
+  function 이름대기세션(n: number, submitQabResults = vi.fn().mockResolvedValue({ saved: 1 })) {
+    const items: QabNamingItem[] = Array.from({ length: n }, (_, i) => ({
+      itemId: `nm_${i}`,
+      imageUrl: `/${i}.svg`,
+      targetWord: '사과',
+      instruction: 'x',
+    }));
+    return renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi({ submitQabResults }),
+        generateSessionToken: () => 'tok-1',
+        ...ISOLATED,
+        pickWordItems: () => [],
+        dailyCount: 0,
+        wordCount: 0,
+        pickNamingItems: () => items,
+        namingCount: n,
+      }),
+    );
+  }
+
+  type 세션 = ReturnType<typeof 이름대기세션>['result'];
+
+  async function 넘긴다(result: 세션) {
+    act(() => result.current[1].skipCurrent());
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    act(() => result.current[1].next());
+  }
+
+  async function 틀린다(result: 세션) {
+    act(() => result.current[1].submitNaming('전혀다른말'));
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    act(() => result.current[1].next());
+  }
+
+  it('넘어간 문항은 점수의 분자·분모 어디에도 안 들어간다', async () => {
+    // 정답으로 세면 100점까지 부풀고, 오답으로 세면 도움을 처벌하는 셈이 된다.
+    const { result } = 이름대기세션(2);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    await 넘긴다(result); // 1문항: 보호자가 넘김
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+    await 틀린다(result); // 2문항: 환자가 틀림 → 세션 끝
+
+    await waitFor(() => expect(result.current[0].phase).toBe('result'));
+    // 환자가 푼 것은 1문항, 그중 정답 0 → 0점. (넘긴 문항이 정답으로 세였다면 50점)
+    expect(result.current[0].sessionScore).toBe(0);
+  });
+
+  it('전부 넘기면 점수가 100점이 되지 않는다', async () => {
+    const { result } = 이름대기세션(2);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    await 넘긴다(result);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+    await 넘긴다(result);
+
+    await waitFor(() => expect(result.current[0].phase).toBe('result'));
+    expect(result.current[0].sessionScore).not.toBe(100);
+  });
+
+  it('연속 오답 사이에 넘어가기가 끼어도 피로 탈출이 발동한다', async () => {
+    // 예전에는 넘어가기가 true로 들어가 연속 카운터를 0으로 리셋했다. 즉
+    // **힘들어서 넘긴 바로 그 상황에서** 안전장치가 꺼졌다.
+    const { result } = 이름대기세션(6);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    await 틀린다(result);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+    await 넘긴다(result);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+    await 틀린다(result);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+    await 틀린다(result);
+
+    // 오답 3연속(중간의 넘어가기는 투명하게 지나친다) → 6문항을 다 풀기 전에 종료.
+    await waitFor(() => expect(result.current[0].phase).toBe('result'));
+  });
+
+  it('넘어가기가 정답 뒤에 오면 그 정답을 지우지 않는다', async () => {
+    // 투명하게 지나친다는 것은 연속을 끊지도, 잇지도 않는다는 뜻이다.
+    const { result } = 이름대기세션(3);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    act(() => result.current[1].submitNaming('사과'));
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    act(() => result.current[1].next());
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    await 넘긴다(result);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+    await 틀린다(result);
+
+    await waitFor(() => expect(result.current[0].phase).toBe('result'));
+    // 환자가 푼 것은 2문항(정답 1, 오답 1) → 50점.
+    expect(result.current[0].sessionScore).toBe(50);
+  });
+});
