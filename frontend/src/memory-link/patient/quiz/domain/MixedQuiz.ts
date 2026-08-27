@@ -78,6 +78,8 @@ export interface QabRepeatItem {
   /** 들려주고 따라 말할 내용 */
   text: string;
   instruction: string;
+  /** 제시된 난이도 레벨(1~5). 결과 제출 시 실제 제시값으로 기록된다. */
+  presentedLevel?: number;
 }
 
 /**
@@ -89,6 +91,8 @@ export interface QabReadingItem {
   /** 보고 소리 내어 읽을 내용 */
   text: string;
   instruction: string;
+  /** 제시된 난이도 레벨(1~5). 결과 제출 시 실제 제시값으로 기록된다. */
+  presentedLevel?: number;
 }
 
 /**
@@ -127,6 +131,8 @@ export interface QabDdkItem {
   /** 통과 기준 반복 횟수 */
   targetCount: number;
   instruction: string;
+  /** 제시된 난이도 레벨(1~5). 결과 제출 시 실제 제시값으로 기록된다. */
+  presentedLevel?: number;
 }
 
 /**

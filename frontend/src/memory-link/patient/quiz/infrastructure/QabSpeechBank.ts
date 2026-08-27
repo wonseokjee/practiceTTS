@@ -116,12 +116,14 @@ export function pickRepeatItems(
     category: 'word',
     text,
     instruction: REPEAT_INSTRUCTION,
+    presentedLevel: level,
   }));
   const sentences: QabRepeatItem[] = STIMULI.repeatSentences.map((text, i) => ({
     itemId: `repeat_s${i}`,
     category: 'sentence',
     text,
     instruction: REPEAT_INSTRUCTION,
+    presentedLevel: level,
   }));
 
   // mixed는 두 풀을 합친 뒤 각자의 기준으로 거른다 — 단어는 음절, 문장은 어절.
@@ -174,6 +176,7 @@ export function pickReadingItems(
     itemId: `reading_${i}`,
     text,
     instruction: READING_INSTRUCTION,
+    presentedLevel: level,
   }));
   const inRange = (it: QabReadingItem): boolean => {
     const n = wordCount(it.text);
@@ -253,6 +256,7 @@ export function pickDdkItems(count: number, level?: number): QabDdkItem[] {
     label: d.label,
     targetCount: spec.targetCount,
     instruction: DDK_INSTRUCTION,
+    presentedLevel: level,
   }));
   const inRange = (it: QabDdkItem): boolean =>
     ddkKindOf(it.syllable) === spec.kind;

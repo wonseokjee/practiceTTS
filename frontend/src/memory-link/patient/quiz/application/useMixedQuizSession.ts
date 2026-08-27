@@ -559,6 +559,9 @@ export function useMixedQuizSession(
           itemRef: item.item.itemId,
           isCorrect: evaluation.isCorrect,
           score: evaluation.score,
+          ...(item.item.presentedLevel !== undefined
+            ? { presentedLevel: item.item.presentedLevel }
+            : {}),
         });
         applyResult(
           {
@@ -580,6 +583,9 @@ export function useMixedQuizSession(
           itemRef: item.item.itemId,
           isCorrect: evaluation.isCorrect,
           score: evaluation.score,
+          ...(item.item.presentedLevel !== undefined
+            ? { presentedLevel: item.item.presentedLevel }
+            : {}),
         });
         applyResult(
           {
@@ -633,6 +639,9 @@ export function useMixedQuizSession(
         itemRef: item.item.itemId,
         isCorrect: correct,
         metric: count,
+        ...(item.item.presentedLevel !== undefined
+          ? { presentedLevel: item.item.presentedLevel }
+          : {}),
       });
       applyResult(
         {
