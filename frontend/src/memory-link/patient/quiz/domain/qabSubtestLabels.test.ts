@@ -8,7 +8,7 @@ import {
   subtestLabel,
 } from './qabSubtestLabels.js';
 import {
-  pickQabItems,
+  pickWordItems,
   pickSentItems,
   pickSpellItems,
 } from '../infrastructure/QabItemBank.js';
@@ -87,7 +87,10 @@ describe('LEVELED_SUBTESTS — 목록에 있으면 실제로 적응해야 한다
    */
   const N = 2;
   const 추출: Record<string, (lv: number) => string[]> = {
-    word: (lv) => pickQabItems(N, { word: lv, sentence: lv }).map((i) => i.itemId),
+    // **itemId를 보면 안 된다.** 낱말은 레벨과 무관하게 같은 90개 풀에서 나오고
+    // 난이도는 `choices`에 실린다. 예전 추출기는 itemId를 봐서, 두 레벨의 무작위
+    // 표본이 우연히 달라지는 것을 "적응한다"로 읽는 항진명제였다(E2).
+    word: (lv) => pickWordItems(N, lv).map((i) => `보기${i.choices.length}`),
     sentence: (lv) => pickSentItems(N, lv).map((i) => i.itemId),
     repeat: (lv) => pickRepeatItems(N, lv).map((i) => i.text),
     reading: (lv) => pickReadingItems(N, lv).map((i) => i.text),
@@ -105,13 +108,18 @@ describe('LEVELED_SUBTESTS — 목록에 있으면 실제로 적응해야 한다
   });
 
   it.each([...LEVELED_SUBTESTS])(
-    '%s: 레벨 1과 레벨 5가 다른 문항을 낸다',
+    '%s: 레벨 1과 레벨 5가 겹치지 않는다',
     (subtest) => {
       const low = 모아서(추출[subtest], 1);
       const high = 모아서(추출[subtest], 5);
 
-      // 완전히 같은 집합이면 레벨이 아무것도 안 하는 것이다.
-      expect([...high].some((x) => !low.has(x)) || [...low].some((x) => !high.has(x))).toBe(true);
+      // **"다르다"가 아니라 "겹치지 않는다"를 본다.**
+      //
+      // 예전 단언은 `두 집합이 완전히 같지는 않다`였는데, 무작위 표본이라 레벨이
+      // 아무것도 안 해도 거의 항상 통과한다. 여섯 검사 모두 최저·최고 레벨의
+      // 밴드가 실제로 분리돼 있으므로(비누적, #58~#60·E6) 교집합이 비어야 한다.
+      const 겹침 = [...high].filter((x) => low.has(x));
+      expect(겹침, `${subtest}: ${겹침.join(', ')}`).toEqual([]);
     },
   );
 

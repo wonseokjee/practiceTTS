@@ -8,6 +8,7 @@
 // 만들면 된다.
 
 import type { MasterWord } from '../../quiz/infrastructure/QabItemBank.js';
+import { shuffle } from '../../../../shared/domain/shuffle.js';
 
 export interface PracticeOddOneOutOption {
   choiceId: string;
@@ -67,14 +68,6 @@ const UNUSABLE_AS_GROUP = new Set<string>();
  */
 const UNUSABLE_AS_GROUP_WORDS = new Set(['library', 'pool']);
 
-function shuffle<T>(items: readonly T[]): T[] {
-  const out = [...items];
-  for (let i = out.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [out[i], out[j]] = [out[j], out[i]];
-  }
-  return out;
-}
 
 function toOption(word: MasterWord, isCorrect: boolean): PracticeOddOneOutOption {
   return {
