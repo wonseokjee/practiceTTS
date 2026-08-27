@@ -82,7 +82,9 @@ describe('LEVELED_SUBTESTS — 목록에 있으면 실제로 적응해야 한다
    * 요청 개수는 실제 세션 규모(검사당 1~2문항)를 쓴다. 레벨별 후보보다 많이
    * 요청하면 의도된 폴백(범위를 풀어 세션을 채운다)이 걸려 모든 레벨이 같은
    * 집합을 내게 된다 — 그건 적응이 없어서가 아니라 요청이 과해서다.
-   * 말운동의 AMR 자극은 퍼·터·커 3개뿐이라(표준 DDK 세트) 특히 민감하다.
+   * 말운동은 밴드가 비누적이라 SMR 자극이 '퍼터커' 1개뿐이다(표준 DDK 세트).
+   * 그래서 말운동만 1문항으로 뽑는다 — 2를 요청하면 폴백이 AMR을 끌어와
+   * 비누적성이 테스트에서만 깨진다.
    */
   const N = 2;
   const 추출: Record<string, (lv: number) => string[]> = {
@@ -92,7 +94,8 @@ describe('LEVELED_SUBTESTS — 목록에 있으면 실제로 적응해야 한다
     repeat: (lv) => pickRepeatItems(N, lv).map((i) => i.text),
     reading: (lv) => pickReadingItems(N, lv).map((i) => i.text),
     spell: (lv) => pickSpellItems(N, lv).map((i) => i.itemId),
-    ddk: (lv) => pickDdkItems(N, lv).map((i) => i.syllable),
+    // 난이도가 자극뿐 아니라 반복 요구량에도 실려 있으므로 둘을 함께 본다.
+    ddk: (lv) => pickDdkItems(1, lv).map((i) => `${i.syllable}@${i.targetCount}`),
   };
 
   const 모아서 = (fn: (lv: number) => string[], lv: number): Set<string> =>
