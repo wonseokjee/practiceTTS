@@ -330,7 +330,8 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
             className="text-sm text-[#6B6560] transition-colors duration-[180ms] hover:text-[#3F4A44]"
             aria-label="퀴즈 그만두기"
           >
-            그만두고 목록으로
+            {/* 세션을 끝내면 홈으로 돌아간다(DR1b). 예전엔 목록으로 갔다. */}
+            그만두고 처음으로
           </button>
         </div>
       )}
