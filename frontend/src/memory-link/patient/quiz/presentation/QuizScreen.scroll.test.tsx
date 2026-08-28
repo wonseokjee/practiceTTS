@@ -73,6 +73,7 @@ function renderQuiz() {
           getSessionStats: vi.fn(),
           getRecentItems: vi.fn().mockResolvedValue([]),
           getQabTrend: vi.fn().mockResolvedValue([]),
+    getWeekReview: vi.fn().mockResolvedValue([]),
         },
         // rotation: [] — 기본 구성은 오늘 날짜의 로테이션이라, 끄지 않으면
         // 이 테스트가 요일에 따라 다른 문항을 받는다.

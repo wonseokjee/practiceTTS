@@ -99,6 +99,7 @@ function makeApi(overrides?: Partial<IQuizApi>): IQuizApi {
     getSessionStats: vi.fn(),
     getRecentItems: vi.fn().mockResolvedValue([]),
     getQabTrend: vi.fn().mockResolvedValue([]),
+    getWeekReview: vi.fn().mockResolvedValue([]),
     ...overrides,
   };
   // `as IQuizApi` 캐스트를 쓰지 않는다. 캐스트하면 인터페이스에 메서드가 늘어도

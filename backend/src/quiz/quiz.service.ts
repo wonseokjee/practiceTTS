@@ -146,6 +146,27 @@ export interface SaveQabResultsResult {
  * 이탈로 세지 않기 위함이다.
  */
 /** 최근 문항 성적 1건 (재출제 우선순위 산출용). */
+export interface WeekReviewNote {
+  category: 'activity' | 'moment' | 'context';
+  text: string;
+}
+
+export interface WeekReviewItemResult {
+  quizSetId: string;
+  memoryEntryId: string;
+  /** 사진 경로. 없으면 null — 그때는 notes가 카드를 채운다. */
+  photoUrl: string | null;
+  /**
+   * 보호자가 적은 그날의 답변(순서대로). 사진이 없으면 이것이 회상 재료다.
+   *
+   * `category`를 함께 보낸다. `moment`(그 순간)가 실제 기억이고 `activity`·
+   * `context`는 한두 낱말짜리 태그다 — 셋을 같은 크기로 늘어놓으면 태그가
+   * 문장 조각처럼 읽힌다.
+   */
+  notes: WeekReviewNote[];
+  lastPlayedAt: string;
+}
+
 export interface RecentItemResult {
   itemRef: string;
   /** 최근 N일 동안 한 번이라도 맞혔는가. false면 재출제 우선순위가 높다. */
@@ -781,6 +802,79 @@ export class QuizService {
           : null,
       bestScore: bestBySet.get(set.id) ?? null,
       createdAt: set.createdAt.toISOString(),
+    }));
+  }
+
+  /**
+   * 최근 N일 동안 **환자가 실제로 푼** 기억들 — 환자용 돌아보기 화면.
+   *
+   * **점수를 담지 않는다.** 환자 화면은 정답률을 보여주지 않는 것이 이 앱의 원칙이고
+   * (`QuizScreen`이 `showScore={false}`로 넘긴다), 돌아보기의 목적은 평가가 아니라
+   * 회상이다. 무엇을 함께 봤는지만 돌려준다.
+   *
+   * **"만든" 기억이 아니라 "푼" 기억이다.** `quiz_sets.created_at`으로 거르면 보호자가
+   * 이번 주에 등록만 하고 환자는 안 푼 기억이 섞인다 — 화면 이름이 돌아보기인데
+   * 하지 않은 것이 올라온다. 그래서 `quiz_attempts.answered_at`을 기준으로 잡는다.
+   *
+   * 사진이 없는 기억은 글이 대신한다. 기억은 **사진 아니면 글 중 하나가 반드시 있다**
+   * (`memory.service.ts`가 생성 시점에 강제한다). 그래서 빈 카드는 나올 수 없다.
+   * 질문 문구는 안 담는다 — 보호자가 답을 쓰게 하는 발판이지 환자가 볼 내용이
+   * 아니고, 넣으면 카드가 설문지처럼 보인다.
+   */
+  async getWeekReview(
+    effectivePatientId: string,
+    days = 7,
+  ): Promise<WeekReviewItemResult[]> {
+    // 기억당 마지막으로 푼 시각. 같은 기억을 여러 번 풀어도 카드는 하나다.
+    const played = await this.quizAttemptRepository
+      .createQueryBuilder('a')
+      .select('s.memory_entry_id', 'memoryEntryId')
+      .addSelect('MAX(a.answered_at)', 'lastPlayedAt')
+      .addSelect('MAX(s.id::text)', 'quizSetId')
+      .innerJoin(QuizSet, 's', 's.id = a.quiz_set_id')
+      .where('a.patient_id = :pid', { pid: effectivePatientId })
+      .andWhere('a.answered_at >= now() - make_interval(days => :days)', {
+        days,
+      })
+      .groupBy('s.memory_entry_id')
+      .orderBy('MAX(a.answered_at)', 'DESC')
+      .getRawMany<{
+        memoryEntryId: string;
+        lastPlayedAt: Date;
+        quizSetId: string;
+      }>();
+
+    if (played.length === 0) return [];
+
+    const memoryEntryIds = played.map((p) => p.memoryEntryId);
+    const [entries, notes] = await Promise.all([
+      this.memoryEntryRepository
+        .createQueryBuilder('entry')
+        .where('entry.id IN (:...ids)', { ids: memoryEntryIds })
+        .getMany(),
+      this.patientMemoryNoteRepository
+        .createQueryBuilder('note')
+        .where('note.memory_entry_id IN (:...ids)', { ids: memoryEntryIds })
+        .orderBy('note.order_index', 'ASC')
+        .getMany(),
+    ]);
+
+    const photoByEntry = new Map<string, string | null>(
+      entries.map((e) => [e.id, e.photoUrl ?? null]),
+    );
+    const notesByEntry = new Map<string, WeekReviewNote[]>();
+    for (const n of notes) {
+      const list = notesByEntry.get(n.memoryEntryId) ?? [];
+      list.push({ category: n.category, text: n.answerText });
+      notesByEntry.set(n.memoryEntryId, list);
+    }
+
+    return played.map((p) => ({
+      quizSetId: p.quizSetId,
+      memoryEntryId: p.memoryEntryId,
+      photoUrl: photoByEntry.get(p.memoryEntryId) ?? null,
+      notes: notesByEntry.get(p.memoryEntryId) ?? [],
+      lastPlayedAt: new Date(p.lastPlayedAt).toISOString(),
     }));
   }
 

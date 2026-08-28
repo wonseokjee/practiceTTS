@@ -2041,6 +2041,139 @@ describe('QuizService', () => {
     });
   });
 
+  describe('getWeekReview', () => {
+    /** 푼 기억 raw 행 + 기억/메모 조회를 한 번에 세팅한다. */
+    function arrange(
+      played: unknown[],
+      entries: unknown[] = [],
+      notes: unknown[] = [],
+    ) {
+      const qb = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        innerJoin: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue(played),
+      };
+      quizAttemptRepo.createQueryBuilder.mockReturnValue(qb);
+      memoryEntryRepo.createQueryBuilder.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue(entries),
+      });
+      patientMemoryNoteRepo.createQueryBuilder.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue(notes),
+      });
+      return qb;
+    }
+
+    it('사진이 있으면 사진을 준다', async () => {
+      arrange(
+        [
+          {
+            memoryEntryId: 'm1',
+            quizSetId: 'q1',
+            lastPlayedAt: new Date('2026-08-26T02:00:00.000Z'),
+          },
+        ],
+        [{ id: 'm1', photoUrl: 'uploads/memory-images/a.jpg' }],
+      );
+
+      const items = await service.getWeekReview(PATIENT_ID);
+
+      expect(items).toHaveLength(1);
+      expect(items[0]).toMatchObject({
+        memoryEntryId: 'm1',
+        photoUrl: 'uploads/memory-images/a.jpg',
+        lastPlayedAt: '2026-08-26T02:00:00.000Z',
+      });
+    });
+
+    it('사진이 없으면 그날의 답변이 대신 온다', async () => {
+      // 기억은 사진 아니면 글 중 하나가 반드시 있다(memory.service.ts가 생성
+      // 시점에 강제한다). 그래서 사진이 null이어도 빈 카드는 나올 수 없다.
+      arrange(
+        [
+          {
+            memoryEntryId: 'm2',
+            quizSetId: 'q2',
+            lastPlayedAt: new Date('2026-08-25T02:00:00.000Z'),
+          },
+        ],
+        [{ id: 'm2', photoUrl: null }],
+        [
+          { memoryEntryId: 'm2', category: 'activity', answerText: '바다' },
+          {
+            memoryEntryId: 'm2',
+            category: 'moment',
+            answerText: '바다에 갔어요.',
+          },
+        ],
+      );
+
+      const items = await service.getWeekReview(PATIENT_ID);
+
+      expect(items[0].photoUrl).toBeNull();
+      // category를 함께 보낸다 — moment가 실제 기억이고 나머지는 태그다.
+      // 화면이 둘을 다른 크기로 조판하려면 이 값이 필요하다.
+      expect(items[0].notes).toEqual([
+        { category: 'activity', text: '바다' },
+        { category: 'moment', text: '바다에 갔어요.' },
+      ]);
+    });
+
+    it('점수를 담지 않는다 — 돌아보기는 평가가 아니다', async () => {
+      // 환자 화면은 정답률을 보여주지 않는 것이 이 앱의 원칙이다. API가 아예
+      // 안 주면 나중에 화면에서 "이왕 있으니" 붙는 일이 생기지 않는다.
+      arrange(
+        [
+          {
+            memoryEntryId: 'm1',
+            quizSetId: 'q1',
+            lastPlayedAt: new Date('2026-08-26T02:00:00.000Z'),
+          },
+        ],
+        [{ id: 'm1', photoUrl: 'a.jpg' }],
+      );
+
+      const items = await service.getWeekReview(PATIENT_ID);
+
+      expect(Object.keys(items[0]).sort()).toEqual([
+        'lastPlayedAt',
+        'memoryEntryId',
+        'notes',
+        'photoUrl',
+        'quizSetId',
+      ]);
+    });
+
+    it('푼 기억이 없으면 빈 배열이고 뒤를 조회하지 않는다', async () => {
+      arrange([]);
+
+      await expect(service.getWeekReview(PATIENT_ID)).resolves.toEqual([]);
+      expect(memoryEntryRepo.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
+    it('환자 스코프와 기간으로 거른다', async () => {
+      const qb = arrange([]);
+
+      await service.getWeekReview(PATIENT_ID, 7);
+
+      expect(qb.where).toHaveBeenCalledWith('a.patient_id = :pid', {
+        pid: PATIENT_ID,
+      });
+      // "만든" 기억이 아니라 "푼" 기억이다 — 기준 컬럼이 answered_at이어야 한다.
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        expect.stringContaining('a.answered_at'),
+        { days: 7 },
+      );
+    });
+  });
+
   describe('getRecentItems', () => {
     /** createQueryBuilder 체이닝 mock — getRawMany 결과를 지정 */
     function arrangeRecent(rows: unknown[]) {
