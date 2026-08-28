@@ -18,6 +18,8 @@ import type {
   QuizSetSummary,
   SubmitAnswer,
   SubmitAttemptsResult,
+  WeekReviewItem,
+  WeekReviewNote,
   WishPractice,
 } from '../domain/Quiz.js';
 import type {
@@ -83,6 +85,8 @@ export interface IQuizApi {
   getSkillLevels(): Promise<SkillLevels>;
   /** GET /quiz/activity-days — 검사·연습을 한 날짜(YYYY-MM-DD) — 솔로 홈 스트릭용 */
   getActivityDays(days?: number): Promise<string[]>;
+  /** GET /quiz/week-review — 최근 N일 동안 실제로 푼 기억(환자 돌아보기). 점수 없음. */
+  getWeekReview(days?: number): Promise<WeekReviewItem[]>;
   /** GET /quiz/session-stats — 최근 N일 세션 완료율 (보호자용) */
   getSessionStats(days?: number): Promise<SessionStats>;
   /** GET /quiz/recent-items — 검사별 최근 문항 성적 (재출제 우선순위용) */
@@ -408,6 +412,47 @@ export const quizApi: IQuizApi = {
       throw new Error(INVALID_RESPONSE_MESSAGE);
     }
     return list as string[];
+  },
+
+  async getWeekReview(days?: number): Promise<WeekReviewItem[]> {
+    const res = await memoryLinkApi.get<unknown>('/quiz/week-review', {
+      params: days === undefined ? undefined : { days },
+    });
+    const obj = asRecord(res.data);
+    const list = obj?.items;
+    if (!Array.isArray(list)) throw new Error(INVALID_RESPONSE_MESSAGE);
+    return list.map((raw) => {
+      const it = asRecord(raw);
+      if (
+        it === null ||
+        typeof it.quizSetId !== 'string' ||
+        typeof it.memoryEntryId !== 'string' ||
+        typeof it.lastPlayedAt !== 'string' ||
+        !Array.isArray(it.notes)
+      ) {
+        throw new Error(INVALID_RESPONSE_MESSAGE);
+      }
+      return {
+        quizSetId: it.quizSetId,
+        memoryEntryId: it.memoryEntryId,
+        photoUrl: typeof it.photoUrl === 'string' ? it.photoUrl : null,
+        notes: it.notes.flatMap((raw): WeekReviewNote[] => {
+          const n = asRecord(raw);
+          if (n === null || typeof n.text !== 'string') return [];
+          const cat = n.category;
+          return [
+            {
+              category:
+                cat === 'activity' || cat === 'moment' || cat === 'context'
+                  ? cat
+                  : 'context',
+              text: n.text,
+            },
+          ];
+        }),
+        lastPlayedAt: it.lastPlayedAt,
+      };
+    });
   },
 
   async getSessionStats(days?: number): Promise<SessionStats> {

@@ -10,6 +10,7 @@ import { QuizListScreen } from '../quiz/presentation/QuizListScreen.js';
 import { QuizScreen } from '../quiz/presentation/QuizScreen.js';
 import { PracticeScreen } from '../practice/presentation/PracticeScreen.js';
 import { SoloDailyHome } from './SoloDailyHome.js';
+import { WeekReviewScreen } from './WeekReviewScreen.js';
 import { SoundCheckScreen } from './SoundCheckScreen.js';
 import {
   isSoundCheckedToday,
@@ -37,6 +38,7 @@ type DashboardPhase =
   | 'QUIZ_LIST'
   | 'QUIZ_PLAY'
   | 'PRACTICE'
+  | 'WEEK_REVIEW'
   | 'SOUND_CHECK';
 
 /** 선택된 훈련 정보 */
@@ -243,6 +245,15 @@ export function PatientDashboard() {
   // 연습 모드 — 터치 중심. 문항별로는 정답을 알려주지만(가르친다) 점수·정답률
   // 같은 집계는 내지 않는다. 결과는 검사와 다른 테이블(practice_results)로
   // 나가므로 회복 추세·레벨을 건드리지 않는다. 활동 일자만 스트릭에 합쳐진다.
+  // 돌아보기 — 최근에 함께 본 기억. 소리를 쓰지 않으므로 소리 확인을 거치지 않는다.
+  if (phase === 'WEEK_REVIEW') {
+    return (
+      <div className="min-h-screen bg-[#F7F6F3]">
+        <WeekReviewScreen onBack={() => setPhase('QUIZ_HOME')} />
+      </div>
+    );
+  }
+
   if (phase === 'PRACTICE') {
     return (
       <div className="min-h-screen" style={{ background: WARM_SCREEN_BG }}>
@@ -291,7 +302,7 @@ export function PatientDashboard() {
           streakDays={buildWeekStreak(new Set(activityDays))}
           onStart={() => setPhase('QUIZ_LIST')}
           onPractice={() => goWithSoundCheck('PRACTICE')}
-          onReview={() => setPhase('QUIZ_LIST')}
+          onReview={() => setPhase('WEEK_REVIEW')}
         />
       </div>
     );

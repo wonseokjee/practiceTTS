@@ -40,6 +40,7 @@ import {
   SubmitAttemptsResult,
   QuizService,
   RecentItemResult,
+  WeekReviewItemResult,
 } from './quiz.service';
 import type { WishConversionResult } from './interfaces/IWishConversionClient';
 
@@ -278,6 +279,34 @@ export class QuizController {
         b.localeCompare(a),
       );
       return { days: merged };
+    } catch (error) {
+      throw this.mapError(error);
+    }
+  }
+
+  /**
+   * GET /quiz/week-review
+   * 최근 N일 동안 환자가 **실제로 푼** 기억들 — 환자용 돌아보기 화면.
+   *
+   * **점수를 안 내려보낸다.** 환자 화면은 정답률을 보여주지 않는 것이 이 앱의
+   * 원칙이고, 돌아보기의 목적은 평가가 아니라 회상이다. API가 아예 안 주면
+   * 나중에 화면에서 "이왕 있으니" 붙는 일이 생기지 않는다.
+   */
+  @Get('quiz/week-review')
+  async getWeekReview(
+    @Req() req: AuthenticatedRequest,
+    @Query('days') days?: string,
+  ): Promise<{ items: WeekReviewItemResult[] }> {
+    const effectivePatientId = resolveEffectivePatientId(req.user);
+    const parsed = Number(days);
+    const safeDays =
+      Number.isInteger(parsed) && parsed >= 1 && parsed <= 30 ? parsed : 7;
+    try {
+      const items = await this.quizService.getWeekReview(
+        effectivePatientId,
+        safeDays,
+      );
+      return { items };
     } catch (error) {
       throw this.mapError(error);
     }
