@@ -36,7 +36,7 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
           aria-hidden="true"
         >
           <svg
-            className={`w-5 h-5 ${isPlaying ? 'text-white' : 'text-[#9AA09B]'}`}
+            className={`w-5 h-5 ${isPlaying ? 'text-white' : 'text-[#6B6560]'}`}
             fill="currentColor"
             viewBox="0 0 20 20"
           >
@@ -49,7 +49,7 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
         </div>
 
         <div>
-          <p className="text-xs text-[#9AA09B] mb-0.5">
+          <p className="text-xs text-[#6B6560] mb-0.5">
             {isPlaying ? '음성 재생 중...' : '음성 재생 완료'}
           </p>
           <p className="text-base font-semibold text-[#1A1916]">

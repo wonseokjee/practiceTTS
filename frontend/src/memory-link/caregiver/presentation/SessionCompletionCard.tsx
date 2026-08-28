@@ -99,7 +99,7 @@ export function SessionCompletionCard({
 
       {/* 스트릭과 기준이 다르다. 같은 화면에서 숫자가 어긋나 보이면 보호자가
           어느 쪽을 믿을지 몰라 한다 — 먼저 밝혀 둔다. */}
-      <p className="text-xs text-[#8A918C]">
+      <p className="text-xs text-[#6B6560]">
         환자 홈의 &lsquo;연습한 날&rsquo;은 한 문항이라도 푼 날을 세요. 여기
         완료율과는 기준이 달라요.
       </p>

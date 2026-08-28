@@ -54,7 +54,7 @@ export const SentenceAudioPlayer: React.FC<SentenceAudioPlayerProps> = ({
         {/* 상태 텍스트 */}
         <span
           className={`text-sm font-medium ${
-            isPlaying ? 'text-[#2D6A56]' : 'text-[#9AA09B]'
+            isPlaying ? 'text-[#2D6A56]' : 'text-[#6B6560]'
           }`}
           aria-live="polite"
         >

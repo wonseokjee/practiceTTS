@@ -539,7 +539,7 @@ function ConversationList({
             <p className="text-2xl text-[#6B6560]">
               아직 등록된 훈련이 없습니다.
             </p>
-            <p className="text-xl text-[#9AA09B] mt-2">
+            <p className="text-xl text-[#6B6560] mt-2">
               보호자가 기억 카드를 등록하면 훈련을 시작할 수 있어요.
             </p>
           </div>

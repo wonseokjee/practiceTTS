@@ -54,7 +54,7 @@ function TrialResultRow({ result }: { result: LocTrialResponseDTO }) {
       <span className={`font-semibold ${scoreColorClass}`}>
         {result.scoreLabel}
         {result.latencyMs !== null && (
-          <span className="text-[#9AA09B] font-normal text-sm ml-2">
+          <span className="text-[#6B6560] font-normal text-sm ml-2">
             ({Math.round(result.latencyMs)}ms)
           </span>
         )}
@@ -173,7 +173,7 @@ export function LocScreen({ onComplete, onProceed }: LocScreenProps) {
         </div>
         <button
           type="button"
-          className="text-xs text-[#9AA09B] hover:text-[#C94040] transition-colors mt-1"
+          className="text-xs text-[#6B6560] hover:text-[#C94040] transition-colors mt-1"
           onClick={endSession}
         >
           세션 종료
@@ -193,7 +193,7 @@ export function LocScreen({ onComplete, onProceed }: LocScreenProps) {
               <p className="text-[#6B6560] text-sm text-center mb-2">최종 점수</p>
               <p className="text-5xl font-bold text-center text-[#2D6A56]">
                 {finalScore}
-                <span className="text-xl text-[#9AA09B] font-normal"> / 3</span>
+                <span className="text-xl text-[#6B6560] font-normal"> / 3</span>
               </p>
             </div>
 

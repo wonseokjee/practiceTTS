@@ -151,7 +151,7 @@ export function QabProgressCard({
       <p className="mb-4 text-sm text-[#5C6661]">
         환자분이 푼 검사별 정답률이에요. 꾸준히 오르는지 지켜봐 주세요.
         <br />
-        <span className="text-xs text-[#8A918C]">
+        <span className="text-xs text-[#6B6560]">
           &lsquo;반복 연습&rsquo; 표시가 붙은 항목은 같은 낱말을 다시 내는
           과제예요. 정답률이 오르는 건 그 낱말에 익숙해진 것이라 회복 정도와는
           다르게 봐 주세요.

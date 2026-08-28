@@ -40,7 +40,7 @@ function SocialLoginButtons() {
 
   return (
     <div className="mt-6">
-      <div className="flex items-center gap-3 text-xs text-[#9AA09B]">
+      <div className="flex items-center gap-3 text-xs text-[#6B6560]">
         <span className="h-px flex-1 bg-[#E8E4DC]" />
         간편 로그인
         <span className="h-px flex-1 bg-[#E8E4DC]" />
