@@ -38,7 +38,7 @@ export function AssessmentCard({
               </span>
             )}
           </div>
-          <p className="text-xs text-[#9AA09B]">{subtitle}</p>
+          <p className="text-xs text-[#6B6560]">{subtitle}</p>
         </div>
       </div>
       <p className="text-sm text-[#6B6560] mb-4">{description}</p>

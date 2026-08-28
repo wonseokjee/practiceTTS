@@ -24,7 +24,7 @@ const SENTENCE_TYPE_LABELS: Record<string, string> = {
 
 /** 정답률에 따른 색상 클래스 */
 function getRateColorClass(rate: number | null): string {
-  if (rate === null) return 'text-[#9AA09B]';
+  if (rate === null) return 'text-[#6B6560]';
   if (rate >= 0.8) return 'text-[#2D6A56]';
   if (rate >= 0.5) return 'text-[#8a5a1a]';
   return 'text-[#C94040]';
@@ -54,9 +54,9 @@ export const ScoreResultPanel: React.FC<ScoreResultPanelProps> = ({
         <p className="text-sm text-[#6B6560] mb-2">총점</p>
         <p className="text-6xl font-bold text-[#2D6A56]">
           {score.totalScore}
-          <span className="text-2xl text-[#9AA09B] font-normal">점</span>
+          <span className="text-2xl text-[#6B6560] font-normal">점</span>
         </p>
-        <p className="text-sm text-[#9AA09B] mt-2">
+        <p className="text-sm text-[#6B6560] mt-2">
           {score.correctCount} / {score.totalItems} 정답
         </p>
       </div>
@@ -84,8 +84,8 @@ export const ScoreResultPanel: React.FC<ScoreResultPanelProps> = ({
                     className="border-b border-[#E8E4DC]/60 last:border-0"
                   >
                     <td className="py-3 text-[#1A1916]">{label}</td>
-                    <td className="py-3 text-right text-[#9AA09B]">-</td>
-                    <td className="py-3 text-right text-[#9AA09B]">-</td>
+                    <td className="py-3 text-right text-[#6B6560]">-</td>
+                    <td className="py-3 text-right text-[#6B6560]">-</td>
                   </tr>
                 );
               }

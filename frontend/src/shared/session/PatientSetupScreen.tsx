@@ -50,7 +50,7 @@ export function PatientSetupScreen() {
                 setError(null);
               }}
               placeholder="예: P-2026-001"
-              className="w-full border border-[#E8E4DC] rounded-xl px-4 py-3 text-[#1A1916] placeholder-[#9AA09B] focus:outline-none focus:ring-2 focus:ring-[#2D6A56] focus:border-transparent"
+              className="w-full border border-[#E8E4DC] rounded-xl px-4 py-3 text-[#1A1916] placeholder-[#6B6560] focus:outline-none focus:ring-2 focus:ring-[#2D6A56] focus:border-transparent"
               autoComplete="off"
               autoFocus
             />

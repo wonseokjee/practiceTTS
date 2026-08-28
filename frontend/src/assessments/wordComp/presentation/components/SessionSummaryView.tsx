@@ -23,9 +23,9 @@ export const SessionSummaryView: React.FC<SessionSummaryViewProps> = ({
     <div className="flex flex-col gap-6 py-4">
       {/* 총점 카드 */}
       <div className="bg-white rounded-2xl shadow-sm border border-[#E8E4DC] p-6 text-center">
-        <p className="text-sm text-[#9AA09B] mb-1">단어 이해 검사 결과</p>
+        <p className="text-sm text-[#6B6560] mb-1">단어 이해 검사 결과</p>
         <p className="text-5xl font-bold text-[#2D6A56] mb-1">{totalScore}</p>
-        <p className="text-[#9AA09B] text-sm">/ {totalItems}점</p>
+        <p className="text-[#6B6560] text-sm">/ {totalItems}점</p>
         <div className="mt-3">
           <span
             className={`inline-block px-4 py-1.5 rounded-full text-sm font-semibold ${
@@ -81,13 +81,13 @@ export const SessionSummaryView: React.FC<SessionSummaryViewProps> = ({
             <p className="text-2xl font-bold text-[#1A1916]">
               {(averageReactionTimeMs / 1000).toFixed(1)}초
             </p>
-            <p className="text-xs text-[#9AA09B] mt-1">평균 반응 시간</p>
+            <p className="text-xs text-[#6B6560] mt-1">평균 반응 시간</p>
           </div>
           <div className="text-center">
             <p className="text-2xl font-bold text-[#1A1916]">
               {averageReplayCount.toFixed(1)}회
             </p>
-            <p className="text-xs text-[#9AA09B] mt-1">평균 재청취 횟수</p>
+            <p className="text-xs text-[#6B6560] mt-1">평균 재청취 횟수</p>
           </div>
         </div>
       </div>
@@ -134,7 +134,7 @@ const DistractorBar: React.FC<DistractorBarProps> = ({
       <div className="flex justify-between items-center mb-1">
         <div>
           <span className="text-sm font-medium text-[#1A1916]">{label}</span>
-          <span className="text-xs text-[#9AA09B] ml-1.5">{description}</span>
+          <span className="text-xs text-[#6B6560] ml-1.5">{description}</span>
         </div>
         <span className={`text-sm font-semibold ${colors.text}`}>
           {count}회 ({pct}%)
