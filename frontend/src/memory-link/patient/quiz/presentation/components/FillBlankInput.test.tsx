@@ -10,7 +10,7 @@
 //  - 피드백 단계: 정답/오답 색상 + 정답 노출
 
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { FillBlankInput } from './FillBlankInput.js';
 
 interface Overrides {
@@ -69,6 +69,17 @@ describe('FillBlankInput', () => {
   it('hintFirstChar가 있으면 첫 글자 힌트를 표시한다', () => {
     renderInput({ hintFirstChar: '공' });
     expect(screen.getByText('공')).toBeInTheDocument();
+  });
+
+  // Found by browser QA on 2026-08-21 (연습 모드에서 같은 버그를 먼저 발견).
+  // 조사를 '이에요'로 고정해두면 받침 없는 글자에서 "사 이에요"가 된다.
+  it('힌트 글자의 받침에 따라 조사가 달라진다', () => {
+    renderInput({ hintFirstChar: '공' });
+    expect(screen.getByText(/첫 글자는/)).toHaveTextContent('공이에요');
+
+    cleanup();
+    renderInput({ hintFirstChar: '사' });
+    expect(screen.getByText(/첫 글자는/)).toHaveTextContent('사예요');
   });
 
   describe('한글 IME 가드', () => {

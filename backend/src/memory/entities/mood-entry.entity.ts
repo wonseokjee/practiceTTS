@@ -28,7 +28,10 @@ export class MoodEntry {
 
   // 연결된 메모리 엔트리 (1:1)
   @ManyToOne(() => MemoryEntry, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'memory_entry_id', foreignKeyConstraintName: 'FK_mood_entries_memory_entry' })
+  @JoinColumn({
+    name: 'memory_entry_id',
+    foreignKeyConstraintName: 'FK_mood_entries_memory_entry',
+  })
   memoryEntry: MemoryEntry;
 
   @Column({ name: 'memory_entry_id', type: 'uuid' })
@@ -36,7 +39,10 @@ export class MoodEntry {
 
   // 무드를 기록한 보호자
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'caregiver_id', foreignKeyConstraintName: 'FK_mood_entries_caregiver' })
+  @JoinColumn({
+    name: 'caregiver_id',
+    foreignKeyConstraintName: 'FK_mood_entries_caregiver',
+  })
   caregiver: User;
 
   @Column({ name: 'caregiver_id', type: 'uuid' })

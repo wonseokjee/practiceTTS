@@ -67,6 +67,12 @@ interface SocialRequest {
   user: SocialProfile;
 }
 
+/**
+ * `HttpException.getStatus()`는 number를 돌려주므로 enum과 직접 비교하면
+ * no-unsafe-enum-comparison에 걸린다. 이름은 지키고 비교만 숫자로 한다.
+ */
+const CONFLICT: number = HttpStatus.CONFLICT;
+
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -264,8 +270,7 @@ export class AuthController {
           const reason =
             err instanceof NotFoundException
               ? 'notfound'
-              : err instanceof HttpException &&
-                  err.getStatus() === HttpStatus.CONFLICT
+              : err instanceof HttpException && err.getStatus() === CONFLICT
                 ? 'conflict'
                 : 'unknown';
           res.redirect(`${frontend}/onboarding?mergeError=${reason}`);
@@ -279,7 +284,7 @@ export class AuthController {
         res.redirect(`${frontend}/caregiver?linked=${provider}`);
       } catch (err) {
         const reason =
-          err instanceof HttpException && err.getStatus() === HttpStatus.CONFLICT
+          err instanceof HttpException && err.getStatus() === CONFLICT
             ? 'conflict'
             : 'unknown';
         res.redirect(`${frontend}/caregiver?linkError=${reason}`);

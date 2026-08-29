@@ -5,6 +5,7 @@ import {
   IsBoolean,
   IsIn,
   IsInt,
+  IsObject,
   IsOptional,
   IsString,
   IsUUID,
@@ -12,8 +13,42 @@ import {
   MaxLength,
   Min,
   ValidateNested,
+  registerDecorator,
 } from 'class-validator';
 import { QAB_SUBTESTS, type QabSubtest } from '../constants/qab-subtest';
+import { QAB_FOIL_KINDS, type QabFoilKind } from '../constants/qab-foil-kind';
+
+/**
+ * `levels`의 키가 알려진 검사이고 값이 1~5 정수인지 본다.
+ *
+ * `Record`는 `@ValidateNested`가 못 다루고, 클래스로 만들면 검사 목록이 두 곳에
+ * 생겨 검사를 추가할 때 한쪽만 고치게 된다. 상수 배열 하나만 보게 한다.
+ */
+function IsSkillLevelMap() {
+  return function (target: object, propertyName: string): void {
+    registerDecorator({
+      name: 'isSkillLevelMap',
+      target: target.constructor,
+      propertyName,
+      validator: {
+        validate(value: unknown): boolean {
+          if (value === null || typeof value !== 'object') return false;
+          return Object.entries(value as Record<string, unknown>).every(
+            ([key, level]) =>
+              (QAB_SUBTESTS as readonly string[]).includes(key) &&
+              typeof level === 'number' &&
+              Number.isInteger(level) &&
+              level >= 1 &&
+              level <= 5,
+          );
+        },
+        defaultMessage(): string {
+          return 'levels는 알려진 검사명 → 1~5 정수여야 한다';
+        },
+      },
+    });
+  };
+}
 
 /** 단일 QAB 항목 결과 */
 export class QabResultItemDto {
@@ -47,13 +82,42 @@ export class QabResultItemDto {
   score?: number;
 
   // 이 항목이 제시된 난이도 레벨(1~5). 참고용/관측용일 뿐 신뢰하지 않는다 —
-  // 저장되는 실제 presented_level은 서버가 skill_levels 현재 레벨로 확정한다
-  // (quiz.service.ts saveQabResults). 서버값과 다르면 경고 로그만 남긴다.
+  // **이 값이 저장된다.** 세션 내 적응(D7-C) 이후로는 프론트가 무엇을 냈는지
+  // 아는 유일한 쪽이다 — 같은 세션 안에서 눈높이가 내려가면 서버가 가진 레벨과
+  // 달라지고, 그때 서버값을 덮어쓰면 기록이 거짓이 된다.
+  //
+  // 다만 그대로 믿지는 않는다. 서버가 가진 레벨에서 **±1을 벗어나면** 클램프하고
+  // 경고를 남긴다(quiz.service.ts). 적응 규칙이 세션당 한 칸이므로 정상 클라이언트는
+  // 이 범위를 넘지 않는다.
   @IsOptional()
   @IsInt()
   @Min(1)
   @Max(5)
   presentedLevel?: number;
+
+  // 틀렸을 때 고른 오답의 갈래(단어이해만). 맞혔거나 갈래를 모르면 생략한다.
+  //
+  // presented_level과 달리 **서버가 되짚을 수 없다** — 낱말 뱅크와 오답 선택
+  // 로직이 프론트에 있다. 그래서 클라이언트 값을 그대로 저장하되, 채점·레벨링
+  // 어디에도 물리지 않는다. 관측만 하는 값이라 조작해도 성적이 안 움직인다.
+  @IsOptional()
+  @IsIn(QAB_FOIL_KINDS)
+  foilKind?: QabFoilKind;
+
+  /**
+   * 이 문항이 레벨이 요구한 밴드 밖에서 왔는가(M22).
+   *
+   * `foil_kind`와 같은 성격이다 — 서버가 되짚을 수 없는 관측값이라 그대로 저장하되
+   * 채점·레벨 판정 어디에도 물리지 않는다. 조작해도 성적이 안 움직인다.
+   */
+  @IsOptional()
+  @IsBoolean()
+  bandFallback?: boolean;
+
+  /** 이름대기에서 제시된 그림 종류(M22). 해당 없으면 생략. */
+  @IsOptional()
+  @IsIn(['photo', 'svg'])
+  stimulusKind?: 'photo' | 'svg';
 }
 
 /**
@@ -97,4 +161,21 @@ export class SubmitQabResultsDto {
   @IsOptional()
   @IsBoolean()
   completed?: boolean;
+
+  /**
+   * 세션이 끝날 때 각 검사의 눈높이 — 세션 내 적응(D7-C)의 결과다.
+   *
+   * 예전에는 서버가 최근 10시행 정확도로 레벨을 재계산했다. 실측 판정 지연이
+   * 검사당 5~11세션이라, 학습되는 것이 능력이 아니라 최근 며칠의 컨디션이었다.
+   * 이제 판정은 세션 안에서 문항 단위로 일어나고, 서버는 그 결과를 받는다.
+   *
+   * `completed=true`인 제출에서만 반영한다. 중간 flush로 레벨이 움직이면 한
+   * 세션이 여러 번 레벨을 밀게 된다.
+   *
+   * 값은 그대로 믿지 않는다 — 저장된 레벨에서 ±1로 클램프한다.
+   */
+  @IsOptional()
+  @IsObject()
+  @IsSkillLevelMap()
+  levels?: Partial<Record<QabSubtest, number>>;
 }

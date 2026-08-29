@@ -9,9 +9,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * 기존 행은 0으로 채운다 — 한 번은 재시도해볼 가치가 있다(대부분 일시 오류로
  * 실패했을 것이고, 영구 실패라면 상한까지 시도한 뒤 자연히 멈춘다).
  */
-export class AddGenerationAttemptsToQuizSets1784100000000
-  implements MigrationInterface
-{
+export class AddGenerationAttemptsToQuizSets1784100000000 implements MigrationInterface {
   name = 'AddGenerationAttemptsToQuizSets1784100000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

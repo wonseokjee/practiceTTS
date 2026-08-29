@@ -28,7 +28,7 @@ export function EntryListScreen({
         aria-label="로딩 중"
         aria-live="polite"
       >
-        <div className="text-[#9AA09B] text-sm">불러오는 중...</div>
+        <div className="text-[#6B6560] text-sm">불러오는 중...</div>
       </div>
     );
   }
@@ -64,7 +64,7 @@ export function EntryListScreen({
             📷
           </div>
           <p className="text-[#6B6560] mb-2">등록된 기억이 없습니다</p>
-          <p className="text-sm text-[#9AA09B]">
+          <p className="text-sm text-[#6B6560]">
             사진과 함께 소중한 기억을 추가해보세요
           </p>
         </div>
@@ -125,7 +125,7 @@ function MemoryEntryCard({ entry, onClick }: MemoryEntryCardProps) {
       {/* 정보 영역 */}
       <div className="p-3">
         {/* 날짜 */}
-        <p className="text-xs text-[#9AA09B] mb-2">{dateLabel}</p>
+        <p className="text-xs text-[#6B6560] mb-2">{dateLabel}</p>
 
         {/* 장소 및 사물 태그 */}
         {entry.locationTag && (

@@ -11,8 +11,15 @@
 //  - 피드백 단계: 정답/오답 색상 + 정답 노출, 컨트롤 숨김
 
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import {
+  render,
+  screen,
+  fireEvent,
+  act,
+  waitFor,
+} from '@testing-library/react';
 import { SpeechInput } from './SpeechInput.js';
+import { TTS_FAILURE_MESSAGE } from './TtsFailureNotice.js';
 
 interface MockSttInstance {
   onResult: ((r: { transcript: string; confidence: number }) => void) | null;
@@ -160,5 +167,31 @@ describe('SpeechInput (따라읽기)', () => {
       expect(screen.getByText('✗')).toBeInTheDocument();
       expect(screen.getByText('바다')).toBeInTheDocument();
     });
+  });
+});
+
+describe('SpeechInput — 소리 실패 안내', () => {
+  beforeEach(() => {
+    sttInstances.length = 0;
+    ttsSpeak.mockClear();
+  });
+
+  it('모범 발음이 안 나면 환자에게 알린다', async () => {
+    // 못 들은 발음은 따라 할 수 없다. 조용히 실패하면 환자는 자기 귀를 의심한다.
+    ttsSpeak.mockRejectedValueOnce(new Error('TTS 502'));
+    renderInput({ targetWord: '바다' });
+
+    fireEvent.click(screen.getByRole('button', { name: '모범 발음 들어보기' }));
+
+    expect(await screen.findByText(TTS_FAILURE_MESSAGE)).toBeInTheDocument();
+  });
+
+  it('소리가 나면 안내가 없다', async () => {
+    renderInput({ targetWord: '바다' });
+
+    fireEvent.click(screen.getByRole('button', { name: '모범 발음 들어보기' }));
+
+    await waitFor(() => expect(ttsSpeak).toHaveBeenCalled());
+    expect(screen.queryByText(TTS_FAILURE_MESSAGE)).toBeNull();
   });
 });

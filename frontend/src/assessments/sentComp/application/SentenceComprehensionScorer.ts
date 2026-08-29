@@ -67,7 +67,7 @@ export function calculateScore(
 
   // byType 통계: 모든 문장 유형을 초기화 후 집계
   const sentenceTypes: SentenceType[] = [
-    'active-passive',
+    'reversible',
     'relative-clause',
     'embedded-clause',
   ];
@@ -81,7 +81,7 @@ export function calculateScore(
   // 유형별 집계 초기화
   const typeAccumulator: Record<SentenceType, { total: number; correct: number }> =
     {
-      'active-passive': { total: 0, correct: 0 },
+      'reversible': { total: 0, correct: 0 },
       'relative-clause': { total: 0, correct: 0 },
       'embedded-clause': { total: 0, correct: 0 },
     };

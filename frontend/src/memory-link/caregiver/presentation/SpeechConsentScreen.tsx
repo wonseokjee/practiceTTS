@@ -106,7 +106,7 @@ export function SpeechConsentScreen({
       </header>
 
       {loading ? (
-        <div className="rounded-2xl border border-[#E8E4DC] bg-white px-5 py-8 text-center text-sm text-[#9AA09B]">
+        <div className="rounded-2xl border border-[#E8E4DC] bg-white px-5 py-8 text-center text-sm text-[#6B6560]">
           불러오는 중…
         </div>
       ) : (

@@ -10,6 +10,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useTTS } from '../../../../../shared/hooks/useTTS.js';
+import { TtsFailureNotice } from './TtsFailureNotice.js';
 import { createTtsService } from '../../../../../shared/infrastructure/ttsFactory.js';
 import { createSttService } from '../../infrastructure/sttFactory.js';
 
@@ -45,7 +46,7 @@ export function SpeechInput({
   // STT/TTS 서비스 인스턴스 (컴포넌트 생명주기와 동일). 문제 전환 시 부모가 key로 리마운트.
   const stt = useMemo(() => createSttService(), []);
   const ttsService = useMemo(() => createTtsService(), []);
-  const { isPlaying, speak } = useTTS(ttsService);
+  const { isPlaying, error: ttsError, speak } = useTTS(ttsService);
 
   // STT 콜백 프로퍼티 할당(TrainingScreen 등과 동일한 코드베이스 공통 패턴).
   /* eslint-disable react-hooks/immutability */
@@ -118,6 +119,9 @@ export function SpeechInput({
         </span>
       </div>
 
+      {/* 소리가 안 났으면 알린다 — 못 들은 발음은 따라 할 수 없다. */}
+      {!showFeedback && ttsError !== null && <TtsFailureNotice />}
+
       {/* 모범 발음 듣기 (수동) — 피드백 단계엔 숨김 */}
       {!showFeedback && (
         <button
@@ -174,7 +178,7 @@ export function SpeechInput({
             <button
               type="button"
               onClick={handleStopRecord}
-              className="flex min-h-[64px] items-center justify-center gap-2 rounded-md border-2 border-[#E07B54] bg-white px-6 py-4 text-xl font-medium text-[#7A2E15] transition-colors duration-[180ms] ease-out hover:bg-[#FBE9E2]"
+              className="flex min-h-[64px] items-center justify-center gap-2 rounded-md border-2 border-[#B85C36] bg-white px-6 py-4 text-xl font-medium text-[#7A2E15] transition-colors duration-[180ms] ease-out hover:bg-[#FBE9E2]"
               aria-label="다 말했어요"
             >
               <span aria-hidden="true" className="text-2xl">✓</span>

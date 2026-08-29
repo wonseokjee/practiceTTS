@@ -51,7 +51,24 @@ export const QAB_SUBTEST_ORDER: readonly QabSubtest[] = [
  * 재활 앱에서 그건 UI 오류가 아니라 보호자의 임상 판단을 오염시키는 거짓 신호다.
  * `qabSubtestLabels.test.ts`가 각 검사의 난이도 축이 실재하는지 고정한다.
  */
-export const NON_LEVELED_SUBTESTS: readonly QabSubtest[] = ['loc'];
+/**
+ * 눈높이(1~5단계)가 없는 검사.
+ *
+ * `loc`(의식 수준)는 개념상 없다 — 반응 유무이지 난이도가 아니다.
+ *
+ * `naming`(그림 이름대기)은 **축이 하나도 없어서** 여기 있다. 레벨이 닿는 곳은
+ * `presentedLevel` 스탬핑 한 줄뿐이라, 레벨 1과 5가 완전히 같은 문항을 냈다.
+ * 그런데 보호자 화면은 1~5단계를 표시했다 — 재활 앱에서 그건 UI 오류가 아니라
+ * 보호자의 임상 판단을 오염시키는 거짓 신호다.
+ *
+ * 재료도 부족하다. 이름대기 낱말의 음절 분포는 1음절 13 / 2음절 49 / 3음절 27 /
+ * **4음절 2**라 길이 축으로는 3밴드가 최대다.
+ *
+ * 이름대기의 표준 난이도 축은 **단서 위계**(모델 제공 → 문장 완성 → 첫 음절 →
+ * 의미 단서 → 무단서)다. 그건 화면과 채점이 함께 바뀌는 별개 기능이라 여기서
+ * 하지 않는다. 축이 생기면 이 목록에서 빼면 된다.
+ */
+export const NON_LEVELED_SUBTESTS: readonly QabSubtest[] = ['loc', 'naming'];
 
 export const LEVELED_SUBTESTS: readonly QabSubtest[] = QAB_SUBTEST_ORDER.filter(
   (s) => !NON_LEVELED_SUBTESTS.includes(s),

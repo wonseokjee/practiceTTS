@@ -3,7 +3,7 @@
     "itemId": "sentComp_01",
     "sentence": "개가 고양이를 쫓고 있어요",
     "sentenceAudioUrl": "/assets/audio/sentComp/sentComp_01.mp3",
-    "sentenceType": "active-passive",
+    "sentenceType": "reversible",
     "choices": [
       {
         "imageUrl": "/assets/images/sentComp/sentComp_01_correct.png",
@@ -22,7 +22,7 @@
     "itemId": "sentComp_02",
     "sentence": "엄마가 아이에게 밥을 먹이고 있어요",
     "sentenceAudioUrl": "/assets/audio/sentComp/sentComp_02.mp3",
-    "sentenceType": "active-passive",
+    "sentenceType": "reversible",
     "choices": [
       {
         "imageUrl": "/assets/images/sentComp/sentComp_02_distractor.png",
@@ -41,7 +41,7 @@
     "itemId": "sentComp_03",
     "sentence": "소년이 소녀에게 꽃을 주고 있어요",
     "sentenceAudioUrl": "/assets/audio/sentComp/sentComp_03.mp3",
-    "sentenceType": "active-passive",
+    "sentenceType": "reversible",
     "choices": [
       {
         "imageUrl": "/assets/images/sentComp/sentComp_03_correct.png",
@@ -60,7 +60,7 @@
     "itemId": "sentComp_04",
     "sentence": "선생님이 학생에게 책을 건네주고 있어요",
     "sentenceAudioUrl": "/assets/audio/sentComp/sentComp_04.mp3",
-    "sentenceType": "active-passive",
+    "sentenceType": "reversible",
     "choices": [
       {
         "imageUrl": "/assets/images/sentComp/sentComp_04_distractor.png",

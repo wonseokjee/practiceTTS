@@ -17,7 +17,7 @@ describe('PersonaContextService', () => {
   beforeEach(() => {
     personaSource = null;
     const profileServiceStub = {
-      getPersonaSource: jest.fn(async () => personaSource),
+      getPersonaSource: jest.fn(() => Promise.resolve(personaSource)),
     } as unknown as ProfileService;
     service = new PersonaContextService(profileServiceStub);
   });
@@ -36,7 +36,12 @@ describe('PersonaContextService', () => {
       personaSource = sourceWith({
         family: [
           { relation: 'son', name: '철수', gender: 'M', relationOrdinal: 1 },
-          { relation: 'grandson', name: '민준', gender: 'M', relationOrdinal: 1 },
+          {
+            relation: 'grandson',
+            name: '민준',
+            gender: 'M',
+            relationOrdinal: 1,
+          },
         ],
       });
 
@@ -68,8 +73,18 @@ describe('PersonaContextService', () => {
     it('부분 문자열이 겹치는 이름은 긴 이름을 우선 치환해 오치환하지 않는다', async () => {
       personaSource = sourceWith({
         family: [
-          { relation: 'daughter', name: '영희', gender: 'F', relationOrdinal: 1 },
-          { relation: 'friend', name: '영희자', gender: 'F', relationOrdinal: 1 },
+          {
+            relation: 'daughter',
+            name: '영희',
+            gender: 'F',
+            relationOrdinal: 1,
+          },
+          {
+            relation: 'friend',
+            name: '영희자',
+            gender: 'F',
+            relationOrdinal: 1,
+          },
         ],
       });
 

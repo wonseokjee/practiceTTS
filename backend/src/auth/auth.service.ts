@@ -607,8 +607,13 @@ export class AuthService {
     // 크기 상한: 인증된 유저가 start를 폭주시켜도 맵이 무한히 커지지 않게, TTL 창에
     // 아직 안 만료된 항목이 상한을 넘으면 가장 오래된 것부터 밀어낸다(Map은 삽입 순서
     // 보존 = 만료 순서). 밀려난 코드는 무효가 될 뿐(교환 시 null) 보안 영향 없다.
+    //
+    // `keys().next().value`는 TS lib 설정에 따라 any로 새어 나온다(반복자 결과의
+    // value 타입). 배열 구조분해로 받으면 요소 타입(string)이 그대로 유지된다 —
+    // 타입 주석을 붙이는 것과 다르다. 주석은 대입 대상만 바꾸고 소스는 여전히
+    // any라 검사되지 않는다.
     while (this.linkCodes.size >= AuthService.MAX_LINK_CODES) {
-      const oldest = this.linkCodes.keys().next().value;
+      const [oldest] = this.linkCodes.keys();
       if (oldest === undefined) break;
       this.linkCodes.delete(oldest);
     }
@@ -647,9 +652,7 @@ export class AuthService {
     });
     if (existing) {
       if (existing.userId === userId) return; // 이미 연결됨(멱등)
-      throw new ConflictException(
-        '이미 다른 계정에 연결된 소셜 계정입니다.',
-      );
+      throw new ConflictException('이미 다른 계정에 연결된 소셜 계정입니다.');
     }
     const sameProvider = await this.identityRepository.findOne({
       where: { userId, provider: profile.provider },
@@ -764,11 +767,12 @@ export class AuthService {
     sourceUserId: string,
     profile: SocialProfile,
   ): Promise<{ targetUserId: string }> {
-    const target = await this.findIdentityUser(this.identityRepository, profile);
+    const target = await this.findIdentityUser(
+      this.identityRepository,
+      profile,
+    );
     if (!target) {
-      throw new NotFoundException(
-        '그 로그인으로 가입된 기존 계정이 없습니다.',
-      );
+      throw new NotFoundException('그 로그인으로 가입된 기존 계정이 없습니다.');
     }
     if (target.id === sourceUserId) {
       throw new ConflictException(

@@ -20,7 +20,10 @@ export class ConversationLog {
   @ManyToOne(() => TrainingSession, (session) => session.conversationLogs, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'session_id', foreignKeyConstraintName: 'FK_conversation_logs_session' })
+  @JoinColumn({
+    name: 'session_id',
+    foreignKeyConstraintName: 'FK_conversation_logs_session',
+  })
   session: TrainingSession;
 
   @Column({ name: 'session_id', type: 'uuid' })

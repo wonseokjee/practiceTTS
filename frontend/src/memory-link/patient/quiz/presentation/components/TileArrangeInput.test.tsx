@@ -9,7 +9,7 @@
 //  - 피드백 단계: 정답/오답 색상 + 정답 노출, 타일 숨김
 
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { TileArrangeInput } from './TileArrangeInput.js';
 
 interface Overrides {
@@ -81,6 +81,16 @@ describe('TileArrangeInput', () => {
     // 힌트 글자는 타일에 없는 음절을 써서 타일 버튼 텍스트와 충돌하지 않게 한다.
     renderInput({ hintFirstChar: '공', tiles: ['다', '바', '산'] });
     expect(screen.getByText('공')).toBeInTheDocument();
+  });
+
+  // Found by browser QA on 2026-08-21 (연습 모드에서 같은 버그를 먼저 발견).
+  it('힌트 글자의 받침에 따라 조사가 달라진다', () => {
+    renderInput({ hintFirstChar: '공', tiles: ['다', '바', '산'] });
+    expect(screen.getByText(/첫 글자는/)).toHaveTextContent('공이에요');
+
+    cleanup();
+    renderInput({ hintFirstChar: '사', tiles: ['다', '바', '산'] });
+    expect(screen.getByText(/첫 글자는/)).toHaveTextContent('사예요');
   });
 
   describe('피드백 단계', () => {

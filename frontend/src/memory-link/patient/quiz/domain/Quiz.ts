@@ -38,6 +38,29 @@ export interface QuizSetSummary {
   createdAt: string;
 }
 
+/**
+ * 돌아보기 화면의 카드 하나 — 최근에 **실제로 푼** 기억.
+ *
+ * 점수가 없다. 환자 화면은 정답률을 보여주지 않는 것이 이 앱의 원칙이고,
+ * 돌아보기의 목적은 평가가 아니라 회상이다.
+ *
+ * `photoUrl`이 없으면 `notes`가 카드를 채운다. 기억은 사진 아니면 글 중 하나가
+ * 반드시 있으므로(백엔드가 생성 시점에 강제) 빈 카드는 나오지 않는다.
+ */
+export interface WeekReviewNote {
+  /** `moment`가 그 순간의 기억이고, 나머지 둘은 한두 낱말짜리 태그다. */
+  category: 'activity' | 'moment' | 'context';
+  text: string;
+}
+
+export interface WeekReviewItem {
+  quizSetId: string;
+  memoryEntryId: string;
+  photoUrl: string | null;
+  notes: WeekReviewNote[];
+  lastPlayedAt: string;
+}
+
 /** 상세 조회에 포함되는 환자 메모 */
 export interface PatientNote {
   category: PatientNoteCategory;

@@ -4,6 +4,8 @@ import { MemoryEntry } from '../memory/entities/memory-entry.entity';
 import { PatientMemoryNote } from '../memory/entities/patient-memory-note.entity';
 import { FastApiClientService } from '../memory/services/fast-api-client.service';
 import { PersonaContextService } from '../profile/services/persona-context.service';
+import { PracticeResult } from '../practice/entities/practice-result.entity';
+import { PracticeService } from '../practice/practice.service';
 import { QuizAttempt } from './entities/quiz-attempt.entity';
 import { QuizBestScore } from './entities/quiz-best-score.entity';
 import { QabResult } from './entities/qab-result.entity';
@@ -48,6 +50,13 @@ describe('Quiz Phase 3 와이어링', () => {
       providers: [
         QuizService,
         QuizGenerationListener,
+        // 컨트롤러가 활동 일자(스트릭)를 합칠 때만 쓴다. QuizService는 이걸
+        // 주입받지 않는다 — 연습 데이터가 레벨링·추세로 새지 않게 하는 경계다.
+        PracticeService,
+        {
+          provide: getRepositoryToken(PracticeResult),
+          useValue: buildRepoMock(),
+        },
         { provide: getRepositoryToken(QuizSet), useValue: buildRepoMock() },
         {
           provide: getRepositoryToken(QuizQuestion),
@@ -82,7 +91,7 @@ describe('Quiz Phase 3 와이어링', () => {
         {
           provide: PersonaContextService,
           useValue: {
-            buildTokenMap: jest.fn(async () => ({})),
+            buildTokenMap: jest.fn(() => Promise.resolve({})),
             tokenizeWithMap: jest.fn((text: string) => text),
             restorePersonaText: jest.fn((text: string) => text),
           },
@@ -90,7 +99,9 @@ describe('Quiz Phase 3 와이어링', () => {
         {
           provide: FastApiClientService,
           useValue: {
-            mask: jest.fn(async (text: string) => ({ maskedText: text })),
+            mask: jest.fn((text: string) =>
+              Promise.resolve({ maskedText: text }),
+            ),
           },
         },
       ],

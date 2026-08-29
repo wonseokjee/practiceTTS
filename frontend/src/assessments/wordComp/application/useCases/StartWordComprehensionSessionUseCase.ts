@@ -10,6 +10,7 @@
  */
 
 import type { IWordComprehensionItemRepository } from '../../domain/repositories/IWordComprehensionItemRepository.js';
+import { shuffle } from '../../../../shared/domain/shuffle.js';
 import type { IWordComprehensionRepository } from '../../domain/repositories/IWordComprehensionRepository.js';
 import type { WordComprehensionChoice } from '../../domain/entities/WordComprehensionItem.js';
 import type { WordComprehensionSession } from '../../domain/entities/WordComprehensionSession.js';
@@ -22,19 +23,6 @@ import {
   WordComprehensionAppError,
   WcAppErrorCode,
 } from '../errors/WordComprehensionAppError.js';
-
-function shuffleChoices(
-  choices: ReadonlyArray<WordComprehensionChoice>,
-): WordComprehensionChoice[] {
-  const arr = [...choices];
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const temp = arr[i];
-    arr[i] = arr[j];
-    arr[j] = temp;
-  }
-  return arr;
-}
 
 function toChoiceDTOs(choices: ReadonlyArray<WordComprehensionChoice>) {
   return choices.map((c) => ({
@@ -78,7 +66,7 @@ export class StartWordComprehensionSessionUseCase {
     // 각 문항의 선택지를 Fisher-Yates 셔플
     const shuffledItems = items.map((item) => ({
       ...item,
-      choices: shuffleChoices(item.choices),
+      choices: shuffle(item.choices),
     }));
 
     const sessionId = crypto.randomUUID();

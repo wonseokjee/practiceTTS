@@ -10,6 +10,7 @@
 // ref를 사용하고, setState 업데이터는 순수하게 유지한다.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { shuffle } from '../../../../shared/domain/shuffle.js';
 import type { QuizSetDetail } from '../domain/Quiz.js';
 import type {
   PlayResult,
@@ -32,7 +33,8 @@ import type { QabResultInput, QabSubtest } from '../domain/QabResult.js';
 import { quizApi } from '../infrastructure/QuizApi.js';
 import type { IQuizApi } from '../infrastructure/QuizApi.js';
 import {
-  pickQabItems,
+  pickWordItems,
+  pickSentItems,
   pickNamingItems,
   pickSpellItems,
   asItemRef,
@@ -41,11 +43,18 @@ import {
 import type {
   PickSpellOptions,
   SpellItemRef,
+  SpellWordLabel,
 } from '../infrastructure/QabItemBank.js';
 import {
   moveEasiestLast,
   shouldFatigueExit,
 } from '../domain/sessionSafeguards.js';
+import {
+  itemCountFor,
+  rotationForToday,
+} from '../domain/subtestRotation.js';
+import { adaptedLevel } from '../domain/sessionAdaptation.js';
+import { playableSubtest } from '../domain/MixedQuiz.js';
 import {
   pickRepeatItems,
   pickReadingItems,
@@ -114,13 +123,20 @@ export type UseMixedQuizReturn = [UseMixedQuizState, UseMixedQuizActions];
 
 export interface UseMixedQuizDeps {
   quizApi?: IQuizApi;
-  /** QAB 질문형(단어/문장) 문항 추출기 (테스트 주입용). levels로 제시 난이도 지정. */
-  pickQabItems?: (
-    count: number,
-    levels?: { word?: number; sentence?: number },
-  ) => QabImageItem[];
+  /**
+   * 낱말 이해 문항 추출기 (테스트 주입용). level로 제시 난이도 지정.
+   *
+   * 예전에는 낱말과 문장을 `pickQabItems` 하나가 슬롯 추첨으로 섞었다. 그래서
+   * 문장이 세션당 0.444문항밖에 안 나왔고(세션의 60%는 문장 0문항), 문장만
+   * 판정 지연이 11세션이었다. 로테이션은 어느 검사를 낼지 명시적으로 정하므로
+   * 추첨이 필요 없다 — 두 풀을 따로 뽑는다.
+   */
+  pickWordItems?: (count: number, level?: number) => QabImageItem[];
+  /** 문장 이해 문항 추출기 (테스트 주입용). level로 제시 난이도 지정. */
+  pickSentItems?: (count: number, level?: number) => QabImageItem[];
   /** QAB 그림 이름대기 문항 추출기 (테스트 주입용). level로 제시 난이도 지정. */
-  pickNamingItems?: (count: number, level?: number) => QabNamingItem[];
+  /** 이름대기 문항 추출기 (테스트 주입용). 이름대기는 비레벨 검사라 level이 없다. */
+  pickNamingItems?: (count: number) => QabNamingItem[];
   /** 글자 조합 문항 추출(테스트 주입용). level이 방해 타일 수를 정한다. */
   pickSpellItems?: (
     count: number,
@@ -134,19 +150,26 @@ export interface UseMixedQuizDeps {
   /** QAB 말운동(DDK) 문항 추출기 (테스트 주입용) */
   pickDdkItems?: (count: number, level?: number) => QabDdkItem[];
   generateSessionToken?: () => string;
-  /** 데일리 문항 최대 개수 (기본 4) */
+  /**
+   * 오늘 낼 하위검사 세 개 (테스트 주입용). 미지정 시 오늘 날짜의 로테이션.
+   * 개수 옵션을 따로 주면 그쪽이 이긴다.
+   */
+  rotation?: readonly QabSubtest[];
+  /** 데일리 문항 개수 (기본 2) */
   dailyCount?: number;
-  /** QAB 듣고 그림 고르기 개수 (기본 2) */
-  qabCount?: number;
-  /** QAB 그림 이름대기 개수 (기본 1) */
+  /** 낱말 이해 개수 (기본: 로테이션에 있으면 3, 없으면 0) */
+  wordCount?: number;
+  /** 문장 이해 개수 (기본: 로테이션에 있으면 3, 없으면 0) */
+  sentenceCount?: number;
+  /** 그림 이름대기 개수 (기본: 로테이션) */
   namingCount?: number;
-  /** 글자 조합 문항 수(기본 1). */
+  /** 글자 조합 개수 (기본: 로테이션) */
   spellCount?: number;
-  /** QAB 따라말하기 개수 (기본 1) */
+  /** 따라말하기 개수 (기본: 로테이션) */
   repeatCount?: number;
-  /** QAB 소리 내어 읽기 개수 (기본 1) */
+  /** 소리 내어 읽기 개수 (기본: 로테이션) */
   readingCount?: number;
-  /** QAB 말운동(DDK) 개수 (기본 1) */
+  /** 말운동(DDK) 개수 (기본: 로테이션) */
   ddkCount?: number;
 }
 
@@ -161,13 +184,41 @@ const SUCCESS_RANK: Record<PlayableItem['kind'], number> = {
   ddk: 1,
 };
 
-const DEFAULT_DAILY_COUNT = 4;
-const DEFAULT_QAB_COUNT = 2;
-const DEFAULT_SPELL_COUNT = 1;
-const DEFAULT_NAMING_COUNT = 1;
-const DEFAULT_REPEAT_COUNT = 1;
-const DEFAULT_READING_COUNT = 1;
-const DEFAULT_DDK_COUNT = 1;
+/**
+ * 데일리 문항 수 4 → 2.
+ *
+ * 로테이션이 QAB에 9문항(3검사 × 3)을 쓰므로, 세션 길이 11을 지키려면 데일리가
+ * 2로 내려와야 한다. 길이를 늘리는 쪽(18문항)은 고령·실어증 환자의 순응도를
+ * 사서 쓰는 것이라 택하지 않았다.
+ */
+const DEFAULT_DAILY_COUNT = 2;
+
+/**
+ * 결과에 함께 싣는 **관측 필드** — 값이 있는 것만 넣는다.
+ *
+ * 셋 다 "그 문항이 실제로 어떤 조건이었나"이고 채점에는 안 쓴다. 한 자리에 모아
+ * 두는 이유는 제출 지점이 여섯 곳이라서다 — 흩어 두면 새 필드를 넣을 때 한둘을
+ * 빠뜨리고, 그러면 그 하위검사만 조용히 기록이 빈다.
+ */
+function observed(item: {
+  presentedLevel?: number;
+  bandFallback?: boolean;
+  stimulusKind?: 'photo' | 'svg';
+}) {
+  return {
+    ...(item.presentedLevel !== undefined
+      ? { presentedLevel: item.presentedLevel }
+      : {}),
+    ...(item.bandFallback ? { bandFallback: true } : {}),
+    ...(item.stimulusKind ? { stimulusKind: item.stimulusKind } : {}),
+  };
+}
+
+/** 답한 문항 하나의 로그. `assisted`는 보호자가 넘긴 문항(환자 수행 아님). */
+interface AnswerLogEntry {
+  isCorrect: boolean;
+  assisted: boolean;
+}
 
 const INITIAL_STATE: UseMixedQuizState = Object.freeze({
   phase: 'loading',
@@ -188,35 +239,33 @@ function defaultGenerateToken(): string {
   return crypto.randomUUID();
 }
 
-/** Fisher-Yates 셔플 (원본 불변). */
-function shuffle<T>(items: readonly T[]): T[] {
-  const result = [...items];
-  for (let i = result.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-}
 
 export function useMixedQuizSession(
   quizSetId: string,
   deps?: UseMixedQuizDeps,
 ): UseMixedQuizReturn {
   const apiRef = useRef<IQuizApi>(deps?.quizApi ?? quizApi);
-  const pickRef = useRef(deps?.pickQabItems ?? pickQabItems);
+  const pickWordRef = useRef(deps?.pickWordItems ?? pickWordItems);
+  const pickSentRef = useRef(deps?.pickSentItems ?? pickSentItems);
   const pickNamingRef = useRef(deps?.pickNamingItems ?? pickNamingItems);
   const pickSpellRef = useRef(deps?.pickSpellItems ?? pickSpellItems);
   const pickRepeatRef = useRef(deps?.pickRepeatItems ?? pickRepeatItems);
   const pickReadingRef = useRef(deps?.pickReadingItems ?? pickReadingItems);
   const pickDdkRef = useRef(deps?.pickDdkItems ?? pickDdkItems);
   const tokenGenRef = useRef(deps?.generateSessionToken ?? defaultGenerateToken);
+  // 오늘의 하위검사 세 개. 마운트 때 한 번 정해 자정을 넘겨도 안 바뀐다 —
+  // 세션 도중에 구성이 바뀌면 남은 문항이 다른 검사로 갈아끼워진다.
+  const [rotation] = useState<readonly QabSubtest[]>(
+    () => deps?.rotation ?? rotationForToday(),
+  );
   const dailyCount = deps?.dailyCount ?? DEFAULT_DAILY_COUNT;
-  const qabCount = deps?.qabCount ?? DEFAULT_QAB_COUNT;
-  const namingCount = deps?.namingCount ?? DEFAULT_NAMING_COUNT;
-  const spellCount = deps?.spellCount ?? DEFAULT_SPELL_COUNT;
-  const repeatCount = deps?.repeatCount ?? DEFAULT_REPEAT_COUNT;
-  const readingCount = deps?.readingCount ?? DEFAULT_READING_COUNT;
-  const ddkCount = deps?.ddkCount ?? DEFAULT_DDK_COUNT;
+  const wordCount = deps?.wordCount ?? itemCountFor('word', rotation);
+  const sentenceCount = deps?.sentenceCount ?? itemCountFor('sentence', rotation);
+  const namingCount = deps?.namingCount ?? itemCountFor('naming', rotation);
+  const spellCount = deps?.spellCount ?? itemCountFor('spell', rotation);
+  const repeatCount = deps?.repeatCount ?? itemCountFor('repeat', rotation);
+  const readingCount = deps?.readingCount ?? itemCountFor('reading', rotation);
+  const ddkCount = deps?.ddkCount ?? itemCountFor('ddk', rotation);
 
   const [state, setState] = useState<UseMixedQuizState>({ ...INITIAL_STATE });
 
@@ -225,18 +274,37 @@ export function useMixedQuizSession(
   const phaseRef = useRef<MixedPhase>('loading');
   const indexRef = useRef<number>(0);
   /**
-   * 답한 문항의 정오답 로그(종류 무관, 답한 순서대로). 정답수·연속오답을 여기서
+   * 답한 문항의 로그(종류 무관, 답한 순서대로). 정답수·연속오답을 여기서
    * 파생한다 — 정정(overrideSpeechVerdict)·재시도(answerAgain)가 이 로그만 고치면
    * 점수와 피로 탈출 판정이 자동으로 일관되게 맞는다(각 지점을 따로 갱신하다
    * 어긋나는 버그 방지).
+   *
+   * **`assisted`를 함께 들고 있는다.** 예전에는 정오답만 담았고 보호자 "넘어가기"가
+   * `true`로 들어갔다. 그래서 보호자가 전부 넘기면 점수가 100점이 나오고, 더 나쁘게는
+   * **피로 탈출이 무력화됐다** — 연속 오답 사이에 넘어가기가 하나 끼면 카운터가
+   * 0으로 리셋돼, 힘들어서 넘긴 바로 그 상황에서 안전장치가 꺼졌다.
    */
-  const recentCorrectRef = useRef<boolean[]>([]);
+  const recentCorrectRef = useRef<AnswerLogEntry[]>([]);
   /** QAB 항목 결과 누적 (세션 완료 시 백엔드 일괄 저장용) */
   const qabResultsRef = useRef<QabResultInput[]>([]);
   /** 이미 백엔드에 제출한 결과 수. 점진 제출에서 미전송 tail만 보낸다. */
   const submittedCountRef = useRef<number>(0);
   /** 문항 풀 매니페스트 버전(레벨 조회 시 받음). 결과 제출에 함께 보낸다. */
   const manifestVersionRef = useRef<number | undefined>(undefined);
+  /** 세션 시작 시 서버가 준 검사별 레벨. 적응의 기준점이다. */
+  const startLevelsRef = useRef<Partial<Record<QabSubtest, number>>>({});
+  /**
+   * 검사별 이번 세션 정오답 기록. 적응 판정의 입력이다.
+   *
+   * 보호자 "넘어가기"(assisted)는 **넣지 않는다.** 그건 환자가 맞힌 게 아니라
+   * 보호자가 통과시킨 것이라, 세면 연속 정답 3회가 채워져 못 푸는 레벨로 올라간다.
+   */
+  const subtestTrailRef = useRef<Map<QabSubtest, boolean[]>>(new Map());
+  /**
+   * 글자 조합에서 빼야 할 낱말 — 같은 세션의 낱말이해 문항이 TTS로 들려준 정답들.
+   * 적응이 문항을 다시 뽑을 때도 같은 규칙을 지켜야 답을 알려주지 않는다.
+   */
+  const spellExcludeRef = useRef<SpellWordLabel[]>([]);
 
   /** 세트 상세 로드 + 데일리/QAB 인터리브 구성 */
   const fetchAndApply = useCallback(async (): Promise<void> => {
@@ -261,16 +329,15 @@ export function useMixedQuizSession(
       const dailyItems: PlayableItem[] = dailySorted
         .slice(0, dailyCount)
         .map((q) => ({ kind: 'daily', id: q.id, question: q }));
-      const qabItems: PlayableItem[] = pickRef.current(
-        qabCount,
-        levels ? { word: levels.word, sentence: levels.sentence } : undefined,
-      ).map((it) => ({
-        kind: 'qab',
-        id: it.itemId,
-        item: it,
-      }));
+      // 낱말과 문장은 화면에선 같은 종류('듣고 그림 고르기')지만 하위검사로는
+      // 별개다. 로테이션이 둘 중 무엇을 낼지 정하므로 각 풀에서 따로 뽑는다.
+      const qabItems: PlayableItem[] = [
+        ...pickWordRef.current(wordCount, levels?.word),
+        ...pickSentRef.current(sentenceCount, levels?.sentence),
+      ].map((it) => ({ kind: 'qab', id: it.itemId, item: it }));
+      // 이름대기는 비레벨 검사다 — levels.naming을 넘기지 않는다.
       const namingItems: PlayableItem[] = pickNamingRef
-        .current(namingCount, levels?.naming)
+        .current(namingCount)
         .map((it) => ({ kind: 'naming', id: it.itemId, item: it }));
       // 재출제 순서 = 간격 반복. 백엔드가 (틀린 것 먼저, 그 안에서 마지막 출제가
       // 오래된 것 먼저) 순으로 주므로 **응답 순서를 그대로 넘긴다.** 여기서
@@ -337,6 +404,9 @@ export function useMixedQuizSession(
       recentCorrectRef.current = [];
       qabResultsRef.current = [];
       submittedCountRef.current = 0;
+      startLevelsRef.current = levels ?? {};
+      subtestTrailRef.current = new Map();
+      spellExcludeRef.current = spokenWords;
 
       if (merged.length === 0) {
         phaseRef.current = 'error';
@@ -373,7 +443,8 @@ export function useMixedQuizSession(
   }, [
     quizSetId,
     dailyCount,
-    qabCount,
+    wordCount,
+    sentenceCount,
     namingCount,
     repeatCount,
     readingCount,
@@ -385,18 +456,144 @@ export function useMixedQuizSession(
     void fetchAndApply();
   }, [fetchAndApply]);
 
+  /**
+   * 그 검사의 문항을 `need`개 새로 뽑는다 — 이미 낸 것은 피한다.
+   *
+   * **`need`보다 많이 요청하지 않는다.** 뱅크의 폴백은 후보가 모자라면 "세션이
+   * 비는 것보다 낫다"며 레벨 범위를 풀어 버린다. 중복을 피하려고 넉넉히 달라고
+   * 하면 그 폴백을 밟아 밴드가 섞이고, 방금 바꾼 레벨이 거짓이 된다. 그래서
+   * 같은 개수로 여러 번 뽑아 안 쓴 것만 모은다.
+   */
+  const drawFor = useCallback(
+    (subtest: QabSubtest, level: number, need: number, used: Set<string>) => {
+      const draw = (n: number): PlayableItem[] => {
+        switch (subtest) {
+          case 'word':
+            return pickWordRef.current(n, level).map((it) => ({
+              kind: 'qab' as const, id: it.itemId, item: it,
+            }));
+          case 'sentence':
+            return pickSentRef.current(n, level).map((it) => ({
+              kind: 'qab' as const, id: it.itemId, item: it,
+            }));
+          case 'spell':
+            return pickSpellRef.current(n, level, {
+              exclude: spellExcludeRef.current,
+            }).map((it) => ({ kind: 'spell' as const, id: it.itemId, item: it }));
+          case 'repeat':
+            return pickRepeatRef.current(n, level).map((it) => ({
+              kind: 'repeat' as const, id: it.itemId, item: it,
+            }));
+          case 'reading':
+            return pickReadingRef.current(n, level).map((it) => ({
+              kind: 'reading' as const, id: it.itemId, item: it,
+            }));
+          case 'ddk':
+            return pickDdkRef.current(n, level).map((it) => ({
+              kind: 'ddk' as const, id: it.itemId, item: it,
+            }));
+          default:
+            // naming은 비레벨(E1), loc는 문항이 없다.
+            return [];
+        }
+      };
+
+      const out: PlayableItem[] = [];
+      const seen = new Set(used);
+      for (let attempt = 0; attempt < 5 && out.length < need; attempt += 1) {
+        for (const it of draw(need)) {
+          if (out.length >= need) break;
+          if (seen.has(it.id)) continue;
+          seen.add(it.id);
+          out.push(it);
+        }
+      }
+      return out;
+    },
+    [],
+  );
+
+  /**
+   * 적응이 걸리면 **그 검사의 아직 안 푼 문항**을 새 레벨로 갈아끼운다.
+   *
+   * 지금 화면에 떠 있는 문항은 건드리지 않는다 — 답하는 도중에 문제가 바뀌면
+   * 환자에게는 앱이 고장 난 것으로 보인다. 다음 문항부터 적용된다.
+   *
+   * 새로 못 뽑으면(밴드가 바닥) 남은 문항을 그대로 둔다. 같은 문항을 두 번 내면
+   * 세션 안에서 문항 식별자가 겹쳐 결과 한 건이 사라진다.
+   */
+  const repickRemaining = useCallback(
+    (subtest: QabSubtest, level: number): void => {
+      const items = itemsRef.current;
+      const targets: number[] = [];
+      for (let i = indexRef.current + 1; i < items.length; i += 1) {
+        if (playableSubtest(items[i]) === subtest) targets.push(i);
+      }
+      if (targets.length === 0) return;
+
+      const used = new Set(items.map((it) => it.id));
+      const fresh = drawFor(subtest, level, targets.length, used);
+      if (fresh.length < targets.length) {
+        console.warn(
+          `[quiz] ${subtest} 레벨 ${level} 후보가 부족해 ${targets.length - fresh.length}문항은 이전 레벨로 남는다`,
+        );
+      }
+      for (let k = 0; k < fresh.length; k += 1) items[targets[k]] = fresh[k];
+    },
+    [drawFor],
+  );
+
+  /**
+   * 이번 답을 검사별 기록에 넣고, 규칙이 걸리면 남은 문항의 눈높이를 바꾼다.
+   *
+   * 보호자가 넘긴 문항(assisted)은 기록에 넣지 않는다 — 환자가 맞힌 게 아니다.
+   */
+  const recordForAdaptation = useCallback(
+    (item: PlayableItem, isCorrect: boolean, assisted: boolean): void => {
+      if (assisted) return;
+      const subtest = playableSubtest(item);
+      if (subtest === null || subtest === 'naming') return;
+
+      const trail = [...(subtestTrailRef.current.get(subtest) ?? []), isCorrect];
+      subtestTrailRef.current.set(subtest, trail);
+
+      const start = startLevelsRef.current[subtest];
+      if (start === undefined) return;
+      const before = adaptedLevel(start, trail.slice(0, -1));
+      const after = adaptedLevel(start, trail);
+      if (after !== before) repickRemaining(subtest, after);
+    },
+    [repickRemaining],
+  );
+
   /** 채점 결과를 반영해 feedback 단계로 전이 (공통). */
-  /** 로그 끝에서부터 연속 오답 수(피로 탈출 판정용). */
+  /**
+   * 로그 끝에서부터 연속 오답 수(피로 탈출 판정용).
+   *
+   * 도움받은 문항은 **투명하게 지나친다** — 환자가 맞힌 게 아니니 연속을 끊지 않고,
+   * 환자가 틀린 것도 아니니 세지도 않는다. 끊어 버리면 힘들어서 넘긴 상황에서
+   * 안전장치가 꺼진다.
+   */
   const trailingWrong = (): number => {
     const log = recentCorrectRef.current;
     let n = 0;
-    for (let i = log.length - 1; i >= 0 && !log[i]; i -= 1) n += 1;
+    for (let i = log.length - 1; i >= 0; i -= 1) {
+      if (log[i].assisted) continue;
+      if (log[i].isCorrect) break;
+      n += 1;
+    }
     return n;
   };
 
   const applyResult = useCallback(
-    (result: PlayResult, selectedChoiceId: string | null): void => {
-      recentCorrectRef.current.push(result.isCorrect);
+    (
+      result: PlayResult,
+      selectedChoiceId: string | null,
+      assisted = false,
+    ): void => {
+      const item = itemsRef.current[indexRef.current];
+      if (item) recordForAdaptation(item, result.isCorrect, assisted);
+      recentCorrectRef.current.push({ isCorrect: result.isCorrect, assisted });
       phaseRef.current = 'feedback';
       setState((prev) => ({
         ...prev,
@@ -405,7 +602,7 @@ export function useMixedQuizSession(
         selectedChoiceId,
       }));
     },
-    [],
+    [recordForAdaptation],
   );
 
   const submitDaily = useCallback(
@@ -460,8 +657,12 @@ export function useMixedQuizSession(
         subtest: item.item.category,
         itemRef: item.item.itemId,
         isCorrect,
-        ...(item.item.presentedLevel !== undefined
-          ? { presentedLevel: item.item.presentedLevel }
+        ...observed(item.item),
+        // 틀렸을 때만, 그리고 갈래를 아는 선택지일 때만 보낸다. 단어이해
+        // 선택지는 뱅크가 뽑으면서 갈래를 붙여 두고(QabFoilKind), 문장이해는
+        // 선택지가 JSON 고정 쌍이라 갈래가 없다.
+        ...(!isCorrect && chosen?.foilKind !== undefined
+          ? { foilKind: chosen.foilKind }
           : {}),
       });
       applyResult(
@@ -491,9 +692,7 @@ export function useMixedQuizSession(
         itemRef: item.item.itemId,
         isCorrect: correct,
         ...(evaluation ? { score: evaluation.score } : {}),
-        ...(item.item.presentedLevel !== undefined
-          ? { presentedLevel: item.item.presentedLevel }
-          : {}),
+        ...observed(item.item),
       });
       applyResult(
         {
@@ -526,6 +725,7 @@ export function useMixedQuizSession(
           itemRef: item.item.itemId,
           isCorrect: evaluation.isCorrect,
           score: evaluation.score,
+          ...observed(item.item),
         });
         applyResult(
           {
@@ -547,6 +747,7 @@ export function useMixedQuizSession(
           itemRef: item.item.itemId,
           isCorrect: evaluation.isCorrect,
           score: evaluation.score,
+          ...observed(item.item),
         });
         applyResult(
           {
@@ -576,9 +777,7 @@ export function useMixedQuizSession(
         subtest: 'spell',
         itemRef: item.item.itemId,
         isCorrect: correct,
-        ...(item.item.presentedLevel !== undefined
-          ? { presentedLevel: item.item.presentedLevel }
-          : {}),
+        ...observed(item.item),
       });
       applyResult(
         { isCorrect: correct, correctLabel: item.item.targetWord },
@@ -600,6 +799,7 @@ export function useMixedQuizSession(
         itemRef: item.item.itemId,
         isCorrect: correct,
         metric: count,
+        ...observed(item.item),
       });
       applyResult(
         {
@@ -652,7 +852,7 @@ export function useMixedQuizSession(
       isCorrect: true,
       assisted: true,
     });
-    applyResult({ isCorrect: true, correctLabel }, null);
+    applyResult({ isCorrect: true, correctLabel }, null, true);
   }, [applyResult]);
 
   // 점진 제출: 아직 안 보낸 결과(tail)만 백엔드에 저장한다. 세션 끝 1회가 아니라
@@ -664,6 +864,19 @@ export function useMixedQuizSession(
   // 보낸다. 백엔드가 완료 마커를 남겨 "완료 vs 중단"을 구분한다(보호자 대시보드
   // 이탈/완료율 통계용) — 언마운트 시 best-effort flush는 completed를 안 보내
   // 중도 이탈로 남는다.
+  /** 검사별 세션 종료 눈높이 — 시작 레벨에 이번 세션 기록을 적용한 값. */
+  const sessionEndingLevels = useCallback(():
+    | Partial<Record<QabSubtest, number>>
+    | undefined => {
+    const out: Partial<Record<QabSubtest, number>> = {};
+    for (const [subtest, trail] of subtestTrailRef.current) {
+      const start = startLevelsRef.current[subtest];
+      if (start === undefined) continue;
+      out[subtest] = adaptedLevel(start, trail);
+    }
+    return Object.keys(out).length > 0 ? out : undefined;
+  }, []);
+
   const flushPending = useCallback((completed = false): void => {
     const all = qabResultsRef.current;
     const pending = all.slice(submittedCountRef.current);
@@ -675,12 +888,16 @@ export function useMixedQuizSession(
     // 보호자는 환자가 자주 포기한다고 오해하게 된다.
     if (pending.length === 0 && !completed) return;
     const targetCount = all.length;
+    // 세션이 끝날 때만 눈높이를 보고한다. 세션 내 적응이 실제로 도달한 값이고,
+    // 서버는 이 값을 저장된 레벨 ±1로 접어 받는다.
+    const endingLevels = completed ? sessionEndingLevels() : undefined;
     void Promise.resolve(
       apiRef.current.submitQabResults(
         sessionTokenRef.current,
         pending,
         manifestVersionRef.current,
         completed,
+        endingLevels,
       ),
     )
       .then(() => {
@@ -690,7 +907,7 @@ export function useMixedQuizSession(
         // 저장 실패는 환자 경험을 막지 않는다. 다음 flush에서 재시도(멱등).
         console.warn('[quiz] QAB 결과 점진 저장 실패:', err);
       });
-  }, []);
+  }, [sessionEndingLevels]);
 
   const next = useCallback((): void => {
     if (phaseRef.current !== 'feedback') return;
@@ -705,10 +922,15 @@ export function useMixedQuizSession(
     // 진짜 끝(자연 종료·피로 탈출)이면 완료 마커도 함께 보낸다.
     flushPending(isSessionEnd);
     if (isSessionEnd) {
-      // 점수 분모는 **실제로 푼 문항 수**다. 피로 탈출 시 안 푼 문항까지 오답으로
-      // 세면(0/10) 배려로 끝낸 세션이 되레 좌절을 준다 — 조기 종료의 목적과 반대.
-      const attempted = recentCorrectRef.current.length;
-      const correct = recentCorrectRef.current.filter(Boolean).length;
+      // 점수 분모는 **환자가 실제로 푼 문항 수**다.
+      //
+      //  - 피로 탈출 시 안 푼 문항까지 오답으로 세면(0/10) 배려로 끝낸 세션이
+      //    되레 좌절을 준다 — 조기 종료의 목적과 반대.
+      //  - 보호자가 넘긴 문항은 분자·분모 **양쪽에서** 뺀다. 정답으로 세면 점수가
+      //    100점까지 부풀고, 오답으로 세면 도움을 처벌하는 셈이 된다.
+      const answered = recentCorrectRef.current.filter((e) => !e.assisted);
+      const attempted = answered.length;
+      const correct = answered.filter((e) => e.isCorrect).length;
       const score =
         attempted > 0 ? Math.round((correct / attempted) * 100) : 0;
       phaseRef.current = 'result';
@@ -781,7 +1003,7 @@ export function useMixedQuizSession(
     // 로그의 마지막 항목도 함께 뒤집는다 — 점수·연속오답이 정정을 반영하게.
     // (안 고치면 정정된 정답인데도 연속오답으로 남아 피로 탈출이 잘못 발동.)
     const log = recentCorrectRef.current;
-    if (log.length > 0) log[log.length - 1] = isCorrect;
+    if (log.length > 0) log[log.length - 1].isCorrect = isCorrect;
     setState((prev) => ({
       ...prev,
       lastResult: prev.lastResult

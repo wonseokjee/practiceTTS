@@ -18,10 +18,7 @@ import { QUIZ_SCORER } from './interfaces/IQuizScorer';
 import { WISH_CONVERSION_CLIENT } from './interfaces/IWishConversionClient';
 import { FastApiClientService } from '../memory/services/fast-api-client.service';
 import { PersonaContextService } from '../profile/services/persona-context.service';
-import type {
-  PersonaSource,
-  ProfileService,
-} from '../profile/profile.service';
+import type { PersonaSource, ProfileService } from '../profile/profile.service';
 import { QuizService } from './quiz.service';
 
 /**
@@ -151,11 +148,11 @@ describe('QuizService', () => {
     // 기본값: 프로필 미등록 → 개인화 생략(원문 그대로 통과)
     personaSource = null;
     personaContextMock = new PersonaContextService({
-      getPersonaSource: jest.fn(async () => personaSource),
+      getPersonaSource: jest.fn(() => Promise.resolve(personaSource)),
     } as unknown as ProfileService);
 
     fastApiClientMock = {
-      mask: jest.fn(async (text: string) => ({ maskedText: text })),
+      mask: jest.fn((text: string) => Promise.resolve({ maskedText: text })),
     };
 
     quizSetRepo = buildRepoMock();
@@ -221,18 +218,20 @@ describe('QuizService', () => {
                   },
                   // saveQabResults 경로: manager.save(QabResult, rows)는 동일한
                   // qabResultRepo mock으로 위임해 기존 assertion을 유지한다.
-                  save: (entity: unknown, rows: unknown) => {
+                  save: (entity: unknown, rows: unknown): unknown => {
                     if (entity === QabResult) {
                       return qabResultRepo.save(rows);
                     }
                     throw new Error('예상치 못한 엔티티: 트랜잭션 save mock');
                   },
                   // 레벨 재계산: 기본은 행 없음(콜드스타트) + 빈 윈도우 → 레벨 불변.
-                  findOne: (entity: unknown, opts: unknown) => {
+                  findOne: (entity: unknown, opts: unknown): unknown => {
                     if (entity === SkillLevel) {
                       return skillLevelRepo.findOne(opts);
                     }
-                    throw new Error('예상치 못한 엔티티: 트랜잭션 findOne mock');
+                    throw new Error(
+                      '예상치 못한 엔티티: 트랜잭션 findOne mock',
+                    );
                   },
                   // 두 경로가 이 빌더를 쓴다:
                   //  (1) QAB 결과 INSERT ... ON CONFLICT DO NOTHING (insert 체인)
@@ -258,11 +257,17 @@ describe('QuizService', () => {
                       orIgnoreCalls.push(true);
                       return this;
                     }),
-                    execute: jest.fn(() =>
-                      qabResultRepo.save(insertedValues[insertedValues.length - 1]),
+                    execute: jest.fn((): unknown =>
+                      qabResultRepo.save(
+                        insertedValues[insertedValues.length - 1],
+                      ),
                     ),
                   }),
-                  upsert: (entity: unknown, values: unknown, conflict: unknown) => {
+                  upsert: (
+                    entity: unknown,
+                    values: unknown,
+                    conflict: unknown,
+                  ): unknown => {
                     if (entity === SkillLevel) {
                       return skillLevelRepo.upsert(values, conflict);
                     }
@@ -1587,7 +1592,11 @@ describe('QuizService', () => {
   describe('getWishPractice', () => {
     const WISH_RESULT = {
       echoSentence: '사랑해 우리 손녀',
-      fillBlank: { prompt: '사랑해 우리 ___', answer: '손녀', hintFirstChar: '손' },
+      fillBlank: {
+        prompt: '사랑해 우리 ___',
+        answer: '손녀',
+        hintFirstChar: '손',
+      },
       model: 'gemini-2.5-flash-lite',
       fallbackUsed: false,
     };
@@ -1724,15 +1733,22 @@ describe('QuizService', () => {
       ).rejects.toMatchObject({ code: '08006' });
     });
 
-    it('presentedLevel은 클라이언트 값을 무시하고 서버의 현재 레벨로 확정한다', async () => {
-      // word는 서버 상태에 레벨 4가 있고, naming은 행이 없어 콜드스타트(2)로 채워진다.
+    it('presentedLevel은 클라이언트가 실제로 낸 값을 저장한다', async () => {
+      // 세션 내 적응(D7-C) 이후 무엇을 냈는지 아는 쪽은 프론트뿐이다. 같은 세션
+      // 안에서 눈높이가 내려가면 서버가 가진 레벨과 달라지고, 그때 서버값으로
+      // 덮어쓰면 기록이 거짓이 된다.
       skillLevelRepo.find.mockResolvedValue([{ subtest: 'word', level: 4 }]);
       qabResultRepo.save.mockResolvedValue([]);
       const dto: SubmitQabResultsDto = {
         sessionToken: SESSION_TOKEN,
         results: [
-          // 클라이언트가 보낸 3은 무시되고, 서버의 현재 레벨 4가 저장돼야 한다.
-          { subtest: 'word', itemRef: 'qw_001', isCorrect: true, presentedLevel: 3 },
+          // 저장된 4에서 한 칸 내린 3 — 적응이 실제로 낸 값이다.
+          {
+            subtest: 'word',
+            itemRef: 'qw_001',
+            isCorrect: true,
+            presentedLevel: 3,
+          },
           { subtest: 'naming', itemRef: 'nm_001', isCorrect: false },
         ],
         manifestVersion: 1,
@@ -1741,9 +1757,204 @@ describe('QuizService', () => {
       await service.saveQabResults(PATIENT_ID, dto);
 
       const savedRows = qabResultRepo.create.mock.calls.map((c) => c[0]);
-      expect(savedRows[0]).toMatchObject({ subtest: 'word', presentedLevel: 4 });
-      // 레벨 이력 없는 서브테스트는 콜드스타트(2)로 확정된다(null이 아니다).
-      expect(savedRows[1]).toMatchObject({ subtest: 'naming', presentedLevel: 2 });
+      expect(savedRows[0]).toMatchObject({
+        subtest: 'word',
+        presentedLevel: 3,
+      });
+      // 클라이언트가 안 보내면 저장된 레벨로 채운다. 이력이 없으면 콜드스타트(2).
+      expect(savedRows[1]).toMatchObject({
+        subtest: 'naming',
+        presentedLevel: 2,
+      });
+    });
+
+    it('presentedLevel이 저장된 레벨에서 ±1을 벗어나면 접는다', async () => {
+      // 적응 규칙이 세션당 한 칸이므로 정상 클라이언트는 이 범위를 안 넘는다.
+      // 조작이든 배선 버그든 레벨이 한 번에 튀지 않게 하는 상한이다.
+      skillLevelRepo.find.mockResolvedValue([{ subtest: 'word', level: 2 }]);
+      qabResultRepo.save.mockResolvedValue([]);
+
+      await service.saveQabResults(PATIENT_ID, {
+        sessionToken: SESSION_TOKEN,
+        results: [
+          { subtest: 'word', itemRef: 'a', isCorrect: true, presentedLevel: 5 },
+          { subtest: 'word', itemRef: 'b', isCorrect: true, presentedLevel: 1 },
+        ],
+      } as SubmitQabResultsDto);
+
+      const savedRows = qabResultRepo.create.mock.calls.map(
+        (c: unknown[]) => c[0],
+      );
+      expect(savedRows[0]).toMatchObject({ presentedLevel: 3 }); // 5 → 2+1
+      expect(savedRows[1]).toMatchObject({ presentedLevel: 1 }); // 2-1, 그대로
+    });
+
+    it('세션이 끝나면 보고된 눈높이를 저장한다', async () => {
+      skillLevelRepo.find.mockResolvedValue([{ subtest: 'word', level: 3 }]);
+      qabResultRepo.save.mockResolvedValue([]);
+
+      await service.saveQabResults(PATIENT_ID, {
+        sessionToken: SESSION_TOKEN,
+        results: [{ subtest: 'word', itemRef: 'a', isCorrect: false }],
+        completed: true,
+        levels: { word: 2 },
+      } as SubmitQabResultsDto);
+
+      expect(skillLevelRepo.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({ subtest: 'word', level: 2 }),
+        ['patientId', 'subtest'],
+      );
+    });
+
+    it('세션이 안 끝났으면 눈높이를 움직이지 않는다', async () => {
+      // 점진 제출의 중간 flush마다 반영하면 한 세션이 레벨을 여러 번 민다.
+      skillLevelRepo.find.mockResolvedValue([{ subtest: 'word', level: 3 }]);
+      qabResultRepo.save.mockResolvedValue([]);
+
+      await service.saveQabResults(PATIENT_ID, {
+        sessionToken: SESSION_TOKEN,
+        results: [{ subtest: 'word', itemRef: 'a', isCorrect: false }],
+        levels: { word: 2 },
+      } as SubmitQabResultsDto);
+
+      expect(skillLevelRepo.upsert).not.toHaveBeenCalled();
+    });
+
+    it('보고된 눈높이가 그대로면 쓰지 않는다', async () => {
+      skillLevelRepo.find.mockResolvedValue([{ subtest: 'word', level: 3 }]);
+      qabResultRepo.save.mockResolvedValue([]);
+
+      await service.saveQabResults(PATIENT_ID, {
+        sessionToken: SESSION_TOKEN,
+        results: [{ subtest: 'word', itemRef: 'a', isCorrect: true }],
+        completed: true,
+        levels: { word: 3 },
+      } as SubmitQabResultsDto);
+
+      expect(skillLevelRepo.upsert).not.toHaveBeenCalled();
+    });
+
+    it('클라이언트가 낸 매니페스트 버전을 행에 남긴다 (M23)', async () => {
+      // 서버 상수로 덮어쓰면 안 된다. 배포 직후에는 옛 번들을 든 클라이언트가
+      // 정상적으로 존재하고, 그 문항을 새 풀 기준으로 기록하면 경계가 사라진다.
+      skillLevelRepo.find.mockResolvedValue([]);
+      qabResultRepo.save.mockResolvedValue([]);
+
+      await service.saveQabResults(PATIENT_ID, {
+        sessionToken: SESSION_TOKEN,
+        results: [{ subtest: 'word', itemRef: 'a', isCorrect: true }],
+        manifestVersion: 3,
+      } as SubmitQabResultsDto);
+
+      const rows = qabResultRepo.create.mock.calls.map((c: unknown[]) => c[0]);
+      expect(rows[0]).toMatchObject({ manifestVersion: 3 });
+    });
+
+    it('버전을 안 보내면 NULL이다 — 서버 값으로 채우지 않는다', async () => {
+      skillLevelRepo.find.mockResolvedValue([]);
+      qabResultRepo.save.mockResolvedValue([]);
+
+      await service.saveQabResults(PATIENT_ID, {
+        sessionToken: SESSION_TOKEN,
+        results: [{ subtest: 'word', itemRef: 'a', isCorrect: true }],
+      } as SubmitQabResultsDto);
+
+      const rows = qabResultRepo.create.mock.calls.map((c: unknown[]) => c[0]);
+      expect(rows[0]).toMatchObject({ manifestVersion: null });
+    });
+
+    it('밴드 되돌림·자극 종류를 관측값 그대로 저장한다 (M22)', async () => {
+      skillLevelRepo.find.mockResolvedValue([]);
+      qabResultRepo.save.mockResolvedValue([]);
+
+      await service.saveQabResults(PATIENT_ID, {
+        sessionToken: SESSION_TOKEN,
+        results: [
+          {
+            subtest: 'spell',
+            itemRef: 'a',
+            isCorrect: true,
+            bandFallback: true,
+          },
+          {
+            subtest: 'naming',
+            itemRef: 'b',
+            isCorrect: true,
+            stimulusKind: 'svg',
+          },
+          { subtest: 'word', itemRef: 'c', isCorrect: true },
+        ],
+      } as SubmitQabResultsDto);
+
+      const rows = qabResultRepo.create.mock.calls.map((c: unknown[]) => c[0]);
+      expect(rows[0]).toMatchObject({ bandFallback: true, stimulusKind: null });
+      expect(rows[1]).toMatchObject({
+        bandFallback: null,
+        stimulusKind: 'svg',
+      });
+      // 안 보낸 값은 NULL이다 — "폴백 아님"(false)이 아니라 "모름".
+      expect(rows[2]).toMatchObject({ bandFallback: null, stimulusKind: null });
+    });
+
+    it('오답 갈래는 틀린 문항에만 저장한다', async () => {
+      // 맞힌 행에 갈래가 붙으면 "오답이 아닌데 오답 갈래가 있는 행"이 생겨
+      // 갈래별 집계가 조용히 틀린다. 프론트가 안 보내는 것이 정상이지만
+      // 서버에서도 떨군다 — 관측값이라 서버가 되짚을 수 없기 때문이다.
+      skillLevelRepo.find.mockResolvedValue([]);
+      qabResultRepo.save.mockResolvedValue([]);
+      const dto: SubmitQabResultsDto = {
+        sessionToken: SESSION_TOKEN,
+        results: [
+          {
+            subtest: 'word',
+            itemRef: 'qw_001',
+            isCorrect: false,
+            foilKind: 'phonological',
+          },
+          // 맞혔는데 갈래가 온 경우 — 떨궈야 한다.
+          {
+            subtest: 'word',
+            itemRef: 'qw_002',
+            isCorrect: true,
+            foilKind: 'semantic',
+          },
+          // 안 보낸 경우 — null.
+          { subtest: 'word', itemRef: 'qw_003', isCorrect: false },
+        ],
+      };
+
+      await service.saveQabResults(PATIENT_ID, dto);
+
+      const savedRows = qabResultRepo.create.mock.calls.map((c) => c[0]);
+      expect(savedRows[0]).toMatchObject({ foilKind: 'phonological' });
+      expect(savedRows[1]).toMatchObject({ foilKind: null });
+      expect(savedRows[2]).toMatchObject({ foilKind: null });
+    });
+
+    it('오답 갈래는 레벨 재계산에 끼어들지 않는다', async () => {
+      // 관측 전용이다. 클라이언트가 보내는 값이 측정에 물리면 조작으로 레벨이
+      // 움직인다 — presented_level을 서버가 확정하는 것과 같은 이유다.
+      skillLevelRepo.find.mockResolvedValue([{ subtest: 'word', level: 3 }]);
+      qabResultRepo.save.mockResolvedValue([]);
+      const base = {
+        subtest: 'word' as const,
+        itemRef: 'qw_001',
+        isCorrect: false,
+      };
+
+      await service.saveQabResults(PATIENT_ID, {
+        sessionToken: SESSION_TOKEN,
+        results: [{ ...base, foilKind: 'semantic' as const }],
+      });
+      const withKind = skillLevelRepo.upsert.mock.calls.length;
+      skillLevelRepo.upsert.mockClear();
+
+      await service.saveQabResults(PATIENT_ID, {
+        sessionToken: SESSION_TOKEN,
+        results: [base],
+      });
+
+      expect(skillLevelRepo.upsert.mock.calls.length).toBe(withKind);
     });
 
     it('completed=true면 완료 마커를 남긴다(완료 vs 중단 구분)', async () => {
@@ -1827,6 +2038,139 @@ describe('QuizService', () => {
       expect(qb.where).toHaveBeenCalledWith('r.patient_id = :pid', {
         pid: PATIENT_ID,
       });
+    });
+  });
+
+  describe('getWeekReview', () => {
+    /** 푼 기억 raw 행 + 기억/메모 조회를 한 번에 세팅한다. */
+    function arrange(
+      played: unknown[],
+      entries: unknown[] = [],
+      notes: unknown[] = [],
+    ) {
+      const qb = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        innerJoin: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue(played),
+      };
+      quizAttemptRepo.createQueryBuilder.mockReturnValue(qb);
+      memoryEntryRepo.createQueryBuilder.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue(entries),
+      });
+      patientMemoryNoteRepo.createQueryBuilder.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue(notes),
+      });
+      return qb;
+    }
+
+    it('사진이 있으면 사진을 준다', async () => {
+      arrange(
+        [
+          {
+            memoryEntryId: 'm1',
+            quizSetId: 'q1',
+            lastPlayedAt: new Date('2026-08-26T02:00:00.000Z'),
+          },
+        ],
+        [{ id: 'm1', photoUrl: 'uploads/memory-images/a.jpg' }],
+      );
+
+      const items = await service.getWeekReview(PATIENT_ID);
+
+      expect(items).toHaveLength(1);
+      expect(items[0]).toMatchObject({
+        memoryEntryId: 'm1',
+        photoUrl: 'uploads/memory-images/a.jpg',
+        lastPlayedAt: '2026-08-26T02:00:00.000Z',
+      });
+    });
+
+    it('사진이 없으면 그날의 답변이 대신 온다', async () => {
+      // 기억은 사진 아니면 글 중 하나가 반드시 있다(memory.service.ts가 생성
+      // 시점에 강제한다). 그래서 사진이 null이어도 빈 카드는 나올 수 없다.
+      arrange(
+        [
+          {
+            memoryEntryId: 'm2',
+            quizSetId: 'q2',
+            lastPlayedAt: new Date('2026-08-25T02:00:00.000Z'),
+          },
+        ],
+        [{ id: 'm2', photoUrl: null }],
+        [
+          { memoryEntryId: 'm2', category: 'activity', answerText: '바다' },
+          {
+            memoryEntryId: 'm2',
+            category: 'moment',
+            answerText: '바다에 갔어요.',
+          },
+        ],
+      );
+
+      const items = await service.getWeekReview(PATIENT_ID);
+
+      expect(items[0].photoUrl).toBeNull();
+      // category를 함께 보낸다 — moment가 실제 기억이고 나머지는 태그다.
+      // 화면이 둘을 다른 크기로 조판하려면 이 값이 필요하다.
+      expect(items[0].notes).toEqual([
+        { category: 'activity', text: '바다' },
+        { category: 'moment', text: '바다에 갔어요.' },
+      ]);
+    });
+
+    it('점수를 담지 않는다 — 돌아보기는 평가가 아니다', async () => {
+      // 환자 화면은 정답률을 보여주지 않는 것이 이 앱의 원칙이다. API가 아예
+      // 안 주면 나중에 화면에서 "이왕 있으니" 붙는 일이 생기지 않는다.
+      arrange(
+        [
+          {
+            memoryEntryId: 'm1',
+            quizSetId: 'q1',
+            lastPlayedAt: new Date('2026-08-26T02:00:00.000Z'),
+          },
+        ],
+        [{ id: 'm1', photoUrl: 'a.jpg' }],
+      );
+
+      const items = await service.getWeekReview(PATIENT_ID);
+
+      expect(Object.keys(items[0]).sort()).toEqual([
+        'lastPlayedAt',
+        'memoryEntryId',
+        'notes',
+        'photoUrl',
+        'quizSetId',
+      ]);
+    });
+
+    it('푼 기억이 없으면 빈 배열이고 뒤를 조회하지 않는다', async () => {
+      arrange([]);
+
+      await expect(service.getWeekReview(PATIENT_ID)).resolves.toEqual([]);
+      expect(memoryEntryRepo.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
+    it('환자 스코프와 기간으로 거른다', async () => {
+      const qb = arrange([]);
+
+      await service.getWeekReview(PATIENT_ID, 7);
+
+      expect(qb.where).toHaveBeenCalledWith('a.patient_id = :pid', {
+        pid: PATIENT_ID,
+      });
+      // "만든" 기억이 아니라 "푼" 기억이다 — 기준 컬럼이 answered_at이어야 한다.
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        expect.stringContaining('a.answered_at'),
+        { days: 7 },
+      );
     });
   });
 
@@ -1924,7 +2268,9 @@ describe('QuizService', () => {
 
       const selected = qb.addSelect.mock.calls.map((c) => String(c[0]));
       expect(selected).toContainEqual(
-        expect.stringContaining('array_agg(r.is_correct ORDER BY r.created_at DESC'),
+        expect.stringContaining(
+          'array_agg(r.is_correct ORDER BY r.created_at DESC',
+        ),
       );
       expect(selected.join(' ')).not.toContain('bool_or');
     });
@@ -2100,6 +2446,56 @@ describe('QuizService', () => {
   });
 
   describe('getQabSummary', () => {
+    it('오답 갈래를 세어 함께 내려보낸다', async () => {
+      // 정답률은 몇 개 틀렸는지까지만 말한다. 무엇이 어려운지는 어떤 오답을
+      // 골랐는가가 말한다.
+      const qb = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([
+          {
+            subtest: 'word',
+            total: '20',
+            correct: '12',
+            assisted: '0',
+            avgMetric: null,
+            maxMetric: null,
+            avgScore: null,
+            lastAt: new Date('2026-08-23T00:00:00.000Z'),
+            foilSemantic: '5',
+            foilPhonological: '3',
+            foilUnrelated: '0',
+          },
+          {
+            // 갈래가 하나도 없는 하위검사는 null이어야 한다.
+            subtest: 'naming',
+            total: '3',
+            correct: '3',
+            assisted: '0',
+            avgMetric: null,
+            maxMetric: null,
+            avgScore: null,
+            lastAt: new Date('2026-08-23T00:00:00.000Z'),
+            foilSemantic: '0',
+            foilPhonological: '0',
+            foilUnrelated: '0',
+          },
+        ]),
+      };
+      qabResultRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const res = await service.getQabSummary(PATIENT_ID);
+
+      expect(res.items[0].foilKinds).toEqual({
+        semantic: 5,
+        phonological: 3,
+        unrelated: 0,
+      });
+      expect(res.items[1].foilKinds).toBeNull();
+    });
+
     it('검사별 정확도/지표를 집계해 반환한다', async () => {
       const qb = {
         select: jest.fn().mockReturnThis(),
@@ -2147,6 +2543,9 @@ describe('QuizService', () => {
           maxMetric: null,
           avgScore: 82,
           lastAt: '2026-06-20T00:00:00.000Z',
+          // 갈래 집계 컬럼이 없는 행은 null이다. 0으로 채우면 "관계없는 그림
+          // 0개" 같은 없는 사실이 화면에 그려진다.
+          foilKinds: null,
         },
         {
           subtest: 'ddk',
@@ -2158,6 +2557,7 @@ describe('QuizService', () => {
           maxMetric: 11,
           avgScore: null,
           lastAt: '2026-06-21T00:00:00.000Z',
+          foilKinds: null,
         },
       ]);
     });

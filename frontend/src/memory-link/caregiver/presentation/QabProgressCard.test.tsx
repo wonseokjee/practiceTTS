@@ -57,6 +57,62 @@ describe('QabProgressCard', () => {
     expect(screen.getByText(/도움 2회/)).toBeInTheDocument();
   });
 
+  it('도움이 직접 푼 것보다 많으면 정답률 대신 센 것을 말한다', async () => {
+    // 실제로 그림 이름대기가 `정답률 100% (1/1) · 도움 7회`로 떴다. 8번 제시 중
+    // 7번이 보호자 넘어가기인데 100%가 굵게 먼저 읽힌다.
+    const fetchSummary = vi
+      .fn()
+      .mockResolvedValue([
+        summary({ total: 1, correct: 1, accuracy: 100, assisted: 7 }),
+      ]);
+    render(<QabProgressCard fetchSummary={fetchSummary} />);
+    await waitFor(() =>
+      expect(screen.getByText('단어 이해')).toBeInTheDocument(),
+    );
+
+    // 카드 설명문에도 '정답률'이 있으므로, 실제로 안 나와야 하는 것(굵은 100%)을 본다.
+    expect(screen.queryByText('100%')).toBeNull();
+    expect(screen.getByText(/직접 푼/)).toBeInTheDocument();
+    expect(screen.getByText(/1개 정답/)).toBeInTheDocument();
+    expect(screen.getByText(/도움/)).toBeInTheDocument();
+  });
+
+  it('그때는 막대를 그리지 않는다 — 1문항짜리가 28문항짜리보다 길어 보인다', async () => {
+    // 막대는 길이로만 말하고 표본 크기를 담지 못한다. 1/1이 가득 차고 7/28이
+    // 1/4이면, 28번 푼 검사가 1번 푼 검사보다 나빠 보인다.
+    const fetchSummary = vi
+      .fn()
+      .mockResolvedValue([
+        summary({ total: 1, correct: 1, accuracy: 100, assisted: 7 }),
+      ]);
+    const { container } = render(
+      <QabProgressCard fetchSummary={fetchSummary} />,
+    );
+    await waitFor(() =>
+      expect(screen.getByText('단어 이해')).toBeInTheDocument(),
+    );
+
+    expect(container.querySelectorAll('[role="progressbar"]')).toHaveLength(0);
+  });
+
+  it('도움이 있어도 직접 푼 것이 더 많으면 정답률을 그대로 보여준다', async () => {
+    // 도움이 조금 섞였다고 비율을 감추면, 대부분 직접 푼 검사의 신호까지 잃는다.
+    const fetchSummary = vi
+      .fn()
+      .mockResolvedValue([
+        summary({ total: 28, correct: 7, accuracy: 25, assisted: 2 }),
+      ]);
+    const { container } = render(
+      <QabProgressCard fetchSummary={fetchSummary} />,
+    );
+    await waitFor(() =>
+      expect(screen.getByText('단어 이해')).toBeInTheDocument(),
+    );
+
+    expect(screen.getByText('25%')).toBeInTheDocument();
+    expect(container.querySelectorAll('[role="progressbar"]')).toHaveLength(1);
+  });
+
   it('직접 응답 없이 도움만 있으면 정답률 막대 대신 안내를 표시한다', async () => {
     const fetchSummary = vi
       .fn()
@@ -144,6 +200,84 @@ describe('반복 훈련 과제 구분 표시', () => {
       expect(screen.getByText('단어 이해')).toBeInTheDocument(),
     );
     expect(screen.queryByText('반복 연습')).toBeNull();
+  });
+
+  /**
+   * **정답률이 못 하는 말을 한다.**
+   *
+   * "정답률 24%"는 몇 개 틀렸는지까지다. 무엇이 어려운지는 어떤 오답을 골랐는가가
+   * 말한다. 다만 표본이 적을 때 말하면 우연을 손상으로 읽게 되므로, 말할 수 없을
+   * 때는 아무 말도 안 한다.
+   */
+  describe('오답 갈래 한 줄', () => {
+    const kinds = (semantic: number, phonological: number, unrelated = 0) => ({
+      foilKinds: { semantic, phonological, unrelated },
+    });
+
+    it('표본이 충분하면 갈래별 개수를 말한다', async () => {
+      const fetchSummary = vi
+        .fn()
+        .mockResolvedValue([summary({ total: 20, correct: 12, accuracy: 60, ...kinds(5, 3) })]);
+      render(<QabProgressCard fetchSummary={fetchSummary} />);
+
+      await waitFor(() =>
+        expect(screen.getByText(/뜻이 가까운 그림 5개/)).toBeInTheDocument(),
+      );
+      expect(screen.getByText(/소리가 닮은 그림 3개/)).toBeInTheDocument();
+      expect(screen.getByText(/고른 오답 8개 중/)).toBeInTheDocument();
+    });
+
+    it('표본이 적으면 아무 말도 하지 않는다', async () => {
+      // 두세 개로 "소리에서 어려워한다"고 말하면 우연을 손상으로 읽는 것이다.
+      const fetchSummary = vi
+        .fn()
+        .mockResolvedValue([summary(kinds(2, 1))]);
+      render(<QabProgressCard fetchSummary={fetchSummary} />);
+
+      await waitFor(() =>
+        expect(screen.getByText('단어 이해')).toBeInTheDocument(),
+      );
+      expect(screen.queryByText(/뜻이 가까운 그림/)).toBeNull();
+    });
+
+    it('무관 오답은 분모에 넣지 않는다', async () => {
+      // 어느 축의 어려움도 가리키지 않는다. 넣으면 분모만 키워 두 갈래의 대비를
+      // 흐린다.
+      const fetchSummary = vi
+        .fn()
+        .mockResolvedValue([summary(kinds(4, 2, 30))]);
+      render(<QabProgressCard fetchSummary={fetchSummary} />);
+
+      await waitFor(() =>
+        expect(screen.getByText(/고른 오답 6개 중/)).toBeInTheDocument(),
+      );
+    });
+
+    it('갈래 기록이 없으면 줄 자체가 없다', async () => {
+      // 컬럼 이전의 옛 행만 있는 환자, 단어 이해가 아닌 하위검사.
+      const fetchSummary = vi.fn().mockResolvedValue([summary()]);
+      render(<QabProgressCard fetchSummary={fetchSummary} />);
+
+      await waitFor(() =>
+        expect(screen.getByText('단어 이해')).toBeInTheDocument(),
+      );
+      expect(screen.queryByText(/고른 오답/)).toBeNull();
+    });
+
+    it('0을 안전하게 읽지 않도록 안내를 단다', async () => {
+      // 소리가 닮은 그림은 눈높이 4단계부터 나온다. 그 아래 환자의 0은
+      // "소리는 괜찮다"가 아니라 "아직 안 물어봤다"이다.
+      const fetchSummary = vi
+        .fn()
+        .mockResolvedValue([summary(kinds(7, 0))]);
+      render(<QabProgressCard fetchSummary={fetchSummary} />);
+
+      const line = await screen.findByText(/고른 오답 7개 중/);
+      expect(line).toHaveAttribute(
+        'title',
+        expect.stringContaining('눈높이 4단계부터'),
+      );
+    });
   });
 });
 

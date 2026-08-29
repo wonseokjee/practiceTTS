@@ -7,15 +7,31 @@
 // "들려주고 → 그림 고르기"로 형태가 같아 하나의 이미지 선택형 타입으로 일반화한다.
 
 import type { QuizQuestionPublic } from './Quiz.js';
+import type { QabSubtest } from './QabResult.js';
 import type { PronunciationGrade } from './pronunciationScore.js';
 
 /** QAB 이미지 선택지 (프론트 로컬 채점을 위해 isCorrect 포함). */
+/**
+ * 오답이 어느 갈래인가 — 단어이해 문항에만 붙는다.
+ *
+ * 실어증 단어-그림 대응에서 유인지는 두 종류이고 서로 **다른 손상**을 잡는다.
+ * `semantic`을 반복해 고르면 의미 체계 쪽, `phonological`이면 음운 처리 쪽이다.
+ * 정답률 하나로는 둘을 구분할 수 없다.
+ *
+ * **뽑을 때 붙인다.** 나중에 라벨과 범주를 보고 되짚을 수도 있지만, 그러면
+ * 실제로 어느 통에서 뽑혔는지와 어긋날 수 있다(같은 낱말이 두 조건을 동시에
+ * 만족하는 경우). 만든 쪽이 아는 사실을 그대로 들고 다니게 한다.
+ */
+export type QabFoilKind = 'semantic' | 'phonological' | 'unrelated';
+
 export interface QabImageChoice {
   choiceId: string;
   /** 이미지 설명/라벨 (단어 or altText) */
   label: string;
   imageUrl: string;
   isCorrect: boolean;
+  /** 오답의 갈래. 정답과 문장이해 선택지에는 없다. */
+  foilKind?: QabFoilKind;
 }
 
 /** QAB 질문형 문항 (들려준 단어/문장에 맞는 그림 고르기). */
@@ -29,11 +45,16 @@ export interface QabImageItem {
   instruction: string;
   choices: QabImageChoice[];
   /**
-   * 이 문항이 제시된 난이도 레벨(1~5). 적응형 레벨링이 "현재 레벨에서 제시된
-   * 항목"만 윈도우로 세도록 결과 제출 시 백엔드에 함께 보낸다. 미지정(레거시)
-   * 이면 백엔드가 레벨링 윈도우에서 제외한다.
+   * 이 문항이 제시된 난이도 레벨(1~5). 결과 제출 시 실제 제시값으로 기록된다.
    */
   presentedLevel?: number;
+  /**
+   * 이 문항이 **레벨이 요구한 밴드 밖**에서 왔는가.
+   *
+   * 뱅크는 후보가 모자라면 "세션이 비는 것보다 낫다"며 범위를 푼다. 그건 옳은
+   * 선택이지만, 그렇게 나온 문항의 `presentedLevel`은 실제 난이도를 뜻하지 않는다.
+   */
+  bandFallback?: boolean;
 }
 
 /**
@@ -49,8 +70,19 @@ export interface QabNamingItem {
   targetWord: string;
   /** 화면 안내 문구 */
   instruction: string;
-  /** 제시된 난이도 레벨(1~5). 결과 제출 시 백엔드 레벨링 윈도우에 사용. */
+  /**
+   * 이름대기는 **비레벨 검사**다(E1) — 난이도 축이 없어 값을 찍지 않는다.
+   * 필드를 남겨 두는 건 단서 위계(E18)가 들어오면 그때 채우기 위해서다.
+   */
   presentedLevel?: number;
+  /**
+   * 제시된 그림이 **실물 사진인지 아이콘(SVG)인지.**
+   *
+   * 이름대기 자극의 33%(30/91)가 사진이 없어 조용히 SVG로 떨어진다. 실물 사진과
+   * 만화풍 아이콘은 이름을 떠올리는 난이도가 다르므로, 어느 쪽이었는지 안 남기면
+   * 이름대기 정답률이 무엇을 재는 값인지 알 수 없다.
+   */
+  stimulusKind?: 'photo' | 'svg';
 }
 
 /**
@@ -63,6 +95,17 @@ export interface QabRepeatItem {
   /** 들려주고 따라 말할 내용 */
   text: string;
   instruction: string;
+  /** 제시된 난이도 레벨(1~5). 결과 제출 시 실제 제시값으로 기록된다. */
+  presentedLevel?: number;
+  /**
+   * 이 문항이 **레벨이 요구한 밴드 밖**에서 왔는가.
+   *
+   * 뱅크는 후보가 모자라면 "세션이 비는 것보다 낫다"며 범위를 푼다. 그건 옳은
+   * 선택이지만, 그렇게 나온 문항의 `presentedLevel`은 실제 난이도를 뜻하지 않는다.
+   * 표시하지 않으면 집계가 조용히 틀린 채로 남는다 — 어느 행이 믿을 수 있는지
+   * 구분할 방법이 없다.
+   */
+  bandFallback?: boolean;
 }
 
 /**
@@ -74,6 +117,17 @@ export interface QabReadingItem {
   /** 보고 소리 내어 읽을 내용 */
   text: string;
   instruction: string;
+  /** 제시된 난이도 레벨(1~5). 결과 제출 시 실제 제시값으로 기록된다. */
+  presentedLevel?: number;
+  /**
+   * 이 문항이 **레벨이 요구한 밴드 밖**에서 왔는가.
+   *
+   * 뱅크는 후보가 모자라면 "세션이 비는 것보다 낫다"며 범위를 푼다. 그건 옳은
+   * 선택이지만, 그렇게 나온 문항의 `presentedLevel`은 실제 난이도를 뜻하지 않는다.
+   * 표시하지 않으면 집계가 조용히 틀린 채로 남는다 — 어느 행이 믿을 수 있는지
+   * 구분할 방법이 없다.
+   */
+  bandFallback?: boolean;
 }
 
 /**
@@ -95,8 +149,15 @@ export interface QabSpellItem {
   /** 셔플된 음절 타일 (정답 음절 + 방해 음절) */
   tiles: string[];
   instruction: string;
-  /** 제시된 난이도 레벨(1~5). 결과 제출 시 백엔드 레벨링 윈도우에 사용. */
+  /** 제시된 난이도 레벨(1~5). 결과 제출 시 실제 제시값으로 기록된다. */
   presentedLevel?: number;
+  /**
+   * 이 문항이 **레벨이 요구한 밴드 밖**에서 왔는가.
+   *
+   * 뱅크는 후보가 모자라면 "세션이 비는 것보다 낫다"며 범위를 푼다. 그건 옳은
+   * 선택이지만, 그렇게 나온 문항의 `presentedLevel`은 실제 난이도를 뜻하지 않는다.
+   */
+  bandFallback?: boolean;
 }
 
 /**
@@ -112,6 +173,17 @@ export interface QabDdkItem {
   /** 통과 기준 반복 횟수 */
   targetCount: number;
   instruction: string;
+  /** 제시된 난이도 레벨(1~5). 결과 제출 시 실제 제시값으로 기록된다. */
+  presentedLevel?: number;
+  /**
+   * 이 문항이 **레벨이 요구한 밴드 밖**에서 왔는가.
+   *
+   * 뱅크는 후보가 모자라면 "세션이 비는 것보다 낫다"며 범위를 푼다. 그건 옳은
+   * 선택이지만, 그렇게 나온 문항의 `presentedLevel`은 실제 난이도를 뜻하지 않는다.
+   * 표시하지 않으면 집계가 조용히 틀린 채로 남는다 — 어느 행이 믿을 수 있는지
+   * 구분할 방법이 없다.
+   */
+  bandFallback?: boolean;
 }
 
 /**
@@ -132,6 +204,24 @@ export type PlayableItem =
   | { kind: 'reading'; id: string; item: QabReadingItem }
   | { kind: 'spell'; id: string; item: QabSpellItem }
   | { kind: 'ddk'; id: string; item: QabDdkItem };
+
+/**
+ * 그 항목이 어느 하위검사인가 — 적응·기록의 단위다.
+ *
+ * `daily`는 QAB 검사가 아니라 개인 회상 문항이고, `qab`은 화면상 한 종류지만
+ * 낱말과 문장이 서로 다른 검사라 `category`로 갈라야 한다. 이 대응을 화면 종류
+ * (`kind`)와 섞어 쓰면 문장 결과가 낱말로 기록된다.
+ */
+export function playableSubtest(item: PlayableItem): QabSubtest | null {
+  switch (item.kind) {
+    case 'daily':
+      return null;
+    case 'qab':
+      return item.item.category;
+    default:
+      return item.kind;
+  }
+}
 
 /** 항목 채점 결과 (데일리/QAB 공통) */
 export interface PlayResult {

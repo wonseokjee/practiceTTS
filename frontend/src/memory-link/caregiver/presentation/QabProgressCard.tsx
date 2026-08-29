@@ -47,6 +47,55 @@ const IS_REACTION_BASED = (subtest: string): boolean => subtest === 'loc';
  */
 const IS_DRILL_BASED = (subtest: string): boolean => subtest === 'spell';
 
+/**
+ * 오답 갈래를 말하기 시작하는 최소 표본.
+ *
+ * 두세 개로 "소리에서 어려워한다"고 말하면 우연을 손상으로 읽는 것이다. 보호자는
+ * 이 문장을 근거로 연습 방향을 바꾸므로, 말할 수 없을 때는 **아무 말도 안 하는
+ * 편이 낫다.**
+ */
+const MIN_FOIL_SAMPLE = 5;
+
+/**
+ * 오답 갈래 한 줄 — 정답률이 못 하는 말을 한다.
+ *
+ * "정답률 24%"는 몇 개 틀렸는지까지만 말한다. 무엇이 어려운지는 **어떤 오답을
+ * 골랐는가**가 말한다. 뜻이 가까운 그림을 반복해 고르면 의미 쪽, 소리가 닮은
+ * 그림이면 음운 쪽이다.
+ *
+ * **0을 안전하게 읽으면 안 된다.** 소리가 닮은 그림은 눈높이 4단계부터 나오므로
+ * (`LEVEL_CHOICE_SPEC`), 그 아래 환자는 고를 기회 자체가 없어 0이 된다. 0은
+ * "소리는 괜찮다"가 아니라 "아직 안 물어봤다"이다 — 그래서 안내에 그 사실을
+ * 같이 적는다.
+ */
+function FoilKindLine({
+  foilKinds,
+}: {
+  foilKinds: NonNullable<QabSubtestSummary['foilKinds']>;
+}) {
+  const { semantic, phonological } = foilKinds;
+  // 무관 오답은 세지 않는다. 어느 축의 어려움도 가리키지 않아, 넣으면 분모만
+  // 키워 두 갈래의 대비를 흐린다.
+  const counted = semantic + phonological;
+  if (counted < MIN_FOIL_SAMPLE) return null;
+
+  return (
+    <p
+      className="mt-2 text-sm leading-relaxed text-[#5C6661]"
+      title="소리가 닮은 그림은 눈높이 4단계부터 나와요. 그 아래에서는 고를 기회가 없어 0으로 보입니다."
+    >
+      고른 오답 {counted}개 중{' '}
+      <span className="font-semibold text-[#1F2A26]">
+        뜻이 가까운 그림 {semantic}개
+      </span>
+      ,{' '}
+      <span className="font-semibold text-[#1F2A26]">
+        소리가 닮은 그림 {phonological}개
+      </span>
+    </p>
+  );
+}
+
 type LoadState = 'loading' | 'ready' | 'error';
 
 export function QabProgressCard({
@@ -102,7 +151,7 @@ export function QabProgressCard({
       <p className="mb-4 text-sm text-[#5C6661]">
         환자분이 푼 검사별 정답률이에요. 꾸준히 오르는지 지켜봐 주세요.
         <br />
-        <span className="text-xs text-[#8A918C]">
+        <span className="text-xs text-[#6B6560]">
           &lsquo;반복 연습&rsquo; 표시가 붙은 항목은 같은 낱말을 다시 내는
           과제예요. 정답률이 오르는 건 그 낱말에 익숙해진 것이라 회복 정도와는
           다르게 봐 주세요.
@@ -124,6 +173,19 @@ export function QabProgressCard({
           const label = subtestLabel(it.subtest);
           const assistedSuffix =
             it.assisted > 0 ? ` · 도움 ${it.assisted}회` : '';
+          /**
+           * 도움이 직접 푼 것보다 많으면 이 비율은 **환자 수행을 대표하지 않는다.**
+           *
+           * 그림 이름대기가 실제로 `정답률 100% (1/1) · 도움 7회`로 떴다. 8번 제시
+           * 중 7번이 보호자 넘어가기인데, 막대는 가득 차고 100%가 굵게 먼저 읽힌다.
+           * 바로 위 단어 이해는 28번을 직접 풀어 25%인데 막대가 1/4이다 —
+           * **28번 푼 검사가 1번 푼 검사보다 나빠 보인다.**
+           *
+           * 막대는 정답률만 그리고 표본 크기를 전혀 담지 않아서 생기는 일이다.
+           * 이 카드는 이미 `total === 0`일 때 비율을 안 그리고 "아직 직접 푼 기록
+           * 없음"이라고 말한다. 같은 규칙을 한 칸 넓힌다.
+           */
+          const 표본부족 = it.total > 0 && it.assisted > it.total;
           return (
             <li key={it.subtest} className="flex flex-col gap-1">
               <div className="flex items-baseline justify-between">
@@ -144,7 +206,20 @@ export function QabProgressCard({
                   {it.subtest === 'ddk' && it.maxMetric !== null ? (
                     <>최고 {it.maxMetric}회 · </>
                   ) : null}
-                  {it.total > 0 ? (
+                  {표본부족 ? (
+                    // 비율 대신 센 것을 그대로 말한다. 굵게 쓰는 것은 '몇 개를
+                    // 직접 풀었나'이지 비율이 아니다.
+                    <>
+                      직접 푼{' '}
+                      <span className="font-bold text-[#2D6A56]">
+                        {it.total}문항
+                      </span>{' '}
+                      중 {it.correct}개 정답 · 도움{' '}
+                      <span className="font-bold text-[#5C6661]">
+                        {it.assisted}회
+                      </span>
+                    </>
+                  ) : it.total > 0 ? (
                     <>
                       {IS_REACTION_BASED(it.subtest)
                         ? '반응률'
@@ -174,8 +249,12 @@ export function QabProgressCard({
                   )}
                 </span>
               </div>
-              {/* 정답률 막대 (직접 응답이 있을 때만) */}
-              {it.total > 0 && (
+              {/*
+                정답률 막대 — 직접 응답이 있고, 그 수가 도움보다 많을 때만 그린다.
+                막대는 길이로만 말하는데 표본 크기를 담지 못해, 1/1이 7/28보다
+                좋아 보이는 착시를 만든다.
+              */}
+              {it.total > 0 && !표본부족 && (
                 <div
                   className="h-2 w-full overflow-hidden rounded-full bg-[#EBEAE6]"
                   role="progressbar"
@@ -189,6 +268,11 @@ export function QabProgressCard({
                     style={{ width: `${it.accuracy}%` }}
                   />
                 </div>
+              )}
+              {/* 오답 갈래 — 단어 이해에만 값이 있다(오답을 코드가 조립하는
+                  유일한 과제라 갈래를 알 수 있다). */}
+              {it.foilKinds != null && (
+                <FoilKindLine foilKinds={it.foilKinds} />
               )}
             </li>
           );

@@ -7,6 +7,7 @@
 // 피드백 단계 색상은 FillBlankInput과 동일 규칙 + 아이콘 동반.
 
 import { useState } from 'react';
+import { copulaSuffix } from '../../../../../shared/domain/korean.js';
 
 interface TileArrangeInputProps {
   /** 섞인 음절 타일 (서버 choices) */
@@ -77,8 +78,8 @@ export function TileArrangeInput({
       {hintFirstChar !== null && hintFirstChar.length > 0 && (
         <p className="text-base text-[#5C6661]">
           힌트: 첫 글자는{' '}
-          <span className="font-bold text-[#2D6A56]">{hintFirstChar}</span>{' '}
-          이에요
+          <span className="font-bold text-[#2D6A56]">{hintFirstChar}</span>
+          {copulaSuffix(hintFirstChar)}
         </p>
       )}
 
@@ -92,7 +93,7 @@ export function TileArrangeInput({
           {assembled.length > 0 ? (
             assembled
           ) : (
-            <span className="text-[#A8AFA9]">글자를 눌러 단어를 만들어요</span>
+            <span className="text-[#6B6560]">글자를 눌러 단어를 만들어요</span>
           )}
         </span>
         {showFeedback && (

@@ -69,8 +69,8 @@ describe('ProfileService', () => {
   };
 
   const dataSourceMock = {
-    transaction: jest.fn(
-      (cb: (m: typeof managerMock) => Promise<unknown>) => cb(managerMock),
+    transaction: jest.fn((cb: (m: typeof managerMock) => Promise<unknown>) =>
+      cb(managerMock),
     ),
   };
 

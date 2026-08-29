@@ -219,7 +219,7 @@ export function CaregiverDashboard() {
             <button
               type="button"
               onClick={handleAddNew}
-              className="mb-6 flex w-full min-h-[56px] items-center justify-center gap-2 rounded-full bg-[#E07B54] text-lg font-bold text-white shadow-[0_8px_20px_rgba(224,123,84,0.35)] transition hover:bg-[#c96a45] active:scale-[0.99]"
+              className="mb-6 flex w-full min-h-[56px] items-center justify-center gap-2 rounded-full bg-[#B85C36] text-lg font-bold text-white shadow-[0_8px_20px_rgba(184,92,54,0.35)] transition hover:bg-[#A04F2D] active:scale-[0.99]"
               aria-label="오늘의 기억 추가"
             >
               ＋ 오늘의 기억 추가

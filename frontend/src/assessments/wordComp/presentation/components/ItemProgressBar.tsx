@@ -23,7 +23,7 @@ export const ItemProgressBar: React.FC<ItemProgressBarProps> = ({
         <span className="text-sm font-medium text-[#6B6560]">
           {current} / {total}
         </span>
-        <span className="text-sm text-[#9AA09B]">{percentage}%</span>
+        <span className="text-sm text-[#6B6560]">{percentage}%</span>
       </div>
       <div className="w-full bg-[#F2F1EC] rounded-full h-2">
         <div

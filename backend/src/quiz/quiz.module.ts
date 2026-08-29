@@ -15,6 +15,7 @@ import { SkillLevel } from './entities/skill-level.entity';
 import { QUIZ_GENERATION_CLIENT } from './interfaces/IQuizGenerationClient';
 import { QUIZ_SCORER } from './interfaces/IQuizScorer';
 import { WISH_CONVERSION_CLIENT } from './interfaces/IWishConversionClient';
+import { PracticeModule } from '../practice/practice.module';
 import { ProfileModule } from '../profile/profile.module';
 import { QuizController } from './quiz.controller';
 import { QuizService } from './quiz.service';
@@ -52,6 +53,9 @@ import { WishConversionClient } from './services/wish-conversion.client';
     AuthModule,
     // 퀴즈 생성 시 가족 실명·지명을 토큰화(LLM 노출 차단)하고 산출물을 역치환한다.
     ProfileModule,
+    // 활동 일자(스트릭)만 합치려고 가져온다. QuizService가 아니라 **컨트롤러**가
+    // 쓴다 — 아래 QuizController.getActivityDays의 주석 참고.
+    PracticeModule,
   ],
   controllers: [QuizController],
   providers: [

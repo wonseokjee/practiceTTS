@@ -42,10 +42,23 @@
   }
 }
 
+/* 스크롤은 **문서가** 한다.
+ *
+ * 예전에는 `html, body { height:100%; overflow:hidden }` + `#root { overflow-y:auto }`로
+ * 스크롤 컨테이너를 #root에 일원화했다. 그 대가가 컸다.
+ *
+ * iOS Safari와 Chrome Android는 **문서 스크롤**에서만 주소창을 접는다. 안쪽
+ * 요소가 스크롤하면 주소창이 끝까지 남아, 세로 공간이 가장 아쉬운 기기에서
+ * 60~100px을 계속 잃는다. 고령 사용자용으로 글자를 크게 쓰는 앱에서 그만큼이
+ * 문항 하나 차이가 된다.
+ *
+ * 덤으로 전체 페이지 캡처·인쇄가 안 되고(문서 높이가 늘 뷰포트와 같다),
+ * `position: sticky`가 뷰포트가 아니라 #root 기준이 된다.
+ *
+ * `100dvh`는 접히는 주소창을 반영하는 단위라 이 문제의 정답이다. 지원 안 하는
+ * 브라우저를 위해 `100vh`를 먼저 둔다. */
 html,
 body {
-  height: 100%;
-  overflow: hidden;
   margin: 0;
   /* 한국어는 어절(단어) 단위로 줄바꿈해야 한다. 기본값은 CJK를 음절 사이 아무
      데서나 끊어 「환자에게 건 / 네기」처럼 단어 중간에서 깨진다(고령 의료앱 가독성
@@ -56,11 +69,10 @@ body {
 }
 
 #root {
-  height: 100%;
-  /* 콘텐츠가 뷰포트보다 길면(예: 캡처 3단계) #root 내부에서 스크롤되도록 한다.
-     body는 overflow:hidden이라 페이지 자체는 스크롤되지 않으므로, 스크롤 컨테이너를
-     #root로 일원화한다. 풀스크린(h-screen) 레이아웃은 100% 이내라 영향이 없다. */
-  overflow-y: auto;
+  /* 화면을 꽉 채우되 길어지면 문서가 늘어난다. 앱의 모든 셸이 `min-h-screen`이라
+     이 값과 어긋나지 않는다. */
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* Tailwind v4 Preflight는 <button> 기본 커서를 v3의 pointer에서 default로 바꿨다.

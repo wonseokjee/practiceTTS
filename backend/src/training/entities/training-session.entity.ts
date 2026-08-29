@@ -21,7 +21,10 @@ export class TrainingSession {
 
   // 훈련 대상 환자
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'patient_id', foreignKeyConstraintName: 'FK_training_sessions_patient' })
+  @JoinColumn({
+    name: 'patient_id',
+    foreignKeyConstraintName: 'FK_training_sessions_patient',
+  })
   patient: User;
 
   @Column({ name: 'patient_id', type: 'uuid' })
@@ -29,7 +32,10 @@ export class TrainingSession {
 
   // 훈련에 사용된 메모리 엔트리
   @ManyToOne(() => MemoryEntry, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'memory_entry_id', foreignKeyConstraintName: 'FK_training_sessions_memory_entry' })
+  @JoinColumn({
+    name: 'memory_entry_id',
+    foreignKeyConstraintName: 'FK_training_sessions_memory_entry',
+  })
   memoryEntry: MemoryEntry;
 
   @Column({ name: 'memory_entry_id', type: 'uuid' })

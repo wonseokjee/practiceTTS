@@ -27,7 +27,7 @@ export const AssessmentProgressBar: React.FC<AssessmentProgressBarProps> = ({
         <span className="text-sm text-[#6B6560] font-medium">
           {current} / {total} 문항
         </span>
-        <span className="text-sm text-[#9AA09B]">{progressPercent}%</span>
+        <span className="text-sm text-[#6B6560]">{progressPercent}%</span>
       </div>
 
       {/* 진행 바 */}

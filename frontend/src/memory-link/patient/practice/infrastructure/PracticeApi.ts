@@ -10,7 +10,14 @@ import type { PracticeAttemptInput } from '../domain/Practice.js';
 const INVALID_RESPONSE_MESSAGE = '서버 응답 형식이 올바르지 않습니다.';
 
 export interface IPracticeApi {
-  /** POST /practice/results — 문항마다 점진 제출(아직 안 보낸 tail만). */
+  /**
+   * POST /practice/results — 문항마다 점진 제출(아직 안 보낸 tail만).
+   *
+   * `saved`는 **실제로 DB에 들어간 행 수**다. 보낸 개수가 아니다. 재제출·중복
+   * flush는 `ON CONFLICT DO NOTHING`으로 걸러지므로 `saved`가 보낸 수보다 작을
+   * 수 있고, 전부 중복이면 0이다. **그건 실패가 아니라 이미 저장돼 있다는
+   * 뜻이다** — 0을 오류로 읽고 재시도하면 무한히 돈다.
+   */
   submitResults(
     sessionToken: string,
     results: PracticeAttemptInput[],
