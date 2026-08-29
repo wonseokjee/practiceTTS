@@ -100,7 +100,7 @@ describe('SoundCheckScreen', () => {
     renderScreen();
     await screen.findByRole('alert');
 
-    fireEvent.click(screen.getByRole('button', { name: '🔊 소리 듣기' }));
+    fireEvent.click(screen.getByRole('button', { name: '소리 듣기' }));
     await waitFor(() => {
       expect(screen.getByText('소리가 잘 들리셨나요?')).toBeInTheDocument();
     });
