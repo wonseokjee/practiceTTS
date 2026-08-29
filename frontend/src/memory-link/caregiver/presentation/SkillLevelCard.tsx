@@ -10,6 +10,7 @@ import { quizApi } from '../../patient/quiz/infrastructure/QuizApi.js';
 import type { SkillLevels } from '../../patient/quiz/domain/QabResult.js';
 import {
   LEVELED_SUBTESTS,
+  NON_LEVELED_SUBTESTS,
   subtestLabel,
 } from '../../patient/quiz/domain/qabSubtestLabels.js';
 
@@ -79,6 +80,26 @@ export function SkillLevelCard({ fetchLevels }: SkillLevelCardProps) {
         스킬마다 지금 어느 난이도에서 연습 중인지예요. 잘하는 만큼 눈높이가
         올라가고, 어려우면 부드럽게 내려가 늘 알맞은 난이도로 맞춰져요.
       </p>
+
+      {/*
+        빠진 검사를 말해 준다.
+        
+        바로 위 '발화 검사 진행' 카드는 8개를 보여주는데 여기는 6개다. 이유를
+        안 적어두면 보호자는 "이름대기가 빠졌네"로 읽는다 — 실제로는 그 검사에
+        난이도 축이 없어서 눈높이라는 개념 자체가 성립하지 않는 것이다(E1).
+        
+        이름을 하드코딩하지 않고 목록에서 끌어온다. 검사가 비레벨로 바뀌거나
+        축이 생겨 되돌아올 때 이 문장만 옛말이 되는 것을 막는다.
+
+        조사를 안 쓰는 문장으로 짰다. 목록에서 이름을 끌어오면 마지막 낱말의
+        받침이 그때그때 달라져 `은/는`이 틀어진다.
+      */}
+      {NON_LEVELED_SUBTESTS.length > 0 && (
+        <p className="mb-4 text-sm text-[#6B6560]">
+          난이도를 단계로 나눌 수 있는 검사만 여기 나와요. (
+          {NON_LEVELED_SUBTESTS.map(subtestLabel).join(' · ')} 제외)
+        </p>
+      )}
 
       <ul className="flex flex-col gap-3">
         {LEVELED_SUBTESTS.map((key) => {
