@@ -18,6 +18,7 @@
 // 이유). 대신 그 경우는 통과로 **기록하지 않아** 다음에 다시 묻는다.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { SpeakerIcon } from '../../../shared/components/SpeakerIcon.js';
 import { useTTS } from '../../../shared/hooks/useTTS.js';
 import { createTtsService } from '../../../shared/infrastructure/ttsFactory.js';
 
@@ -75,9 +76,12 @@ export function SoundCheckScreen({
 
   return (
     <div className="font-pretendard mx-auto flex w-full max-w-md flex-col items-center gap-4 px-4 py-6">
-      <span aria-hidden="true" className="text-6xl">
-        🔊
-      </span>
+      {/*
+        이 화면에서 가장 큰 그림이다. 이모지로 두면 플랫폼이 글립을 정하고
+        (Windows·iOS·Android가 서로 다르게 그린다) 어떤 조합에서는 흑백 폰트
+        글립으로 떨어진다. 주된 시각 요소를 그렇게 둘 수 없다.
+      */}
+      <SpeakerIcon className="h-16 w-16 text-[#2D6A56]" />
       <h2 className="text-2xl font-bold text-[#1F2A26]">소리를 확인할게요</h2>
       <p className="text-center text-lg leading-relaxed text-[#5C6661]">
         {destination}에는 듣고 답하는 문제가 있어요.
@@ -91,7 +95,14 @@ export function SoundCheckScreen({
         disabled={isPlaying}
         className="min-h-[64px] w-full rounded-full bg-[#2D6A56] px-6 py-3 text-xl font-semibold text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240] disabled:opacity-60"
       >
-        {isPlaying ? '소리 나는 중...' : '🔊 소리 듣기'}
+        {isPlaying ? (
+          '소리 나는 중…'
+        ) : (
+          <span className="inline-flex items-center justify-center gap-2">
+            <SpeakerIcon className="h-6 w-6" />
+            소리 듣기
+          </span>
+        )}
       </button>
 
       {showHelp ? (
