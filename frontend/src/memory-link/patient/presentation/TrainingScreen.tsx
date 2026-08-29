@@ -337,7 +337,7 @@ export function TrainingScreen({
                 className={`min-h-[84px] min-w-[84px] rounded-full text-white text-3xl font-bold transition-all active:scale-95 disabled:opacity-50 ${
                   isRecording
                     ? 'bg-[#C94040] scale-110 shadow-lg shadow-[#C94040]/40'
-                    : 'bg-[#E07B54] shadow-[0_10px_24px_rgba(224,123,84,0.45)]'
+                    : 'bg-[#B85C36] shadow-[0_10px_24px_rgba(184,92,54,0.45)]'
                 }`}
                 aria-label={isRecording ? '녹음 중지' : '말하기'}
                 aria-pressed={isRecording}

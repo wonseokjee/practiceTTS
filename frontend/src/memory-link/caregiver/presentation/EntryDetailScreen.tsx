@@ -333,7 +333,7 @@ export function EntryDetailScreen({
           type="button"
           onClick={() => void onTriggerScenario(entry.id)}
           disabled={!canTriggerScenario || isScenarioPending}
-          className="w-full min-h-[52px] py-3 bg-[#E07B54] text-white rounded-full font-medium hover:bg-[#c96a45] disabled:bg-[#E8E4DC] disabled:text-[#9AA09B] transition-colors"
+          className="w-full min-h-[52px] py-3 bg-[#B85C36] text-white rounded-full font-medium hover:bg-[#A04F2D] disabled:bg-[#E8E4DC] disabled:text-[#9AA09B] transition-colors"
           aria-label={
             isScenarioPending ? '시나리오 생성 중' : '시나리오 생성하기'
           }
