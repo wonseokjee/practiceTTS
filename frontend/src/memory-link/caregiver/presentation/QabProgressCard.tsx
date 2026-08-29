@@ -173,6 +173,19 @@ export function QabProgressCard({
           const label = subtestLabel(it.subtest);
           const assistedSuffix =
             it.assisted > 0 ? ` · 도움 ${it.assisted}회` : '';
+          /**
+           * 도움이 직접 푼 것보다 많으면 이 비율은 **환자 수행을 대표하지 않는다.**
+           *
+           * 그림 이름대기가 실제로 `정답률 100% (1/1) · 도움 7회`로 떴다. 8번 제시
+           * 중 7번이 보호자 넘어가기인데, 막대는 가득 차고 100%가 굵게 먼저 읽힌다.
+           * 바로 위 단어 이해는 28번을 직접 풀어 25%인데 막대가 1/4이다 —
+           * **28번 푼 검사가 1번 푼 검사보다 나빠 보인다.**
+           *
+           * 막대는 정답률만 그리고 표본 크기를 전혀 담지 않아서 생기는 일이다.
+           * 이 카드는 이미 `total === 0`일 때 비율을 안 그리고 "아직 직접 푼 기록
+           * 없음"이라고 말한다. 같은 규칙을 한 칸 넓힌다.
+           */
+          const 표본부족 = it.total > 0 && it.assisted > it.total;
           return (
             <li key={it.subtest} className="flex flex-col gap-1">
               <div className="flex items-baseline justify-between">
@@ -193,7 +206,20 @@ export function QabProgressCard({
                   {it.subtest === 'ddk' && it.maxMetric !== null ? (
                     <>최고 {it.maxMetric}회 · </>
                   ) : null}
-                  {it.total > 0 ? (
+                  {표본부족 ? (
+                    // 비율 대신 센 것을 그대로 말한다. 굵게 쓰는 것은 '몇 개를
+                    // 직접 풀었나'이지 비율이 아니다.
+                    <>
+                      직접 푼{' '}
+                      <span className="font-bold text-[#2D6A56]">
+                        {it.total}문항
+                      </span>{' '}
+                      중 {it.correct}개 정답 · 도움{' '}
+                      <span className="font-bold text-[#5C6661]">
+                        {it.assisted}회
+                      </span>
+                    </>
+                  ) : it.total > 0 ? (
                     <>
                       {IS_REACTION_BASED(it.subtest)
                         ? '반응률'
@@ -223,8 +249,12 @@ export function QabProgressCard({
                   )}
                 </span>
               </div>
-              {/* 정답률 막대 (직접 응답이 있을 때만) */}
-              {it.total > 0 && (
+              {/*
+                정답률 막대 — 직접 응답이 있고, 그 수가 도움보다 많을 때만 그린다.
+                막대는 길이로만 말하는데 표본 크기를 담지 못해, 1/1이 7/28보다
+                좋아 보이는 착시를 만든다.
+              */}
+              {it.total > 0 && !표본부족 && (
                 <div
                   className="h-2 w-full overflow-hidden rounded-full bg-[#EBEAE6]"
                   role="progressbar"
