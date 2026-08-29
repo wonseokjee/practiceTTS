@@ -111,7 +111,7 @@ export function PatientDayStep({
               type="button"
               onClick={onClearPhoto}
               disabled={isSubmitting}
-              className="text-xs text-[#5C6661] underline transition-colors hover:text-[#E07B54] disabled:opacity-50"
+              className="text-xs text-[#5C6661] underline transition-colors hover:text-[#B85C36] disabled:opacity-50"
               aria-label="첨부한 사진 제거"
             >
               제거
@@ -182,7 +182,7 @@ export function PatientDayStep({
           placeholder="예: 오늘도 사랑해 우리 손녀"
           maxLength={MAX_CAREGIVER_WISH_LENGTH}
           rows={2}
-          className="mt-3 w-full resize-none rounded-xl border border-[#E0A984] bg-white p-3 text-sm leading-relaxed text-[#1F2A26] focus:border-[#E07B54] focus:outline-none focus:ring-1 focus:ring-[#E07B54] disabled:bg-[#F0F1F0]"
+          className="mt-3 w-full resize-none rounded-xl border border-[#E0A984] bg-white p-3 text-sm leading-relaxed text-[#1F2A26] focus:border-[#B85C36] focus:outline-none focus:ring-1 focus:ring-[#B85C36] disabled:bg-[#F0F1F0]"
           aria-label="지금 듣고 싶은 한마디"
         />
         <div className="mt-1 text-right text-xs text-[#9A7A50]" aria-live="polite">

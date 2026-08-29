@@ -45,7 +45,7 @@ function TrialResultRow({ result }: { result: LocTrialResponseDTO }) {
       : result.score === 2
         ? 'text-[#8a5a1a]'
         : result.score === 1
-          ? 'text-[#E07B54]'
+          ? 'text-[#B85C36]'
           : 'text-[#C94040]';
 
   return (

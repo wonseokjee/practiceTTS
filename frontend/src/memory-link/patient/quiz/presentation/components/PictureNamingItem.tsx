@@ -208,7 +208,7 @@ export function PictureNamingItem({
             <button
               type="button"
               onClick={handleStopRecord}
-              className="flex min-h-[64px] items-center justify-center gap-2 rounded-md border-2 border-[#E07B54] bg-white px-6 py-4 text-xl font-medium text-[#7A2E15] transition-colors duration-[180ms] ease-out hover:bg-[#FBE9E2]"
+              className="flex min-h-[64px] items-center justify-center gap-2 rounded-md border-2 border-[#B85C36] bg-white px-6 py-4 text-xl font-medium text-[#7A2E15] transition-colors duration-[180ms] ease-out hover:bg-[#FBE9E2]"
               aria-label="다 말했어요"
             >
               <span aria-hidden="true" className="text-2xl">✓</span>

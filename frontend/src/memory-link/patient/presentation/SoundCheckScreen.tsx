@@ -152,7 +152,7 @@ export function SoundCheckScreen({
               <button
                 type="button"
                 onClick={() => setDeclined(true)}
-                className="min-h-[64px] flex-1 rounded-full border-2 border-[#E07B54] bg-white px-4 py-3 text-xl font-semibold text-[#7A2E15] transition-colors duration-[180ms] ease-out hover:bg-[#FBE9E2]"
+                className="min-h-[64px] flex-1 rounded-full border-2 border-[#B85C36] bg-white px-4 py-3 text-xl font-semibold text-[#7A2E15] transition-colors duration-[180ms] ease-out hover:bg-[#FBE9E2]"
               >
                 안 들려요
               </button>
