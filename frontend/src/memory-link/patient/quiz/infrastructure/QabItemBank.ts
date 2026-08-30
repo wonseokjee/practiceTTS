@@ -13,6 +13,7 @@ import { shuffle } from '../../../../shared/domain/shuffle.js';
 import {
   choiceSpecForLevel,
   distractorCountForLevel,
+  sentChoiceTotalForLevel,
   sentTypeForLevel,
   syllableCount,
   syllableRangeForLevel,
@@ -27,6 +28,7 @@ import sentMirrorData from '../../../../assets/data/qabSentMirror.json';
 // 이미지가 생성된 항목만 포함되며, 스크립트 실행 전에는 비어 있다.
 import sentGeneratedData from '../../../../assets/data/qabSentGenerated.json';
 import type {
+  QabImageChoice,
   QabImageItem,
   QabNamingItem,
   QabSpellItem,
@@ -370,24 +372,85 @@ function toWordItem(it: RawWordItem, level?: number): QabImageItem {
   };
 }
 
-function toSentItem(it: RawSentItem, level?: number): QabImageItem {
-  // 선택지는 원본 JSON의 고정 쌍이라 **여기서** 오답거리를 바꾸지는 않는다.
-  // 문장이해의 난이도는 선택지가 아니라 **자극의 통사 복잡도**로 준다 —
-  // 어느 문항을 낼지는 sentPoolForLevel이 레벨로 정한다.
+/**
+ * 이미지가 속한 **장면**. `sentComp_03_distractor.png` → `sentComp_03`.
+ *
+ * 미러 문항(`sentComp_03_m`)은 원본과 **같은 두 장**을 정답만 바꿔 쓴다. 그래서
+ * "다른 문항의 이미지"로 오답을 고르면 자기 장면이 되돌아온다 — itemId가 아니라
+ * 장면으로 걸러야 하는 이유다.
+ */
+export function sceneOfImage(imageUrl: string): string {
+  const file = imageUrl.split('/').pop() ?? imageUrl;
+  return file.replace(/\.[^.]+$/, '').replace(/_(correct|distractor)$/, '');
+}
+
+/**
+ * 문장이해 보기를 레벨이 요구하는 수만큼 채운다.
+ *
+ * 원본 JSON은 문항마다 **두 장**이다 — 정답과 역할역전 오답. 그 둘은 그대로 두고
+ * (역할역전이 가역문 이해를 재는 핵심이다), 모자란 자리는 **다른 장면**에서
+ * 빌려 온다. 새 그림은 필요 없다: 14개 장면 × 2장이 이미 있고 자기 장면만
+ * 빼면 13개가 남는다.
+ *
+ * 무관 오답을 섞는 건 임시방편이 아니라 실어증 문장이해 검사의 표준 배열이다
+ * (정답 + 역할역전 + 무관). 지금의 2지선다가 오히려 표준에서 모자란 쪽이었다.
+ *
+ * **한 장면에서 한 장만 가져온다.** 같은 장면의 두 장은 행위자·대상만 뒤바뀐
+ * 거의 같은 그림이라, 둘 다 들어가면 환자는 무관한 그림을 두 번 훑어야 하고
+ * 보기 한 자리를 버리게 된다.
+ */
+export function buildSentChoices(
+  it: RawSentItem,
+  pool: readonly RawSentItem[],
+  level?: number,
+  rng: () => number = Math.random,
+): QabImageChoice[] {
+  const own = it.choices.map((c, idx) => ({
+    choiceId: `${it.itemId}_c${idx}`,
+    label: c.altText,
+    imageUrl: c.imageUrl,
+    isCorrect: c.isCorrect,
+  }));
+
+  const ownScenes = new Set(it.choices.map((c) => sceneOfImage(c.imageUrl)));
+  const wanted = sentChoiceTotalForLevel(level) - own.length;
+
+  // 장면당 한 장만 후보에 올린다. 먼저 만난 것을 남기되, 어느 장면이 먼저
+  // 오는지는 아래 shuffle이 정하므로 특정 그림이 고정으로 뽑히지 않는다.
+  const seen = new Set<string>(ownScenes);
+  const candidates: QabImageChoice[] = [];
+  for (const other of shuffle(pool, rng)) {
+    for (const c of other.choices) {
+      const scene = sceneOfImage(c.imageUrl);
+      if (seen.has(scene)) continue;
+      seen.add(scene);
+      candidates.push({
+        choiceId: `${it.itemId}_x_${scene}`,
+        label: c.altText,
+        imageUrl: c.imageUrl,
+        isCorrect: false,
+      });
+    }
+  }
+
+  // 후보가 모자라면 있는 만큼만. 자극이 줄어드는 것보다 보기가 적은 편이 낫다.
+  return shuffle([...own, ...candidates.slice(0, Math.max(0, wanted))], rng);
+}
+
+function toSentItem(
+  it: RawSentItem,
+  level?: number,
+  pool: readonly RawSentItem[] = SENT_ITEMS,
+): QabImageItem {
+  // 문장이해의 **1차** 난이도 축은 여전히 자극의 통사 복잡도다(sentPoolForLevel).
+  // 보기 수는 우연수준을 낮추려고 뒤에 붙인 2차 축이다 —
+  // 근거는 difficultyRules의 sentChoiceTotalForLevel에 적어 뒀다.
   return {
     itemId: it.itemId,
     category: 'sentence',
     promptText: it.sentence,
     instruction: SENT_INSTRUCTION,
-    // 선택지 id가 원본에 없으므로 itemId+index로 합성한다.
-    choices: shuffle(
-      it.choices.map((c, idx) => ({
-        choiceId: `${it.itemId}_c${idx}`,
-        label: c.altText,
-        imageUrl: c.imageUrl,
-        isCorrect: c.isCorrect,
-      })),
-    ),
+    choices: buildSentChoices(it, pool, level),
     presentedLevel: level,
   };
 }
@@ -757,6 +820,7 @@ export {
   COLD_START_LEVEL,
   LEVEL_CHOICE_SPEC,
   distractorCountForLevel,
+  sentChoiceTotalForLevel,
   sentTypeForLevel,
 } from '../domain/difficultyRules.js';
 export type { ChoiceSpec } from '../domain/difficultyRules.js';
