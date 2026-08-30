@@ -142,7 +142,13 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
   const wishMessage = detail?.memoryEntry.caregiverWishMessage ?? null;
   if (wishMessage !== null && !wishDismissed) {
     return (
-      <div className="font-pretendard mx-auto w-full max-w-2xl px-4 py-6">
+      // 이 화면에는 이 카드 하나뿐이라(early return) 위에서부터 쌓으면 모바일에서
+      // 아래가 통째로 빈다. 세로 가운데에 둔다 — 퀴즈로 넘어가기 전 한 번 읽는
+      // 카드라 화면 한가운데 놓이는 편이 그 성격에도 맞는다.
+      //
+      // 카드가 뷰포트보다 길어지면 `min-h-dvh` 컨테이너가 같이 늘어나므로
+      // 가운데 정렬이 위를 잘라먹지 않는다.
+      <div className="font-pretendard mx-auto flex min-h-dvh w-full max-w-2xl flex-col justify-center px-4 py-6">
         <CaregiverWishCard
           quizSetId={quizSetId}
           wishMessage={wishMessage}
