@@ -217,6 +217,33 @@ export function sentTypeForLevel(level?: number): string {
   return SENT_TYPE_BY_LEVEL[normalizeLevel(level)];
 }
 
+/**
+ * 문장이해 **보기 수** — 레벨과 무관하게 4다.
+ *
+ * 원래는 2지선다였다(정답 + 역할역전 오답). 통사 복잡도만으로 난이도를 준다는
+ * 설계였는데, 그 설계에는 값을 치르는 자리가 하나 있었다 — **우연수준 0.5**다.
+ *
+ * 세션 내 적응(3연속 정답 → 승급)이 들어오면서 그 값이 실제 피해가 됐다. 문장을
+ * 전혀 이해하지 못하는 환자가 순전히 찍어서 3연속을 맞출 확률이 2지선다에서
+ * `0.5³ = 12.5%`다. 여덟 번에 한 번 승급한다는 뜻이다. 4지선다면 1.6%가 된다.
+ *
+ * **강등 쪽은 반대로 움직이지 않는다.** 보기를 늘리면 못 맞힐 확률이 오르지만
+ * 그건 이해하지 못하는 환자에게만 해당하고, 그 강등은 옳은 판정이다. 이해하는
+ * 환자가 틀릴 확률은 보기 수가 아니라 본인 실력이 정한다.
+ *
+ * **레벨에 따라 2·3·4로 늘리지 않는 이유**가 있다. 그렇게 하면 문장이해에
+ * 통사 말고 두 번째 난이도 축이 생긴다 — 이 파일의 다른 규칙들이 축을 하나씩만
+ * 두는 것과 어긋나고, "레벨 4 정답률"이 통사 때문인지 보기 수 때문인지 읽을 수
+ * 없게 된다. 게다가 화면 격자가 2열이라 3장은 둘째 줄에 한 장이 남는다.
+ * 난이도는 계속 자극이 지고(sentTypeForLevel), 보기 수는 우연수준을 낮추는
+ * 고정 장치로만 둔다. 4장 배열은 실어증 문장이해 검사의 표준이기도 하다.
+ */
+export const SENT_CHOICE_TOTAL = 4;
+
+export function sentChoiceTotalForLevel(_level?: number): number {
+  return SENT_CHOICE_TOTAL;
+}
+
 /** 어절 수 — 공백 기준. 한국어 문장 난이도의 1차 축이다. */
 export function wordCount(sentence: string): number {
   return sentence.trim().split(/\s+/).filter((w) => w.length > 0).length;
