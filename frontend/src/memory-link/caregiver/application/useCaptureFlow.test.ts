@@ -52,6 +52,7 @@ const FAKE_MEMORY_ENTRY: MemoryEntry = {
   objectTags: null,
   emotionTag: null,
   targetWords: [],
+  patientNotes: [],
   hasScenario: false,
   hasMaskedContext: false,
   createdAt: '2026-05-27T09:00:00Z',
