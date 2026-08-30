@@ -53,9 +53,11 @@ describe('ItemProgressBar', () => {
     // 퀴즈는 `mb-6`, 검사 화면은 부모의 `gap-4`로 띄운다. 컴포넌트가 정하면
     // 한쪽이 늘 어긋난다.
     const { container } = render(<ItemProgressBar current={1} total={5} />);
-    expect((container.firstElementChild as HTMLElement).className).not.toMatch(
-      /m[btlrxy]?-/,
+    const classes = (container.firstElementChild as HTMLElement).className.split(
+      ' ',
     );
+    const 여백 = classes.filter((c) => /^-?m[btlrxyse]?-/.test(c));
+    expect(여백, 여백.join(', ')).toEqual([]);
   });
 
   it('막대 길이가 진행을 따른다', () => {
