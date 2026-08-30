@@ -75,4 +75,14 @@ describe('namingPhotos', () => {
       .map((c) => c.slug);
     expect(미확인, `출처 미확인: ${미확인.join(', ')}`).toEqual([]);
   });
+
+  it('2차 저작을 금지하는 라이선스를 쓰지 않는다', () => {
+    // 이름대기 사진은 예외 없이 300×300으로 잘라서 넣는다. 자르는 것 자체가
+    // 2차적 저작물이라, ND(NoDerivatives)는 그 배포를 금지한다.
+    // 나비와 배가 실제로 `by-nd 2.0`인 채 넉 달을 있었다.
+    const 금지 = credits
+      .filter((c) => String(c.license).toLowerCase().split(/[^a-z]+/).includes('nd'))
+      .map((c) => `${c.slug}(${c.license})`);
+    expect(금지, `자를 수 없는 라이선스: ${금지.join(', ')}`).toEqual([]);
+  });
 });

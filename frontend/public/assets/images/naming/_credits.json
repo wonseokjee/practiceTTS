@@ -108,10 +108,10 @@
   {
     "slug": "butterfly",
     "ko": "나비",
-    "title": "Blue butterfly",
-    "license": "by-nd 2.0",
-    "source": "https://www.flickr.com/photos/43212985@N08/4022324313",
-    "savedAt": "2026-07-25"
+    "title": "butterfly",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/photos/-10291275/",
+    "savedAt": "2026-08-30"
   },
   {
     "slug": "cactus",
@@ -203,6 +203,14 @@
     "license": "cc0 1.0",
     "source": "https://stocksnap.io/photo/seo-ppc-9699Y6WKLD",
     "savedAt": "2026-07-25"
+  },
+  {
+    "slug": "corn",
+    "ko": "옥수수",
+    "title": "corn",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/photos/-2691456/",
+    "savedAt": "2026-08-30"
   },
   {
     "slug": "couch",
@@ -580,12 +588,20 @@
     "savedAt": "2026-07-25"
   },
   {
+    "slug": "screwdriver",
+    "ko": "드라이버",
+    "title": "screwdriver",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/photos/-608321/",
+    "savedAt": "2026-08-30"
+  },
+  {
     "slug": "ship",
     "ko": "배",
-    "title": "container ship leaving bay area",
-    "license": "by-nd 2.0",
-    "source": "https://www.flickr.com/photos/39978310@N00/264546918",
-    "savedAt": "2026-07-25"
+    "title": "container ship",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/photos/-6631117/",
+    "savedAt": "2026-08-30"
   },
   {
     "slug": "shoes",
