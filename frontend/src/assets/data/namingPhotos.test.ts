@@ -65,4 +65,14 @@ describe('namingPhotos', () => {
     const 없는것 = photos.slugs.filter((s) => !기록.has(s));
     expect(없는것, `_credits.json에 없음: ${없는것.join(', ')}`).toEqual([]);
   });
+
+  it('출처가 미확인인 사진이 없다', () => {
+    // 기록이 **있기만** 한 것으로는 부족하다. 12장이 license만 'UNVERIFIED'로
+    // 채워진 채 위 검사를 통과한 적이 있다 — 칸은 찼는데 근거가 없었다.
+    // 남의 사진을 쓰는 앱이라, 이건 배포를 막아야 하는 종류의 구멍이다.
+    const 미확인 = credits
+      .filter((c) => !c.license || c.license === 'UNVERIFIED' || !c.source)
+      .map((c) => c.slug);
+    expect(미확인, `출처 미확인: ${미확인.join(', ')}`).toEqual([]);
+  });
 });
