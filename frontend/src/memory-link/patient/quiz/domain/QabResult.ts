@@ -116,6 +116,15 @@ export interface QabSubtestSummary {
     phonological: number;
     unrelated: number;
   } | null;
+  /**
+   * 이름대기에서 **평균 몇 칸을 도왔나**(E18). 0에 가까울수록 스스로 한다.
+   * 표본이 없으면 null.
+   *
+   *   0 무단서 · 1 의미 단서 · 3 음소 단서 · 4 정답을 알려줌
+   */
+  avgCueLevel?: number | null;
+  /** 위 평균이 몇 문항에서 나왔나. 이 기능 이전의 기록은 안 들어간다. */
+  cueScored?: number;
 }
 
 /** 한 검사의 특정 주차 성적 (백엔드 QabWeeklyPoint 미러) */

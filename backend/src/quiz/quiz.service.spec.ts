@@ -2603,8 +2603,11 @@ describe('QuizService', () => {
           avgScore: 82,
           lastAt: '2026-06-20T00:00:00.000Z',
           // 갈래 집계 컬럼이 없는 행은 null이다. 0으로 채우면 "관계없는 그림
-          // 0개" 같은 없는 사실이 화면에 그려진다.
+          // 0개" 같은 없는 사실이 화면에 그려진다. 단서량도 같다 — 표본이
+          // 없으면 null이지 "평균 0단계"(늘 스스로 맞혔다)가 아니다.
           foilKinds: null,
+          avgCueLevel: null,
+          cueScored: 0,
         },
         {
           subtest: 'ddk',
@@ -2617,6 +2620,8 @@ describe('QuizService', () => {
           avgScore: null,
           lastAt: '2026-06-21T00:00:00.000Z',
           foilKinds: null,
+          avgCueLevel: null,
+          cueScored: 0,
         },
       ]);
     });
