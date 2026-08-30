@@ -21,24 +21,29 @@
 | `--warning` | `#E8A23C` | 경고 상태 |
 | `--danger` | `#C94040` | 오류, 세션 종료 등 위험 동작 |
 
-### Tailwind v4 CSS 변수 설정 (index.css)
+### 이 색들은 코드에서 어떻게 쓰이나
 
-```css
-@layer base {
-  :root {
-    --color-bg:            #F7F6F3;
-    --color-surface:       #FFFFFF;
-    --color-primary:       #2D6A56;
-    --color-primary-light: #EBF4F0;
-    --color-accent:        #E07B54;
-    --color-text:          #1A1916;
-    --color-muted:         #6B6560;
-    --color-border:        #E8E4DC;
-    --color-warning:       #E8A23C;
-    --color-danger:        #C94040;
-  }
-}
+**CSS 변수가 아니다.** 컴포넌트가 Tailwind 임의값으로 hex를 직접 쓴다.
+
+```tsx
+<button className="bg-[#2D6A56] text-white">   {/* --primary */}
+<p className="text-[#6B6560]">                  {/* --muted */}
 ```
+
+위 표의 `--이름`은 **CSS에 존재하는 변수가 아니라 이 문서의 어휘**다. 어떤 hex가
+무슨 뜻인지를 표가 정하고, 코드는 그 hex를 그대로 적는다. `index.css`에 있는
+것은 폰트 토큰 둘뿐이다.
+
+> 이 절에는 예전에 `@layer base { :root { --color-bg: … } }` 블록이 적혀 있었다.
+> **그 코드는 어디에도 없었다.** 게다가 Tailwind v4에서 `:root`에 변수를 넣는 것은
+> 유틸리티를 만들지 않는다(`@theme`가 그 일을 한다). 위치도 존재 여부도 틀린
+> 스니펫이라, 보고 따라 쓰면 `bg-accent`가 조용히 아무 스타일도 내지 않는다.
+
+**왜 토큰으로 안 옮겼나.** 옮길 대상이 77개 파일 1300개 hex(그중 팔레트 색 873개)다.
+P2 정합성 수정의 크기가 아니라 별도 작업이라 TODOS의 `design-token-migration`으로
+분리했다. 그리고 **반만 옮기면 안전망이 뚫린다** — `accentContrast.test.ts`가
+소스에서 `#E07B54`를 grep해 "테라코타를 잉크로 쓴 줄"을 막는데, `bg-accent` 같은
+별칭이 생기면 그 그물을 우회한다. 옮긴다면 한 번에 옮기고 그 테스트도 같이 고친다.
 
 ### 테라코타를 둘로 나눈 이유
 
