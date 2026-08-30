@@ -14,7 +14,7 @@ import type { UseMixedQuizDeps } from '../application/useMixedQuizSession.js';
 import type { AttemptResult, QuizQuestionPublic, YesNoAnswer } from '../domain/Quiz.js';
 import { CaregiverWishCard } from './CaregiverWishCard.js';
 import { QuizPhotoHint } from './QuizPhotoHint.js';
-import { QuizProgressBar } from './QuizProgressBar.js';
+import { ItemProgressBar } from '../../../../shared/components/ItemProgressBar.js';
 import { QuizResultScreen } from './QuizResultScreen.js';
 import { FillBlankInput } from './components/FillBlankInput.js';
 import { MultipleChoiceCard } from './components/MultipleChoiceCard.js';
@@ -176,7 +176,9 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
 
   return (
     <div className="font-pretendard mx-auto w-full max-w-2xl px-4 py-6">
-      <QuizProgressBar current={currentIndex + 1} total={total} />
+      <div className="mb-6">
+        <ItemProgressBar current={currentIndex + 1} total={total} />
+      </div>
 
       {/* 사진 힌트는 데일리(기억 회상) 항목에서만 노출 */}
       {currentItem.kind === 'daily' && photoUrl !== null && (
