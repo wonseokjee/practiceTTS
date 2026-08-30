@@ -1174,7 +1174,13 @@ export class QuizService {
         subtest: r.subtest,
         itemRef: r.itemRef,
         isCorrect: r.isCorrect,
-        assisted: r.assisted ?? false,
+        // 단서를 한 칸이라도 받았으면 assisted도 참이다(E18). 기존 통계가
+        // `NOT r.assisted`로 거르고 있어 그 뜻을 유지해야 마이그레이션이 무해하다.
+        // 클라이언트가 assisted만 보내던 시절의 요청도 그대로 동작한다.
+        assisted: (r.assisted ?? false) || (r.cueLevel ?? 0) >= 1,
+        // 이름대기만 보낸다. 다른 검사에서 오면 뜻이 없으므로 떨군다 —
+        // foilKind를 정답 행에서 떨구는 것과 같은 이유다.
+        cueLevel: r.subtest === 'naming' ? (r.cueLevel ?? null) : null,
         metric: r.metric ?? null,
         score: r.score ?? null,
         presentedLevel: serverLevel,

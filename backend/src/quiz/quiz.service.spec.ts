@@ -1666,6 +1666,65 @@ describe('QuizService', () => {
       expect(savedRows[1]).toMatchObject({ subtest: 'ddk', metric: 11 });
     });
 
+    // ── 단서 위계 (E18) ────────────────────────────────────────
+    it('cueLevel을 저장하고, 1 이상이면 assisted도 함께 참으로 둔다', async () => {
+      // assisted를 대체하지 않는 게 요점이다. 기존 통계 세 곳이 `NOT r.assisted`로
+      // 거르고 있어, 단서를 받은 문항이 정답률에 섞이면 그 값의 뜻이 바뀐다.
+      skillLevelRepo.find.mockResolvedValue([]);
+      qabResultRepo.save.mockResolvedValue([]);
+      const dto: SubmitQabResultsDto = {
+        sessionToken: SESSION_TOKEN,
+        results: [
+          { subtest: 'naming', itemRef: 'n_1', isCorrect: true, cueLevel: 0 },
+          { subtest: 'naming', itemRef: 'n_2', isCorrect: true, cueLevel: 3 },
+        ],
+      };
+
+      await service.saveQabResults(PATIENT_ID, dto);
+
+      const rows = qabResultRepo.create.mock.calls.map((c) => c[0]);
+      // 무단서 정답은 도움이 아니다 — 정답률에 들어가야 한다.
+      expect(rows[0]).toMatchObject({ cueLevel: 0, assisted: false });
+      expect(rows[1]).toMatchObject({ cueLevel: 3, assisted: true });
+    });
+
+    it('이름대기가 아닌 검사의 cueLevel은 떨군다', async () => {
+      // 다른 검사에는 단서 개념이 없다. 값이 들어오면 "단서 없이 맞힌 행"으로
+      // 집계에 끼어든다 — foilKind를 정답 행에서 떨구는 것과 같은 이유다.
+      skillLevelRepo.find.mockResolvedValue([]);
+      qabResultRepo.save.mockResolvedValue([]);
+      const dto: SubmitQabResultsDto = {
+        sessionToken: SESSION_TOKEN,
+        results: [
+          { subtest: 'word', itemRef: 'qw_001', isCorrect: true, cueLevel: 0 },
+        ],
+      };
+
+      await service.saveQabResults(PATIENT_ID, dto);
+
+      expect(qabResultRepo.create.mock.calls[0][0]).toMatchObject({
+        cueLevel: null,
+      });
+    });
+
+    it('cueLevel을 안 보내던 클라이언트도 그대로 동작한다', async () => {
+      skillLevelRepo.find.mockResolvedValue([]);
+      qabResultRepo.save.mockResolvedValue([]);
+      const dto: SubmitQabResultsDto = {
+        sessionToken: SESSION_TOKEN,
+        results: [
+          { subtest: 'naming', itemRef: 'n_1', isCorrect: true, assisted: true },
+        ],
+      };
+
+      await service.saveQabResults(PATIENT_ID, dto);
+
+      expect(qabResultRepo.create.mock.calls[0][0]).toMatchObject({
+        cueLevel: null,
+        assisted: true,
+      });
+    });
+
     it('재제출 멱등을 ON CONFLICT DO NOTHING으로 얻는다 — 예외를 내지 않는다', async () => {
       // 예전에는 UNIQUE 위반을 try/catch로 삼켰는데, PostgreSQL에서 그건 멱등이
       // 아니다. 트랜잭션 안에서 에러가 나는 순간 abort 상태가 되어, 바로 뒤의
