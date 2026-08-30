@@ -1040,6 +1040,55 @@ test 단어        0 →  146
 7GB만 받으면 위 최저점 자체가 안 생긴다. 전체 zip을 받아야 한다면 `unzip`은
 멤버 선택 해제가 되므로 전체를 풀 필요는 없다.
 
+### 결정 — test를 확장한다 (2026-08-30, 데이터 받기 **전에** 못 박음)
+
+4절이 "test 확대는 baseline을 다시 찍을 각오가 설 때 **한 번만** 한다"고 해 뒀다.
+단어 화자가 26 → 112명이 되는 지금이 그 한 번이다. **결과를 보고 정하면
+자기합리화이므로 받기 전에 적는다.**
+
+**그런데 대가가 생각보다 작다.** `split_speakers_persisted`는 기존 배정을 절대
+바꾸지 않고 신규 화자로만 채운다("test는 절대 건드리지 않는다" — 코드 주석).
+따라서 **현행 test 10화자가 그대로 남고, 옛 시험지는 새 시험지의 부분집합이 된다.**
+
+현행 test 화자: `KHJ KJO KMY LBH LHH LJI LSY OTK PSM PUJ`
+
+→ **7차재현의 test 수치는 폐기되지 않는다.** 그 10화자만 골라 재면 계속 인용할 수
+있다. 새 test는 그 위에 해상도를 얹는 것이다. "기준선 리셋"이라는 대가는 **보고
+방식을 바꾸면 사라진다** — 앞으로 test는 두 벌로 낸다.
+
+| 보고 | 대상 | 쓰임 |
+|---|---|---|
+| **test-core** | 옛 10화자 (단어 146 · 문장 271) | 7차재현까지와 가로 비교 |
+| **test-full** | 28화자(예상) | 앞으로의 1급 지표. 해상도가 높다 |
+
+**배정 예상** (신규 단어 화자 86명, 기존 52명 → 총 138명)
+
+| | 화자 | 단어 세그(추정) |
+|---|---|---|
+| train | 37 → **96** | 1209 → 약 5129 |
+| dev | 5 → **14** | 160 → 약 758 |
+| test | 10 → **28** | 146 → 약 1342 |
+
+> 세그먼트 수는 TS01 실측(단어 70파일 → 1515세그 = 21.6세그/파일)을 264파일에
+> 적용한 **추정**이다. refine 수율이 다르면 어긋난다. 실행 후 실측으로 갱신할 것.
+
+**이걸로 두 측정 문제가 다 풀린다.**
+
+| 지표 | 지금 | 확장 후(추정) |
+|---|---|---|
+| dev 단어 CER 재현오차 | 0.037 | 약 **0.017** |
+| test 단어 정확도 95% CI | ±5.5%p | 약 **±2.1%p** |
+
+여전히 완벽하진 않다 — 0.017은 8차가 잡은 효과(0.0124)보다 크다. 단어 판정은
+**test-full의 통과율**(이항, ±2.1%p)로 하는 쪽이 dev CER보다 낫다.
+
+**패키징 명령에서 `--test-speaker-frac`을 명시한다.** `prepare_colab_trainset`의
+기본값이 0.2라 안 주면 확장이 **저절로** 일어난다. 얼리려면 0을 줘야 한다.
+`--min-sec` 함정과 같은 종류다 — 기본값에 기대면 의도가 기록에 안 남는다.
+
+- 확장(이번 결정): `--test-speaker-frac 0.2`
+- 얼리기(안 고름): `--test-speaker-frac 0`
+
 ### 왜 이게 9차의 답인가
 
 9차는 **같은 단어 클립 1209개를 3번 보여주는 것**이 소용없음을 보였다. 정보가
@@ -1101,7 +1150,7 @@ TS01.zip (원본 425 wav)
 
 ```bash
 W=~/Downloads/608-audio-work
-ai-service/venv/Scripts/python.exe scripts/asr_eval/prepare_colab_trainset.py   --segments "$W/_segs_merged_all6.jsonl"   --seg-root "$W"   --out-dir  "$W/colab_trainset_big6"   --split-file "$W/speaker_split.json"   --dev-speaker-frac 0.1   --min-sec 0.3 --max-sec 30   --zip
+ai-service/venv/Scripts/python.exe scripts/asr_eval/prepare_colab_trainset.py   --segments "$W/_segs_merged_all6.jsonl"   --seg-root "$W"   --out-dir  "$W/colab_trainset_big6"   --split-file "$W/speaker_split.json"   --test-speaker-frac 0.2   --dev-speaker-frac 0.1   --min-sec 0.3 --max-sec 30   --zip
 ```
 
 정상 출력(2026-08-17 재패키징 실측):
