@@ -76,6 +76,15 @@ STYLE_ONLY = (
 
 
 def env_value(key: str) -> str:
+    """환경변수를 먼저 보고, 없으면 `ai-service/.env`를 읽는다.
+
+    `.env`는 gitignore라 워크트리에는 없다. 워크트리에서 돌릴 때는
+    `GEMINI_API_KEY=... python scripts/...` 처럼 넘기거나, 본 저장소의 .env를
+    `--env`로 가리키면 된다.
+    """
+    from_environ = os.getenv(key, "").strip()
+    if from_environ:
+        return from_environ
     if not ENV_PATH.exists():
         return ""
     for line in ENV_PATH.read_text(encoding="utf-8").splitlines():
@@ -102,7 +111,12 @@ def main() -> int:
     )
     ap.add_argument("--n", type=int, default=3, help="후보 장수")
     ap.add_argument("--dest", default=None, help="후보를 쌓을 폴더")
+    ap.add_argument("--env", default=None, help="ai-service/.env 경로(워크트리용)")
     args = ap.parse_args()
+
+    global ENV_PATH
+    if args.env:
+        ENV_PATH = Path(args.env)
 
     if args.mode != "none" and not args.ref:
         print("[!] --mode %s 에는 --ref 가 필요하다" % args.mode)
