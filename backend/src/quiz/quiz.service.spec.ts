@@ -2567,6 +2567,7 @@ describe('QuizService', () => {
             total: '4',
             correct: '3',
             assisted: '1',
+            unscored: '0',
             avgMetric: null,
             maxMetric: null,
             avgScore: '82.4',
@@ -2577,6 +2578,7 @@ describe('QuizService', () => {
             total: '2',
             correct: '1',
             assisted: '0',
+            unscored: '0',
             avgMetric: '9.5',
             maxMetric: '11',
             avgScore: null,
@@ -2598,6 +2600,7 @@ describe('QuizService', () => {
           correct: 3,
           accuracy: 75,
           assisted: 1,
+          unscored: 0,
           avgMetric: null,
           maxMetric: null,
           avgScore: 82,
@@ -2615,6 +2618,7 @@ describe('QuizService', () => {
           correct: 1,
           accuracy: 50,
           assisted: 0,
+          unscored: 0,
           avgMetric: 9.5,
           maxMetric: 11,
           avgScore: null,
@@ -2624,6 +2628,55 @@ describe('QuizService', () => {
           cueScored: 0,
         },
       ]);
+    });
+
+    it('채점 불가는 정확도 분모 밖에 있고, 건수로만 보인다', async () => {
+      // 3문항 중 2개만 채점됐고 그 2개를 다 맞혔다면 정확도는 100%다.
+      // 못 잰 1개를 분모에 넣으면 67%가 되는데, 그건 환자가 틀렸다는 뜻이
+      // 되어 버린다 — 실제로는 채점기가 실패한 것이다.
+      const qb = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([
+          {
+            subtest: 'repeat',
+            total: '2',
+            correct: '2',
+            assisted: '0',
+            unscored: '1',
+            avgMetric: null,
+            maxMetric: null,
+            avgScore: '88',
+            lastAt: new Date('2026-06-22T00:00:00.000Z'),
+          },
+        ]),
+      };
+      qabResultRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const res = await service.getQabSummary(PATIENT_ID);
+
+      expect(res.items[0]).toMatchObject({
+        total: 2,
+        correct: 2,
+        accuracy: 100,
+        unscored: 1,
+      });
+      // 분모/분자 SQL 양쪽에 unscored 제외가 들어가 있어야 한다.
+      const selects = (qb.addSelect.mock.calls as unknown[][]).map((c) =>
+        String(c[0]),
+      );
+      expect(
+        selects.some((s) => s.includes('NOT r.assisted AND NOT r.unscored')),
+      ).toBe(true);
+      expect(
+        selects.some(
+          (s) =>
+            s.includes('r.is_correct') &&
+            s.includes('NOT r.assisted AND NOT r.unscored'),
+        ),
+      ).toBe(true);
     });
 
     it('데이터가 없으면 빈 배열', async () => {

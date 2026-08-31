@@ -232,6 +232,9 @@ function isQabSubtestSummary(value: unknown): value is QabSubtestSummary {
     typeof obj.correct === 'number' &&
     typeof obj.accuracy === 'number' &&
     typeof obj.assisted === 'number' &&
+    // unscored는 뒤늦게 생긴 필드라 없을 수도 있다(구버전 서버). 없다고 응답
+    // 전체를 버리면 보호자 화면이 통째로 안 뜬다 — 아래에서 0으로 채운다.
+    (obj.unscored === undefined || typeof obj.unscored === 'number') &&
     (obj.avgMetric === null || typeof obj.avgMetric === 'number') &&
     (obj.maxMetric === null || typeof obj.maxMetric === 'number') &&
     (obj.avgScore === null || typeof obj.avgScore === 'number') &&
@@ -369,7 +372,9 @@ export const quizApi: IQuizApi = {
     if (!Array.isArray(items) || !items.every(isQabSubtestSummary)) {
       throw new Error(INVALID_RESPONSE_MESSAGE);
     }
-    return items;
+    // 구버전 서버가 unscored를 안 주면 0으로 본다 — "채점 못한 게 없다"가
+    // 그 시절의 사실이다(폴백 채점이 전부 점수를 만들어 냈으므로).
+    return items.map((it) => ({ ...it, unscored: it.unscored ?? 0 }));
   },
 
   async getQabTrend(weeks?: number): Promise<QabTrendSeries[]> {

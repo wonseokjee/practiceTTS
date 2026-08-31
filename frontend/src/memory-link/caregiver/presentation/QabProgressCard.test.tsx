@@ -12,6 +12,7 @@ function summary(overrides?: Partial<QabSubtestSummary>): QabSubtestSummary {
     correct: 3,
     accuracy: 75,
     assisted: 0,
+    unscored: 0,
     avgMetric: null,
     maxMetric: null,
     avgScore: null,
@@ -86,6 +87,27 @@ describe('QabProgressCard — 단서량 (E18)', () => {
 });
 
 describe('QabProgressCard', () => {
+  it('채점하지 못한 문항 수를 함께 보여준다', async () => {
+    // 분모에서 뺐으므로 (3/4)와 "몇 번 했나"가 어긋난다. 그 어긋남을 설명하지
+    // 않으면 보호자는 기록이 빠진 줄 안다. 채점 실패가 이어져도 아무도 모른다.
+    const fetchSummary = vi.fn().mockResolvedValue([summary({ unscored: 2 })]);
+    render(<QabProgressCard fetchSummary={fetchSummary} />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/못 잰 2회/)).toBeInTheDocument(),
+    );
+  });
+
+  it('채점하지 못한 문항이 없으면 그 표기는 나오지 않는다', async () => {
+    const fetchSummary = vi.fn().mockResolvedValue([summary()]);
+    render(<QabProgressCard fetchSummary={fetchSummary} />);
+
+    await waitFor(() =>
+      expect(screen.getByText('단어 이해')).toBeInTheDocument(),
+    );
+    expect(screen.queryByText(/못 잰/)).not.toBeInTheDocument();
+  });
+
   it('데이터가 있으면 검사별 정답률을 표시한다', async () => {
     const fetchSummary = vi.fn().mockResolvedValue([summary()]);
     render(<QabProgressCard fetchSummary={fetchSummary} />);

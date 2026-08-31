@@ -5,6 +5,7 @@
 //  - QAB 선택: 로컬 채점(isCorrect), 정답/오답 라벨
 //  - 데일리 제출: 백엔드 submitAttempts 호출 + 결과 반영
 //  - 진행/완료: next로 끝까지 → result, sessionScore = 정답/총 *100
+//  - 발화 채점: **음향 발음 평가만**이 채점한다. 없으면 채점 불가(문자열 폴백 없음)
 
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
@@ -17,8 +18,27 @@ import type {
   QabSpellItem,
 } from '../domain/MixedQuiz.js';
 import type { QuizSetDetail } from '../domain/Quiz.js';
+import type { AzurePronunciationScores } from '../domain/pronunciationScore.js';
 
 const QUIZ_SET_ID = 'set-1';
+
+/**
+ * 음향 발음 평가 점수. 발화 문항 채점의 **유일한** 입력이다 — 이걸 안 주면
+ * (azure=null) 채점되지 않고 채점 불가로 남는다.
+ */
+function azureScores(accuracy: number): AzurePronunciationScores {
+  return {
+    accuracyScore: accuracy,
+    fluencyScore: accuracy,
+    completenessScore: 100,
+    pronunciationScore: accuracy,
+    prosodyScore: null,
+  };
+}
+/** 정답 처리되는 점수(단어 90, 문장 종합 94). */
+const PASS = azureScores(90);
+/** 오답 처리되는 점수(단어 20, 문장 종합 52 — 둘 다 good 경계 60 미만). */
+const MISS = azureScores(20);
 
 /** 데일리 2문제짜리 상세(객관식 1 + 빈칸 1) */
 function makeDetail(): QuizSetDetail {
@@ -168,6 +188,20 @@ function renderMixed(api: IQuizApi) {
   );
 }
 
+/** 산출 과제(음성·글자조합·DDK) 카운트를 모두 0으로 끄는 공통 옵션. */
+const NO_SPEECH = {
+  pickNamingItems: () => [],
+  pickRepeatItems: () => [],
+  pickReadingItems: () => [],
+  pickSpellItems: () => [],
+  pickDdkItems: () => [],
+  namingCount: 0,
+  repeatCount: 0,
+  readingCount: 0,
+  spellCount: 0,
+  ddkCount: 0,
+} as const;
+
 describe('useMixedQuizSession', () => {
   beforeEach(() => vi.clearAllMocks());
 
@@ -230,7 +264,7 @@ describe('useMixedQuizSession', () => {
     }
   });
 
-  it('그림 이름대기를 포함해 total을 늘리고 STT로 로컬 채점한다', async () => {
+  it('그림 이름대기를 포함해 total을 늘리고 음향 점수로 채점한다', async () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
@@ -248,8 +282,8 @@ describe('useMixedQuizSession', () => {
     expect(result.current[0].total).toBe(1);
     expect(result.current[0].currentItem?.kind).toBe('naming');
 
-    // 관대 채점: "사과요" → "사과" 정답 처리
-    act(() => result.current[1].submitNaming('사과요'));
+    // 전사가 아니라 음소 정확도로 채점한다 — 전사는 참고일 뿐이다.
+    act(() => result.current[1].submitNaming('사과요', PASS));
     await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
     expect(result.current[0].lastResult?.isCorrect).toBe(true);
     expect(result.current[0].lastResult?.correctLabel).toBe('사과');
@@ -270,7 +304,7 @@ describe('useMixedQuizSession', () => {
     );
     await waitFor(() => expect(result.current[0].phase).toBe('answering'));
 
-    act(() => result.current[1].submitNaming('바나나'));
+    act(() => result.current[1].submitNaming('바나나', MISS));
     await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
     expect(result.current[0].lastResult?.isCorrect).toBe(false);
   });
@@ -461,8 +495,8 @@ describe('useMixedQuizSession', () => {
     );
     await waitFor(() => expect(result.current[0].phase).toBe('answering'));
 
-    // 자동 채점: 완전히 다른 전사 + azure 없음 → 오답
-    act(() => result.current[1].submitNaming('바나나'));
+    // 자동 채점: 음소 정확도가 낮아 오답
+    act(() => result.current[1].submitNaming('바나나', MISS));
     await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
     expect(result.current[0].lastResult?.isCorrect).toBe(false);
 
@@ -480,7 +514,15 @@ describe('useMixedQuizSession', () => {
       'tok-1',
       // cueLevel 0 = 힌트를 한 번도 안 눌렀다. '미보조'라는 이 테스트의
       // 취지를 숫자로도 못 박는다(E18).
-      [{ subtest: 'naming', itemRef: 'naming_n1', isCorrect: true, cueLevel: 0 }],
+      [
+        {
+          subtest: 'naming',
+          itemRef: 'naming_n1',
+          isCorrect: true,
+          score: 20,
+          cueLevel: 0,
+        },
+      ],
       1,
       true, // 마지막 문항 → 세션 자연 종료 → 완료 마커
       undefined, // 이름대기는 비레벨 검사라 보고할 눈높이가 없다
@@ -614,7 +656,7 @@ describe('useMixedQuizSession', () => {
 
     // 3연속 오답
     for (let i = 0; i < 3; i += 1) {
-      act(() => result.current[1].submitNaming('전혀다른말'));
+      act(() => result.current[1].submitNaming('전혀다른말', MISS));
       await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
       expect(result.current[0].lastResult?.isCorrect).toBe(false);
       act(() => result.current[1].next());
@@ -646,9 +688,9 @@ describe('useMixedQuizSession', () => {
     await waitFor(() => expect(result.current[0].phase).toBe('answering'));
 
     // 오답, 오답, 정답(리셋), 오답 → 최대 연속 2 → 조기 종료 안 함
-    const answers = ['틀린말', '틀린말', '사과', '틀린말'];
+    const answers = [MISS, MISS, PASS, MISS];
     for (let i = 0; i < answers.length; i += 1) {
-      act(() => result.current[1].submitNaming(answers[i]));
+      act(() => result.current[1].submitNaming('사과', answers[i]));
       await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
       act(() => result.current[1].next());
     }
@@ -682,7 +724,7 @@ describe('useMixedQuizSession', () => {
     await waitFor(() => expect(result.current[0].phase).toBe('answering'));
 
     for (let i = 0; i < 3; i += 1) {
-      act(() => result.current[1].submitNaming('전혀다른말')); // 오채점(오답)
+      act(() => result.current[1].submitNaming('전혀다른말', MISS)); // 오채점(오답)
       await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
       act(() => result.current[1].overrideSpeechVerdict(true)); // 보호자 정정
       act(() => result.current[1].next());
@@ -717,7 +759,7 @@ describe('useMixedQuizSession', () => {
     expect(result.current[0].sessionScore).toBe(100);
   });
 
-  it('따라말하기(repeat)는 WER로 로컬 채점한다', async () => {
+  it('따라말하기(repeat)는 음향 점수로 채점한다', async () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
@@ -740,12 +782,12 @@ describe('useMixedQuizSession', () => {
     await waitFor(() => expect(result.current[0].phase).toBe('answering'));
     expect(result.current[0].currentItem?.kind).toBe('repeat');
 
-    act(() => result.current[1].submitSpeech('오늘 날씨가 좋아요'));
+    act(() => result.current[1].submitSpeech('오늘 날씨가 좋아요', PASS));
     await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
     expect(result.current[0].lastResult?.isCorrect).toBe(true);
   });
 
-  it('보호자 정정은 따라말하기(repeat)에도 적용된다(발음평가 폴백 보정)', async () => {
+  it('보호자 정정은 따라말하기(repeat)에도 적용된다(경계 사례 보정)', async () => {
     const submitQabResults = vi.fn().mockResolvedValue({ saved: 1 });
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
@@ -768,8 +810,8 @@ describe('useMixedQuizSession', () => {
     );
     await waitFor(() => expect(result.current[0].phase).toBe('answering'));
 
-    // 발음평가 없이 문자열 폴백 → 완전히 다른 전사라 오답
-    act(() => result.current[1].submitSpeech('바나나'));
+    // 음소 정확도가 낮아 오답
+    act(() => result.current[1].submitSpeech('바나나', MISS));
     await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
     expect(result.current[0].lastResult?.isCorrect).toBe(false);
 
@@ -789,7 +831,7 @@ describe('useMixedQuizSession', () => {
     );
   });
 
-  it('소리 내어 읽기(reading)는 어절 단위 WER로 채점한다', async () => {
+  it('소리 내어 읽기(reading)도 음향 점수로 채점한다', async () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
@@ -811,8 +853,8 @@ describe('useMixedQuizSession', () => {
     await waitFor(() => expect(result.current[0].phase).toBe('answering'));
     expect(result.current[0].currentItem?.kind).toBe('reading');
 
-    // 전혀 다른 발화 → 오답
-    act(() => result.current[1].submitSpeech('전혀 다른 말이에요'));
+    // 음소 정확도가 낮아 오답
+    act(() => result.current[1].submitSpeech('전혀 다른 말이에요', MISS));
     await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
     expect(result.current[0].lastResult?.isCorrect).toBe(false);
   });
@@ -835,7 +877,7 @@ describe('useMixedQuizSession', () => {
     await waitFor(() => expect(result.current[0].phase).toBe('answering'));
 
     // 1) 오답 → 피드백
-    act(() => result.current[1].submitSpeech('전혀 다른 말이에요'));
+    act(() => result.current[1].submitSpeech('전혀 다른 말이에요', MISS));
     await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
     expect(result.current[0].lastResult?.isCorrect).toBe(false);
 
@@ -846,7 +888,7 @@ describe('useMixedQuizSession', () => {
     expect(result.current[0].lastResult).toBeNull();
 
     // 3) 이번엔 정답 → 피드백
-    act(() => result.current[1].submitSpeech('산 위에 해가 떠올라요'));
+    act(() => result.current[1].submitSpeech('산 위에 해가 떠올라요', PASS));
     await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
     expect(result.current[0].lastResult?.isCorrect).toBe(true);
 
@@ -854,6 +896,224 @@ describe('useMixedQuizSession', () => {
     act(() => result.current[1].next());
     await waitFor(() => expect(result.current[0].phase).toBe('result'));
     expect(result.current[0].sessionScore).toBe(100);
+  });
+
+  it('음향 점수가 없으면 채점하지 않는다 — 판정도 점수도 남기지 않는다', async () => {
+    // 1단계의 핵심. 예전에는 여기서 문자열 근접도 채점으로 폴백해 점수를
+    // 만들어 냈다. 그 자는 음향 채점기와 순위상관 −0.376으로, 같은 것을
+    // 재지 않는다(0단계 측정 C, 기준 0.6 실패).
+    const submitQabResults = vi.fn().mockResolvedValue({ saved: 1 });
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi({ submitQabResults }),
+        pickWordItems: () => [],
+        pickSentItems: () => [],
+        generateSessionToken: () => 'tok-1',
+        dailyCount: 0,
+        wordCount: 0,
+        sentenceCount: 0,
+        ...NO_SPEECH,
+        pickNamingItems: () => makeNamingItems(),
+        namingCount: 1,
+      }),
+    );
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    act(() => result.current[1].submitNaming('사과'));
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+
+    // 오답(false)이 아니라 판정 없음(null)이다. 화면은 이 셋을 구분해야 한다.
+    expect(result.current[0].lastResult?.isCorrect).toBeNull();
+    // 등급도 없다 — 등급은 점수에서 나오는데 점수가 없다.
+    expect(result.current[0].lastResult?.grade).toBeUndefined();
+    // 환자에게는 격려만 한다(비처벌). 잘잘못을 말하지 않는다.
+    expect(result.current[0].lastResult?.encouragement).toContain('더 해볼까요');
+
+    act(() => result.current[1].next());
+    await waitFor(() => expect(result.current[0].phase).toBe('result'));
+
+    // 채점된 문항이 없으므로 분모가 0이다 — 0/1로 0점을 주지 않는다.
+    expect(result.current[0].sessionScore).toBe(0);
+    // 행은 남긴다(채점 실패율 관측). score는 없고 unscored가 붙는다.
+    expect(submitQabResults).toHaveBeenCalledWith(
+      'tok-1',
+      [
+        {
+          subtest: 'naming',
+          itemRef: 'naming_n1',
+          isCorrect: false,
+          cueLevel: 0,
+          unscored: true,
+        },
+      ],
+      1,
+      true,
+      undefined, // 이름대기는 비레벨 검사라 보고할 눈높이가 없다
+    );
+  });
+
+  it('채점 불가는 세션 점수의 분모에서 빠진다', async () => {
+    const twoNaming: QabNamingItem[] = [
+      { itemId: 'naming_a', imageUrl: '/a.svg', targetWord: '사과', instruction: 'x' },
+      { itemId: 'naming_b', imageUrl: '/b.svg', targetWord: '바나나', instruction: 'x' },
+    ];
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi(),
+        pickWordItems: () => [],
+        pickSentItems: () => [],
+        generateSessionToken: () => 'tok-1',
+        dailyCount: 0,
+        wordCount: 0,
+        sentenceCount: 0,
+        ...NO_SPEECH,
+        pickNamingItems: () => twoNaming,
+        namingCount: 2,
+      }),
+    );
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    // 1번은 채점돼 정답, 2번은 채점 불가.
+    act(() => result.current[1].submitNaming('사과', PASS));
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    act(() => result.current[1].next());
+    act(() => result.current[1].submitNaming('바나나'));
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    act(() => result.current[1].next());
+
+    await waitFor(() => expect(result.current[0].phase).toBe('result'));
+    // 1/1 = 100. 못 잰 문항을 오답으로 세면 50이 되는데, 그건 채점기가
+    // 흔들린 날마다 환자 점수가 떨어진다는 뜻이다.
+    expect(result.current[0].sessionScore).toBe(100);
+  });
+
+  it('채점 불가는 연속 오답으로 세지 않는다 — 피로 탈출이 발동하지 않는다', async () => {
+    const fourNaming: QabNamingItem[] = [1, 2, 3, 4].map((n) => ({
+      itemId: `naming_${n}`,
+      imageUrl: `/${n}.svg`,
+      targetWord: '사과',
+      instruction: 'x',
+    }));
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi(),
+        pickWordItems: () => [],
+        pickSentItems: () => [],
+        generateSessionToken: () => 'tok-1',
+        dailyCount: 0,
+        wordCount: 0,
+        sentenceCount: 0,
+        ...NO_SPEECH,
+        pickNamingItems: () => fourNaming,
+        namingCount: 4,
+      }),
+    );
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    // 서버가 3번 내리 죽어도 그건 환자의 좌절이 아니다. 조기 종료는 연속
+    // **오답**에 대한 배려이지 연속 장애에 대한 것이 아니다.
+    for (let i = 0; i < 3; i += 1) {
+      act(() => result.current[1].submitNaming('사과'));
+      await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+      act(() => result.current[1].next());
+    }
+
+    expect(result.current[0].phase).toBe('answering');
+    expect(result.current[0].currentIndex).toBe(3);
+  });
+
+  it('보호자가 채점 불가를 판정하면 채점된 것으로 바뀐다(점수는 없이)', async () => {
+    // 기계가 판정을 못 낸 자리에서 보호자는 폴백이 아니라 유일하게 남은
+    // 잣대다 — 사람이 직접 듣고 낸 판정이라 "다른 것을 재는" 문제가 없다.
+    const submitQabResults = vi.fn().mockResolvedValue({ saved: 1 });
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi({ submitQabResults }),
+        pickWordItems: () => [],
+        pickSentItems: () => [],
+        generateSessionToken: () => 'tok-1',
+        dailyCount: 0,
+        wordCount: 0,
+        sentenceCount: 0,
+        ...NO_SPEECH,
+        pickNamingItems: () => makeNamingItems(),
+        namingCount: 1,
+      }),
+    );
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    act(() => result.current[1].submitNaming('사과'));
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    expect(result.current[0].lastResult?.isCorrect).toBeNull();
+
+    act(() => result.current[1].overrideSpeechVerdict(true));
+    expect(result.current[0].lastResult?.isCorrect).toBe(true);
+
+    act(() => result.current[1].next());
+    await waitFor(() => expect(result.current[0].phase).toBe('result'));
+    expect(result.current[0].sessionScore).toBe(100);
+    // unscored가 떨어졌으므로 정확도 집계에 들어간다. 점수(score)는 여전히
+    // 없다 — 보호자는 정오답을 말했지 0~100점을 말한 게 아니다.
+    expect(submitQabResults).toHaveBeenCalledWith(
+      'tok-1',
+      [
+        {
+          subtest: 'naming',
+          itemRef: 'naming_n1',
+          isCorrect: true,
+          cueLevel: 0,
+        },
+      ],
+      1,
+      true,
+      undefined, // 이름대기는 비레벨 검사라 보고할 눈높이가 없다
+    );
+  });
+
+  it('보호자가 채점 불가를 오답으로 판정해도 판정이 생긴다', async () => {
+    // 자리표시로 들어 있던 false와 사람이 내린 false는 다르다. 뒤엣것은
+    // 정확도 분모에 들어가야 한다.
+    const submitQabResults = vi.fn().mockResolvedValue({ saved: 1 });
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi({ submitQabResults }),
+        pickWordItems: () => [],
+        pickSentItems: () => [],
+        generateSessionToken: () => 'tok-1',
+        dailyCount: 0,
+        wordCount: 0,
+        sentenceCount: 0,
+        ...NO_SPEECH,
+        pickNamingItems: () => makeNamingItems(),
+        namingCount: 1,
+      }),
+    );
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    act(() => result.current[1].submitNaming('사과'));
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+
+    act(() => result.current[1].overrideSpeechVerdict(false));
+    expect(result.current[0].lastResult?.isCorrect).toBe(false);
+
+    act(() => result.current[1].next());
+    await waitFor(() => expect(result.current[0].phase).toBe('result'));
+    // 0/1 = 0점이지만, 이번엔 그 0이 "못했다"라는 사람의 판정이다.
+    expect(result.current[0].sessionScore).toBe(0);
+    expect(submitQabResults).toHaveBeenCalledWith(
+      'tok-1',
+      [
+        {
+          subtest: 'naming',
+          itemRef: 'naming_n1',
+          isCorrect: false,
+          cueLevel: 0,
+        },
+      ],
+      1,
+      true,
+      undefined, // 이름대기는 비레벨 검사라 보고할 눈높이가 없다
+    );
   });
 
   it('말운동(ddk)은 목표 횟수 이상이면 통과한다', async () => {
@@ -1445,7 +1705,9 @@ describe('보호자 넘어가기는 환자 수행이 아니다 (E12)', () => {
   }
 
   async function 틀린다(result: 세션) {
-    act(() => result.current[1].submitNaming('전혀다른말'));
+    // MISS를 함께 준다. 음향 점수가 없으면 오답이 아니라 채점 불가가 되어
+    // 이 절이 재려는 것(넘어가기가 연속 오답을 끊는가)을 못 재게 된다.
+    act(() => result.current[1].submitNaming('전혀다른말', MISS));
     await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
     act(() => result.current[1].next());
   }
@@ -1499,7 +1761,7 @@ describe('보호자 넘어가기는 환자 수행이 아니다 (E12)', () => {
     const { result } = 이름대기세션(3);
     await waitFor(() => expect(result.current[0].phase).toBe('answering'));
 
-    act(() => result.current[1].submitNaming('사과'));
+    act(() => result.current[1].submitNaming('사과', PASS));
     await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
     act(() => result.current[1].next());
     await waitFor(() => expect(result.current[0].phase).toBe('answering'));

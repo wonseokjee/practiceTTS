@@ -67,6 +67,13 @@ export class QabResultItemDto {
   @IsBoolean()
   assisted?: boolean;
 
+  // 채점 불가 — 음향 발음 평가를 얻지 못해 판정을 내리지 않은 문항.
+  // true면 isCorrect는 무의미하며(false로 온다) 정확도 분모에서 빠진다.
+  // "못 쟀다"를 "못했다"로 기록하지 않기 위한 플래그다.
+  @IsOptional()
+  @IsBoolean()
+  unscored?: boolean;
+
   // 이름대기에서 몇 단계까지 단서를 받았나(E18). 없으면 단서 개념이 없는 검사다.
   //   0 무단서 · 1 의미 · (2 문장 완성 — 미구현) · 3 음소 · 4 통과
   // 2를 허용 범위에 남겨 둔 이유는 M25 주석 참고.

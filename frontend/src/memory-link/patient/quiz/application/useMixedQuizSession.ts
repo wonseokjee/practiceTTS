@@ -22,10 +22,9 @@ import type {
   QabRepeatItem,
   QabSpellItem,
 } from '../domain/MixedQuiz.js';
-import { isNameMatch } from '../domain/nameMatch.js';
 import {
-  evaluateSpeech,
   evaluateFromAzure,
+  type SpeechAssessment,
   type AzurePronunciationScores,
 } from '../domain/pronunciationScore.js';
 import { isDdkPass } from '../domain/ddkScore.js';
@@ -219,7 +218,13 @@ function observed(item: {
 
 /** 답한 문항 하나의 로그. `assisted`는 보호자가 넘긴 문항(환자 수행 아님). */
 interface AnswerLogEntry {
-  isCorrect: boolean;
+  /**
+   * **null은 채점 불가**다 — 오답이 아니라 측정 실패.
+   *
+   * 세션 점수의 분모와 피로 탈출의 연속 오답, 두 군데 모두에서 빠져야 한다.
+   * 못 잰 것을 오답으로 세면 채점기가 흔들린 날마다 환자 점수가 떨어진다.
+   */
+  isCorrect: boolean | null;
   assisted: boolean;
 }
 
@@ -582,6 +587,9 @@ export function useMixedQuizSession(
     let n = 0;
     for (let i = log.length - 1; i >= 0; i -= 1) {
       if (log[i].assisted) continue;
+      // 채점 불가도 투명하게 지나친다. 좌절의 근거는 "틀렸다"이지 "못 쟀다"가
+      // 아니고, 그렇다고 못 잰 문항이 앞선 연속 오답을 지워 주지도 않는다.
+      if (log[i].isCorrect === null) continue;
       if (log[i].isCorrect) break;
       n += 1;
     }
@@ -595,7 +603,11 @@ export function useMixedQuizSession(
       assisted = false,
     ): void => {
       const item = itemsRef.current[indexRef.current];
-      if (item) recordForAdaptation(item, result.isCorrect, assisted);
+      // 채점 불가는 적응의 근거가 아니다 — 맞힌 것도 틀린 것도 아니라서
+      // 승급·강등 어느 쪽으로도 세면 안 된다. 로그에는 null로 남긴다.
+      if (item && result.isCorrect !== null) {
+        recordForAdaptation(item, result.isCorrect, assisted);
+      }
       recentCorrectRef.current.push({ isCorrect: result.isCorrect, assisted });
       phaseRef.current = 'feedback';
       setState((prev) => ({
@@ -676,6 +688,61 @@ export function useMixedQuizSession(
     [applyResult],
   );
 
+  /**
+   * 발화 문항(이름대기·따라말하기·읽기)의 채점 결과를 기록하고 피드백을 낸다.
+   *
+   * 세 곳이 같은 규칙을 써야 하므로 한곳에 모은다 — 어긋나면 그게 곧 폴백이다.
+   * 채점 불가여도 **행은 남긴다.** 채점 실패율을 아무도 못 보면 조용히 망가진다.
+   */
+  const applySpeechAssessment = useCallback(
+    (
+      assessment: SpeechAssessment,
+      opts: {
+        subtest: QabResultInput['subtest'];
+        itemRef: string;
+        correctLabel: string;
+        extra?: Partial<QabResultInput>;
+      },
+    ): void => {
+      const extra = opts.extra ?? {};
+      if (!assessment.scored) {
+        qabResultsRef.current.push({
+          ...extra,
+          subtest: opts.subtest,
+          itemRef: opts.itemRef,
+          isCorrect: false,
+          unscored: true,
+        });
+        applyResult(
+          {
+            isCorrect: null,
+            correctLabel: opts.correctLabel,
+            encouragement: assessment.encouragement,
+          },
+          null,
+        );
+        return;
+      }
+      qabResultsRef.current.push({
+        ...extra,
+        subtest: opts.subtest,
+        itemRef: opts.itemRef,
+        isCorrect: assessment.isCorrect,
+        score: assessment.score,
+      });
+      applyResult(
+        {
+          isCorrect: assessment.isCorrect,
+          correctLabel: opts.correctLabel,
+          grade: assessment.grade,
+          encouragement: assessment.encouragement,
+        },
+        null,
+      );
+    },
+    [applyResult],
+  );
+
   const submitNaming = useCallback(
     (
       transcript: string,
@@ -687,38 +754,24 @@ export function useMixedQuizSession(
       const item = itemsRef.current[indexRef.current];
       if (!item || item.kind !== 'naming') return;
 
-      // 음소 점수가 있으면 실조음 채점(단어 모드), 없으면 문자열 근접도(isNameMatch)로
-      // 폴백. 단어 STT는 매우 불신뢰라, 발음 평가가 있으면 그쪽이 훨씬 공정하다.
-      const evaluation = azure
-        ? evaluateFromAzure(azure, transcript, 'word')
-        : null;
-      const correct = evaluation
-        ? evaluation.isCorrect
-        : isNameMatch(transcript, item.item.targetWord);
-      qabResultsRef.current.push({
+      // 음소 점수로만 채점한다. 없으면 채점 불가 — 예전의 문자열 근접도
+      // (isNameMatch) 폴백은 없앴다. 단어 STT는 실측 CER 0.70이라 그 폴백이
+      // 실제로는 "STT가 알아들었나"를 재고 있었다.
+      applySpeechAssessment(evaluateFromAzure(azure, transcript, 'word'), {
         subtest: 'naming',
         itemRef: item.item.itemId,
-        isCorrect: correct,
-        cueLevel,
-        // 단서를 받았으면 도움받음이다. 기존 통계가 `NOT assisted`로 걸러
-        // 정답률을 내므로, 여기서 참으로 두지 않으면 단서받은 정답이
-        // 무단서 정답과 같은 값에 섞인다.
-        ...(cueLevel >= CUE_SEMANTIC ? { assisted: true } : {}),
-        ...(evaluation ? { score: evaluation.score } : {}),
-        ...observed(item.item),
-      });
-      applyResult(
-        {
-          isCorrect: correct,
-          correctLabel: item.item.targetWord,
-          ...(evaluation
-            ? { grade: evaluation.grade, encouragement: evaluation.encouragement }
-            : {}),
+        correctLabel: item.item.targetWord,
+        extra: {
+          cueLevel,
+          // 단서를 받았으면 도움받음이다. 기존 통계가 `NOT assisted`로 걸러
+          // 정답률을 내므로, 여기서 참으로 두지 않으면 단서받은 정답이
+          // 무단서 정답과 같은 값에 섞인다.
+          ...(cueLevel >= CUE_SEMANTIC ? { assisted: true } : {}),
+          ...observed(item.item),
         },
-        null,
-      );
+      });
     },
-    [applyResult],
+    [applySpeechAssessment],
   );
 
   const submitSpeech = useCallback(
@@ -729,48 +782,21 @@ export function useMixedQuizSession(
 
       if (item.kind === 'repeat') {
         const mode = item.item.category === 'sentence' ? 'sentence' : 'word';
-        // 음소 점수가 있으면 실조음 채점, 없으면 문자열 근접도로 폴백.
-        const evaluation = azure
-          ? evaluateFromAzure(azure, transcript, mode)
-          : evaluateSpeech(transcript, item.item.text, mode);
-        qabResultsRef.current.push({
+        applySpeechAssessment(evaluateFromAzure(azure, transcript, mode), {
           subtest: 'repeat',
           itemRef: item.item.itemId,
-          isCorrect: evaluation.isCorrect,
-          score: evaluation.score,
-          ...observed(item.item),
+          correctLabel: item.item.text,
+          extra: observed(item.item),
         });
-        applyResult(
-          {
-            isCorrect: evaluation.isCorrect,
-            correctLabel: item.item.text,
-            grade: evaluation.grade,
-            encouragement: evaluation.encouragement,
-          },
-          null,
-        );
         return;
       }
       if (item.kind === 'reading') {
-        const evaluation = azure
-          ? evaluateFromAzure(azure, transcript, 'sentence')
-          : evaluateSpeech(transcript, item.item.text, 'sentence');
-        qabResultsRef.current.push({
+        applySpeechAssessment(evaluateFromAzure(azure, transcript, 'sentence'), {
           subtest: 'reading',
           itemRef: item.item.itemId,
-          isCorrect: evaluation.isCorrect,
-          score: evaluation.score,
-          ...observed(item.item),
+          correctLabel: item.item.text,
+          extra: observed(item.item),
         });
-        applyResult(
-          {
-            isCorrect: evaluation.isCorrect,
-            correctLabel: item.item.text,
-            grade: evaluation.grade,
-            encouragement: evaluation.encouragement,
-          },
-          null,
-        );
       }
     },
     [applyResult],
@@ -944,7 +970,15 @@ export function useMixedQuizSession(
       //    되레 좌절을 준다 — 조기 종료의 목적과 반대.
       //  - 보호자가 넘긴 문항은 분자·분모 **양쪽에서** 뺀다. 정답으로 세면 점수가
       //    100점까지 부풀고, 오답으로 세면 도움을 처벌하는 셈이 된다.
-      const answered = recentCorrectRef.current.filter((e) => !e.assisted);
+      // 분모는 **실제로 채점된 문항 수**다. 셋이 빠진다.
+      //  - 피로 탈출로 안 푼 문항: 오답으로 세면(0/10) 배려로 끝낸 세션이
+      //    되레 좌절을 준다 — 조기 종료의 목적과 반대다.
+      //  - 보호자가 넘어가기로 통과시킨 문항(assisted): 환자 수행이 아니다.
+      //  - 채점 불가(isCorrect === null): 못 잰 것을 오답으로 세면 채점기가
+      //    흔들린 날마다 환자 점수가 떨어진다.
+      const answered = recentCorrectRef.current.filter(
+        (e) => !e.assisted && e.isCorrect !== null,
+      );
       const attempted = answered.length;
       const correct = answered.filter((e) => e.isCorrect).length;
       const score =
@@ -1014,8 +1048,14 @@ export function useMixedQuizSession(
     if (!item || !SPEECH_KINDS.includes(item.kind)) return;
     const last = qabResultsRef.current[qabResultsRef.current.length - 1];
     if (!last || !SPEECH_KINDS.includes(last.subtest)) return;
-    if (last.isCorrect === isCorrect) return; // 변화 없음
+    // 채점 불가였다면 값이 같아도 적용한다 — 저장된 false는 판정이 아니라
+    // 자리표시였고, 여기서 처음으로 "오답"이라는 판정이 생긴다.
+    if (last.isCorrect === isCorrect && !last.unscored) return; // 변화 없음
     last.isCorrect = isCorrect;
+    // 사람이 직접 듣고 낸 판정이라 "다른 것을 재는" 문제가 없다. 정확도 집계에
+    // 들어간다. 점수(score)는 여전히 없다 — 사람은 정오답을 말했지 0~100점을
+    // 말한 게 아니다.
+    delete last.unscored;
     // 로그의 마지막 항목도 함께 뒤집는다 — 점수·연속오답이 정정을 반영하게.
     // (안 고치면 정정된 정답인데도 연속오답으로 남아 피로 탈출이 잘못 발동.)
     const log = recentCorrectRef.current;

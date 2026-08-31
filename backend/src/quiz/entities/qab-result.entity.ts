@@ -64,6 +64,19 @@ export class QabResult {
   assisted: boolean;
 
   /**
+   * 채점 불가 — 음향 발음 평가를 얻지 못해 **판정을 내리지 않은** 문항.
+   *
+   * assisted와 다르다. assisted는 "보호자가 도와서 통과시켰다"(수행은 있었으나
+   * 환자 혼자 한 것이 아니다)이고, unscored는 "**잴 수 없었다**"이다. 오답이
+   * 아니라 측정 실패다.
+   *
+   * 이 행의 is_correct는 의미가 없다(false로 들어온다). 집계·레벨링은 반드시
+   * 이 플래그로 걸러야 한다 — 아래 쿼리들이 그렇게 한다.
+   */
+  @Column({ name: 'unscored', type: 'boolean', default: false })
+  unscored: boolean;
+
+  /**
    * 틀렸을 때 고른 오답의 갈래 — 단어이해(word)에만 값이 있다.
    *
    *  - semantic      같은 의미 범주 오답('사과'에 대한 '바나나')

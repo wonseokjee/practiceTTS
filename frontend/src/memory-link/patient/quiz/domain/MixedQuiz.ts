@@ -232,7 +232,14 @@ export function playableSubtest(item: PlayableItem): QabSubtest | null {
 
 /** 항목 채점 결과 (데일리/QAB 공통) */
 export interface PlayResult {
-  isCorrect: boolean;
+  /**
+   * 정오답. **null은 채점 불가**다 — 음향 발음 평가를 얻지 못해 판정 자체를
+   * 내리지 않은 상태이며, 오답(false)이 아니다.
+   *
+   * 화면은 셋을 구분해야 한다. null을 falsy로 뭉뚱그리면 못 잰 문항이 빨간
+   * ✗로 표시된다 — 폴백을 없앤 이유가 정확히 그것이다.
+   */
+  isCorrect: boolean | null;
   /** 피드백에 노출할 정답 표기 (데일리=correctAnswer, QAB=정답 라벨) */
   correctLabel: string | null;
   /** 발음 5단계 등급 (발화 항목만). 어르신 격려 문구 표시에 사용 */

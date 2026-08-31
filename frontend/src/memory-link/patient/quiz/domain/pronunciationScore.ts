@@ -2,10 +2,19 @@
 // 5단계 등급 + 0~100 점수 + 격려 문구로 나눈다.
 //
 // 노출 정책: 어르신에게는 숫자 대신 '격려 문구'만, 보호자에게는 숫자 점수를 보여준다.
-// 주의: 이 점수는 "STT가 인식한 것과 목표의 근접도"이지 순수 조음 정확도가 아니다.
-//       (STT 오인식과 조음 오류를 구분하지 못함) → 격려·진전 추적용, 임상 진단 과신 금지.
-
-import { speechErrorRate } from './speechScore.js';
+//
+// **자는 하나뿐이다.** 점수는 음향 발음 평가(오디오에서 직접 음소 정확도)에서만
+// 나온다. 그게 없으면 **채점하지 않는다**(UNSCORED). 예전에는 문자열 근접도
+// 채점으로 조용히 폴백했는데, 그건 다른 것을 재는 다른 자였다 — 같은 환자의 같은
+// 과제 점수가 그날 네트워크 상태에 따라 달라졌다.
+//
+// 실측이 그 우려를 확인했다(2026-08-22, 608 test 417세그): Azure accuracy와
+// 문자열 채점 오류율의 순위상관은 −0.376으로, 사전 등록한 기준 0.6의 절반이다.
+// 두 경로는 같은 것을 재지 않는다. 상세: docs/asr/acoustic-scorer-plan.md 4-2절.
+//
+// 그래서 여기에 **문자열 기반 채점 함수를 다시 넣지 말 것.** 넣는 순간 회차 간
+// 비교가 무너지고, 개인화(3층)를 켜면 "쓸수록 점수가 오른다"가 실력 향상과
+// 구분되지 않는다(개인화 설계 결정 1·6).
 
 /** 발음 정확도 5단계 등급 (perfect > great > good > close > retry). */
 export type PronunciationGrade =
@@ -15,27 +24,22 @@ export type PronunciationGrade =
   | 'close'
   | 'retry';
 
-/**
- * 오류율(0=완전 일치)을 5단계 등급으로 나눈다.
- * good 이하(rate ≤ 0.34)까지 정답 처리 — 기존 SPEECH_PASS_THRESHOLD와 일치.
- */
-export function gradeFromErrorRate(rate: number): PronunciationGrade {
-  if (rate <= 0) return 'perfect';
-  if (rate <= 0.15) return 'great';
-  if (rate <= 0.34) return 'good';
-  if (rate <= 0.5) return 'close';
-  return 'retry';
-}
-
-/** 보호자용 정확도 점수 0~100 (오류율의 역). */
-export function accuracyScore(rate: number): number {
-  return Math.round(Math.max(0, 1 - Math.min(rate, 1)) * 100);
-}
-
 /** good 이상이면 정답으로 본다(정답 처리 경계). */
 export function isGradePass(grade: PronunciationGrade): boolean {
   return grade === 'perfect' || grade === 'great' || grade === 'good';
 }
+
+/**
+ * 채점 불가일 때 어르신에게 하는 말.
+ *
+ * 칭찬도 지적도 아니다 — 못한 게 아니라 **못 잰** 것이므로, 환자의 수행에 대해
+ * 아무 말도 하지 않는 것이 정직하다. 대신 다시 해보자고 청한다.
+ *
+ * "소리가 안 들렸어요"라고는 하지 않는다. 채점 불가의 원인은 NoMatch일 수도
+ * 서버에 못 닿은 것일 수도 있는데, 앞의 표현은 두 경우 모두를 **환자의 목소리
+ * 탓**으로 돌린다. 원인을 모를 때는 원인을 말하지 않는 편이 정직하다.
+ */
+export const UNSCORED_ENCOURAGEMENT = '이번엔 확인하지 못했어요. 한 번만 더 해볼까요?';
 
 /** 어르신용 격려 문구(숫자 미노출). */
 const ENCOURAGEMENT: Record<PronunciationGrade, string> = {
@@ -65,8 +69,9 @@ export function caregiverGradeLabel(grade: PronunciationGrade): string {
   return CAREGIVER_LABEL[grade];
 }
 
-/** 발화 평가 종합 결과. */
-export interface SpeechEvaluation {
+/** 채점된 발화 평가 결과. */
+export interface ScoredEvaluation {
+  scored: true;
   /** 5단계 등급 */
   grade: PronunciationGrade;
   /** 보호자용 정확도 점수 0~100 */
@@ -80,31 +85,35 @@ export interface SpeechEvaluation {
 }
 
 /**
- * 발화(따라말하기/읽기)를 종합 평가한다.
- * 어르신에게는 encouragement를, 보호자에게는 score/caregiverLabel을 노출한다.
+ * 채점 불가 — 음향 점수를 얻지 못해 **판정을 내리지 않은** 결과.
+ *
+ * 0점이 아니다. 0점은 "못했다"고 말하는데 실제로는 "못 쟀다"이다. 이 결과가
+ * 붙은 문항은 정확도 분모·발음 평균·레벨링 윈도우 어디에도 들어가지 않는다.
+ * 환자에게는 격려만 한다(비처벌 원칙).
  */
-export function evaluateSpeech(
-  transcript: string,
-  target: string,
-  mode: 'word' | 'sentence',
-): SpeechEvaluation {
-  const rate = speechErrorRate(transcript, target, mode);
-  const grade = gradeFromErrorRate(rate);
-  return {
-    grade,
-    score: accuracyScore(rate),
-    isCorrect: isGradePass(grade),
-    encouragement: patientEncouragement(grade),
-    caregiverLabel: caregiverGradeLabel(grade),
-  };
+export interface UnscoredEvaluation {
+  scored: false;
+  /** 어르신용 문구 — 수행이 아니라 상황에 대해 말한다 */
+  encouragement: string;
 }
+
+/** 채점됐거나, 못 쟀거나. 셋째 경우는 없다. */
+export type SpeechAssessment = ScoredEvaluation | UnscoredEvaluation;
+
+const UNSCORED: UnscoredEvaluation = {
+  scored: false,
+  encouragement: UNSCORED_ENCOURAGEMENT,
+};
 
 // ─── Azure 발음 평가(음소 단위) 채점 정책 ─────────────────────────────
 //
-// 위 evaluateSpeech는 "STT가 인식한 텍스트와 목표의 문자열 근접도"라, STT 오인식과
-// 조음 오류를 구분하지 못한다. Azure Pronunciation Assessment는 오디오에서 직접
-// 음소 정확도를 재므로 이 한계가 없다. 서버 발음 평가가 가능하면 이쪽을 쓰고,
-// 불가능하면(WebSpeech·미구성) evaluateSpeech로 폴백한다.
+// 음향 발음 평가는 오디오에서 직접 음소 정확도를 재므로 STT 오인식과 조음 오류가
+// 섞이지 않는다. 이것이 **유일한** 채점 경로다. 못 쓰는 환경(WebSpeech·미구성·
+// 서버 실패)에서는 폴백하지 않고 채점 불가로 남긴다.
+//
+// 이 채점기가 오디오를 실제로 보는지는 실측했다(0단계 측정 B): 같은 음성에
+// 음절 수가 같은 **다른** 문장을 참조로 주면 accuracy가 80.6 → 21.1로 무너진다
+// (분리 AUC 0.960). 참조 텍스트만 보고 숫자를 지어내는 것이 아니다.
 
 /** ai-service /pronunciation 응답의 점수 부분(0~100). */
 export interface AzurePronunciationScores {
@@ -155,27 +164,30 @@ function gradeFromScore(score: number): PronunciationGrade {
 }
 
 /**
- * Azure 발음 평가 결과로 발화를 종합 평가한다(evaluateSpeech의 음소 단위 대체).
+ * 음향 발음 평가로 발화를 채점한다. **앱의 유일한 채점 경로다.**
  *
- * transcript가 비면(NoMatch → 전 점수 0) retry·오답으로 본다.
+ * 채점 불가로 빠지는 두 경우 — 둘 다 "못했다"가 아니라 "못 쟀다"이다.
+ *
+ *  1. `azure`가 null. 서버 발음 평가에 닿지 못했다(네트워크·미구성·WebSpeech
+ *     환경). 예전에는 여기서 문자열 채점으로 폴백했다. 그 폴백이 이 파일
+ *     머리말이 말하는 "다른 자"다.
+ *  2. `transcript`가 빔 = Azure NoMatch. 이때 Azure는 accuracy·fluency·
+ *     completeness를 전부 0.0으로 돌려주는데, 그 0을 그대로 쓰면 측정 실패가
+ *     최저점으로 **기록**된다. 실측상 pa 모드 NoMatch는 0.2%로 드물지만
+ *     (417건 중 1건), 드문 것과 틀린 것은 다른 문제다.
  */
 export function evaluateFromAzure(
-  azure: AzurePronunciationScores,
+  azure: AzurePronunciationScores | null,
   transcript: string,
   mode: 'word' | 'sentence',
-): SpeechEvaluation {
-  if (transcript.trim().length === 0) {
-    return {
-      grade: 'retry',
-      score: 0,
-      isCorrect: false,
-      encouragement: patientEncouragement('retry'),
-      caregiverLabel: caregiverGradeLabel('retry'),
-    };
-  }
+): SpeechAssessment {
+  if (azure === null) return UNSCORED;
+  if (transcript.trim().length === 0) return UNSCORED;
+
   const composite = azureComposite(azure, mode);
   const grade = gradeFromScore(composite);
   return {
+    scored: true,
     grade,
     score: composite,
     isCorrect: isGradePass(grade),

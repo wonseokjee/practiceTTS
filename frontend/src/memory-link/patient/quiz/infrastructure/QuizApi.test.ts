@@ -282,6 +282,7 @@ describe('quizApi', () => {
         correct: 3,
         accuracy: 75,
         assisted: 1,
+        unscored: 2,
         avgMetric: null,
         maxMetric: null,
         avgScore: null,
@@ -293,6 +294,26 @@ describe('quizApi', () => {
 
       expect(getMock).toHaveBeenCalledWith('/quiz/qab-summary');
       expect(res).toEqual([item]);
+    });
+
+    it('unscored가 없는 구버전 응답도 받아들이고 0으로 채운다', async () => {
+      // 이 필드는 뒤늦게 생겼다. 없다고 응답 전체를 버리면 롤링 배포 중에
+      // 보호자 화면이 통째로 안 뜬다 — 그건 과잉 방어다.
+      const legacy = {
+        subtest: 'repeat',
+        total: 3,
+        correct: 2,
+        accuracy: 67,
+        assisted: 0,
+        avgMetric: null,
+        maxMetric: null,
+        avgScore: 81,
+        lastAt: '2026-06-20T00:00:00.000Z',
+      };
+      getMock.mockResolvedValue({ data: { items: [legacy] } });
+
+      const res = await quizApi.getQabSummary();
+      expect(res[0].unscored).toBe(0);
     });
 
     it('항목 타입가드를 통과하지 못하면 형식 오류를 던진다', async () => {

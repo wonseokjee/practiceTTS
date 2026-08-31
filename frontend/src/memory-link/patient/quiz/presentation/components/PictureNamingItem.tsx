@@ -19,7 +19,8 @@
 // 예전엔 자유 STT 전사를 목표어와 문자열 매칭했는데, 단어 수준 구음장애 발화는
 // STT가 매우 불신뢰(608 실측 CER ≈ 0.70)라 맞게 말해도 오답 처리되는 문제가 있었다.
 // 발음 평가는 목표 음소에 정렬해 채점하므로 자유 STT보다 훨씬 견고하다. 발음 평가가
-// 불가한 환경에서는 azure=null로 와서 상위가 문자열 채점(isNameMatch)으로 폴백한다.
+// 불가한 환경에서는 azure=null로 오고, 상위는 **채점 불가**로 남긴다 — 문자열
+// 채점(isNameMatch) 폴백은 없앴다(다른 자로 재면 회차 비교가 무너진다).
 
 import { useEffect, useMemo, useState } from 'react';
 import { createSpeechCaptureService } from '../../infrastructure/SpeechCaptureService.js';
@@ -158,12 +159,17 @@ export function PictureNamingItem({
   };
 
   // 인식 결과 박스 색상 (피드백 단계).
+  // 피드백 단계의 isCorrect === null은 **채점 불가**다(미응답이 아니다).
+  // 정답도 오답도 아니므로 중립색으로 둔다.
+  const isUnscored = showFeedback && isCorrect === null;
   let resultBoxClass = 'border-[#D4D8D4] bg-white text-[#1F2A26]';
   if (showFeedback) {
     resultBoxClass =
       isCorrect === true
         ? 'border-[#2D6A56] bg-[#EBF4F0] text-[#1F5240]'
-        : 'border-[#E07B54] bg-[#FBE9E2] text-[#7A2E15]';
+        : isCorrect === false
+          ? 'border-[#E07B54] bg-[#FBE9E2] text-[#7A2E15]'
+          : 'border-[#D4D8D4] bg-[#F2F1ED] text-[#5C6661]';
   }
 
   return (
@@ -201,7 +207,7 @@ export function PictureNamingItem({
           <span className="text-xl font-bold">{transcript || '—'}</span>
           {showFeedback && (
             <span className="text-2xl" aria-hidden="true">
-              {isCorrect === true ? '✓' : '✗'}
+              {isCorrect === true ? '✓' : isCorrect === false ? '✗' : '…'}
             </span>
           )}
         </div>
@@ -216,11 +222,14 @@ export function PictureNamingItem({
       )}
 
       {/* 보호자 정정 — 발음 평가는 '무슨 단어인지'는 못 가리므로 경계 사례에서
-          옆의 보호자가 최종 판정한다. 현재 판정의 반대만 한 번에 뒤집는다. */}
-      {showFeedback && onOverride && isCorrect !== null && (
+          옆의 보호자가 최종 판정한다. 채점 불가일 때도 낸다: 그때는 정정이
+          아니라 **유일하게 남은 잣대**다. */}
+      {showFeedback && onOverride && (
         <div className="flex items-center justify-between gap-3 rounded-md bg-[#F2F1ED] px-4 py-2.5">
           <span className="text-sm text-[#5C6661]">
-            보호자님, 자동 채점이 맞나요?
+            {isUnscored
+              ? '보호자님, 이번엔 확인하지 못했어요. 맞게 말씀하셨나요?'
+              : '보호자님, 자동 채점이 맞나요?'}
           </span>
           <button
             type="button"
