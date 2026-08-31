@@ -22,6 +22,7 @@ const MAX_BYTES = 300_000;
  * 아직 줄이지 못한 그림 — **열려 있는 PR이 같은 파일을 다시 그리는 중이라**
  * 여기서 건드리면 이진 파일 충돌이 난다.
  *
+ *   sentComp_01_*  → PR #109 (화살표를 그림으로 바꿈)
  *   sentComp_02_*  → PR #104 (밥 먹이기 장면 다시 그림)
  *   sg_03_*, sg_04_distractor → PR #105 (역할 뒤집기 수정)
  *
@@ -29,6 +30,8 @@ const MAX_BYTES = 300_000;
  * 지울 때를 알려준다 — 면제해 둔 파일이 실제로는 예산 안에 들면 실패한다.
  */
 const 면제: readonly string[] = [
+  'sentComp_01_correct.png',
+  'sentComp_01_distractor.png',
   'sentComp_02_correct.png',
   'sentComp_02_distractor.png',
   'sg_03_correct.png',
