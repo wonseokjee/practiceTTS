@@ -2,10 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { promises as fs } from 'fs';
 import { join } from 'path';
-import {
-  DEFAULT_UPLOAD_DIR,
-  resolveUploadDir,
-} from '../../common/upload-path';
+import { DEFAULT_UPLOAD_DIR, resolveUploadDir } from '../../common/upload-path';
 
 /**
  * 파일 저장 경로 및 공개 URL 관리 서비스

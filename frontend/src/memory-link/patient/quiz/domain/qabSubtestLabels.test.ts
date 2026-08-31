@@ -8,8 +8,7 @@ import {
   subtestLabel,
 } from './qabSubtestLabels.js';
 import {
-  pickNamingItems,
-  pickQabItems,
+  pickWordItems,
   pickSentItems,
   pickSpellItems,
 } from '../infrastructure/QabItemBank.js';
@@ -82,17 +81,22 @@ describe('LEVELED_SUBTESTS — 목록에 있으면 실제로 적응해야 한다
    * 요청 개수는 실제 세션 규모(검사당 1~2문항)를 쓴다. 레벨별 후보보다 많이
    * 요청하면 의도된 폴백(범위를 풀어 세션을 채운다)이 걸려 모든 레벨이 같은
    * 집합을 내게 된다 — 그건 적응이 없어서가 아니라 요청이 과해서다.
-   * 말운동의 AMR 자극은 퍼·터·커 3개뿐이라(표준 DDK 세트) 특히 민감하다.
+   * 말운동은 밴드가 비누적이라 SMR 자극이 '퍼터커' 1개뿐이다(표준 DDK 세트).
+   * 그래서 말운동만 1문항으로 뽑는다 — 2를 요청하면 폴백이 AMR을 끌어와
+   * 비누적성이 테스트에서만 깨진다.
    */
   const N = 2;
   const 추출: Record<string, (lv: number) => string[]> = {
-    word: (lv) => pickQabItems(N, { word: lv, sentence: lv }).map((i) => i.itemId),
+    // **itemId를 보면 안 된다.** 낱말은 레벨과 무관하게 같은 90개 풀에서 나오고
+    // 난이도는 `choices`에 실린다. 예전 추출기는 itemId를 봐서, 두 레벨의 무작위
+    // 표본이 우연히 달라지는 것을 "적응한다"로 읽는 항진명제였다(E2).
+    word: (lv) => pickWordItems(N, lv).map((i) => `보기${i.choices.length}`),
     sentence: (lv) => pickSentItems(N, lv).map((i) => i.itemId),
-    naming: (lv) => pickNamingItems(N, lv).map((i) => i.itemId),
     repeat: (lv) => pickRepeatItems(N, lv).map((i) => i.text),
     reading: (lv) => pickReadingItems(N, lv).map((i) => i.text),
     spell: (lv) => pickSpellItems(N, lv).map((i) => i.itemId),
-    ddk: (lv) => pickDdkItems(N, lv).map((i) => i.syllable),
+    // 난이도가 자극뿐 아니라 반복 요구량에도 실려 있으므로 둘을 함께 본다.
+    ddk: (lv) => pickDdkItems(1, lv).map((i) => `${i.syllable}@${i.targetCount}`),
   };
 
   const 모아서 = (fn: (lv: number) => string[], lv: number): Set<string> =>
@@ -104,18 +108,30 @@ describe('LEVELED_SUBTESTS — 목록에 있으면 실제로 적응해야 한다
   });
 
   it.each([...LEVELED_SUBTESTS])(
-    '%s: 레벨 1과 레벨 5가 다른 문항을 낸다',
+    '%s: 레벨 1과 레벨 5가 겹치지 않는다',
     (subtest) => {
       const low = 모아서(추출[subtest], 1);
       const high = 모아서(추출[subtest], 5);
 
-      // 완전히 같은 집합이면 레벨이 아무것도 안 하는 것이다.
-      expect([...high].some((x) => !low.has(x)) || [...low].some((x) => !high.has(x))).toBe(true);
+      // **"다르다"가 아니라 "겹치지 않는다"를 본다.**
+      //
+      // 예전 단언은 `두 집합이 완전히 같지는 않다`였는데, 무작위 표본이라 레벨이
+      // 아무것도 안 해도 거의 항상 통과한다. 여섯 검사 모두 최저·최고 레벨의
+      // 밴드가 실제로 분리돼 있으므로(비누적, #58~#60·E6) 교집합이 비어야 한다.
+      const 겹침 = [...high].filter((x) => low.has(x));
+      expect(겹침, `${subtest}: ${겹침.join(', ')}`).toEqual([]);
     },
   );
 
   it('loc는 레벨 대상이 아니다 — 의식 수준은 눈높이 개념이 없다', () => {
     expect(LEVELED_SUBTESTS).not.toContain('loc');
     expect(NON_LEVELED_SUBTESTS).toContain('loc');
+  });
+
+  it('naming도 레벨 대상이 아니다 — 축이 하나도 없다', () => {
+    // 축이 생기면(단서 위계) 이 테스트를 지우고 위 추출기 표에 naming을 넣는다.
+    // 그 전까지 목록에 두면 보호자 화면이 없는 눈높이를 표시한다.
+    expect(LEVELED_SUBTESTS).not.toContain('naming');
+    expect(NON_LEVELED_SUBTESTS).toContain('naming');
   });
 });

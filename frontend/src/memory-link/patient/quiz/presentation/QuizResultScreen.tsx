@@ -33,7 +33,7 @@ function StarRow({ score }: { score: number }) {
       aria-hidden="true"
     >
       {stars.map((isFilled, i) => (
-        <span key={i} className={isFilled ? 'text-[#E07B54]' : 'text-[#D4D8D4]'}>
+        <span key={i} className={isFilled ? 'text-[#B85C36]' : 'text-[#D4D8D4]'}>
           ★
         </span>
       ))}

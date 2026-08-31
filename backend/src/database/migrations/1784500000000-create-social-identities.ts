@@ -57,7 +57,7 @@ export class CreateSocialIdentities1784500000000 implements MigrationInterface {
   public async down(queryRunner: QueryRunner): Promise<void> {
     // 로그인 조회가 이 테이블로 이관됐다. 소셜 유저가 있으면 드롭 시 로그인
     // 불능이 되므로 되돌리기를 거부한다(M13 down과 동일한 안전장치).
-    const socialRows = await queryRunner.query(
+    const socialRows: unknown = await queryRunner.query(
       `SELECT 1 FROM "user_social_identities" LIMIT 1`,
     );
     if (Array.isArray(socialRows) && socialRows.length > 0) {

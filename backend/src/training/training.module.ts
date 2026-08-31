@@ -28,9 +28,6 @@ import { TrainingService } from './training.service';
     CryptoModule,
   ],
   controllers: [TrainingController],
-  providers: [
-    TrainingService,
-    FastApiChatClientService,
-  ],
+  providers: [TrainingService, FastApiChatClientService],
 })
 export class TrainingModule {}

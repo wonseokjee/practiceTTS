@@ -51,15 +51,27 @@ export class PracticeService {
 
     // 멱등은 DB가 제공한다 — UNIQUE (patient, session, item, attempt) + DO NOTHING.
     // 예외를 던지지 않으므로 재제출·중복 flush가 트랜잭션을 깨뜨리지 않는다.
-    await this.practiceResultRepository
+    //
+    // RETURNING id를 붙이는 이유. `ON CONFLICT DO NOTHING`은 **실제로 들어간
+    // 행만** 돌려준다. 예전에는 접수한 개수(rows.length)를 saved로 내보냈는데,
+    // 중복 제출이면 DB에는 0행이 들어가는데도 saved가 1이었다. 지금은 아무도
+    // 이 값을 안 봐서 무해하지만, 나중에 이 숫자로 판단하면 조용히 틀린다 —
+    // "저장했다"는 이름을 달고 저장 안 된 것을 세는 값이기 때문이다.
+    const result = await this.practiceResultRepository
       .createQueryBuilder()
       .insert()
       .into(PracticeResult)
       .values(rows)
       .orIgnore()
+      .returning('id')
       .execute();
 
-    return { saved: rows.length };
+    // raw는 RETURNING이 준 행 배열. 드라이버가 안 주면(테스트 목 등) 접수 수로
+    // 물러난다 — 숫자를 지어내는 것보다 낫다.
+    const returned: unknown = result.raw;
+    return {
+      saved: Array.isArray(returned) ? returned.length : rows.length,
+    };
   }
 
   /**

@@ -18,6 +18,8 @@ import type {
   QuizSetSummary,
   SubmitAnswer,
   SubmitAttemptsResult,
+  WeekReviewItem,
+  WeekReviewNote,
   WishPractice,
 } from '../domain/Quiz.js';
 import type {
@@ -69,6 +71,11 @@ export interface IQuizApi {
     manifestVersion?: number,
     /** 이 제출로 세션이 끝까지 진행됐는지(완료 vs 중단 구분 마커). */
     completed?: boolean,
+    /**
+     * 세션 종료 시점의 검사별 눈높이 — 세션 내 적응의 결과다.
+     * `completed`인 제출에서만 서버가 반영한다.
+     */
+    levels?: Partial<Record<QabSubtest, number>>,
   ): Promise<{ saved: number }>;
   /** GET /quiz/qab-summary — QAB 검사별 회복 추세 (보호자용) */
   getQabSummary(): Promise<QabSubtestSummary[]>;
@@ -78,6 +85,8 @@ export interface IQuizApi {
   getSkillLevels(): Promise<SkillLevels>;
   /** GET /quiz/activity-days — 검사·연습을 한 날짜(YYYY-MM-DD) — 솔로 홈 스트릭용 */
   getActivityDays(days?: number): Promise<string[]>;
+  /** GET /quiz/week-review — 최근 N일 동안 실제로 푼 기억(환자 돌아보기). 점수 없음. */
+  getWeekReview(days?: number): Promise<WeekReviewItem[]>;
   /** GET /quiz/session-stats — 최근 N일 세션 완료율 (보호자용) */
   getSessionStats(days?: number): Promise<SessionStats>;
   /** GET /quiz/recent-items — 검사별 최근 문항 성적 (재출제 우선순위용) */
@@ -229,7 +238,26 @@ function isQabSubtestSummary(value: unknown): value is QabSubtestSummary {
     (obj.avgMetric === null || typeof obj.avgMetric === 'number') &&
     (obj.maxMetric === null || typeof obj.maxMetric === 'number') &&
     (obj.avgScore === null || typeof obj.avgScore === 'number') &&
-    (obj.lastAt === null || typeof obj.lastAt === 'string')
+    (obj.lastAt === null || typeof obj.lastAt === 'string') &&
+    isFoilKinds(obj.foilKinds)
+  );
+}
+
+/**
+ * 오답 갈래 묶음 검증.
+ *
+ * `undefined`도 통과시킨다 — 이 필드가 없는 옛 백엔드와 붙어도 카드 전체가
+ * "서버 응답 형식이 올바르지 않습니다"로 죽지 않게 한다. 갈래는 있으면 좋은
+ * 한 줄이지 정답률을 못 보게 만들 이유가 아니다.
+ */
+function isFoilKinds(value: unknown): boolean {
+  if (value === null || value === undefined) return true;
+  const obj = asRecord(value);
+  if (obj === null) return false;
+  return (
+    typeof obj.semantic === 'number' &&
+    typeof obj.phonological === 'number' &&
+    typeof obj.unrelated === 'number'
   );
 }
 
@@ -317,12 +345,18 @@ export const quizApi: IQuizApi = {
     results: QabResultInput[],
     manifestVersion?: number,
     completed?: boolean,
+    levels?: Partial<Record<QabSubtest, number>>,
   ): Promise<{ saved: number }> {
     const res = await memoryLinkApi.post<unknown>('/quiz/qab-results', {
       sessionToken,
       results,
       ...(manifestVersion === undefined ? {} : { manifestVersion }),
       ...(completed ? { completed: true } : {}),
+      // 세션이 끝나지 않은 중간 flush에는 싣지 않는다 — 한 세션이 레벨을
+      // 여러 번 미는 것을 막는 건 서버지만, 보내지 않는 편이 의도가 분명하다.
+      ...(completed && levels && Object.keys(levels).length > 0
+        ? { levels }
+        : {}),
     });
     const obj = asRecord(res.data);
     if (obj === null || typeof obj.saved !== 'number') {
@@ -383,6 +417,47 @@ export const quizApi: IQuizApi = {
       throw new Error(INVALID_RESPONSE_MESSAGE);
     }
     return list as string[];
+  },
+
+  async getWeekReview(days?: number): Promise<WeekReviewItem[]> {
+    const res = await memoryLinkApi.get<unknown>('/quiz/week-review', {
+      params: days === undefined ? undefined : { days },
+    });
+    const obj = asRecord(res.data);
+    const list = obj?.items;
+    if (!Array.isArray(list)) throw new Error(INVALID_RESPONSE_MESSAGE);
+    return list.map((raw) => {
+      const it = asRecord(raw);
+      if (
+        it === null ||
+        typeof it.quizSetId !== 'string' ||
+        typeof it.memoryEntryId !== 'string' ||
+        typeof it.lastPlayedAt !== 'string' ||
+        !Array.isArray(it.notes)
+      ) {
+        throw new Error(INVALID_RESPONSE_MESSAGE);
+      }
+      return {
+        quizSetId: it.quizSetId,
+        memoryEntryId: it.memoryEntryId,
+        photoUrl: typeof it.photoUrl === 'string' ? it.photoUrl : null,
+        notes: it.notes.flatMap((raw): WeekReviewNote[] => {
+          const n = asRecord(raw);
+          if (n === null || typeof n.text !== 'string') return [];
+          const cat = n.category;
+          return [
+            {
+              category:
+                cat === 'activity' || cat === 'moment' || cat === 'context'
+                  ? cat
+                  : 'context',
+              text: n.text,
+            },
+          ];
+        }),
+        lastPlayedAt: it.lastPlayedAt,
+      };
+    });
   },
 
   async getSessionStats(days?: number): Promise<SessionStats> {

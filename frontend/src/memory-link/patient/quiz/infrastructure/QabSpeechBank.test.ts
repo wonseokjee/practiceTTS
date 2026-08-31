@@ -2,6 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  ddkSpecForLevel,
   pickDdkItems,
   pickReadingItems,
   pickRepeatItems,
@@ -125,15 +126,69 @@ describe('QabSpeechBank — 레벨별 난이도', () => {
   describe('말운동(DDK)', () => {
     it('낮은 레벨은 AMR(단음절)만 낸다', () => {
       // SMR('퍼터커')은 조음 위치를 바꿔가며 내야 해서 구음장애에서 먼저 무너진다.
-      for (const it of 반복추출(() => pickDdkItems(2, 2))) {
-        expect(음절(it.syllable)).toBe(1);
+      for (const lv of [1, 2, 3]) {
+        for (const it of 반복추출(() => pickDdkItems(1, lv))) {
+          expect(음절(it.syllable)).toBe(1);
+        }
       }
     });
 
-    it('높은 레벨은 SMR(퍼터커)을 낸다', () => {
-      const items = 반복추출(() => pickDdkItems(2, 5));
+    it('레벨 4는 전환 1회(2음절), 레벨 5는 전환 2회(3음절)만 낸다', () => {
+      // SMR 자극이 '퍼터커' 하나뿐이면 로테이션의 3문항을 폴백 없이 못 채운다.
+      // 전환 수로 두 밴드를 갈라 각 밴드에 자극 3개씩을 두었다.
+      for (const it of 반복추출(() => pickDdkItems(1, 4))) {
+        expect(음절(it.syllable)).toBe(2);
+      }
+      for (const it of 반복추출(() => pickDdkItems(1, 5))) {
+        expect(음절(it.syllable)).toBe(3);
+      }
+    });
 
-      expect(items.some((i) => 음절(i.syllable) > 1)).toBe(true);
+    it('높은 레벨은 SMR만 낸다 — 밴드가 누적되지 않는다', () => {
+      // 예전엔 `allowSmr || 단음절`이라 레벨 5가 AMR을 그대로 낼 수 있었다.
+      // 그러면 레벨 5로 기록된 문항이 실제로는 레벨 1 문항이다(#59·#60과 같은 버그).
+      for (const lv of [4, 5]) {
+        for (const it of 반복추출(() => pickDdkItems(1, lv))) {
+          expect(음절(it.syllable)).toBeGreaterThan(1);
+        }
+      }
+    });
+
+    it('다섯 레벨이 서로 다른 요구를 낸다 — 종류가 같아도 반복 횟수가 다르다', () => {
+      // 종류(AMR/SMR)만으로는 밴드가 둘뿐이다. 표준 자극이 AMR 3 + SMR 1이라
+      // 자극을 늘려 해결할 수 없으므로 반복 요구량이 두 번째 축이다.
+      const 요구 = [1, 2, 3, 4, 5].map((lv) => {
+        const spec = ddkSpecForLevel(lv);
+        return `${spec.kind}:${spec.targetCount}`;
+      });
+
+      expect(new Set(요구).size).toBe(5);
+      // 같은 종류 안에서는 레벨이 오를수록 더 많이 요구한다.
+      expect(ddkSpecForLevel(1).targetCount).toBeLessThan(ddkSpecForLevel(2).targetCount);
+      expect(ddkSpecForLevel(2).targetCount).toBeLessThan(ddkSpecForLevel(3).targetCount);
+      expect(ddkSpecForLevel(4).targetCount).toBeLessThan(ddkSpecForLevel(5).targetCount);
+    });
+
+    it('모든 밴드에 자극이 3개 이상이다 — 로테이션의 3문항을 폴백 없이 채운다', () => {
+      // 폴백이 걸리면 밴드가 다시 섞여 레벨 기록이 거짓이 된다(E6가 그 버그였다).
+      for (const lv of [1, 2, 3, 4, 5]) {
+        const ids = new Set(pickDdkItems(3, lv).map((i) => i.itemId));
+        expect(ids.size, `lv${lv}`).toBe(3);
+      }
+      // 그리고 그 3개가 전부 같은 밴드다.
+      for (const lv of [1, 2, 3, 4, 5]) {
+        const 음절수 = pickDdkItems(3, lv).map((i) => 음절(i.syllable));
+        expect(new Set(음절수).size, `lv${lv}: ${음절수.join(',')}`).toBe(1);
+      }
+    });
+
+    it('추출한 문항의 목표 횟수는 레벨이 정한다', () => {
+      for (const lv of [1, 2, 3, 4, 5]) {
+        const spec = ddkSpecForLevel(lv);
+        for (const it of 반복추출(() => pickDdkItems(1, lv))) {
+          expect(it.targetCount).toBe(spec.targetCount);
+        }
+      }
     });
   });
 

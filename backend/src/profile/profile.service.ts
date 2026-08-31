@@ -5,7 +5,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, QueryFailedError, Repository } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  QueryFailedError,
+  Repository,
+} from 'typeorm';
 import { CryptoService } from '../memory/services/crypto.service';
 import {
   MAX_FAMILY_MEMBERS,
@@ -191,7 +196,10 @@ export class ProfileService {
         );
         return this.getProfile(caregiver, patientId);
       } catch (error) {
-        if (this.isUniqueViolation(error) && attempt < ORDINAL_RETRY_LIMIT - 1) {
+        if (
+          this.isUniqueViolation(error) &&
+          attempt < ORDINAL_RETRY_LIMIT - 1
+        ) {
           continue; // 서수 충돌 → 재계산 후 재시도
         }
         throw error;
@@ -314,10 +322,16 @@ export class ProfileService {
     const maxByRelation = new Map<FamilyRelation, number>();
     for (const member of existing) {
       const name = this.cryptoService.decrypt(member.name);
-      ordinalByKey.set(`${member.relation}\u0000${name}`, member.relationOrdinal);
+      ordinalByKey.set(
+        `${member.relation}\u0000${name}`,
+        member.relationOrdinal,
+      );
       maxByRelation.set(
         member.relation,
-        Math.max(maxByRelation.get(member.relation) ?? 0, member.relationOrdinal),
+        Math.max(
+          maxByRelation.get(member.relation) ?? 0,
+          member.relationOrdinal,
+        ),
       );
     }
 

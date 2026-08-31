@@ -24,9 +24,9 @@ describe('OnboardingGuard', () => {
   });
 
   it('환자 역할은 통과(하위호환 직접 로그인)', () => {
-    expect(guard.canActivate(ctxWith({ role: 'patient', patientId: null }))).toBe(
-      true,
-    );
+    expect(
+      guard.canActivate(ctxWith({ role: 'patient', patientId: null })),
+    ).toBe(true);
   });
 
   it('user가 없으면(인증 단계 문제) 판단하지 않고 통과', () => {

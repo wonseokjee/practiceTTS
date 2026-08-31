@@ -12,6 +12,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { useMixedQuizSession } from './useMixedQuizSession.js';
 import type { IQuizApi } from '../infrastructure/QuizApi.js';
 import type {
+  QabDdkItem,
   QabImageItem,
   QabNamingItem,
   QabSpellItem,
@@ -118,6 +119,7 @@ function makeApi(overrides?: Partial<IQuizApi>): IQuizApi {
     getSessionStats: vi.fn(),
     getRecentItems: vi.fn().mockResolvedValue([]),
     getQabTrend: vi.fn().mockResolvedValue([]),
+    getWeekReview: vi.fn().mockResolvedValue([]),
     ...overrides,
   };
   // `as IQuizApi` 캐스트를 쓰지 않는다. 캐스트하면 인터페이스에 메서드가 늘어도
@@ -137,18 +139,27 @@ function makeNamingItems(): QabNamingItem[] {
   ];
 }
 
-/** 산출 과제(음성·글자조합·DDK) 카운트를 모두 0으로 끄는 공통 옵션. */
-const NO_SPEECH = {
+/**
+ * 세션 구성을 테스트가 완전히 통제한다.
+ *
+ * 기본 구성은 **오늘 날짜의 로테이션**(하루 세 검사)이라, 비워 두면 같은 테스트가
+ * 요일에 따라 통과하거나 실패한다. `rotation: []`로 끄고, 필요한 검사만 각
+ * 테스트가 개수로 켠다. 산출 과제(음성·글자조합·DDK)와 문장도 여기서 0으로 둔다.
+ */
+const ISOLATED = {
+  rotation: [],
   pickNamingItems: () => [],
   pickRepeatItems: () => [],
   pickReadingItems: () => [],
   pickSpellItems: () => [],
   pickDdkItems: () => [],
+  pickSentItems: () => [],
   namingCount: 0,
   repeatCount: 0,
   readingCount: 0,
   spellCount: 0,
   ddkCount: 0,
+  sentenceCount: 0,
 } as const;
 
 function makeSpellItems(): QabSpellItem[] {
@@ -168,14 +179,28 @@ function renderMixed(api: IQuizApi) {
   return renderHook(() =>
     useMixedQuizSession(QUIZ_SET_ID, {
       quizApi: api,
-      pickQabItems: () => makeQabItems(),
+      pickWordItems: () => makeQabItems(),
       generateSessionToken: () => 'tok-1',
       dailyCount: 2,
-      qabCount: 2,
-      ...NO_SPEECH,
+      wordCount: 2,
+      ...ISOLATED,
     }),
   );
 }
+
+/** 산출 과제(음성·글자조합·DDK) 카운트를 모두 0으로 끄는 공통 옵션. */
+const NO_SPEECH = {
+  pickNamingItems: () => [],
+  pickRepeatItems: () => [],
+  pickReadingItems: () => [],
+  pickSpellItems: () => [],
+  pickDdkItems: () => [],
+  namingCount: 0,
+  repeatCount: 0,
+  readingCount: 0,
+  spellCount: 0,
+  ddkCount: 0,
+} as const;
 
 describe('useMixedQuizSession', () => {
   beforeEach(() => vi.clearAllMocks());
@@ -243,11 +268,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickNamingItems: () => makeNamingItems(),
         namingCount: 1,
       }),
@@ -268,11 +293,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickNamingItems: () => makeNamingItems(),
         namingCount: 1,
       }),
@@ -288,11 +313,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickNamingItems: () => makeNamingItems(),
         namingCount: 1,
       }),
@@ -314,16 +339,156 @@ describe('useMixedQuizSession', () => {
     expect(result.current[0].lastResult?.isCorrect).toBe(true);
   });
 
+  /**
+   * **오답의 갈래를 남긴다.**
+   *
+   * 정답률 하나로는 "무엇이 어려운지"를 말할 수 없다. 의미 오답('사과'에 대한
+   * '바나나')을 반복해 고르는 것과 음운 오답('사자')을 반복해 고르는 것은 서로
+   * 다른 손상이다. 뱅크가 뽑을 때 붙여 둔 갈래를 그대로 실어 보낸다.
+   */
+  describe('오답 갈래(foilKind) 전송', () => {
+    /** 갈래가 붙은 4지선다 단어이해 1문항. */
+    function taggedWordItem(): QabImageItem {
+      return {
+        itemId: 'qw_001',
+        category: 'word',
+        promptText: '사과',
+        instruction: '들으신 낱말의 그림을 골라주세요',
+        choices: [
+          { choiceId: 'c_ok', label: '사과', imageUrl: '/a.svg', isCorrect: true },
+          {
+            choiceId: 'c_sem',
+            label: '바나나',
+            imageUrl: '/b.svg',
+            isCorrect: false,
+            foilKind: 'semantic',
+          },
+          {
+            choiceId: 'c_phon',
+            label: '사자',
+            imageUrl: '/c.svg',
+            isCorrect: false,
+            foilKind: 'phonological',
+          },
+        ],
+      };
+    }
+
+    // `ReturnType<typeof vi.fn>`은 Mock<Procedure | Constructable>로 너무 넓어
+    // IQuizApi.submitQabResults 자리에 안 들어간다. 목이 흉내 내는 실제
+    // 시그니처를 그대로 쓴다 — tsc -b가 잡아준 오류다(--noEmit은 침묵했다).
+    function renderWordOnly(submitQabResults: IQuizApi['submitQabResults']) {
+      return renderHook(() =>
+        useMixedQuizSession(QUIZ_SET_ID, {
+          quizApi: makeApi({ submitQabResults }),
+          pickWordItems: () => [taggedWordItem()],
+          generateSessionToken: () => 'tok-1',
+          dailyCount: 0,
+          wordCount: 1,
+          ...ISOLATED,
+        }),
+      );
+    }
+
+    it('음운 오답을 고르면 그 갈래가 실려 나간다', async () => {
+      const submitQabResults = vi.fn().mockResolvedValue({ saved: 1 });
+      const { result } = renderWordOnly(submitQabResults);
+      await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+      act(() => result.current[1].submitQabChoice('c_phon'));
+      await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+      act(() => result.current[1].next());
+      await waitFor(() => expect(result.current[0].phase).toBe('result'));
+
+      expect(submitQabResults.mock.calls[0][1]).toEqual([
+        {
+          subtest: 'word',
+          itemRef: 'qw_001',
+          isCorrect: false,
+          foilKind: 'phonological',
+        },
+      ]);
+    });
+
+    it('의미 오답을 고르면 그 갈래가 실려 나간다', async () => {
+      const submitQabResults = vi.fn().mockResolvedValue({ saved: 1 });
+      const { result } = renderWordOnly(submitQabResults);
+      await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+      act(() => result.current[1].submitQabChoice('c_sem'));
+      await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+      act(() => result.current[1].next());
+      await waitFor(() => expect(result.current[0].phase).toBe('result'));
+
+      expect(submitQabResults.mock.calls[0][1][0]).toMatchObject({
+        foilKind: 'semantic',
+      });
+    });
+
+    it('맞히면 갈래를 보내지 않는다', async () => {
+      // 정답에는 갈래가 없다. 맞힌 행에 갈래가 붙으면 갈래별 집계가 틀어진다.
+      const submitQabResults = vi.fn().mockResolvedValue({ saved: 1 });
+      const { result } = renderWordOnly(submitQabResults);
+      await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+      act(() => result.current[1].submitQabChoice('c_ok'));
+      await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+      act(() => result.current[1].next());
+      await waitFor(() => expect(result.current[0].phase).toBe('result'));
+
+      expect(submitQabResults.mock.calls[0][1][0]).not.toHaveProperty(
+        'foilKind',
+      );
+    });
+
+    it('갈래가 없는 선택지(문장이해)는 필드를 만들지 않는다', async () => {
+      // 문장이해는 선택지가 JSON 고정 그림 쌍이라 갈래가 없다. 없는 것을
+      // 'unrelated'로 채우면 없는 사실이 생긴다.
+      const submitQabResults = vi.fn().mockResolvedValue({ saved: 1 });
+      const { result } = renderHook(() =>
+        useMixedQuizSession(QUIZ_SET_ID, {
+          quizApi: makeApi({ submitQabResults }),
+          pickWordItems: () => [
+            {
+              itemId: 'sentComp_01',
+              category: 'sentence' as const,
+              promptText: '남자가 여자를 쫓는다',
+              instruction: '들으신 문장의 그림을 골라주세요',
+              choices: [
+                { choiceId: 's_ok', label: 'A', imageUrl: '/x.png', isCorrect: true },
+                { choiceId: 's_no', label: 'B', imageUrl: '/y.png', isCorrect: false },
+              ],
+            },
+          ],
+          generateSessionToken: () => 'tok-1',
+          dailyCount: 0,
+          wordCount: 1,
+          ...ISOLATED,
+        }),
+      );
+      await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+      act(() => result.current[1].submitQabChoice('s_no'));
+      await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+      act(() => result.current[1].next());
+      await waitFor(() => expect(result.current[0].phase).toBe('result'));
+
+      expect(submitQabResults.mock.calls[0][1][0]).not.toHaveProperty(
+        'foilKind',
+      );
+    });
+  });
+
   it('보호자 정정: 자동 오답을 정답으로 뒤집으면 판정·점수가 반영되고, 미보조 정답으로 기록된다', async () => {
     const submitQabResults = vi.fn().mockResolvedValue({ saved: 1 });
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi({ submitQabResults }),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickNamingItems: () => makeNamingItems(),
         namingCount: 1,
       }),
@@ -347,16 +512,20 @@ describe('useMixedQuizSession', () => {
     // (회복추적에서 빠져 실력이 과소평가되는 것 방지).
     expect(submitQabResults).toHaveBeenCalledWith(
       'tok-1',
+      // cueLevel 0 = 힌트를 한 번도 안 눌렀다. '미보조'라는 이 테스트의
+      // 취지를 숫자로도 못 박는다(E18).
       [
         {
           subtest: 'naming',
           itemRef: 'naming_n1',
           isCorrect: true,
           score: 20,
+          cueLevel: 0,
         },
       ],
       1,
       true, // 마지막 문항 → 세션 자연 종료 → 완료 마커
+      undefined, // 이름대기는 비레벨 검사라 보고할 눈높이가 없다
     );
   });
 
@@ -369,11 +538,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi({ submitQabResults }),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickNamingItems: () => twoNaming,
         namingCount: 2,
       }),
@@ -404,11 +573,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi({ submitQabResults }),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickNamingItems: () => twoNaming,
         namingCount: 2,
       }),
@@ -440,11 +609,11 @@ describe('useMixedQuizSession', () => {
     const { result, unmount } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi({ submitQabResults }),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickNamingItems: () => twoNaming,
         namingCount: 2,
       }),
@@ -473,11 +642,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickNamingItems: () => fourNaming,
         namingCount: 4,
       }),
@@ -507,11 +676,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickNamingItems: () => fourNaming,
         namingCount: 4,
       }),
@@ -543,11 +712,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickNamingItems: () => fourNaming,
         namingCount: 4,
       }),
@@ -570,11 +739,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickNamingItems: () => makeNamingItems(),
         namingCount: 1,
       }),
@@ -594,11 +763,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickRepeatItems: () => [
           {
             itemId: 'rp1',
@@ -623,11 +792,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi({ submitQabResults }),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickRepeatItems: () => [
           {
             itemId: 'rp1',
@@ -657,6 +826,8 @@ describe('useMixedQuizSession', () => {
       [{ subtest: 'repeat', itemRef: 'rp1', isCorrect: true, score: expect.any(Number) }],
       1,
       true, // 마지막 문항 → 세션 자연 종료 → 완료 마커
+      // 1문항 정답으로는 승급 임계(3연속)에 못 미쳐 시작 레벨 그대로 보고한다.
+      { repeat: 2 },
     );
   });
 
@@ -664,11 +835,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickReadingItems: () => [
           {
             itemId: 'rd1',
@@ -692,11 +863,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickReadingItems: () => [
           { itemId: 'rd1', text: '산 위에 해가 떠올라요', instruction: '읽어주세요' },
         ],
@@ -735,10 +906,12 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi({ submitQabResults }),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
+        pickSentItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
+        wordCount: 0,
+        sentenceCount: 0,
         ...NO_SPEECH,
         pickNamingItems: () => makeNamingItems(),
         namingCount: 1,
@@ -769,11 +942,13 @@ describe('useMixedQuizSession', () => {
           subtest: 'naming',
           itemRef: 'naming_n1',
           isCorrect: false,
+          cueLevel: 0,
           unscored: true,
         },
       ],
       1,
       true,
+      undefined, // 이름대기는 비레벨 검사라 보고할 눈높이가 없다
     );
   });
 
@@ -785,10 +960,12 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
+        pickSentItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
+        wordCount: 0,
+        sentenceCount: 0,
         ...NO_SPEECH,
         pickNamingItems: () => twoNaming,
         namingCount: 2,
@@ -820,10 +997,12 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
+        pickSentItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
+        wordCount: 0,
+        sentenceCount: 0,
         ...NO_SPEECH,
         pickNamingItems: () => fourNaming,
         namingCount: 4,
@@ -850,10 +1029,12 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi({ submitQabResults }),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
+        pickSentItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
+        wordCount: 0,
+        sentenceCount: 0,
         ...NO_SPEECH,
         pickNamingItems: () => makeNamingItems(),
         namingCount: 1,
@@ -875,9 +1056,17 @@ describe('useMixedQuizSession', () => {
     // 없다 — 보호자는 정오답을 말했지 0~100점을 말한 게 아니다.
     expect(submitQabResults).toHaveBeenCalledWith(
       'tok-1',
-      [{ subtest: 'naming', itemRef: 'naming_n1', isCorrect: true }],
+      [
+        {
+          subtest: 'naming',
+          itemRef: 'naming_n1',
+          isCorrect: true,
+          cueLevel: 0,
+        },
+      ],
       1,
       true,
+      undefined, // 이름대기는 비레벨 검사라 보고할 눈높이가 없다
     );
   });
 
@@ -888,10 +1077,12 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi({ submitQabResults }),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
+        pickSentItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
+        wordCount: 0,
+        sentenceCount: 0,
         ...NO_SPEECH,
         pickNamingItems: () => makeNamingItems(),
         namingCount: 1,
@@ -911,9 +1102,17 @@ describe('useMixedQuizSession', () => {
     expect(result.current[0].sessionScore).toBe(0);
     expect(submitQabResults).toHaveBeenCalledWith(
       'tok-1',
-      [{ subtest: 'naming', itemRef: 'naming_n1', isCorrect: false }],
+      [
+        {
+          subtest: 'naming',
+          itemRef: 'naming_n1',
+          isCorrect: false,
+          cueLevel: 0,
+        },
+      ],
       1,
       true,
+      undefined, // 이름대기는 비레벨 검사라 보고할 눈높이가 없다
     );
   });
 
@@ -921,11 +1120,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickDdkItems: () => [
           {
             itemId: 'dk1',
@@ -954,11 +1153,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi({ submitQabResults }),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickDdkItems: () => [
           {
             itemId: 'ddk_0',
@@ -983,6 +1182,7 @@ describe('useMixedQuizSession', () => {
       [{ subtest: 'ddk', itemRef: 'ddk_0', isCorrect: true, metric: 11 }],
       1,
       true, // 마지막 문항 → 세션 자연 종료 → 완료 마커
+      { ddk: 2 },
     );
   });
 
@@ -991,11 +1191,11 @@ describe('useMixedQuizSession', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi({ submitQabResults }),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-1',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickNamingItems: () => makeNamingItems(),
         namingCount: 1,
       }),
@@ -1013,9 +1213,19 @@ describe('useMixedQuizSession', () => {
     // 추세 기록은 assisted=true
     expect(submitQabResults).toHaveBeenCalledWith(
       'tok-1',
-      [{ subtest: 'naming', itemRef: 'naming_n1', isCorrect: true, assisted: true }],
+      // 넘어가기는 사다리의 꼭대기다 — 정답을 알려줬다(E18).
+      [
+        {
+          subtest: 'naming',
+          itemRef: 'naming_n1',
+          isCorrect: true,
+          assisted: true,
+          cueLevel: 4,
+        },
+      ],
       1,
       true, // 마지막 문항 → 세션 자연 종료 → 완료 마커
+      undefined, // 도움받은 문항은 적응 기록에 안 들어간다
     );
   });
 
@@ -1029,11 +1239,11 @@ describe('글자 조합(spell)', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-spell',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickSpellItems: () => makeSpellItems(),
         spellCount: 1,
       }),
@@ -1052,11 +1262,11 @@ describe('글자 조합(spell)', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-spell2',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickSpellItems: () => makeSpellItems(),
         spellCount: 1,
       }),
@@ -1077,11 +1287,11 @@ describe('글자 조합(spell)', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: api,
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-spell3',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickSpellItems: () => makeSpellItems(),
         spellCount: 1,
       }),
@@ -1109,11 +1319,11 @@ describe('글자 조합(spell)', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: api,
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-spell4',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickSpellItems: () => makeSpellItems(),
         spellCount: 1,
       }),
@@ -1157,11 +1367,11 @@ describe('발화 검사 — 눈높이 배선', () => {
     renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: api,
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => token,
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickRepeatItems: repeat,
         pickReadingItems: reading,
         pickDdkItems: ddk,
@@ -1194,11 +1404,11 @@ describe('발화 검사 — 눈높이 배선', () => {
     renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: api,
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-speech-fail',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickRepeatItems: repeat,
         repeatCount: 1,
       }),
@@ -1222,11 +1432,11 @@ describe('글자 조합 — 반복과 중복 방지', () => {
     renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: api,
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => token,
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickSpellItems: spy,
         spellCount: 1,
       }),
@@ -1274,7 +1484,7 @@ describe('글자 조합 — 반복과 중복 방지', () => {
     renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: makeApi(),
-        pickQabItems: () => [
+        pickWordItems: () => [
           {
             itemId: 'w_apple',
             category: 'word',
@@ -1287,8 +1497,8 @@ describe('글자 조합 — 반복과 중복 방지', () => {
         ],
         generateSessionToken: () => 'tok-dup',
         dailyCount: 0,
-        qabCount: 1,
-        ...NO_SPEECH,
+        wordCount: 1,
+        ...ISOLATED,
         pickSpellItems: spy,
         spellCount: 1,
       }),
@@ -1307,11 +1517,11 @@ describe('글자 조합 — 반복과 중복 방지', () => {
     const { result } = renderHook(() =>
       useMixedQuizSession(QUIZ_SET_ID, {
         quizApi: api,
-        pickQabItems: () => [],
+        pickWordItems: () => [],
         generateSessionToken: () => 'tok-fail',
         dailyCount: 0,
-        qabCount: 0,
-        ...NO_SPEECH,
+        wordCount: 0,
+        ...ISOLATED,
         pickSpellItems: spy,
         spellCount: 1,
       }),
@@ -1322,3 +1532,246 @@ describe('글자 조합 — 반복과 중복 방지', () => {
   });
 });
 
+describe('세션 내 적응 — 같은 검사 안에서 눈높이가 움직인다', () => {
+  /** 요청받은 레벨을 이름에 박아 돌려주는 말운동 추출기. */
+  function 기록추출기() {
+    const calls: Array<number | undefined> = [];
+    const pick = (count: number, level?: number): QabDdkItem[] => {
+      calls.push(level);
+      return Array.from({ length: count }, (_, i) => ({
+        itemId: `ddk_L${level ?? 'x'}_${i}`,
+        syllable: '퍼',
+        label: '퍼',
+        targetCount: 10,
+        instruction: 'x',
+        presentedLevel: level,
+      }));
+    };
+    return { calls, pick };
+  }
+
+  function 말운동세션(pick: (c: number, l?: number) => QabDdkItem[]) {
+    return renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi({
+          getSkillLevels: vi
+            .fn()
+            .mockResolvedValue({ levels: { ddk: 3 }, manifestVersion: 1 }),
+        }),
+        generateSessionToken: () => 'tok-1',
+        ...ISOLATED,
+        pickWordItems: () => [],
+        dailyCount: 0,
+        wordCount: 0,
+        pickDdkItems: pick,
+        ddkCount: 3,
+      }),
+    );
+  }
+
+  type 세션 = ReturnType<typeof 말운동세션>['result'];
+
+  /** 지금 문항을 틀리고 다음으로 넘어간다(감지 0회 = 목표 미달). */
+  async function 틀리고넘기기(result: 세션) {
+    act(() => result.current[1].submitDdk(0));
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    act(() => result.current[1].next());
+  }
+
+  it('2연속 오답이면 남은 문항을 한 칸 내려 다시 뽑는다', async () => {
+    const { calls, pick } = 기록추출기();
+    const { result } = 말운동세션(pick);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    // 세션 시작: 서버 레벨 3으로 3문항
+    expect(calls).toEqual([3]);
+    // 문항 순서는 섞이므로 인덱스가 아니라 **레벨**만 본다.
+    expect(result.current[0].currentItem?.id).toMatch(/^ddk_L3_/);
+
+    await 틀리고넘기기(result);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+    // 한 번 틀린 것으로는 안 움직인다 — 한 문항은 컨디션일 수 있다.
+    expect(calls).toEqual([3]);
+
+    await 틀리고넘기기(result);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    // 두 번째 오답에서 규칙이 걸려 남은 1문항을 레벨 2로 다시 뽑는다.
+    expect(calls).toEqual([3, 2]);
+    expect(result.current[0].currentItem?.id).toMatch(/^ddk_L2_/);
+  });
+
+  it('이미 푼 문항과 지금 화면의 문항은 건드리지 않는다', async () => {
+    // 답하는 도중에 문제가 바뀌면 환자에게는 앱이 고장 난 것으로 보인다.
+    const { pick } = 기록추출기();
+    const { result } = 말운동세션(pick);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    await 틀리고넘기기(result);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+    const 두번째 = result.current[0].currentItem?.id;
+
+    act(() => result.current[1].submitDdk(0));
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    // 규칙이 걸린 직후에도 화면의 문항은 그대로다.
+    expect(result.current[0].currentItem?.id).toBe(두번째);
+  });
+
+  it('보호자가 넘긴 문항(도움받음)은 적응 판정에 세지 않는다', async () => {
+    // 환자가 맞힌 게 아니라 보호자가 통과시킨 것이다. 세면 연속 정답이 채워져
+    // 못 푸는 레벨로 올라간다.
+    const { calls, pick } = 기록추출기();
+    const { result } = 말운동세션(pick);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    await 틀리고넘기기(result);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    // 두 번째는 보호자가 넘긴다 → 오답 연속이 끊기지도, 정답으로 세지지도 않는다.
+    act(() => result.current[1].skipCurrent());
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    act(() => result.current[1].next());
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    expect(calls).toEqual([3]);
+  });
+
+  it('서버 레벨을 못 받으면 적응하지 않는다 — 기준점이 없다', async () => {
+    const calls: Array<number | undefined> = [];
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi({
+          getSkillLevels: vi.fn().mockRejectedValue(new Error('down')),
+        }),
+        generateSessionToken: () => 'tok-1',
+        ...ISOLATED,
+        pickWordItems: () => [],
+        dailyCount: 0,
+        wordCount: 0,
+        pickDdkItems: (count: number, level?: number) => {
+          calls.push(level);
+          return Array.from({ length: count }, (_, i) => ({
+            itemId: `ddk_x_${i}`,
+            syllable: '퍼',
+            label: '퍼',
+            targetCount: 10,
+            instruction: 'x',
+          }));
+        },
+        ddkCount: 3,
+      }),
+    );
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    await 틀리고넘기기(result);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+    await 틀리고넘기기(result);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    // 레벨 조회 실패는 비차단이고, 기준점이 없으면 조정도 없다.
+    expect(calls).toEqual([undefined]);
+  });
+});
+
+describe('보호자 넘어가기는 환자 수행이 아니다 (E12)', () => {
+  /** 이름대기 N문항짜리 세션. 넘어가기·오답을 섞어 넣기 좋다. */
+  function 이름대기세션(n: number, submitQabResults = vi.fn().mockResolvedValue({ saved: 1 })) {
+    const items: QabNamingItem[] = Array.from({ length: n }, (_, i) => ({
+      itemId: `nm_${i}`,
+      imageUrl: `/${i}.svg`,
+      targetWord: '사과',
+      instruction: 'x',
+    }));
+    return renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi({ submitQabResults }),
+        generateSessionToken: () => 'tok-1',
+        ...ISOLATED,
+        pickWordItems: () => [],
+        dailyCount: 0,
+        wordCount: 0,
+        pickNamingItems: () => items,
+        namingCount: n,
+      }),
+    );
+  }
+
+  type 세션 = ReturnType<typeof 이름대기세션>['result'];
+
+  async function 넘긴다(result: 세션) {
+    act(() => result.current[1].skipCurrent());
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    act(() => result.current[1].next());
+  }
+
+  async function 틀린다(result: 세션) {
+    // MISS를 함께 준다. 음향 점수가 없으면 오답이 아니라 채점 불가가 되어
+    // 이 절이 재려는 것(넘어가기가 연속 오답을 끊는가)을 못 재게 된다.
+    act(() => result.current[1].submitNaming('전혀다른말', MISS));
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    act(() => result.current[1].next());
+  }
+
+  it('넘어간 문항은 점수의 분자·분모 어디에도 안 들어간다', async () => {
+    // 정답으로 세면 100점까지 부풀고, 오답으로 세면 도움을 처벌하는 셈이 된다.
+    const { result } = 이름대기세션(2);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    await 넘긴다(result); // 1문항: 보호자가 넘김
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+    await 틀린다(result); // 2문항: 환자가 틀림 → 세션 끝
+
+    await waitFor(() => expect(result.current[0].phase).toBe('result'));
+    // 환자가 푼 것은 1문항, 그중 정답 0 → 0점. (넘긴 문항이 정답으로 세였다면 50점)
+    expect(result.current[0].sessionScore).toBe(0);
+  });
+
+  it('전부 넘기면 점수가 100점이 되지 않는다', async () => {
+    const { result } = 이름대기세션(2);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    await 넘긴다(result);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+    await 넘긴다(result);
+
+    await waitFor(() => expect(result.current[0].phase).toBe('result'));
+    expect(result.current[0].sessionScore).not.toBe(100);
+  });
+
+  it('연속 오답 사이에 넘어가기가 끼어도 피로 탈출이 발동한다', async () => {
+    // 예전에는 넘어가기가 true로 들어가 연속 카운터를 0으로 리셋했다. 즉
+    // **힘들어서 넘긴 바로 그 상황에서** 안전장치가 꺼졌다.
+    const { result } = 이름대기세션(6);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    await 틀린다(result);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+    await 넘긴다(result);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+    await 틀린다(result);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+    await 틀린다(result);
+
+    // 오답 3연속(중간의 넘어가기는 투명하게 지나친다) → 6문항을 다 풀기 전에 종료.
+    await waitFor(() => expect(result.current[0].phase).toBe('result'));
+  });
+
+  it('넘어가기가 정답 뒤에 오면 그 정답을 지우지 않는다', async () => {
+    // 투명하게 지나친다는 것은 연속을 끊지도, 잇지도 않는다는 뜻이다.
+    const { result } = 이름대기세션(3);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    act(() => result.current[1].submitNaming('사과', PASS));
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    act(() => result.current[1].next());
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    await 넘긴다(result);
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+    await 틀린다(result);
+
+    await waitFor(() => expect(result.current[0].phase).toBe('result'));
+    // 환자가 푼 것은 2문항(정답 1, 오답 1) → 50점.
+    expect(result.current[0].sessionScore).toBe(50);
+  });
+});

@@ -9,17 +9,34 @@
 // 단어이해 풀: 기존 wordComp 이미지(74종)로 자동 생성한 확장 뱅크.
 // (표준 wordComp 검사 JSON은 그대로 두고, 혼합 퀴즈용 풀만 별도로 확장한다.)
 import wordPoolData from '../../../../assets/data/qabWordPool.json';
+import { shuffle } from '../../../../shared/domain/shuffle.js';
+import {
+  choiceSpecForLevel,
+  distractorCountForLevel,
+  sentChoiceTotalForLevel,
+  sentTypeForLevel,
+  syllableCount,
+  syllableRangeForLevel,
+  usesSimilarDistractors,
+} from '../domain/difficultyRules.js';
 import namingPhotos from '../../../../assets/data/namingPhotos.json';
+import namingOnlyWords from '../../../../assets/data/namingOnlyWords.json';
 import sentCompData from '../../../../assets/data/sentCompItems.json';
 // 거울 문항(정답/오답 반전)으로 문장이해 풀을 새 이미지 없이 2배로 확장한다.
 import sentMirrorData from '../../../../assets/data/qabSentMirror.json';
 // AI 이미지 생성 스크립트(scripts/generate_sentcomp_images.py)가 만든 신규 장면 문항.
 // 이미지가 생성된 항목만 포함되며, 스크립트 실행 전에는 비어 있다.
 import sentGeneratedData from '../../../../assets/data/qabSentGenerated.json';
+// 관계절 문항. 기존 가역문 장면 쌍을 그대로 쓰고 문장만 새로 쓴다(새 그림 0장).
+import sentRelativeData from '../../../../assets/data/qabSentRelative.json';
+// 내포절 문항. 사람과 자세는 같고 생각 풍선 속만 다른 장면 쌍을 쓴다.
+import sentEmbeddedData from '../../../../assets/data/qabSentEmbedded.json';
 import type {
+  QabImageChoice,
   QabImageItem,
   QabNamingItem,
   QabSpellItem,
+  QabFoilKind,
 } from '../domain/MixedQuiz.js';
 import {
   sharesInitialConsonant,
@@ -51,25 +68,77 @@ interface RawSentItem {
 }
 
 const WORD_ITEMS: RawWordItem[] = (wordPoolData as { items: RawWordItem[] }).items;
+
+/**
+ * 혼합 퀴즈 풀에서 빼는 문장 문항 — **관계절이 놀고 있는 넷**과 그 거울.
+ *
+ * 넷 다 관계절을 달고 `relative-clause`로 기록됐지만, 두 그림이 관계절이
+ * 아니라 주절에서만 갈린다.
+ *
+ *   05  "**공을 차는** 아이가 웃고 있어요"  ↔  "**공을 차는** 아이가 울고 있어요"
+ *   06  "**책을 읽는** 여자가 안경을 썼어요" ↔  "…안경을 쓰지 않았어요"
+ *   07  "**노래하는** 남자가 기타를 들었어요" ↔ "…드럼을 들었어요"
+ *   08  "**뛰어가는** 강아지가 공을 물었어요" ↔ "…뼈를 물었어요"
+ *
+ * 굵은 부분이 두 선택지에서 똑같다. 관계절을 통째로 흘려들어도 정답을 고른다.
+ * 그런데 레벨 3~4가 내는 유형이 `relative-clause`라, 이 넷이 "관계절 정답률"로
+ * 기록되고 적응 레벨링이 그 값을 보고 승급을 판단했다.
+ *
+ * **고칠 방법이 없어서 뺀다.** 관계절이 일하게 하려면 그림에 후보가 둘 있어야
+ * 한다(공을 **차는** 아이와 **든** 아이가 한 그림에). 지금 그림에는 아이가
+ * 하나뿐이라, 문장을 고쳐서는 안 되고 그림을 새로 그려야 한다.
+ *
+ * 그래도 **문항 수는 그대로다** — 같은 수의 진짜 관계절 문항을 새 그림 없이
+ * 만들어 넣었다(`qabSentRelative.json`).
+ *
+ * 표준 sentComp 검사(`useSentCompViewModel`)에서는 그대로 쓴다. 거기서는
+ * 통사 유형이 난이도 손잡이가 아니라 문항일 뿐이고, 넷 다 멀쩡한 문항이다.
+ */
+const NON_DISCRIMINATIVE_SENT_ITEMS: ReadonlySet<string> = new Set([
+  'sentComp_05', 'sentComp_06', 'sentComp_07', 'sentComp_08',
+  'sentComp_05_m', 'sentComp_06_m', 'sentComp_07_m', 'sentComp_08_m',
+]);
+
+/**
+ * 혼합 퀴즈 풀에서 빼는 문장 문항 — **내포절 밴드에 있는 단문 둘.**
+ *
+ *   09  아빠는 엄마가 요리를 한다고 생각해요   ← 내포절
+ *   09_m 아빠가 혼자 요리를 하고 있어요        ← **단문**
+ *   10  선생님은 학생이 공부를 잘한다고 믿어요 ← 내포절
+ *   10_m 학생이 선생님을 믿고 있어요           ← **단문**
+ *
+ * 거울 문항이 내포절이 아니다. 09·10의 그림 쌍이 역할 뒤집기가 아니라
+ * "떠올린다 ↔ 실제로 한다"의 대비라, 오답 그림을 가리키는 문장이 자연히
+ * 단문이 된다. 그런데 둘 다 `embedded-clause`로 기록돼, 레벨 5가 내는 넷 중
+ * 둘이 단문이었다 — **"레벨 5 정답률"의 절반이 단문 정답률이었다.**
+ *
+ * 대신 내포절끼리 갈리는 장면 둘을 새로 그려 넣었다(`qabSentEmbedded.json`).
+ * 밴드는 4개에서 6개로 늘었다.
+ *
+ * 표준 sentComp 검사에서는 그대로 쓴다 — 거기서는 통사 유형이 난이도
+ * 손잡이가 아니다.
+ */
+const NON_EMBEDDED_MIRRORS: ReadonlySet<string> = new Set([
+  'sentComp_09_m',
+  'sentComp_10_m',
+]);
+
 const SENT_ITEMS: RawSentItem[] = [
   ...(sentCompData as unknown as RawSentItem[]),
   ...((sentMirrorData as { items: RawSentItem[] }).items),
   ...((sentGeneratedData as { items: RawSentItem[] }).items),
-];
+  ...((sentRelativeData as { items: RawSentItem[] }).items),
+  ...((sentEmbeddedData as { items: RawSentItem[] }).items),
+].filter(
+  (it) =>
+    !NON_DISCRIMINATIVE_SENT_ITEMS.has(it.itemId) &&
+    !NON_EMBEDDED_MIRRORS.has(it.itemId),
+);
 
 const WORD_INSTRUCTION = '들려주는 단어의 그림을 골라주세요';
 const SENT_INSTRUCTION = '들려주는 문장에 맞는 그림을 골라주세요';
 const NAMING_INSTRUCTION = '그림을 보고 이름을 말해주세요';
 
-/** Fisher-Yates 셔플 (원본 불변, 새 배열 반환). */
-function shuffle<T>(items: readonly T[], rng: () => number = Math.random): T[] {
-  const result = [...items];
-  for (let i = result.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(rng() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-}
 
 // ── 통제된 유인지(distractor) 생성 ─────────────────────────────
 //
@@ -79,7 +148,7 @@ function shuffle<T>(items: readonly T[], rng: () => number = Math.random): T[] {
 // 구성해, 범주만 알면 못 맞추고 '정확히 그 단어'를 이해해야 맞도록 만든다.
 
 /**
- * slug → 의미 범주. 미등록 slug는 'object'로 폴백(크래시 방지). (테스트 노출)
+ * slug → 의미 범주. **범주가 없는 낱말은 `null`이다.** (테스트 노출)
  *
  * 범주는 두 곳에서 쓰인다. 검사에서는 `buildControlledChoices`가 **같은 범주
  * 오답**을 뽑는 기준이고, 연습에서는 무리에서 빼기가 **한 무리로 묶을 수 있는가**의
@@ -96,19 +165,24 @@ function shuffle<T>(items: readonly T[], rng: () => number = Math.random): T[] {
  * 셋이 서로 무관했으니, 이름만 어려웠던 것을 진짜 쉬운 것으로 바꾼 셈이다.
  * 넷을 채우려면 낱말을 더 넣어야 한다(docs/ASSETS-NEEDED.md).
  *
- * 그림이 없는 낱말의 태그는 두지 않는다. 2026-08-22에 빗·책상·국자·수건·모래·
- * 냉장고·세탁기·비누통 등 그림 없이 남아 있던 16개를 지웠다 — Fluent 교체 때
- * 그림이 사라진 것들이라 어디서도 안 쓰인다.
+ * 그림 고르기용 아이콘이 없는 낱말의 태그는 두지 않는다. 2026-08-22에 Fluent
+ * 교체로 아이콘이 사라진 16개를 지웠다.
+ *
+ * **그중 빗·책상·수건·냉장고는 돌아왔다.** #71이 실물 사진을 붙여 이름대기
+ * 전용으로 되살렸다(namingOnlyWords). 아이콘이 없으니 여기 오답 후보로는 여전히
+ * 못 쓰지만 "어디서도 안 쓰인다"는 이제 거짓이다. 국자·모래·세탁기·비누통은
+ * 아직 어디에도 없다.
  */
-export const WORD_CATEGORY: Record<string, string> = {
+export const WORD_CATEGORY: Record<string, string | null> = {
   // 동물 12
   bear: 'animal', butterfly: 'animal', cat: 'animal', chick: 'animal',
   dog: 'animal', elephant: 'animal', lion: 'animal', pig: 'animal',
   rabbit: 'animal', tiger: 'animal', turtle: 'animal', whale: 'animal',
-  // 음식 15
+  // 음식 16
   apple: 'food', banana: 'food', bread: 'food', cake: 'food', candy: 'food',
   carrot: 'food', corn: 'food', grape: 'food', juice: 'food', melon: 'food',
-  milk: 'food', orange: 'food', strawberry: 'food', tomato: 'food',
+  milk: 'food', orange: 'food', strawberry: 'food', sweet_potato: 'food',
+  tomato: 'food',
   watermelon: 'food',
   // 탈것 7
   airplane: 'vehicle', bicycle: 'vehicle', bus: 'vehicle', car: 'vehicle',
@@ -142,18 +216,40 @@ export const WORD_CATEGORY: Record<string, string> = {
   mirror: 'bathroom', soap: 'bathroom', toothbrush: 'bathroom',
   // 연장 3
   hammer: 'tool', ladder: 'tool', screwdriver: 'tool',
-  // 남은 잡동사니 9 — 서로 한 무리가 아니라서 무리 쪽으로는 못 쓴다.
-  // "다른 하나"로는 얼마든지 쓴다(동물 셋 사이의 열쇠는 명확하다).
-  bag: 'object', balloon: 'object', basket: 'object', candle: 'object',
-  clock: 'object', key: 'object', mailbox: 'object', rock: 'object',
-  umbrella: 'object',
+  // ── 범주 없음 9 ───────────────────────────────────────────────
+  //
+  // 서로 한 무리가 아니다. 예전에는 이 아홉을 `'object'`라는 이름의 범주로 묶어
+  // 뒀는데, 그러면 `buildControlledChoices`가 가방의 "같은 범주 오답"으로 풍선·돌을
+  // 뽑고 그 행에 `foil_kind='semantic'`을 찍었다. 91개 중 9개(9.9%)가 **거짓
+  // 의미 오답**이었다.
+  //
+  // 갈래를 나눈 이유가 "의미 오답을 반복해 고르는 것과 음운 오답을 반복해 고르는
+  // 것은 서로 다른 손상"을 읽기 위해서인데, 이름만 범주인 묶음이 그 신호를
+  // 오염시킨다. `null`로 두면 이 낱말들은 의미 오답을 **못 가지고**, 그 자리는
+  // 음운 오답으로 넘어간다(아래 buildControlledChoices).
+  //
+  // "다른 하나"(연습)로는 얼마든지 쓴다 — 동물 셋 사이의 열쇠는 명확하다.
+  bag: null, balloon: null, basket: null, candle: null,
+  clock: null, key: null, mailbox: null, rock: null,
+  umbrella: null,
 };
+
+/**
+ * 두 낱말이 **같은 의미 범주**인가.
+ *
+ * `null === null`을 참으로 보면 안 된다. 범주 없음끼리는 "둘 다 무리가 아니다"라는
+ * 뜻이지 같은 무리라는 뜻이 아니다.
+ */
+function sameCategory(a: string | null, b: string | null): boolean {
+  return a !== null && a === b;
+}
 
 export interface MasterWord {
   slug: string;
   label: string;
   imageUrl: string;
-  category: string;
+  /** 의미 범주. `null`이면 어느 무리에도 안 든다(의미 오답을 못 가진다). */
+  category: string | null;
 }
 
 /** 정답 선택지 기준 마스터 단어 풀(유인지 후보). slug 기준 중복 제거. */
@@ -168,7 +264,10 @@ const MASTER_WORDS: MasterWord[] = (() => {
       slug,
       label: correct.label,
       imageUrl: correct.imageUrl,
-      category: WORD_CATEGORY[slug] ?? 'object',
+      // 미등록 slug는 폴백하지 않고 `null`로 둔다. 예전엔 `?? 'object'`라
+      // 태그를 빠뜨린 낱말이 조용히 잡동사니 범주에 섞였다. 풀의 모든 slug가
+      // 등록돼 있다는 것은 테스트가 지킨다(`풀 ⊆ WORD_CATEGORY`).
+      category: slug in WORD_CATEGORY ? WORD_CATEGORY[slug] : null,
     });
   }
   return [...bySlug.values()];
@@ -197,90 +296,13 @@ export function masterWords(): MasterWord[] {
 // 낮은 레벨은 선택지 적고 오답이 무관(먼) 단어라 쉽고, 높은 레벨은 선택지 많고
 // 오답이 전부 같은 범주(근접)라 어렵다.
 /**
- * 레벨을 모를 때 쓰는 기본값. 백엔드 `COLD_START_LEVEL`과 **같아야 한다** —
- * 다르면 환자가 본 난이도와 서버가 기록한 레벨이 어긋난다.
- */
-const COLD_START_LEVEL = 2;
-
-/**
- * 적응 레벨을 [1..5] 정수로 정규화한다. **난이도 축이 여럿이라 반드시 공유해야 한다.**
- *
- * 예전에는 이 식(`level == null ? 기본 : clamp(round(level))`)이 세 함수에 복사돼
- * 있었고, 이미 갈라져 있었다 — 두 곳은 `COLD_START_LEVEL`(=2), 한 곳은 `3`.
- * 축마다 다른 레벨을 보면 "레벨 5인데 방해 타일은 레벨 2 수준" 같은 조합이 나오고,
- * 각 함수를 따로 검증하는 테스트로는 그 어긋남을 잡을 수 없다.
- *
- * `fallback`을 **인자로 강제**하는 건 의도적이다. 그림선택은 기존 동작 보존을 위해
- * 3을 쓰고 글자 조합은 콜드스타트 2를 쓴다 — 서로 다른 게 맞는 값이라, 기본값을
- * 숨기면 호출자가 어느 쪽을 받는지 모르게 된다.
- */
-function normalizeLevel(level: number | undefined, fallback: number): number {
-  if (level == null) return fallback;
-  return Math.max(1, Math.min(5, Math.round(level)));
-}
-
-export interface ChoiceSpec {
-  /** 정답 포함 선택지 총 개수. */
-  total: number;
-  /** 오답 중 **같은 의미 범주**에서 뽑을 개수(의미 유인지). */
-  sameCat: number;
-  /** 오답 중 **첫 음절이 닮은 다른 범주** 낱말에서 뽑을 개수(음운 유인지). */
-  phon: number;
-}
-/**
- * 레벨 → 선택지 구성.
- *
- * ── 오답을 두 갈래로 나눈다 ──────────────────────────────────────
- *
- * 실어증 단어-그림 대응 검사의 유인지는 원래 두 종류다. **의미 유인지**
- * ('사과'에 대한 '바나나')는 의미 체계 손상을 잡고, **음운 유인지**('사과'에
- * 대한 '사자')는 음운 처리 손상을 잡는다. 예전에는 의미 쪽 하나만 썼다.
- *
- * | 레벨 | 총 | 의미 | 음운 | 무관 |
- * |-----|----|-----|-----|-----|
- * |  1  | 2  |  0  |  0  |  1  |
- * |  2  | 3  |  1  |  0  |  1  |
- * |  3  | 4  |  2  |  0  |  1  |
- * |  4  | 4  |  2  |  1  |  0  |  ← 무관 하나가 음운으로 바뀐다
- * |  5  | 5  |  2  |  2  |  0  |
- *
- * 한 단계에 오답 구성이 한 군데만 바뀐다. 총 개수(2·3·4·4·5)는 예전과 같아
- * 화면과 집계는 그대로다 — 바뀐 것은 오답의 **질**이다.
- *
- * ── 왜 의미 오답을 2에서 멈추나 ─────────────────────────────────
- *
- * 예전 매핑은 레벨 4에 같은 범주 3개, 5에 4개를 요구했다. 범주가 3개짜리인
- * 낱말(주방·욕실·연장·가구·악기·가전)은 채울 수가 없어 {@link buildControlledChoices}가
- * **무관 오답으로 조용히 메웠다.** 문항은 쉬워지는데 기록은 레벨 5로 남는다.
- * 실측으로 레벨 4에서 낱말의 20%, 레벨 5에서 33%가 이 구멍에 빠졌다.
- *
- * 가장 작은 범주가 3개(정답 + 동료 2)이므로 **의미 2는 모든 낱말이 채운다.**
- * 난도는 낱말 풀 크기에 안 갇히는 음운 축으로 올린다 — 음운 유인지 2개는
- * 90개 낱말 전부가 채울 수 있다(꽃·빵만 어두 초성이 유일해 느슨한 기준으로
- * 내려간다). **새 낱말도 새 그림도 필요 없다.**
- */
-export const LEVEL_CHOICE_SPEC: Record<number, ChoiceSpec> = {
-  1: { total: 2, sameCat: 0, phon: 0 }, // 정답 + 무관1
-  2: { total: 3, sameCat: 1, phon: 0 }, // 정답 + 의미1 + 무관1
-  3: { total: 4, sameCat: 2, phon: 0 }, // 정답 + 의미2 + 무관1 (기존 기본)
-  4: { total: 4, sameCat: 2, phon: 1 }, // 정답 + 의미2 + 음운1
-  5: { total: 5, sameCat: 2, phon: 2 }, // 정답 + 의미2 + 음운2
-};
-
-/** 레벨을 [1..5]로 클램프하고 해당 스펙을 돌려준다(미지정/범위밖은 3=기본). */
-function choiceSpecForLevel(level?: number): ChoiceSpec {
-  const lv = normalizeLevel(level, 3);
-  return LEVEL_CHOICE_SPEC[lv];
-}
-
-/**
  * 통제된 유인지를 골라 정답과 함께 레벨별 보기를 만든다.
  *
  * 오답은 세 갈래로 채운다 — **의미**(같은 범주) → **음운**(다른 범주, 첫 음절이
  * 닮음) → **무관**(나머지). 순서가 곧 우선순위다. {@link LEVEL_CHOICE_SPEC}에
  * 레벨별 배분이 있다.
  *
- * level 미지정 시 레벨 3(의미2 + 무관1) — 기존 동작 보존. (테스트 노출)
+ * level 미지정 시 콜드스타트 레벨 2(의미1 + 무관1) — 다른 축과 같은 값이다.
  */
 export function buildControlledChoices(target: MasterWord, level?: number) {
   const spec = choiceSpecForLevel(level);
@@ -289,15 +311,29 @@ export function buildControlledChoices(target: MasterWord, level?: number) {
 
   const sameCat = shuffle(
     MASTER_WORDS.filter(
-      (w) => w.slug !== target.slug && w.category === target.category,
+      (w) => w.slug !== target.slug && sameCategory(w.category, target.category),
     ),
   );
+  // `w.slug !== target.slug`를 여기서도 건다. 예전엔 범주 비교만으로 자기 자신이
+  // 걸러졌는데(자기 범주는 늘 같으니까), 범주 없음(null)끼리는 "같은 범주"가
+  // 아니므로 정답이 자기 오답 후보에 들어온다.
   const otherCat = shuffle(
-    MASTER_WORDS.filter((w) => w.category !== target.category),
+    MASTER_WORDS.filter(
+      (w) =>
+        w.slug !== target.slug && !sameCategory(w.category, target.category),
+    ),
   );
 
-  const foils: MasterWord[] = [];
-  foils.push(...sameCat.slice(0, sameCatWanted)); // 같은 범주(부족하면 그만큼만)
+  // 갈래를 **뽑는 자리에서** 붙여 들고 다닌다. 나중에 되짚으면 같은 낱말이 두
+  // 조건을 동시에 만족할 때 실제로 어느 통에서 왔는지와 어긋난다.
+  const foils: Array<{ word: MasterWord; kind: QabFoilKind }> = [];
+  const has = (w: MasterWord) => foils.some((f) => f.word.slug === w.slug);
+  // 같은 범주(부족하면 그만큼만)
+  foils.push(
+    ...sameCat
+      .slice(0, sameCatWanted)
+      .map((w) => ({ word: w, kind: 'semantic' as const })),
+  );
 
   // ── 음운 유인지 ────────────────────────────────────────────────
   //
@@ -309,10 +345,16 @@ export function buildControlledChoices(target: MasterWord, level?: number) {
   // 유인지다. 초성이 유일한 낱말(꽃·빵)은 1순위 후보가 0개라, 초성이나 중성을
   // 공유하는 2순위로 내려가 채운다 — 개수를 줄이면 문항만 쉬워지고 기록은
   // 그대로라 레벨이 거짓말을 한다.
-  const phonWanted = Math.min(spec.phon, foilTotal - foils.length);
+  // 같은 범주가 모자란 만큼 **음운 자리로 넘긴다.** 무관으로 흘려보내면 문항만
+  // 쉬워지고 기록은 그대로라 레벨이 거짓말을 한다. 음운 오답은 90개 낱말 전부가
+  // 채울 수 있으므로(초성 1순위, 없으면 초·중성 2순위) 이 이동은 늘 성립한다.
+  const sameCatShort = sameCatWanted - foils.length;
+  const phonWanted = Math.min(
+    spec.phon + sameCatShort,
+    foilTotal - foils.length,
+  );
   if (phonWanted > 0) {
-    const taken = new Set(foils.map((f) => f.slug));
-    const pool = otherCat.filter((w) => !taken.has(w.slug));
+    const pool = otherCat.filter((w) => !has(w));
     const near = shuffle(
       pool.filter((w) => sharesInitialConsonant(target.label, w.label)),
     );
@@ -323,28 +365,48 @@ export function buildControlledChoices(target: MasterWord, level?: number) {
           sharesOnsetOrNucleus(target.label.charAt(0), w.label.charAt(0)),
       ),
     );
-    foils.push(...[...near, ...loose].slice(0, phonWanted));
+    foils.push(
+      ...[...near, ...loose]
+        .slice(0, phonWanted)
+        .map((w) => ({ word: w, kind: 'phonological' as const })),
+    );
   }
 
   for (const w of otherCat) {
     // 무관 오답으로 나머지를 채운다(같은 범주가 모자랄 때도 여기서 보충).
     if (foils.length >= foilTotal) break;
-    if (!foils.some((f) => f.slug === w.slug)) foils.push(w);
+    if (!has(w)) foils.push({ word: w, kind: 'unrelated' });
   }
-  // 그래도 부족하면(풀이 아주 작을 때) 아무거나 채운다.
+  // 그래도 부족하면(풀이 아주 작을 때) 아무거나 채운다. 이때만 같은 범주가
+  // 무관 자리에 올 수 있어, 갈래는 실제 범주를 보고 정한다.
   if (foils.length < foilTotal) {
     for (const w of shuffle(MASTER_WORDS)) {
       if (foils.length >= foilTotal) break;
-      if (w.slug !== target.slug && !foils.some((f) => f.slug === w.slug)) {
-        foils.push(w);
+      if (w.slug !== target.slug && !has(w)) {
+        foils.push({
+          word: w,
+          kind: sameCategory(w.category, target.category)
+            ? 'semantic'
+            : 'unrelated',
+        });
       }
     }
   }
 
   const raw = [
-    { slug: target.slug, label: target.label, imageUrl: target.imageUrl, isCorrect: true },
+    {
+      slug: target.slug,
+      label: target.label,
+      imageUrl: target.imageUrl,
+      isCorrect: true,
+      kind: undefined as QabFoilKind | undefined,
+    },
     ...foils.slice(0, foilTotal).map((f) => ({
-      slug: f.slug, label: f.label, imageUrl: f.imageUrl, isCorrect: false,
+      slug: f.word.slug,
+      label: f.word.label,
+      imageUrl: f.word.imageUrl,
+      isCorrect: false,
+      kind: f.kind as QabFoilKind | undefined,
     })),
   ];
   return shuffle(raw).map((c, idx) => ({
@@ -352,6 +414,7 @@ export function buildControlledChoices(target: MasterWord, level?: number) {
     label: c.label,
     imageUrl: c.imageUrl,
     isCorrect: c.isCorrect,
+    ...(c.kind !== undefined ? { foilKind: c.kind } : {}),
   }));
 }
 
@@ -378,30 +441,116 @@ function toWordItem(it: RawWordItem, level?: number): QabImageItem {
   };
 }
 
-function toSentItem(it: RawSentItem, level?: number): QabImageItem {
-  // 선택지는 원본 JSON의 고정 쌍이라 **여기서** 오답거리를 바꾸지는 않는다.
-  // 문장이해의 난이도는 선택지가 아니라 **자극의 통사 복잡도**로 준다 —
-  // 어느 문항을 낼지는 sentPoolForLevel이 레벨로 정한다.
+/**
+ * 이미지가 속한 **장면**. `sentComp_03_distractor.png` → `sentComp_03`.
+ *
+ * 미러 문항(`sentComp_03_m`)은 원본과 **같은 두 장**을 정답만 바꿔 쓴다. 그래서
+ * "다른 문항의 이미지"로 오답을 고르면 자기 장면이 되돌아온다 — itemId가 아니라
+ * 장면으로 걸러야 하는 이유다.
+ */
+export function sceneOfImage(imageUrl: string): string {
+  const file = imageUrl.split('/').pop() ?? imageUrl;
+  return file.replace(/\.[^.]+$/, '').replace(/_(correct|distractor)$/, '');
+}
+
+/**
+ * 문장이해 보기를 레벨이 요구하는 수만큼 채운다.
+ *
+ * 원본 JSON은 문항마다 **두 장**이다 — 정답과 역할역전 오답. 그 둘은 그대로 두고
+ * (역할역전이 가역문 이해를 재는 핵심이다), 모자란 자리는 **다른 장면**에서
+ * 빌려 온다. 새 그림은 필요 없다: 14개 장면 × 2장이 이미 있고 자기 장면만
+ * 빼면 13개가 남는다.
+ *
+ * 무관 오답을 섞는 건 임시방편이 아니라 실어증 문장이해 검사의 표준 배열이다
+ * (정답 + 역할역전 + 무관). 지금의 2지선다가 오히려 표준에서 모자란 쪽이었다.
+ *
+ * **한 장면에서 한 장만 가져온다.** 같은 장면의 두 장은 행위자·대상만 뒤바뀐
+ * 거의 같은 그림이라, 둘 다 들어가면 환자는 무관한 그림을 두 번 훑어야 하고
+ * 보기 한 자리를 버리게 된다.
+ */
+export function buildSentChoices(
+  it: RawSentItem,
+  pool: readonly RawSentItem[],
+  level?: number,
+  rng: () => number = Math.random,
+): QabImageChoice[] {
+  const own = it.choices.map((c, idx) => ({
+    choiceId: `${it.itemId}_c${idx}`,
+    label: c.altText,
+    imageUrl: c.imageUrl,
+    isCorrect: c.isCorrect,
+  }));
+
+  const ownScenes = new Set(it.choices.map((c) => sceneOfImage(c.imageUrl)));
+  const wanted = sentChoiceTotalForLevel(level) - own.length;
+
+  // 장면당 한 장만 후보에 올린다. 먼저 만난 것을 남기되, 어느 장면이 먼저
+  // 오는지는 아래 shuffle이 정하므로 특정 그림이 고정으로 뽑히지 않는다.
+  const seen = new Set<string>(ownScenes);
+  const candidates: QabImageChoice[] = [];
+  for (const other of shuffle(pool, rng)) {
+    for (const c of other.choices) {
+      const scene = sceneOfImage(c.imageUrl);
+      if (seen.has(scene)) continue;
+      seen.add(scene);
+      candidates.push({
+        choiceId: `${it.itemId}_x_${scene}`,
+        label: c.altText,
+        imageUrl: c.imageUrl,
+        isCorrect: false,
+      });
+    }
+  }
+
+  // 후보가 모자라면 있는 만큼만. 자극이 줄어드는 것보다 보기가 적은 편이 낫다.
+  return shuffle([...own, ...candidates.slice(0, Math.max(0, wanted))], rng);
+}
+
+function toSentItem(
+  it: RawSentItem,
+  level?: number,
+  pool: readonly RawSentItem[] = SENT_ITEMS,
+): QabImageItem {
+  // 문장이해의 **1차** 난이도 축은 여전히 자극의 통사 복잡도다(sentPoolForLevel).
+  // 보기 수는 우연수준을 낮추려고 뒤에 붙인 2차 축이다 —
+  // 근거는 difficultyRules의 sentChoiceTotalForLevel에 적어 뒀다.
   return {
     itemId: it.itemId,
     category: 'sentence',
     promptText: it.sentence,
     instruction: SENT_INSTRUCTION,
-    // 선택지 id가 원본에 없으므로 itemId+index로 합성한다.
-    choices: shuffle(
-      it.choices.map((c, idx) => ({
-        choiceId: `${it.itemId}_c${idx}`,
-        label: c.altText,
-        imageUrl: c.imageUrl,
-        isCorrect: c.isCorrect,
-      })),
-    ),
+    choices: buildSentChoices(it, pool, level),
     presentedLevel: level,
   };
 }
 
 /** 실물 사진이 준비된 단어 slug 집합. */
 const NAMING_PHOTO_SLUGS = new Set<string>(namingPhotos.slugs);
+
+/**
+ * 이름대기 전용 낱말 — 사진은 있으나 그림 고르기용 아이콘이 없는 것들.
+ *
+ * **왜 낱말 풀에 안 넣나.** 풀(`qabWordPool`)은 4지선다를 전제해 정답에 SVG를
+ * 요구한다. 사진으로 대신할 수 없다 — 한 선택지만 사진이면 낱말을 몰라도 그것만
+ * 골라 다 맞아 그 문항이 '사진 찾기'가 된다.
+ *
+ * 이름대기는 자극이 한 장뿐이라 선택지 격자가 없고, 따라서 SVG도 필요 없다.
+ * 그 비대칭을 자료로 드러낸다 — 예전에는 이름대기가 선택지 풀에 얹혀 있어서
+ * 아이콘 없는 낱말은 사진이 있어도 쓸 수 없었다.
+ *
+ * **`MASTER_WORDS`에는 안 들어간다.** 그림 고르기의 정답으로도 오답으로도 나오면
+ * 안 되므로, 범주 크기(욕실·가구·가전)에도 영향을 주지 않는다.
+ */
+const NAMING_ONLY_ITEMS: QabNamingItem[] = namingOnlyWords.items.map((w) => ({
+  itemId: `naming_only_${w.slug}`,
+  imageUrl: `/assets/images/naming/${w.slug}.png`,
+  targetWord: w.label,
+  instruction: NAMING_INSTRUCTION,
+  // 이 넷은 애초에 사진만 남은 낱말이다(Fluent 교체 때 아이콘이 사라졌다).
+  stimulusKind: 'photo',
+  // 이쪽 JSON은 범주를 자기 안에 들고 있다(WORD_CATEGORY와 별개).
+  category: w.category,
+}));
 
 /** 이미지 URL에서 파일명 slug를 뽑는다. "/a/b/apple.svg" → "apple". */
 function slugFromUrl(url: string): string {
@@ -422,31 +571,58 @@ function slugFromUrl(url: string): string {
  *   단어이해(4지선다)는 변별이 핵심이라 통제를 유지(선화)한다 — 정답만
  *   사진이면 단어를 몰라도 사진만 골라 다 맞아 검사가 무효가 된다.
  *
- * 구현: 사진이 준비된 단어는 /assets/images/naming/<slug>.png를, 아직 없는
- * 단어는 단어이해 SVG를 그대로 쓴다(폴백). 정답 선택지가 없으면 null.
+ * 구현: **사진이 있는 낱말만 낸다.** 없으면 null이라 이름대기에 안 나온다.
+ *
+ * 예전에는 사진이 없으면 단어이해 SVG로 폴백했다. 사진이 67/84뿐이던 때는
+ * 그게 맞았다 — 폴백을 없앴다면 한 세션을 채울 문항이 모자랐다. 지금은
+ * 90/95라, 다섯을 빼도 통이 넉넉하다.
+ *
+ * 폴백을 없애는 쪽이 나은 이유는 재는 값이 깨끗해지기 때문이다. 실물 사진과
+ * 만화풍 아이콘은 이름을 떠올리는 난이도가 다르다. 섞여 나오면 이름대기
+ * 정답률이 "낱말을 아는 정도"가 아니라 "그날 어떤 자극이 뽑혔는가"에 흔들린다.
+ * `stimulusKind`로 기록은 남겼지만(E11), 기록은 교란을 설명할 뿐 없애지는
+ * 못한다. 이제 자극이 한 종류라 그 교란 자체가 사라진다.
+ *
+ * 빠지는 다섯(텔레비전·당근·코·학교·은행)은 단어이해에는 그대로 남는다.
+ * 거기서는 SVG가 폴백이 아니라 원래 맞는 자극이다.
  */
 function toNamingItem(it: RawWordItem, level?: number): QabNamingItem | null {
   const correct = it.choices.find((c) => c.isCorrect);
   if (!correct) return null;
   const slug = slugFromUrl(correct.imageUrl);
-  const imageUrl = NAMING_PHOTO_SLUGS.has(slug)
-    ? `/assets/images/naming/${slug}.png`
-    : correct.imageUrl;
+  if (!NAMING_PHOTO_SLUGS.has(slug)) return null;
   return {
     itemId: `naming_${it.itemId}`,
-    imageUrl,
+    imageUrl: `/assets/images/naming/${slug}.png`,
     targetWord: it.targetWord,
     instruction: NAMING_INSTRUCTION,
     presentedLevel: level,
+    stimulusKind: 'photo',
+    // 단서 위계(E18)가 의미 단서를 만들 때 쓴다. 값은 이미 여기 있었는데
+    // 문항에 안 실려서 화면이 못 쓰고 있었다.
+    category: slug in WORD_CATEGORY ? WORD_CATEGORY[slug] : null,
   };
 }
 
-/** 그림 이름대기 문항을 무작위 count개 추출. level은 제시 레벨로 스탬핑된다. */
-export function pickNamingItems(count: number, level?: number): QabNamingItem[] {
-  return shuffle(WORD_ITEMS)
-    .map((it) => toNamingItem(it, level))
-    .filter((x): x is QabNamingItem => x !== null)
-    .slice(0, Math.max(0, count));
+/**
+ * 그림 이름대기 문항을 무작위 count개 추출.
+ *
+ * **레벨 인자를 받지 않는다.** 예전엔 받아서 `presentedLevel`에 찍기만 했다 —
+ * 문항 선택에는 전혀 쓰이지 않아 레벨 1과 5가 같은 문항을 냈고, 그 값이 서버에
+ * 저장돼 보호자 화면에 눈높이 단계로 표시됐다. 없는 사실을 만들지 않으려면
+ * 스탬핑도 하면 안 된다. 자세한 이유는 {@link NON_LEVELED_SUBTESTS}.
+ */
+export function pickNamingItems(count: number): QabNamingItem[] {
+  const fromPool = WORD_ITEMS.map((it) => toNamingItem(it, undefined)).filter(
+    (x): x is QabNamingItem => x !== null,
+  );
+  // 전용 낱말도 같은 통에 넣고 함께 섞는다. 뒤에 붙이면 count가 작을 때 영영
+  // 안 나온다.
+  const namingOnly = NAMING_ONLY_ITEMS.map((it) => ({
+    ...it,
+    presentedLevel: undefined,
+  }));
+  return shuffle([...fromPool, ...namingOnly]).slice(0, Math.max(0, count));
 }
 
 // ─── 글자 조합(spell) ─────────────────────────────────────────────
@@ -464,30 +640,6 @@ const SPELL_DISTRACTOR_POOL: readonly string[] = [
 
 /** 타일 총 개수 상한 (한 줄에 담기는 가독성). */
 const SPELL_MAX_TILES = 8;
-
-/**
- * 레벨 → 방해 타일 수.
- *
- * 상용 실어증 치료 도구가 이 과제를 단어 길이 × 방해 글자 **0 / 2 / 4개**로
- * 등급화하는 것을 그대로 따른다. 레벨 1~2에 **방해 0개**(정답 음절 재배열만)를
- * 두는 게 핵심이다 — 예전 구현은 늘 3개라 가장 쉬운 진입 단계가 없었다.
- *
- * 꺾이는 자리는 3과 4다(0·0·2·4·4). 예전엔 2와 4에서 꺾여(0·0·2·2·4) 음절 축과
- * **같은 자리**에서 움직였고, 그래서 5단계가 실제로는 3단계였다. 자세한 표는
- * {@link syllableRangeForLevel} 위에 있다.
- */
-export function distractorCountForLevel(level?: number): number {
-  // 레벨을 모를 때(스킬 레벨 조회 실패)는 **백엔드 콜드스타트와 같은 값**을 쓴다.
-  // 임의의 중간값(3)을 쓰면 환자는 방해 2개짜리를 푸는데 서버는 레벨 2(방해 0개)로
-  // 도장을 찍어, 본 난이도와 기록이 어긋난다. 적응 레벨링의 전제가
-  // "presented_level로 능력과 제시난이도 교란을 제거한다"이므로 그 전제가 깨진다.
-  // 서버가 클라이언트 값을 믿지 않는 건 의도된 설계(eb09bd8)라, 맞춰야 하는 쪽은
-  // 프론트의 기본값이다.
-  const lv = normalizeLevel(level, COLD_START_LEVEL);
-  if (lv <= 2) return 0;
-  if (lv === 3) return 2;
-  return 4;
-}
 
 /**
  * 목표 단어를 음절로 쪼개고 방해 음절을 섞어 셔플한 타일을 만든다.
@@ -521,57 +673,6 @@ export function buildSpellTiles(
       ]
     : shuffle(pool, rng);
   return shuffle([...answer, ...ranked.slice(0, wanted)], rng);
-}
-
-/**
- * 레벨 → 목표 단어 음절 수 범위.
- *
- * 방해 타일 수만으로는 난이도가 통제되지 않는다. 4음절 단어에 방해 0개는 2음절
- * 단어에 방해 0개와 전혀 다른 과제인데, 예전에는 2~4음절이 섞여 나와 레벨별
- * 정답률이 어휘·순서 부하와 교란됐다("이 환자는 방해 2개에서 잘한다"가 아니라
- * "짧은 단어가 운 좋게 많이 나왔다"를 학습한다).
- *
- * ── 세 축을 엇갈리게 놓는다 ──────────────────────────────────────
- *
- * | 레벨 | 방해 수 | 음절 | 방해 종류 | 타일 |
- * |-----|--------|------|----------|------|
- * |  1  |   0    |  2   |    —     |  2   |
- * |  2  |   0    | 3~4  |    —     | 3~4  |
- * |  3  |   2    | 3~4  |  무작위   | 5~6  |
- * |  4  |   4    | 3~4  |  무작위   | 7~8  |
- * |  5  |   4    | 3~4  | 음운 유사 | 7~8  |
- *
- * **한 단계에 한 축만 움직인다.** 예전에는 방해 수와 음절 범위가 둘 다
- * `lv<=2` / `lv<=4`에서 꺾여, 레벨 1과 2가 같은 문제였고 3과 4도 같았다.
- * 5단계 표시가 실제로는 3단계였다는 뜻이다. 게다가 4→5에서 두 축이 동시에
- * 뛰어 그 자리만 절벽이었다.
- *
- * 4음절 낱말은 풀에 2개뿐이라 `3~4`는 실질 3음절이다. 음절 축이 두 칸(2·3)밖에
- * 없어서 방해 수 세 칸(0·2·4)과 곱해도 **두 축만으로는 5단계를 못 만든다** —
- * 두 축 모두 단조로운 사슬의 최대 길이가 4다. 그래서 코드 주석에 후속 과제로
- * 적혀 있던 **음운 유사 방해자**를 세 번째 축으로 세웠다
- * ({@link usesSimilarDistractors}). 새 낱말도 새 그림도 필요 없다.
- */
-function syllableRangeForLevel(level?: number): { min: number; max: number } {
-  const lv = normalizeLevel(level, COLD_START_LEVEL);
-  if (lv <= 1) return { min: 2, max: 2 };
-  return { min: 3, max: 4 };
-}
-
-/**
- * 최고 레벨에서만 방해 타일을 **정답 음절과 닮은 것**으로 고른다.
- *
- * 무작위 방해 타일은 눈으로 걸러진다 — '바다'에 '꽃'이 섞여 있으면 고민이 없다.
- * 초성이나 중성을 공유하는 음절은 그 걸러내기를 막는다. 타일 수는 그대로 4개인데
- * 과제만 어려워지므로, 낱말을 더 넣지 않고도 레벨 4와 5를 가른다.
- */
-function usesSimilarDistractors(level?: number): boolean {
-  return normalizeLevel(level, COLD_START_LEVEL) >= 5;
-}
-
-/** 공백 제외 음절 수. */
-function syllableCount(text: string): number {
-  return Array.from(text.replace(/\s+/g, '')).length;
 }
 
 /**
@@ -657,12 +758,13 @@ export function pickSpellItems(
   // 레벨의 음절 범위 밖이면 후보에 없어 그냥 빠진다. 끌어올리면 환자가 푼
   // 난이도와 `presentedLevel`이 어긋나는데, 그 어긋남이 적응 레벨링이 없애려는
   // 교란 그 자체다 — 재출제보다 레벨이 세다.
-  const pool = eligible.length >= want
-    ? eligible
-    : WORD_ITEMS.filter((it) => {
+  const fellBack = eligible.length < want;
+  const pool = fellBack
+    ? WORD_ITEMS.filter((it) => {
         const label = labelOf(it);
         return label.length > 0 && !excluded.has(label) && syllableCount(label) >= 2;
-      });
+      })
+    : eligible;
 
   const ordered = shuffle(pool).sort((a, b) => {
     const ra = priorityRank.get(refOf(a)) ?? Number.MAX_SAFE_INTEGER;
@@ -674,7 +776,8 @@ export function pickSpellItems(
   for (const it of ordered) {
     if (picked.length >= want) break;
     const item = toSpellItem(it, level);
-    if (item !== null) picked.push(item);
+    // 되돌림으로 나온 문항은 presentedLevel이 실제 음절 난이도를 뜻하지 않는다(D3).
+    if (item !== null) picked.push(fellBack ? { ...item, bandFallback: true } : item);
   }
   return picked;
 }
@@ -711,7 +814,7 @@ export function pickWordItems(count: number, level?: number): QabImageItem[] {
  * 때문이다(toSentItem 참고). 대신 자극 자체에 이미 축이 들어 있다 — `sentenceType`.
  *
  * 실어증 문장이해의 복잡도 위계는 확립돼 있다:
- *   active-passive   능동/수동 가역문 — 어순 단서만으로는 못 풀지만 절이 하나다
+ *   reversible       가역문 — 어순으로만 행위자·대상이 갈리고 절이 하나다
  *   relative-clause  관계절 — 논항이 원위치를 벗어나 흔적 처리가 필요하다
  *   embedded-clause  내포절 — 절 경계를 유지한 채 처리해야 해 작업기억 부담이 최대
  *
@@ -720,46 +823,6 @@ export function pickWordItems(count: number, level?: number): QabImageItem[] {
  * 눈높이가 회복을 뜻하지 않게 된다.
  */
 /**
- * 레벨 → 통사 유형. **밴드는 셋이다.**
- *
- * | 레벨 | 유형 | 문항 수 |
- * |-----|------|--------|
- * | 1~2 | 능동/수동 | 14 |
- * | 3~4 | 관계절   |  8 |
- * |  5  | 내포절   |  4 |
- *
- * ── 5단계인 척을 하지 않는다 ────────────────────────────────────
- *
- * 자극이 3유형뿐이라 밴드도 셋이다. 5행으로 적으면 5단계인 것처럼 보이지만
- * 실제로는 셋이고, 그 거짓말은 이 저장소에서 이미 두 번 났다(글자 조합의
- * glyph-level-axis, 단어 이해의 word-foil-axis). 여기서는 밴드가 셋이라고
- * 적고, 늘리는 조건은 TODOS의 sent-level-axis에 적어 둔다.
- *
- * ── 누적을 끊었다 ───────────────────────────────────────────────
- *
- * 예전에는 허용 유형이 **누적**이었다(레벨 5 = 능동수동 + 관계절 + 내포절).
- * 그러면 레벨 안에서 난이도가 희석된다 — 레벨 5에서 내포절이 뽑힐 확률이
- * 4/26 = **15%**뿐이라 "레벨 5 정답률"의 85%가 낮은 레벨과 같은 문항이었다.
- * 적응 레벨링은 그 부풀린 값을 보고 승급을 판단한다.
- *
- * 단어 이해는 오답을 코드가 조립하므로 축을 새로 세울 수 있었지만, 문장은
- * 선택지가 JSON 고정 그림 쌍이라(`sentComp_01_correct.png` / `_distractor.png`)
- * 변형할 여지가 없다. 여기서 쓸 수 있는 손잡이는 **어느 유형을 내는가**뿐이다.
- */
-const SENT_TYPE_BY_LEVEL: Record<number, string> = {
-  1: 'active-passive',
-  2: 'active-passive',
-  3: 'relative-clause',
-  4: 'relative-clause',
-  5: 'embedded-clause',
-};
-
-/** 이 레벨이 내는 통사 유형 하나. (테스트 노출) */
-export function sentTypeForLevel(level?: number): string {
-  return SENT_TYPE_BY_LEVEL[normalizeLevel(level, COLD_START_LEVEL)];
-}
-
-/**
  * 이 레벨의 통사 유형만 남긴다. 모자라면 전체 풀로 되돌려 세션이 비지 않게
  * 한다(난이도가 어긋나는 편이 문항이 사라지는 것보다 낫다).
  *
@@ -767,19 +830,29 @@ export function sentTypeForLevel(level?: number): string {
  * 사실상 안 걸리지만, 같은 문항이 자주 돌아오는 것은 남는 위험이다 —
  * 2지선다라 외우면 그냥 맞는다. TODOS의 sent-level-axis에 적어 뒀다.
  */
-function sentPoolForLevel(want: number, level?: number): RawSentItem[] {
+function sentPoolForLevel(
+  want: number,
+  level?: number,
+): { pool: RawSentItem[]; fellBack: boolean } {
   const type = sentTypeForLevel(level);
   const eligible = SENT_ITEMS.filter((it) => it.sentenceType === type);
-  return eligible.length >= want ? eligible : [...SENT_ITEMS];
+  return eligible.length >= want
+    ? { pool: eligible, fellBack: false }
+    : { pool: [...SENT_ITEMS], fellBack: true };
 }
 
 /** 문장이해 문항을 무작위 count개 추출. */
 export function pickSentItems(count: number, level?: number): QabImageItem[] {
   const want = Math.max(0, count);
   if (want === 0) return [];
-  return shuffle(sentPoolForLevel(want, level))
+  const { pool, fellBack } = sentPoolForLevel(want, level);
+  return shuffle(pool)
     .slice(0, want)
-    .map((it) => toSentItem(it, level));
+    .map((it) => {
+      const item = toSentItem(it, level);
+      // 되돌림으로 나온 문항은 presentedLevel이 실제 난이도를 뜻하지 않는다(D3).
+      return fellBack ? { ...item, bandFallback: true } : item;
+    });
 }
 
 /**
@@ -822,3 +895,14 @@ export function pickQabItems(
 export function qabItemCount(): number {
   return WORD_ITEMS.length + SENT_ITEMS.length;
 }
+
+// 난이도 규칙은 domain/difficultyRules.ts가 집이다(D2). 기존 호출부가 뱅크에서
+// 가져다 쓰고 있어 그대로 다시 내보낸다 — 규칙을 읽고 싶으면 그 파일을 본다.
+export {
+  COLD_START_LEVEL,
+  LEVEL_CHOICE_SPEC,
+  distractorCountForLevel,
+  sentChoiceTotalForLevel,
+  sentTypeForLevel,
+} from '../domain/difficultyRules.js';
+export type { ChoiceSpec } from '../domain/difficultyRules.js';

@@ -84,6 +84,16 @@ const RATE_WINDOW_MS = 60_000;
  * `<audio src>`는 헤더를 못 붙여서 `?token=`을 쓰고 싶어지지만, URL은 로그·기록에
  * 남는다. 프론트가 fetch로 받아 Blob URL을 만들어 재생하므로 헤더로 충분하다.
  */
+/**
+ * 숫자 상태코드와 비교하기 위해 한 번 넓혀 둔 값.
+ *
+ * `upstreamStatus()`가 주는 것은 upstream이 준 **임의의 HTTP 숫자**라
+ * `HttpStatus` enum 멤버라는 보장이 없다. enum과 직접 비교하면
+ * no-unsafe-enum-comparison에 걸리고, 그 경고가 맞다 — 타입이 실제로
+ * 다르다. 이름은 지키고 비교만 숫자로 한다.
+ */
+const TOO_MANY_REQUESTS: number = HttpStatus.TOO_MANY_REQUESTS;
+
 @Controller('ai')
 // 순서가 중요하다. JwtAuthGuard가 먼저 돌아야 RateLimitGuard가 req.user.id로
 // 버킷을 나눌 수 있다.
@@ -186,7 +196,7 @@ export class AiProxyController {
       const status = this.upstreamStatus(error);
       res.status(status).json({
         message:
-          status === HttpStatus.TOO_MANY_REQUESTS
+          status === TOO_MANY_REQUESTS
             ? '요청이 너무 잦습니다. 잠시 후 다시 시도해주세요.'
             : '음성 인식 서버에 연결하지 못했습니다.',
       });
@@ -266,7 +276,7 @@ export class AiProxyController {
       const status = this.upstreamStatus(error);
       res.status(status).json({
         message:
-          status === HttpStatus.TOO_MANY_REQUESTS
+          status === TOO_MANY_REQUESTS
             ? '요청이 너무 잦습니다. 잠시 후 다시 시도해주세요.'
             : '발음 평가 서버에 연결하지 못했습니다.',
       });
@@ -320,7 +330,7 @@ export class AiProxyController {
       const status = this.upstreamStatus(error);
       res.status(status).json({
         message:
-          status === HttpStatus.TOO_MANY_REQUESTS
+          status === TOO_MANY_REQUESTS
             ? '요청이 너무 잦습니다. 잠시 후 다시 시도해주세요.'
             : '음성 합성 서버에 연결하지 못했습니다.',
       });
@@ -337,7 +347,7 @@ export class AiProxyController {
   private upstreamStatus(error: unknown): number {
     const status = (error as { response?: { status?: number } })?.response
       ?.status;
-    if (status === HttpStatus.TOO_MANY_REQUESTS) return status;
+    if (status === TOO_MANY_REQUESTS) return status;
     if (status === HttpStatus.PAYLOAD_TOO_LARGE) return status;
     return HttpStatus.BAD_GATEWAY;
   }

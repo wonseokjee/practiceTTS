@@ -1,6 +1,6 @@
 {
  "version": 1,
- "totalItems": 90,
+ "totalItems": 91,
  "items": [
   {
    "itemId": "qw_001",
@@ -2698,6 +2698,36 @@
      "choiceId": "qw_101_c4",
      "label": "거울",
      "imageUrl": "/assets/images/wordComp/mirror.svg",
+     "isCorrect": false
+    }
+   ]
+  },
+  {
+   "itemId": "qw_102",
+   "targetWord": "고구마",
+   "choices": [
+    {
+     "choiceId": "qw_102_c1",
+     "label": "고구마",
+     "imageUrl": "/assets/images/wordComp/sweet_potato.svg",
+     "isCorrect": true
+    },
+    {
+     "choiceId": "qw_102_c2",
+     "label": "식빵",
+     "imageUrl": "/assets/images/wordComp/bread.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_102_c3",
+     "label": "오렌지",
+     "imageUrl": "/assets/images/wordComp/orange.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_102_c4",
+     "label": "옥수수",
+     "imageUrl": "/assets/images/wordComp/corn.svg",
      "isCorrect": false
     }
    ]

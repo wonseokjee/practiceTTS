@@ -78,7 +78,10 @@ export class RateLimitGuard implements CanActivate {
     response.setHeader('Retry-After', String(retryAfter));
 
     throw new HttpException(
-      { message: '요청이 너무 잦습니다. 잠시 후 다시 시도해주세요.', retryAfter },
+      {
+        message: '요청이 너무 잦습니다. 잠시 후 다시 시도해주세요.',
+        retryAfter,
+      },
       HttpStatus.TOO_MANY_REQUESTS,
     );
   }

@@ -8,9 +8,17 @@
  * - reactionTimeMs 는 0 이상 (음수 방지는 createReactionTime에서 처리)
  */
 
-/** 문장 유형 */
+/**
+ * 문장 유형 — 무엇을 못 하면 틀리는가로 가른다.
+ *
+ * `reversible`은 예전에 `'active-passive'`였고 화면에도 '능동/수동'으로 표시됐다.
+ * 그런데 이 밴드에는 **수동문이 한 문장도 없다.** 전부 능동문이고, 오답이 행위자와
+ * 대상을 뒤집은 그림이다 — 즉 재는 것은 태(voice)가 아니라 **가역문에서 어순으로
+ * 역할을 가르는 능력**이다. 둘은 실어증에서 다른 손상이고, 이름이 틀리면 보호자가
+ * "수동문은 75% 한다"고 읽는다. 검사한 적 없는 것을.
+ */
 export type SentenceType =
-  | 'active-passive'
+  | 'reversible'
   | 'relative-clause'
   | 'embedded-clause';
 

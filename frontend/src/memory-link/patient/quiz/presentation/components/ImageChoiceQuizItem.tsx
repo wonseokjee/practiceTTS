@@ -131,7 +131,7 @@ export function ImageChoiceQuizItem({
               ring = 'border-[#2D6A56]';
               icon = '✓';
             } else if (isChosen) {
-              ring = 'border-[#E07B54]';
+              ring = 'border-[#B85C36]';
               icon = '✗';
             } else {
               ring = 'border-[#E5E5E0] opacity-60';

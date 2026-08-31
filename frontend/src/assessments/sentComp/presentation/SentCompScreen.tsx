@@ -15,7 +15,7 @@ import { useSentCompViewModel } from './useSentCompViewModel.js';
 import { SentenceAudioPlayer } from './components/SentenceAudioPlayer.js';
 import { ImageChoiceGrid } from './components/ImageChoiceGrid.js';
 import { ScoreResultPanel } from './components/ScoreResultPanel.js';
-import { AssessmentProgressBar } from '../../../shared/components/AssessmentProgressBar.js';
+import { ItemProgressBar } from '../../../shared/components/ItemProgressBar.js';
 import { LoadingOverlay } from '../../../shared/components/LoadingOverlay.js';
 import type { ScoreDTO } from '../application/dtos.js';
 
@@ -69,7 +69,7 @@ export function SentCompScreen({ onComplete }: SentCompScreenProps) {
         </div>
         <button
           type="button"
-          className="text-xs text-[#9AA09B] hover:text-[#C94040] transition-colors mt-1"
+          className="text-xs text-[#6B6560] hover:text-[#C94040] transition-colors mt-1"
           onClick={endSession}
         >
           세션 종료
@@ -131,7 +131,7 @@ export function SentCompScreen({ onComplete }: SentCompScreenProps) {
           currentItem !== null && (
             <>
               {/* 진행 바 */}
-              <AssessmentProgressBar
+              <ItemProgressBar
                 current={currentItemIndex + 1}
                 total={totalItems > 0 ? totalItems : 10}
               />
@@ -170,7 +170,7 @@ export function SentCompScreen({ onComplete }: SentCompScreenProps) {
               {/* SUBMITTING 처리 중 표시 */}
               {phase.type === 'SUBMITTING' && (
                 <div
-                  className="text-center text-sm text-[#9AA09B] py-2"
+                  className="text-center text-sm text-[#6B6560] py-2"
                   aria-live="polite"
                 >
                   처리 중...

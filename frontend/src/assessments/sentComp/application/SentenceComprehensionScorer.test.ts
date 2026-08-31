@@ -8,8 +8,8 @@
  * TC-03: calculateReactionTime(1000, 2500) → 1500
  * TC-04: calculateReactionTime(1100, 1000) → 0 (음수 방지)
  * TC-05: calculateScore - 10문항 모두 정답 → { totalScore: 100, correctCount: 10 }
- * TC-06: calculateScore - active-passive 4문항(3정답), relative-clause 4문항(2정답),
- *         embedded-clause 2문항(1정답) → byType['active-passive'].rate=0.75, ..., totalScore=60
+ * TC-06: calculateScore - reversible 4문항(3정답), relative-clause 4문항(2정답),
+ *         embedded-clause 2문항(1정답) → byType['reversible'].rate=0.75, ..., totalScore=60
  * TC-07: calculateScore - embedded-clause 문항 없음 → byType['embedded-clause'].rate = null
  */
 
@@ -79,12 +79,12 @@ function makeResult(
 
 describe('isAnswerCorrect', () => {
   it('TC-01: choices[0].isCorrect=true, selectedIndex=0 → true', () => {
-    const item = makeItem('item_01', 'active-passive', 0, 0);
+    const item = makeItem('item_01', 'reversible', 0, 0);
     expect(isAnswerCorrect(item, 0)).toBe(true);
   });
 
   it('TC-02: choices[0].isCorrect=true, selectedIndex=1 → false', () => {
-    const item = makeItem('item_02', 'active-passive', 0, 0);
+    const item = makeItem('item_02', 'reversible', 0, 0);
     expect(isAnswerCorrect(item, 1)).toBe(false);
   });
 
@@ -124,10 +124,10 @@ describe('calculateReactionTime', () => {
 describe('calculateScore', () => {
   it('TC-05: 10문항 모두 정답 → totalScore=100, correctCount=10', () => {
     const items: SentenceComprehensionItem[] = [
-      makeItem('s01', 'active-passive', 0, 0),
-      makeItem('s02', 'active-passive', 1, 1),
-      makeItem('s03', 'active-passive', 0, 2),
-      makeItem('s04', 'active-passive', 1, 3),
+      makeItem('s01', 'reversible', 0, 0),
+      makeItem('s02', 'reversible', 1, 1),
+      makeItem('s03', 'reversible', 0, 2),
+      makeItem('s04', 'reversible', 1, 3),
       makeItem('s05', 'relative-clause', 0, 4),
       makeItem('s06', 'relative-clause', 1, 5),
       makeItem('s07', 'relative-clause', 0, 6),
@@ -147,13 +147,13 @@ describe('calculateScore', () => {
     expect(score.totalItems).toBe(10);
   });
 
-  it('TC-06: active-passive 4문항(3정답), relative-clause 4문항(2정답), embedded-clause 2문항(1정답) → 유형별 정답률 및 totalScore=60', () => {
+  it('TC-06: reversible 4문항(3정답), relative-clause 4문항(2정답), embedded-clause 2문항(1정답) → 유형별 정답률 및 totalScore=60', () => {
     const items: SentenceComprehensionItem[] = [
-      // active-passive: 4문항
-      makeItem('ap01', 'active-passive', 0, 0),
-      makeItem('ap02', 'active-passive', 0, 1),
-      makeItem('ap03', 'active-passive', 0, 2),
-      makeItem('ap04', 'active-passive', 0, 3),
+      // reversible: 4문항
+      makeItem('ap01', 'reversible', 0, 0),
+      makeItem('ap02', 'reversible', 0, 1),
+      makeItem('ap03', 'reversible', 0, 2),
+      makeItem('ap04', 'reversible', 0, 3),
       // relative-clause: 4문항
       makeItem('rc01', 'relative-clause', 0, 4),
       makeItem('rc02', 'relative-clause', 0, 5),
@@ -165,7 +165,7 @@ describe('calculateScore', () => {
     ];
 
     const results: SentenceComprehensionResult[] = [
-      // active-passive: 3정답, 1오답
+      // reversible: 3정답, 1오답
       makeResult('ap01', 0, true),
       makeResult('ap02', 0, true),
       makeResult('ap03', 0, true),
@@ -186,10 +186,10 @@ describe('calculateScore', () => {
     expect(score.totalScore).toBe(60);
     expect(score.correctCount).toBe(6);
 
-    // active-passive: 3/4 = 0.75
-    expect(score.byType['active-passive'].correct).toBe(3);
-    expect(score.byType['active-passive'].total).toBe(4);
-    expect(score.byType['active-passive'].rate).toBe(0.75);
+    // reversible: 3/4 = 0.75
+    expect(score.byType['reversible'].correct).toBe(3);
+    expect(score.byType['reversible'].total).toBe(4);
+    expect(score.byType['reversible'].rate).toBe(0.75);
 
     // relative-clause: 2/4 = 0.5
     expect(score.byType['relative-clause'].correct).toBe(2);
@@ -204,7 +204,7 @@ describe('calculateScore', () => {
 
   it('TC-07: embedded-clause 문항 없음 → byType[embedded-clause].rate = null', () => {
     const items: SentenceComprehensionItem[] = [
-      makeItem('ap01', 'active-passive', 0, 0),
+      makeItem('ap01', 'reversible', 0, 0),
       makeItem('rc01', 'relative-clause', 0, 1),
     ];
 
@@ -221,7 +221,7 @@ describe('calculateScore', () => {
 
   it('결과가 없으면 averageReactionTimeMs = 0, averageReplayCount = 0', () => {
     const items: SentenceComprehensionItem[] = [
-      makeItem('ap01', 'active-passive', 0, 0),
+      makeItem('ap01', 'reversible', 0, 0),
     ];
 
     const score = calculateScore(items, []);
@@ -234,8 +234,8 @@ describe('calculateScore', () => {
 
   it('평균 반응시간과 재청취 횟수를 올바르게 계산한다', () => {
     const items: SentenceComprehensionItem[] = [
-      makeItem('i01', 'active-passive', 0, 0),
-      makeItem('i02', 'active-passive', 0, 1),
+      makeItem('i01', 'reversible', 0, 0),
+      makeItem('i02', 'reversible', 0, 1),
     ];
 
     const results: SentenceComprehensionResult[] = [

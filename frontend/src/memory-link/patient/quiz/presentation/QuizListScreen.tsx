@@ -29,8 +29,17 @@ export function QuizListScreen({ onSelectQuiz, deps }: QuizListScreenProps) {
 
   return (
     <div className="font-pretendard mx-auto w-full max-w-2xl px-4 py-6">
+      {/*
+        "오늘의"가 아니다. 이 목록은 `status: 'ready'`인 세트 **전부**를 담는다 —
+        실제로 8월 27일에 열었을 때 7월 20일 세트가 들어 있었다. 화면 안의
+        `aria-label`과 빈 상태 문구는 이미 "풀 수 있는 퀴즈"라고 맞게 적혀 있었고
+        제목만 어긋나 있었다.
+
+        홈에서 세트가 하나면 바로 시작하므로(DR1b), 이 화면은 이제 **여럿 중
+        고를 때** 나온다. 제목이 그 상황을 말해야 한다.
+      */}
       <h2 className="mb-5 text-2xl font-bold text-[#1F2A26]">
-        오늘의 기억 퀴즈
+        풀 수 있는 퀴즈
       </h2>
 
       {isLoading && (
@@ -60,7 +69,8 @@ export function QuizListScreen({ onSelectQuiz, deps }: QuizListScreenProps) {
           <p className="text-xl text-[#5C6661]">
             아직 풀 수 있는 퀴즈가 없어요.
           </p>
-          <p className="mt-2 text-base text-[#9AA09B]">
+          {/* #9AA09B는 크림 배경에서 2.47:1이라 WCAG AA 미달이다(--muted는 5.11:1). */}
+          <p className="mt-2 text-base text-[#6B6560]">
             보호자가 일기를 등록하면 퀴즈가 도착해요.
           </p>
         </div>

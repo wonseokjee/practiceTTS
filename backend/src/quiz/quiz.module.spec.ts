@@ -91,7 +91,7 @@ describe('Quiz Phase 3 와이어링', () => {
         {
           provide: PersonaContextService,
           useValue: {
-            buildTokenMap: jest.fn(async () => ({})),
+            buildTokenMap: jest.fn(() => Promise.resolve({})),
             tokenizeWithMap: jest.fn((text: string) => text),
             restorePersonaText: jest.fn((text: string) => text),
           },
@@ -99,7 +99,9 @@ describe('Quiz Phase 3 와이어링', () => {
         {
           provide: FastApiClientService,
           useValue: {
-            mask: jest.fn(async (text: string) => ({ maskedText: text })),
+            mask: jest.fn((text: string) =>
+              Promise.resolve({ maskedText: text }),
+            ),
           },
         },
       ],

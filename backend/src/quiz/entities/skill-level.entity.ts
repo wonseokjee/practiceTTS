@@ -14,9 +14,14 @@ import type { QabSubtest } from '../constants/qab-subtest';
 /**
  * 환자별×스킬(QAB 서브테스트)별 현재 난이도 레벨(1~5).
  *
- * 파생 상태다: 값 자체는 매 제출마다 현재 레벨에서 제시된 최근 윈도우
- * 정확도로 재계산된다(skill-leveling.ts). 그래서 (patient_id, subtest)당
- * 1행만 두고 UPSERT한다. 이력이 없는 스킬은 이 테이블에 행이 없으며,
+ * **세션 사이를 잇는 값**이다. 판정은 세션 안에서 문항 단위로 일어나고(프론트
+ * `domain/sessionAdaptation.ts`), 세션이 끝나면 도달한 값이 여기 저장돼 다음
+ * 세션의 시작 눈높이가 된다. 서버는 저장된 값에서 ±1을 벗어난 보고를 접는다.
+ *
+ * 예전에는 매 제출마다 최근 10시행 정확도로 재계산했는데, 실측 판정 지연이
+ * 검사당 5~11세션이라 능력이 아니라 컨디션 노이즈를 학습했다(D7).
+ *
+ * (patient_id, subtest)당 1행만 두고 UPSERT한다. 이력이 없는 스킬은 행이 없으며
  * 조회 시 콜드스타트 레벨(2)로 채운다.
  */
 @Entity('skill_levels')
@@ -31,7 +36,10 @@ export class SkillLevel {
   id: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'patient_id', foreignKeyConstraintName: 'FK_skill_levels_patient' })
+  @JoinColumn({
+    name: 'patient_id',
+    foreignKeyConstraintName: 'FK_skill_levels_patient',
+  })
   patient: User;
 
   @Column({ name: 'patient_id', type: 'uuid' })

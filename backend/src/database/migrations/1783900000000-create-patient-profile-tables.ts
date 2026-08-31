@@ -13,9 +13,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * 타입(text)이되 원문은 DB에 남지 않는다. UNIQUE 제약은 엔티티의 @Index(unique)에
  * 맞춰 UNIQUE INDEX로 생성한다.
  */
-export class CreatePatientProfileTables1783900000000
-  implements MigrationInterface
-{
+export class CreatePatientProfileTables1783900000000 implements MigrationInterface {
   name = 'CreatePatientProfileTables1783900000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

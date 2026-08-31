@@ -104,10 +104,14 @@ describe('환경변수 드리프트', () => {
   it('ConfigService를 어떤 이름으로 주입했든 읽는 값을 잡아낸다', () => {
     // 수신자 이름에 기대던 시절 놓쳤던 실제 코드 모양이다.
     expect(
-      extractEnvNames(`config.get<string>('SPEECH_DATA_DIR', '../speech-data')`),
+      extractEnvNames(
+        `config.get<string>('SPEECH_DATA_DIR', '../speech-data')`,
+      ),
     ).toEqual(['SPEECH_DATA_DIR']);
     expect(
-      extractEnvNames(`this.configService.get<string>('CRYPTO_SECRET_KEY', '')`),
+      extractEnvNames(
+        `this.configService.get<string>('CRYPTO_SECRET_KEY', '')`,
+      ),
     ).toEqual(['CRYPTO_SECRET_KEY']);
     expect(extractEnvNames(`process.env.NODE_ENV`)).toEqual(['NODE_ENV']);
   });

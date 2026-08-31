@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, In, LessThan, Repository } from 'typeorm';
+import { DataSource, In, LessThan, Repository } from 'typeorm';
 import { MemoryEntry } from '../memory/entities/memory-entry.entity';
 import { PatientMemoryNote } from '../memory/entities/patient-memory-note.entity';
 import { FastApiClientService } from '../memory/services/fast-api-client.service';
@@ -27,9 +27,8 @@ import {
 } from './constants/qab-subtest';
 import {
   COLD_START_LEVEL,
-  LEVEL_WINDOW,
-  SPEECH_SCORED_SUBTESTS,
-  computeLevel,
+  MAX_LEVEL,
+  MIN_LEVEL,
   type SkillLevel as SkillLevelValue,
 } from './services/skill-leveling';
 import { QuizError, QuizErrorCode } from './errors/quiz.errors';
@@ -147,6 +146,27 @@ export interface SaveQabResultsResult {
  * 이탈로 세지 않기 위함이다.
  */
 /** 최근 문항 성적 1건 (재출제 우선순위 산출용). */
+export interface WeekReviewNote {
+  category: 'activity' | 'moment' | 'context';
+  text: string;
+}
+
+export interface WeekReviewItemResult {
+  quizSetId: string;
+  memoryEntryId: string;
+  /** 사진 경로. 없으면 null — 그때는 notes가 카드를 채운다. */
+  photoUrl: string | null;
+  /**
+   * 보호자가 적은 그날의 답변(순서대로). 사진이 없으면 이것이 회상 재료다.
+   *
+   * `category`를 함께 보낸다. `moment`(그 순간)가 실제 기억이고 `activity`·
+   * `context`는 한두 낱말짜리 태그다 — 셋을 같은 크기로 늘어놓으면 태그가
+   * 문장 조각처럼 읽힌다.
+   */
+  notes: WeekReviewNote[];
+  lastPlayedAt: string;
+}
+
 export interface RecentItemResult {
   itemRef: string;
   /** 최근 N일 동안 한 번이라도 맞혔는가. false면 재출제 우선순위가 높다. */
@@ -200,6 +220,45 @@ export interface QabSubtestSummary {
   avgScore: number | null;
   /** 마지막 측정 시각(ISO). 없으면 null */
   lastAt: string | null;
+  /**
+   * 오답을 갈래별로 센 것 — 단어 이해에만 값이 있다.
+   *
+   * 정답률은 "몇 개 틀렸나"까지만 말한다. 무엇이 어려운지는 **어떤 오답을
+   * 골랐나**가 말한다. 의미 유인지를 반복해 고르면 의미 체계 쪽, 음운 유인지면
+   * 음운 처리 쪽이다.
+   *
+   * 갈래를 안 남긴 오답(맞힌 문항, 컬럼 이전의 옛 행, 문장 이해)은 세지 않는다.
+   * 셋 다 0이면 null — 볼 것이 없다는 뜻이고, 0으로 채운 막대를 그리면 없는
+   * 사실이 생긴다.
+   *
+   * **주의: 음운 유인지는 눈높이 4단계부터 나온다**(`LEVEL_CHOICE_SPEC`).
+   * 그 아래에서는 고를 기회 자체가 없어 0이 손상 없음을 뜻하지 않는다.
+   */
+  foilKinds: {
+    semantic: number;
+    phonological: number;
+    unrelated: number;
+  } | null;
+  /**
+   * 이름대기에서 **평균 몇 칸을 도왔나**(E18). 0에 가까울수록 스스로 한다.
+   *
+   *   0 무단서 · 1 의미 단서 · 3 음소 단서 · 4 정답을 알려줌
+   *
+   * 정답률과 재는 것이 다르다. 정답률은 `assisted`를 빼고 "도움 없이 몇 %"를
+   * 말하는데, 도움이 필요한 환자는 그 분모가 거의 비어 값이 안 나온다. 이 값은
+   * 그 도움 자체를 센다 — 4에서 3, 3에서 1로 내려오는 것이 회복이다.
+   *
+   * 표본이 없으면 null. 0으로 내려보내면 화면이 "평균 0단계"(늘 스스로 맞혔다)
+   * 라는 없는 사실을 그린다.
+   */
+  avgCueLevel: number | null;
+  /**
+   * 위 평균이 몇 문항에서 나왔나.
+   *
+   * 이 기능 이전의 이름대기 기록은 `cue_level`이 NULL이라 여기 안 들어간다.
+   * `assisted` 불리언만으로는 몇 단계였는지 복원할 수 없어서다.
+   */
+  cueScored: number;
 }
 
 export interface QabSummaryResult {
@@ -774,6 +833,79 @@ export class QuizService {
   }
 
   /**
+   * 최근 N일 동안 **환자가 실제로 푼** 기억들 — 환자용 돌아보기 화면.
+   *
+   * **점수를 담지 않는다.** 환자 화면은 정답률을 보여주지 않는 것이 이 앱의 원칙이고
+   * (`QuizScreen`이 `showScore={false}`로 넘긴다), 돌아보기의 목적은 평가가 아니라
+   * 회상이다. 무엇을 함께 봤는지만 돌려준다.
+   *
+   * **"만든" 기억이 아니라 "푼" 기억이다.** `quiz_sets.created_at`으로 거르면 보호자가
+   * 이번 주에 등록만 하고 환자는 안 푼 기억이 섞인다 — 화면 이름이 돌아보기인데
+   * 하지 않은 것이 올라온다. 그래서 `quiz_attempts.answered_at`을 기준으로 잡는다.
+   *
+   * 사진이 없는 기억은 글이 대신한다. 기억은 **사진 아니면 글 중 하나가 반드시 있다**
+   * (`memory.service.ts`가 생성 시점에 강제한다). 그래서 빈 카드는 나올 수 없다.
+   * 질문 문구는 안 담는다 — 보호자가 답을 쓰게 하는 발판이지 환자가 볼 내용이
+   * 아니고, 넣으면 카드가 설문지처럼 보인다.
+   */
+  async getWeekReview(
+    effectivePatientId: string,
+    days = 7,
+  ): Promise<WeekReviewItemResult[]> {
+    // 기억당 마지막으로 푼 시각. 같은 기억을 여러 번 풀어도 카드는 하나다.
+    const played = await this.quizAttemptRepository
+      .createQueryBuilder('a')
+      .select('s.memory_entry_id', 'memoryEntryId')
+      .addSelect('MAX(a.answered_at)', 'lastPlayedAt')
+      .addSelect('MAX(s.id::text)', 'quizSetId')
+      .innerJoin(QuizSet, 's', 's.id = a.quiz_set_id')
+      .where('a.patient_id = :pid', { pid: effectivePatientId })
+      .andWhere('a.answered_at >= now() - make_interval(days => :days)', {
+        days,
+      })
+      .groupBy('s.memory_entry_id')
+      .orderBy('MAX(a.answered_at)', 'DESC')
+      .getRawMany<{
+        memoryEntryId: string;
+        lastPlayedAt: Date;
+        quizSetId: string;
+      }>();
+
+    if (played.length === 0) return [];
+
+    const memoryEntryIds = played.map((p) => p.memoryEntryId);
+    const [entries, notes] = await Promise.all([
+      this.memoryEntryRepository
+        .createQueryBuilder('entry')
+        .where('entry.id IN (:...ids)', { ids: memoryEntryIds })
+        .getMany(),
+      this.patientMemoryNoteRepository
+        .createQueryBuilder('note')
+        .where('note.memory_entry_id IN (:...ids)', { ids: memoryEntryIds })
+        .orderBy('note.order_index', 'ASC')
+        .getMany(),
+    ]);
+
+    const photoByEntry = new Map<string, string | null>(
+      entries.map((e) => [e.id, e.photoUrl ?? null]),
+    );
+    const notesByEntry = new Map<string, WeekReviewNote[]>();
+    for (const n of notes) {
+      const list = notesByEntry.get(n.memoryEntryId) ?? [];
+      list.push({ category: n.category, text: n.answerText });
+      notesByEntry.set(n.memoryEntryId, list);
+    }
+
+    return played.map((p) => ({
+      quizSetId: p.quizSetId,
+      memoryEntryId: p.memoryEntryId,
+      photoUrl: photoByEntry.get(p.memoryEntryId) ?? null,
+      notes: notesByEntry.get(p.memoryEntryId) ?? [],
+      lastPlayedAt: new Date(p.lastPlayedAt).toISOString(),
+    }));
+  }
+
+  /**
    * 풀이용 단건 조회 (정답 은닉).
    */
   async getSetDetail(
@@ -986,9 +1118,12 @@ export class QuizService {
     effectivePatientId: string,
     dto: SubmitQabResultsDto,
   ): Promise<SaveQabResultsResult> {
-    // manifest 버전 불일치는 관측용으로만 기록한다. presented_level 자체는
-    // 아래에서 서버 상태로 확정하므로, 오래된 클라이언트가 보낸 값이라도
-    // 레벨링 윈도우를 오염시킬 수 없다.
+    // 클라이언트가 낸 문항 풀 버전. 행에 그대로 남긴다(M23) — 서버 상수로
+    // 덮어쓰면 옛 클라이언트가 낸 문항이 새 풀 기준으로 기록돼 경계가 사라진다.
+    const r_manifest = dto.manifestVersion ?? null;
+
+    // 버전 불일치는 거부하지 않고 경고만 남긴다. 배포 직후에는 옛 번들을 들고
+    // 있는 클라이언트가 정상적으로 존재한다.
     if (
       dto.manifestVersion !== undefined &&
       dto.manifestVersion !== QAB_MANIFEST_VERSION
@@ -1001,29 +1136,65 @@ export class QuizService {
     // 제출에 등장한 서브테스트만 레벨 재계산 대상.
     const affectedSubtests = [...new Set(dto.results.map((r) => r.subtest))];
 
-    // presented_level은 클라이언트를 신뢰하지 않는다. 서버가 보유한 현재
-    // 레벨(skill_levels)을 이 서브테스트의 제시 난이도로 확정한다 — 이 값이
-    // 바로 recomputeSkillLevel의 윈도우 필터(presented_level = 현재 레벨)가
-    // 쓰는 값이므로, 클라이언트가 조작된 레벨을 보내도 레벨링에 영향을 줄 수 없다.
-    const currentLevelRows = await this.skillLevelRepository.find({
-      where: { patientId: effectivePatientId, subtest: In(affectedSubtests) },
-    });
+    // 세션 시작 시점의 레벨. 클라이언트가 보낸 값의 허용 범위를 이걸로 정한다.
+    const affectedAndReported = [
+      ...new Set([
+        ...affectedSubtests,
+        ...(Object.keys(dto.levels ?? {}) as QabSubtest[]),
+      ]),
+    ];
+    const currentLevelRows = affectedAndReported.length
+      ? await this.skillLevelRepository.find({
+          where: {
+            patientId: effectivePatientId,
+            subtest: In(affectedAndReported),
+          },
+        })
+      : [];
     const currentLevelBySubtest = new Map(
       currentLevelRows.map((row) => [row.subtest, row.level]),
     );
-    const resolvePresentedLevel = (subtest: QabSubtest): SkillLevelValue =>
-      (currentLevelBySubtest.get(subtest) ?? COLD_START_LEVEL) as SkillLevelValue;
+    const storedLevel = (subtest: QabSubtest): SkillLevelValue =>
+      (currentLevelBySubtest.get(subtest) ??
+        COLD_START_LEVEL) as SkillLevelValue;
 
-    const rows = dto.results.map((r) => {
-      const serverLevel = resolvePresentedLevel(r.subtest);
-      // 클라이언트가 보낸 값은 저장하지 않지만, 서버값과 어긋나면 관측용으로
-      // 남긴다(프론트 배선 버그·구버전 클라이언트 조기 발견용).
-      if (r.presentedLevel !== undefined && r.presentedLevel !== serverLevel) {
+    /**
+     * 클라이언트 값을 저장된 레벨 ±1 · [1..5]로 접는다.
+     *
+     * 세션 내 적응(D7-C) 이후 **무엇을 냈는지 아는 쪽은 프론트뿐이다.** 같은
+     * 세션에서 눈높이가 내려가면 서버가 가진 레벨과 달라지고, 그때 서버값으로
+     * 덮어쓰면 기록이 거짓이 된다. 그래서 클라이언트 값을 받는다.
+     *
+     * 그렇다고 그대로 믿지는 않는다. 적응 규칙이 **세션당 한 칸**이므로 정상
+     * 클라이언트는 ±1을 넘지 않는다. 넘으면 접고 경고를 남긴다 — 조작이든
+     * 배선 버그든 레벨이 한 번에 튀지 않게 하는 상한이다.
+     */
+    const acceptLevel = (
+      subtest: QabSubtest,
+      claimed: number | undefined,
+      what: string,
+    ): SkillLevelValue => {
+      const stored = storedLevel(subtest);
+      if (claimed === undefined) return stored;
+      const bounded = Math.max(
+        Math.max(MIN_LEVEL, stored - 1),
+        Math.min(Math.min(MAX_LEVEL, stored + 1), Math.round(claimed)),
+      );
+      if (bounded !== claimed) {
         this.logger.warn(
-          `presented_level 불일치: client=${r.presentedLevel} server=${serverLevel} ` +
-            `(patient=${effectivePatientId}, subtest=${r.subtest})`,
+          `${what} 범위 밖: client=${claimed} stored=${stored} → ${bounded} ` +
+            `(patient=${effectivePatientId}, subtest=${subtest})`,
         );
       }
+      return bounded as SkillLevelValue;
+    };
+
+    const rows = dto.results.map((r) => {
+      const serverLevel = acceptLevel(
+        r.subtest,
+        r.presentedLevel,
+        'presented_level',
+      );
       // 채점 불가면 점수를 받지 않는다. "못 쟀다"고 표시해 놓고 점수를 함께
       // 보내면 그 점수가 발음 평균(AVG(score))에 섞여 들어간다 — 플래그의
       // 목적이 정확히 그걸 막는 것이다. 클라이언트를 믿지 않고 서버가 지운다.
@@ -1034,11 +1205,27 @@ export class QuizService {
         subtest: r.subtest,
         itemRef: r.itemRef,
         isCorrect: r.isCorrect,
-        assisted: r.assisted ?? false,
         unscored,
+        // 단서를 한 칸이라도 받았으면 assisted도 참이다(E18). 기존 통계가
+        // `NOT r.assisted`로 거르고 있어 그 뜻을 유지해야 마이그레이션이 무해하다.
+        // 클라이언트가 assisted만 보내던 시절의 요청도 그대로 동작한다.
+        assisted: (r.assisted ?? false) || (r.cueLevel ?? 0) >= 1,
+        // 이름대기만 보낸다. 다른 검사에서 오면 뜻이 없으므로 떨군다 —
+        // foilKind를 정답 행에서 떨구는 것과 같은 이유다.
+        cueLevel: r.subtest === 'naming' ? (r.cueLevel ?? null) : null,
         metric: r.metric ?? null,
         score: unscored ? null : (r.score ?? null),
         presentedLevel: serverLevel,
+        // 갈래는 **틀린 문항에만** 남는다. 맞힌 행에 갈래가 붙으면 "오답이
+        // 아닌데 오답 갈래가 있는 행"이 생겨 집계가 조용히 틀린다. 프론트가
+        // 안 보내는 것이 정상이지만 여기서도 떨군다.
+        foilKind: r.isCorrect ? null : (r.foilKind ?? null),
+        // 관측값 그대로 저장한다. 안 보내면 NULL — "폴백 아님"이 아니라 "모름"이다.
+        bandFallback: r.bandFallback ?? null,
+        stimulusKind: r.stimulusKind ?? null,
+        // 클라이언트가 보낸 버전을 그대로 남긴다. 서버 상수로 덮어쓰면 안 된다 —
+        // 옛 클라이언트가 낸 문항이 새 풀 기준으로 기록돼 경계가 사라진다.
+        manifestVersion: r_manifest,
       });
     });
 
@@ -1067,8 +1254,28 @@ export class QuizService {
           .orIgnore()
           .execute();
       }
-      for (const subtest of affectedSubtests) {
-        await this.recomputeSkillLevel(manager, effectivePatientId, subtest);
+      // 레벨은 **세션이 끝날 때 한 번만** 움직인다. 점진 제출의 중간 flush마다
+      // 반영하면 한 세션이 레벨을 여러 번 민다.
+      if (dto.completed && dto.levels) {
+        for (const [subtest, claimed] of Object.entries(dto.levels) as [
+          QabSubtest,
+          number,
+        ][]) {
+          const next = acceptLevel(subtest, claimed, '세션 종료 레벨');
+          // 변화가 없으면 쓰지 않는다. 콜드스타트(행 없음)에서 값이 그대로면
+          // GET이 어차피 COLD_START_LEVEL을 채우므로 행을 만들 필요도 없다.
+          if (next === storedLevel(subtest)) continue;
+          await manager.upsert(
+            SkillLevel,
+            {
+              patientId: effectivePatientId,
+              subtest,
+              level: next,
+              updatedAt: new Date(),
+            },
+            ['patientId', 'subtest'],
+          );
+        }
       }
 
       // 완료 마커: 자연 종료·피로 탈출 등 세션이 의도한 대로 끝났을 때만 프론트가
@@ -1088,59 +1295,6 @@ export class QuizService {
     });
 
     return { saved: rows.length };
-  }
-
-  /**
-   * 한 스킬(서브테스트)의 레벨을 현재 레벨에서 제시된 최근 윈도우로 재계산해
-   * UPSERT한다. 트랜잭션 매니저 안에서 호출한다.
-   *
-   * 윈도우 필터:
-   *  - presented_level = 현재 레벨(승급 후 유도 하락을 퇴행으로 오독하는 교란 차단)
-   *  - assisted = false(보호자 도움은 환자 수행 아님)
-   *  - unscored = false(채점 불가는 오답이 아니라 측정 실패 → 레벨 자연 홀드)
-   *  - 발화 서브테스트는 score IS NOT NULL(Azure 불가 항목 제외 → 자연 홀드)
-   *  - created_at DESC, 동시각 타이는 id DESC로 결정론, 최근 LEVEL_WINDOW개
-   */
-  private async recomputeSkillLevel(
-    manager: EntityManager,
-    patientId: string,
-    subtest: QabSubtest,
-  ): Promise<void> {
-    const existing = await manager.findOne(SkillLevel, {
-      where: { patientId, subtest },
-    });
-    const currentLevel = (existing?.level ?? COLD_START_LEVEL) as SkillLevelValue;
-
-    const qb = manager
-      .createQueryBuilder(QabResult, 'r')
-      .select('r.is_correct', 'isCorrect')
-      .where('r.patient_id = :pid', { pid: patientId })
-      .andWhere('r.subtest = :subtest', { subtest })
-      .andWhere('r.presented_level = :lvl', { lvl: currentLevel })
-      .andWhere('r.assisted = false')
-      .andWhere('r.unscored = false')
-      .orderBy('r.created_at', 'DESC')
-      .addOrderBy('r.id', 'DESC')
-      .limit(LEVEL_WINDOW);
-    if (SPEECH_SCORED_SUBTESTS.includes(subtest)) {
-      qb.andWhere('r.score IS NOT NULL');
-    }
-    const raw = await qb.getRawMany<{ isCorrect: boolean }>();
-    const window = raw.map((x) => ({ isCorrect: x.isCorrect }));
-
-    const nextLevel = computeLevel(currentLevel, window);
-
-    // 변화 없으면 쓰지 않는다. 콜드스타트(행 없음)이고 레벨이 그대로면 GET이
-    // 어차피 COLD_START_LEVEL로 채우므로 행을 만들 필요도 없다.
-    if (nextLevel === (existing?.level ?? COLD_START_LEVEL)) {
-      return;
-    }
-
-    await manager.upsert(
-      SkillLevel,
-      { patientId, subtest, level: nextLevel, updatedAt: new Date() },
-      ['patientId', 'subtest'],
-    );
   }
 
   // ══════════════════════════════════════════════════════════════════════
@@ -1203,7 +1357,9 @@ export class QuizService {
       .select("to_char(date_trunc('day', r.created_at), 'YYYY-MM-DD')", 'day')
       .distinct(true)
       .where('r.patient_id = :pid', { pid: effectivePatientId })
-      .andWhere("r.created_at >= now() - make_interval(days => :days)", { days })
+      .andWhere('r.created_at >= now() - make_interval(days => :days)', {
+        days,
+      })
       .orderBy('day', 'DESC')
       .getRawMany<{ day: string }>();
     return raw.map((x) => x.day);
@@ -1247,7 +1403,9 @@ export class QuizService {
       // 채점 불가도 뺀다. is_correct가 false로 들어 있어 그대로 두면 "방금 틀린
       // 문항"으로 잡혀 재출제 1순위가 된다 — 실제로는 못 잰 것뿐이다.
       .andWhere('r.unscored = false')
-      .andWhere('r.created_at >= now() - make_interval(days => :days)', { days })
+      .andWhere('r.created_at >= now() - make_interval(days => :days)', {
+        days,
+      })
       .groupBy('r.item_ref')
       // 1순위: 최근에 틀린 문항(false < true). 2순위: 마지막 출제가 오래된 것 —
       // 여기서 간격이 생긴다. 프론트는 이 순서를 재정렬 없이 우선순위로 쓴다.
@@ -1354,7 +1512,10 @@ export class QuizService {
   ): Promise<QabTrendResult> {
     const raw = await this.qabResultRepository
       .createQueryBuilder('r')
-      .select("to_char(date_trunc('week', r.created_at), 'YYYY-MM-DD')", 'weekStart')
+      .select(
+        "to_char(date_trunc('week', r.created_at), 'YYYY-MM-DD')",
+        'weekStart',
+      )
       .addSelect('r.subtest', 'subtest')
       // 채점 불가(unscored)는 오답이 아니라 측정 실패다. 분모에서 뺀다 —
       // 넣으면 Azure가 흔들린 날마다 환자가 퇴행한 것처럼 보인다.
@@ -1424,9 +1585,7 @@ export class QuizService {
     return { series };
   }
 
-  async getQabSummary(
-    effectivePatientId: string,
-  ): Promise<QabSummaryResult> {
+  async getQabSummary(effectivePatientId: string): Promise<QabSummaryResult> {
     const raw = await this.qabResultRepository
       .createQueryBuilder('r')
       // total/correct는 두 종류를 제외해 "환자가 혼자 했고, 실제로 잰" 것만
@@ -1449,6 +1608,33 @@ export class QuizService {
       .addSelect('MAX(r.metric)', 'maxMetric')
       .addSelect('AVG(r.score)', 'avgScore')
       .addSelect('MAX(r.created_at)', 'lastAt')
+      // 오답 갈래 — total/correct와 같은 기준(도움받은 문항 제외)으로 센다.
+      // foil_kind는 오답에만 값이 있으므로 is_correct 조건은 불필요하다.
+      .addSelect(
+        `COUNT(*) FILTER (WHERE NOT r.assisted AND r.foil_kind = 'semantic')`,
+        'foilSemantic',
+      )
+      .addSelect(
+        `COUNT(*) FILTER (WHERE NOT r.assisted AND r.foil_kind = 'phonological')`,
+        'foilPhonological',
+      )
+      .addSelect(
+        `COUNT(*) FILTER (WHERE NOT r.assisted AND r.foil_kind = 'unrelated')`,
+        'foilUnrelated',
+      )
+      // 단서 위계(E18) — 이름대기에서 **얼마나 도와야 했나**.
+      //
+      // `assisted`로 거르지 않는다. 여기서는 도움받은 문항이 빠질 대상이 아니라
+      // **재려는 대상 자체**다. 정답률이 "도움 없이 몇 %"를 말한다면 이 값은
+      // "평균 몇 칸을 도왔나"를 말한다.
+      //
+      // 이 기능 이전의 기록은 cue_level이 NULL이라 AVG가 알아서 뺀다. 0으로
+      // 메우면 "예전엔 단서 없이 다 맞혔다"는 거짓 회복 곡선이 그려진다.
+      .addSelect('AVG(r.cue_level)', 'avgCueLevel')
+      .addSelect(
+        'COUNT(*) FILTER (WHERE r.cue_level IS NOT NULL)',
+        'cueScored',
+      )
       .where('r.patient_id = :pid', { pid: effectivePatientId })
       .groupBy('r.subtest')
       .getRawMany<{
@@ -1461,6 +1647,11 @@ export class QuizService {
         maxMetric: string | null;
         avgScore: string | null;
         lastAt: Date | string | null;
+        foilSemantic: string;
+        foilPhonological: string;
+        foilUnrelated: string;
+        avgCueLevel: string | null;
+        cueScored: string;
       }>();
 
     const items: QabSubtestSummary[] = raw.map((row) => {
@@ -1469,7 +1660,9 @@ export class QuizService {
       const assisted = Number(row.assisted);
       const unscored = Number(row.unscored);
       const avgMetric =
-        row.avgMetric === null ? null : Math.round(Number(row.avgMetric) * 10) / 10;
+        row.avgMetric === null
+          ? null
+          : Math.round(Number(row.avgMetric) * 10) / 10;
       const maxMetric = row.maxMetric === null ? null : Number(row.maxMetric);
       const avgScore =
         row.avgScore === null ? null : Math.round(Number(row.avgScore));
@@ -1479,6 +1672,24 @@ export class QuizService {
           : row.lastAt instanceof Date
             ? row.lastAt.toISOString()
             : new Date(row.lastAt).toISOString();
+      const semantic = Number(row.foilSemantic);
+      const phonological = Number(row.foilPhonological);
+      const unrelated = Number(row.foilUnrelated);
+      // 셋 다 0이면 null. 0으로 채운 값을 내려보내면 화면이 "관계없는 그림 0개"
+      // 같은 없는 사실을 그린다.
+      const foilKinds =
+        semantic + phonological + unrelated > 0
+          ? { semantic, phonological, unrelated }
+          : null;
+      // 표본이 없으면 null이다. 0으로 내려보내면 화면이 "평균 0단계"(= 늘
+      // 무단서로 맞혔다)라는 없는 사실을 그린다 — foilKinds와 같은 이유다.
+      // `?? 0` — 실 DB는 항상 컬럼을 주지만, 없으면 Number(undefined)가 NaN이
+      // 되어 그대로 API로 샌다. NaN은 JSON에서 null이 되므로 조용히 틀린다.
+      const cueScored = Number(row.cueScored ?? 0);
+      const avgCueLevel =
+        cueScored === 0 || row.avgCueLevel === null
+          ? null
+          : Math.round(Number(row.avgCueLevel) * 10) / 10;
       return {
         subtest: row.subtest,
         total,
@@ -1490,6 +1701,9 @@ export class QuizService {
         maxMetric,
         avgScore,
         lastAt,
+        foilKinds,
+        avgCueLevel,
+        cueScored,
       };
     });
 
@@ -1749,5 +1963,4 @@ export class QuizService {
       );
     }
   }
-
 }

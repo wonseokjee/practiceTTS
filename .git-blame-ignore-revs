@@ -1,0 +1,10 @@
+# git blame이 무시할 커밋 — 내용은 안 바꾸고 모양만 바꾼 것들.
+#
+# 쓰는 법 (한 번만):
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+#
+# 이걸 안 하면 44개 파일의 blame이 전부 "포맷 커밋"을 가리켜, 그 줄을 왜 그렇게
+# 썼는지 찾아갈 수 없다.
+
+# style(backend): prettier 포맷을 한 번 맞춘다
+532a79489f22e3165c3b469953fe0a23262e7d4d

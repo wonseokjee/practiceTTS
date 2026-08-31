@@ -25,7 +25,7 @@ import { LoadingOverlay } from '../../../../shared/components/LoadingOverlay.js'
 import { useWordComprehensionViewModel } from '../hooks/useWordComprehensionViewModel.js';
 import { AudioPlayerBar } from '../components/AudioPlayerBar.js';
 import { ImageChoiceGrid } from '../components/ImageChoiceGrid.js';
-import { ItemProgressBar } from '../components/ItemProgressBar.js';
+import { ItemProgressBar } from '../../../../shared/components/ItemProgressBar.js';
 import { SessionSummaryView } from '../components/SessionSummaryView.js';
 
 interface WordComprehensionScreenProps {
@@ -116,9 +116,9 @@ const WordComprehensionScreenInner: React.FC<InnerProps> = ({
             <h1 className="text-base font-semibold text-[#1A1916]">
               단어 이해 검사
             </h1>
-            <p className="text-xs text-[#9AA09B]">검사 완료</p>
+            <p className="text-xs text-[#6B6560]">검사 완료</p>
           </div>
-          <span className="text-xs text-[#9AA09B]">환자: {patientLabel}</span>
+          <span className="text-xs text-[#6B6560]">환자: {patientLabel}</span>
         </header>
         <main className="flex-1 px-4 py-4 max-w-xl mx-auto w-full overflow-y-auto">
           {summary !== null ? (
@@ -210,10 +210,7 @@ const WordComprehensionScreenInner: React.FC<InnerProps> = ({
 
       <main className="flex-1 px-4 py-4 max-w-xl mx-auto w-full flex flex-col gap-4 overflow-y-auto min-h-0">
         {/* 문항 진행 바 */}
-        <ItemProgressBar
-          current={currentItemIndex + 1}
-          total={totalItems}
-        />
+        <ItemProgressBar current={currentItemIndex + 1} total={totalItems} />
 
         {/* 오디오 재생 바 */}
         <AudioPlayerBar
@@ -271,12 +268,12 @@ const AssessmentHeader: React.FC<AssessmentHeaderProps> = ({
           <h1 className="text-base font-semibold text-[#1A1916]">
             단어 이해 검사
           </h1>
-          <p className="text-xs text-[#9AA09B]">
+          <p className="text-xs text-[#6B6560]">
             QAB 하위검사 3번 &nbsp;·&nbsp; 환자: {patientLabel}
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-[#9AA09B] hidden sm:inline">
+          <span className="text-xs text-[#6B6560] hidden sm:inline">
             {currentItemIndex + 1} / {totalItems}
           </span>
           <button

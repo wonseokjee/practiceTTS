@@ -8,13 +8,13 @@
 //   key(item.id)로 리마운트해 선택 상태를 초기화한다.
 // - qab_word 항목: WordCompQuizItem(듣고 그림 고르기)을 렌더하고 로컬 채점한다.
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMixedQuizSession } from '../application/useMixedQuizSession.js';
 import type { UseMixedQuizDeps } from '../application/useMixedQuizSession.js';
 import type { AttemptResult, QuizQuestionPublic, YesNoAnswer } from '../domain/Quiz.js';
 import { CaregiverWishCard } from './CaregiverWishCard.js';
 import { QuizPhotoHint } from './QuizPhotoHint.js';
-import { QuizProgressBar } from './QuizProgressBar.js';
+import { ItemProgressBar } from '../../../../shared/components/ItemProgressBar.js';
 import { QuizResultScreen } from './QuizResultScreen.js';
 import { FillBlankInput } from './components/FillBlankInput.js';
 import { MultipleChoiceCard } from './components/MultipleChoiceCard.js';
@@ -40,6 +40,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
   const [state, actions] = useMixedQuizSession(quizSetId, deps);
   // Phase 6: 보호자 한마디 카드를 퀴즈 앞에 한 번 노출 (있을 때만).
   const [wishDismissed, setWishDismissed] = useState(false);
+  const feedbackRef = useRef<HTMLDivElement>(null);
   const {
     phase,
     currentIndex,
@@ -54,6 +55,30 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
     isSessionExpired,
     attempt,
   } = state;
+  // 답한 뒤 "다음 문제"를 화면 안으로 끌어온다(연습 화면 ISSUE-001과 같은 수정).
+  //
+  // **실측(400×720, 2026-08-24).** 그림 격자는 2열이고 카드 178px + 간격 12px,
+  // 격자 top 180px이다. 피드백 블록(문구 + 버튼)은 124px.
+  //
+  //   레벨 1    보기 2개    1행   버튼 바닥 482   들어옴
+  //   레벨 2~4  보기 3~4개  2행   버튼 바닥 672   들어옴
+  //   레벨 5    보기 5개    3행   버튼 바닥 862   **접힘**
+  //
+  // TODO-112는 "4지선다에서 y=888"로 적혀 있었지만 그건 적응 레벨이 붙기 전
+  // 기준이다. 지금 4지선다는 672로 들어오고, 레벨 5의 5지선다만 밀려난다.
+  // 화면에는 카드만 남고 앞으로 갈 방법이 안 보인다 — 어르신에게는 막다른 길이다.
+  //
+  // block:'nearest'는 필요한 만큼만 스크롤하므로 이미 보이는 레벨 1~4와 큰
+  // 화면에서는 아무 일도 하지 않는다. **훅은 조기 반환보다 위에 있어야 한다** —
+  // 로딩·에러·한마디 카드가 아래에서 먼저 반환하므로 여기가 유일하게 맞는 자리다.
+  useEffect(() => {
+    if (phase !== 'feedback') return;
+    const el = feedbackRef.current;
+    // jsdom에는 scrollIntoView가 없다.
+    if (!el || typeof el.scrollIntoView !== 'function') return;
+    el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [phase, currentIndex]);
+
 
   // ── 로딩 ──────────────────────────────────────────────────────
   if (phase === 'loading') {
@@ -117,7 +142,13 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
   const wishMessage = detail?.memoryEntry.caregiverWishMessage ?? null;
   if (wishMessage !== null && !wishDismissed) {
     return (
-      <div className="font-pretendard mx-auto w-full max-w-2xl px-4 py-6">
+      // 이 화면에는 이 카드 하나뿐이라(early return) 위에서부터 쌓으면 모바일에서
+      // 아래가 통째로 빈다. 세로 가운데에 둔다 — 퀴즈로 넘어가기 전 한 번 읽는
+      // 카드라 화면 한가운데 놓이는 편이 그 성격에도 맞는다.
+      //
+      // 카드가 뷰포트보다 길어지면 `min-h-dvh` 컨테이너가 같이 늘어나므로
+      // 가운데 정렬이 위를 잘라먹지 않는다.
+      <div className="font-pretendard mx-auto flex min-h-dvh w-full max-w-2xl flex-col justify-center px-4 py-6">
         <CaregiverWishCard
           quizSetId={quizSetId}
           wishMessage={wishMessage}
@@ -154,7 +185,9 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
 
   return (
     <div className="font-pretendard mx-auto w-full max-w-2xl px-4 py-6">
-      <QuizProgressBar current={currentIndex + 1} total={total} />
+      <div className="mb-6">
+        <ItemProgressBar current={currentIndex + 1} total={total} />
+      </div>
 
       {/* 사진 힌트는 데일리(기억 회상) 항목에서만 노출 */}
       {currentItem.kind === 'daily' && photoUrl !== null && (
@@ -188,8 +221,8 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
           isSelectable={canAnswer}
           showFeedback={showFeedback}
           isCorrect={showFeedback ? (lastResult?.isCorrect ?? null) : null}
-          onSubmit={(transcript, azure) =>
-            actions.submitNaming(transcript, azure)
+          onSubmit={(transcript, azure, cueLevel) =>
+            actions.submitNaming(transcript, azure, cueLevel)
           }
           onSkip={actions.skipCurrent}
           onOverride={actions.overrideSpeechVerdict}
@@ -260,7 +293,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
 
       {/* 피드백 + 다음 버튼 */}
       {showFeedback && lastResult !== null && (
-        <div className="mt-6">
+        <div className="mt-6" ref={feedbackRef}>
           {/* 색이 셋인 이유: 채점 불가(null)는 정답도 오답도 아니다. 빨강으로
               칠하면 못 잰 것을 못했다고 말하는 셈이라 폴백을 없앤 뜻이 사라진다. */}
           <p
@@ -312,10 +345,11 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
           <button
             type="button"
             onClick={onExit}
-            className="text-sm text-[#A8AFA9] transition-colors duration-[180ms] hover:text-[#5C6661]"
+            className="text-sm text-[#6B6560] transition-colors duration-[180ms] hover:text-[#3F4A44]"
             aria-label="퀴즈 그만두기"
           >
-            그만두고 목록으로
+            {/* 세션을 끝내면 홈으로 돌아간다(DR1b). 예전엔 목록으로 갔다. */}
+            그만두고 처음으로
           </button>
         </div>
       )}

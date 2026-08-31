@@ -19,8 +19,8 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  *
  * 구데이터는 전부 false다 — 그 시절엔 채점 불가가 존재하지 않았다.
  */
-export class AddUnscoredToQabResults1785200000000 implements MigrationInterface {
-  name = 'AddUnscoredToQabResults1785200000000';
+export class AddUnscoredToQabResults1785600000000 implements MigrationInterface {
+  name = 'AddUnscoredToQabResults1785600000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`

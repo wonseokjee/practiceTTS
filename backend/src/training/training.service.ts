@@ -24,6 +24,7 @@ import type {
   AvailableEntryDto,
   ITrainingService,
 } from './interfaces/ITrainingService';
+import type { ChatResponse } from './interfaces/IFastApiChatClient';
 import { FastApiChatClientService } from './services/fast-api-chat-client.service';
 
 /** scenarioCache에 저장된 시나리오 데이터 구조 */
@@ -168,7 +169,9 @@ export class TrainingService implements ITrainingService {
     const hintLevel = this.toHintLevel(session.hintLevel);
 
     // FastAPI /chat 호출
-    let chatResult;
+    // 타입을 안 붙이면 암묵 any가 되어 아래 ai_message·hint_* 접근이 전부
+    // 검사되지 않는다. chat()은 이미 ChatResponse를 돌려준다.
+    let chatResult: ChatResponse;
     try {
       chatResult = await this.fastApiChatClient.chat({
         session_id: sessionId,

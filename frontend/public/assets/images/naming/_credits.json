@@ -16,6 +16,15 @@
     "savedAt": "2026-07-25"
   },
   {
+    "slug": "baby",
+    "ko": "아기",
+    "title": "baby.jpg",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/",
+    "savedAt": "2026-08-30",
+    "sourceNote": "개별 이미지 페이지 미상 — 소유자 확인(나머지 사진과 같은 출처)"
+  },
+  {
     "slug": "bag",
     "ko": "가방",
     "title": "Bag Leather",
@@ -46,6 +55,15 @@
     "license": "cc0 1.0",
     "source": "https://www.rawpixel.com/image/3358486/free-illustration-image-alfonso-moreno-antique-art",
     "savedAt": "2026-07-25"
+  },
+  {
+    "slug": "bear",
+    "ko": "곰",
+    "title": "bear.jpg",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/",
+    "savedAt": "2026-08-30",
+    "sourceNote": "개별 이미지 페이지 미상 — 소유자 확인(나머지 사진과 같은 출처)"
   },
   {
     "slug": "bed",
@@ -90,10 +108,37 @@
   {
     "slug": "butterfly",
     "ko": "나비",
-    "title": "Blue butterfly",
-    "license": "by-nd 2.0",
-    "source": "https://www.flickr.com/photos/43212985@N08/4022324313",
-    "savedAt": "2026-07-25"
+    "title": "butterfly",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/photos/-10291275/",
+    "savedAt": "2026-08-30"
+  },
+  {
+    "slug": "cactus",
+    "ko": "선인장",
+    "title": "cactus.jpg",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/",
+    "savedAt": "2026-08-30",
+    "sourceNote": "개별 이미지 페이지 미상 — 소유자 확인(나머지 사진과 같은 출처)"
+  },
+  {
+    "slug": "cake",
+    "ko": "케이크",
+    "title": "cake.jpg",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/",
+    "savedAt": "2026-08-30",
+    "sourceNote": "개별 이미지 페이지 미상 — 소유자 확인(나머지 사진과 같은 출처)"
+  },
+  {
+    "slug": "candle",
+    "ko": "양초",
+    "title": "candle.jpg",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/",
+    "savedAt": "2026-08-30",
+    "sourceNote": "개별 이미지 페이지 미상 — 소유자 확인(나머지 사진과 같은 출처)"
   },
   {
     "slug": "candy",
@@ -160,12 +205,38 @@
     "savedAt": "2026-07-25"
   },
   {
+    "slug": "corn",
+    "ko": "옥수수",
+    "title": "corn",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/photos/-2691456/",
+    "savedAt": "2026-08-30"
+  },
+  {
+    "slug": "couch",
+    "ko": "소파",
+    "title": "sofa.jpg",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/",
+    "savedAt": "2026-08-30",
+    "sourceNote": "개별 이미지 페이지 미상 — 소유자 확인(나머지 사진과 같은 출처)"
+  },
+  {
     "slug": "desk",
     "ko": "책상",
     "title": "Empty desk",
     "license": "by-sa 2.0",
     "source": "https://www.flickr.com/photos/52952793@N00/149699609",
     "savedAt": "2026-07-25"
+  },
+  {
+    "slug": "doctor",
+    "ko": "의사",
+    "title": "doctor.png",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/",
+    "savedAt": "2026-08-30",
+    "sourceNote": "개별 이미지 페이지 미상 — 소유자 확인(나머지 사진과 같은 출처)"
   },
   {
     "slug": "dog",
@@ -176,6 +247,15 @@
     "savedAt": "2026-07-25"
   },
   {
+    "slug": "ear",
+    "ko": "귀",
+    "title": "ear.jpg",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/",
+    "savedAt": "2026-08-30",
+    "sourceNote": "개별 이미지 페이지 미상 — 소유자 확인(나머지 사진과 같은 출처)"
+  },
+  {
     "slug": "elephant",
     "ko": "코끼리",
     "title": "Elephant Africa",
@@ -184,12 +264,39 @@
     "savedAt": "2026-07-25"
   },
   {
+    "slug": "eye",
+    "ko": "눈",
+    "title": "eye.jpg",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/",
+    "savedAt": "2026-08-30",
+    "sourceNote": "개별 이미지 페이지 미상 — 소유자 확인(나머지 사진과 같은 출처)"
+  },
+  {
+    "slug": "firefighter",
+    "ko": "소방관",
+    "title": "firefighter.jpg",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/",
+    "savedAt": "2026-08-30",
+    "sourceNote": "개별 이미지 페이지 미상 — 소유자 확인(나머지 사진과 같은 출처)"
+  },
+  {
     "slug": "flower",
     "ko": "꽃",
     "title": "Macro Flower",
     "license": "cc0 1.0",
     "source": "https://stocksnap.io/photo/macro-flower-MLEZOMCWOW",
     "savedAt": "2026-07-25"
+  },
+  {
+    "slug": "foot",
+    "ko": "발",
+    "title": "foot.jpg",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/",
+    "savedAt": "2026-08-30",
+    "sourceNote": "개별 이미지 페이지 미상 — 소유자 확인(나머지 사진과 같은 출처)"
   },
   {
     "slug": "glasses",
@@ -232,6 +339,15 @@
     "savedAt": "2026-07-25"
   },
   {
+    "slug": "hand",
+    "ko": "손",
+    "title": "hand.jpg",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/",
+    "savedAt": "2026-08-30",
+    "sourceNote": "개별 이미지 페이지 미상 — 소유자 확인(나머지 사진과 같은 출처)"
+  },
+  {
     "slug": "hat",
     "ko": "모자",
     "title": "Plaid Baseball Cap",
@@ -248,12 +364,28 @@
     "savedAt": "2026-07-25"
   },
   {
+    "slug": "house",
+    "ko": "집",
+    "title": "excise house",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/photos/-5202583/",
+    "savedAt": "2026-08-30"
+  },
+  {
     "slug": "juice",
     "ko": "주스",
     "title": "Glass Juice",
     "license": "cc0 1.0",
     "source": "https://stocksnap.io/photo/glass-juice-Z330CKC9VK",
     "savedAt": "2026-07-25"
+  },
+  {
+    "slug": "kettle",
+    "ko": "주전자",
+    "title": "boil water",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/photos/-4742133/",
+    "savedAt": "2026-08-30"
   },
   {
     "slug": "key",
@@ -328,6 +460,30 @@
     "savedAt": "2026-07-25"
   },
   {
+    "slug": "mirror",
+    "ko": "거울",
+    "title": "room",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/photos/-2419444/",
+    "savedAt": "2026-08-30"
+  },
+  {
+    "slug": "mouth",
+    "ko": "입",
+    "title": "mouth",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/photos/-2791895/",
+    "savedAt": "2026-08-30"
+  },
+  {
+    "slug": "mushroom",
+    "ko": "버섯",
+    "title": "mushroom",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/photos/-448866/",
+    "savedAt": "2026-08-30"
+  },
+  {
     "slug": "notebook",
     "ko": "공책",
     "title": "Free open notebook, pens pencils",
@@ -376,6 +532,14 @@
     "savedAt": "2026-07-25"
   },
   {
+    "slug": "pig",
+    "ko": "돼지",
+    "title": "pig",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/photos/-6953335/",
+    "savedAt": "2026-08-30"
+  },
+  {
     "slug": "pool",
     "ko": "수영장",
     "title": "Swimming pool",
@@ -384,12 +548,28 @@
     "savedAt": "2026-07-25"
   },
   {
+    "slug": "rabbit",
+    "ko": "토끼",
+    "title": "rabbit",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/photos/-2647220/",
+    "savedAt": "2026-08-30"
+  },
+  {
     "slug": "refrigerator",
     "ko": "냉장고",
     "title": "Samsung RF4287HARS French Door Refrigera",
     "license": "by 2.0",
     "source": "https://www.flickr.com/photos/78234592@N06/12640052475",
     "savedAt": "2026-07-25"
+  },
+  {
+    "slug": "rock",
+    "ko": "돌",
+    "title": "rock",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/photos/-2527630/",
+    "savedAt": "2026-08-30"
   },
   {
     "slug": "sand",
@@ -408,12 +588,20 @@
     "savedAt": "2026-07-25"
   },
   {
+    "slug": "screwdriver",
+    "ko": "드라이버",
+    "title": "screwdriver",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/photos/-608321/",
+    "savedAt": "2026-08-30"
+  },
+  {
     "slug": "ship",
     "ko": "배",
-    "title": "container ship leaving bay area",
-    "license": "by-nd 2.0",
-    "source": "https://www.flickr.com/photos/39978310@N00/264546918",
-    "savedAt": "2026-07-25"
+    "title": "container ship",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/photos/-6631117/",
+    "savedAt": "2026-08-30"
   },
   {
     "slug": "shoes",
@@ -424,12 +612,28 @@
     "savedAt": "2026-07-25"
   },
   {
+    "slug": "soap",
+    "ko": "비누",
+    "title": "soap",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/photos/-5176672/",
+    "savedAt": "2026-08-30"
+  },
+  {
     "slug": "socks",
     "ko": "양말",
     "title": "Socks",
     "license": "by-sa 2.0",
     "source": "https://www.flickr.com/photos/23243094@N00/4361617020",
     "savedAt": "2026-07-25"
+  },
+  {
+    "slug": "spoon",
+    "ko": "숟가락",
+    "title": "teaspoon",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/photos/-554065/",
+    "savedAt": "2026-08-30"
   },
   {
     "slug": "strawberry",
@@ -510,6 +714,14 @@
     "license": "by 2.0",
     "source": "https://www.flickr.com/photos/96297361@N02/8838398871",
     "savedAt": "2026-07-25"
+  },
+  {
+    "slug": "truck",
+    "ko": "트럭",
+    "title": "truck",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/photos/-2391940/",
+    "savedAt": "2026-08-30"
   },
   {
     "slug": "trumpet",

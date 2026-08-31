@@ -77,8 +77,6 @@
   "mushroom": "버섯",
   "house": "집",
   "truck": "트럭",
-  "soap": "비누",
-  "screwdriver": "드라이버",
   "hand": "손",
   "foot": "발",
   "eye": "눈",
@@ -88,8 +86,11 @@
   "doctor": "의사",
   "baby": "아기",
   "firefighter": "소방관",
+  "soap": "비누",
+  "screwdriver": "드라이버",
   "school": "학교",
-  "bank": "은행"
+  "bank": "은행",
+  "sweet_potato": "고구마"
  },
  "namemap": {
   "airplane": "airplane",
@@ -169,8 +170,6 @@
   "mushroom": "mushroom",
   "house": "house",
   "truck": "delivery-truck",
-  "soap": "soap",
-  "screwdriver": "screwdriver",
   "hand": "hand-with-fingers-splayed",
   "foot": "foot",
   "eye": "eye",
@@ -180,8 +179,11 @@
   "doctor": "health-worker",
   "baby": "baby",
   "firefighter": "firefighter",
+  "soap": "soap",
+  "screwdriver": "screwdriver",
   "school": "school",
-  "bank": "bank"
+  "bank": "bank",
+  "sweet_potato": "roasted-sweet-potato"
  },
  "new_categories": {
   "candle": "object",
@@ -200,6 +202,7 @@
   "mushroom": "plant",
   "house": "place",
   "truck": "vehicle",
+  "sweet_potato": "food",
   "soap": "object",
   "screwdriver": "object",
   "hand": "body",
@@ -215,7 +218,6 @@
   "bank": "place"
  },
  "removed": [
-  "sweet_potato",
   "comb",
   "desk",
   "ladle",
@@ -240,6 +242,7 @@
   "mushroom": "버섯",
   "house": "집",
   "truck": "트럭",
+  "sweet_potato": "고구마",
   "soap": "비누",
   "screwdriver": "드라이버",
   "hand": "손",

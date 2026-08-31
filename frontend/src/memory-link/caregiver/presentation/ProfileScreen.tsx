@@ -239,7 +239,7 @@ function ChipEditor({ items, onChange, placeholder, label }: ChipEditorProps) {
               <button
                 type="button"
                 onClick={() => onChange(items.filter((i) => i !== item))}
-                className="text-[#5C6661] hover:text-[#E07B54]"
+                className="text-[#5C6661] hover:text-[#B85C36]"
                 aria-label={`${item} 삭제`}
               >
                 ×
@@ -336,7 +336,7 @@ function FamilyEditor({ family, onChange }: FamilyEditorProps) {
               <button
                 type="button"
                 onClick={() => onChange(family.filter((_, i) => i !== idx))}
-                className="text-xs text-[#5C6661] underline hover:text-[#E07B54]"
+                className="text-xs text-[#5C6661] underline hover:text-[#B85C36]"
                 aria-label={`${m.name} 삭제`}
               >
                 삭제

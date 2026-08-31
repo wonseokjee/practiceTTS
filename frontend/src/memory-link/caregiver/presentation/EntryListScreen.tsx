@@ -28,7 +28,7 @@ export function EntryListScreen({
         aria-label="로딩 중"
         aria-live="polite"
       >
-        <div className="text-[#9AA09B] text-sm">불러오는 중...</div>
+        <div className="text-[#6B6560] text-sm">불러오는 중...</div>
       </div>
     );
   }
@@ -64,7 +64,7 @@ export function EntryListScreen({
             📷
           </div>
           <p className="text-[#6B6560] mb-2">등록된 기억이 없습니다</p>
-          <p className="text-sm text-[#9AA09B]">
+          <p className="text-sm text-[#6B6560]">
             사진과 함께 소중한 기억을 추가해보세요
           </p>
         </div>
@@ -101,6 +101,10 @@ function MemoryEntryCard({ entry, onClick }: MemoryEntryCardProps) {
     day: 'numeric',
   });
 
+  // 여러 개면 먼저 적은 것을 쓴다(`orderIndex` 오름차순은 서버가 보장한다).
+  const moment = entry.patientNotes.find((n) => n.category === 'moment')
+    ?.answerText;
+
   return (
     <button
       type="button"
@@ -108,30 +112,40 @@ function MemoryEntryCard({ entry, onClick }: MemoryEntryCardProps) {
       className="w-full text-left bg-white rounded-2xl border border-[#E8E4DC] overflow-hidden hover:border-[#2D6A56] hover:shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#2D6A56]"
       aria-label={`${dateLabel} 메모리 엔트리 상세 보기`}
     >
-      {/* 사진 영역 */}
-      {entry.photoUrl ? (
+      {/* 사진 영역 — **없으면 아무것도 그리지 않는다.**
+          예전에는 회색 상자에 📷를 띄웠다. 기억은 사진 아니면 글 중 하나가
+          반드시 있으므로(백엔드가 `patientAnswers >= 1 OR photo`로 강제한다)
+          글만 있는 기억은 결핍이 아니라 **다른 종류의 기억**이다. 환자용
+          돌아보기(WeekReviewScreen)가 이미 그렇게 조판한다. */}
+      {entry.photoUrl && (
         <AuthedImage
           src={entry.photoUrl}
           alt={`${dateLabel} 기억 사진`}
           className="w-full h-40 object-cover"
           lazy
         />
-      ) : (
-        <div className="w-full h-40 bg-[#EBF4F0]/50 flex items-center justify-center">
-          <span className="text-3xl text-[#9AA09B]" aria-hidden="true">📷</span>
-        </div>
       )}
 
       {/* 정보 영역 */}
       <div className="p-3">
         {/* 날짜 */}
-        <p className="text-xs text-[#9AA09B] mb-2">{dateLabel}</p>
+        <p className="text-xs text-[#6B6560] mb-2">{dateLabel}</p>
 
-        {/* 장소 및 사물 태그 */}
-        {entry.locationTag && (
-          <p className="text-sm font-medium text-[#1A1916] mb-1">
-            {entry.locationTag}
+        {/* 그날의 기억 — 카드의 본문.
+            `moment`가 실제 기억이고 `activity`·`context`는 한두 낱말짜리
+            태그다(WeekReviewScreen과 같은 구분). 상자를 지우기만 하면 사진
+            없는 카드가 날짜만 남으므로, 이미 응답에 들어 있던 글을 여기 쓴다.
+            2열 그리드라 좁아서 두 줄로 자른다. */}
+        {moment && (
+          <p className="mb-2 line-clamp-2 text-sm leading-relaxed text-[#1A1916]">
+            {moment}
           </p>
+        )}
+
+        {/* 장소 — 본문이 생겼으니 굵기를 뺀다. 남겨 두면 한두 낱말짜리 태그가
+            기억 본문보다 크게 읽힌다. */}
+        {entry.locationTag && (
+          <p className="mb-1 text-sm text-[#6B6560]">{entry.locationTag}</p>
         )}
 
         {/* 감정 태그 */}
