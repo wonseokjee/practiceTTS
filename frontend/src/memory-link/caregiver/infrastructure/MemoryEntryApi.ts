@@ -31,7 +31,10 @@ function isMemoryEntry(value: unknown): value is MemoryEntry {
     typeof obj.hasScenario === 'boolean' &&
     typeof obj.hasMaskedContext === 'boolean' &&
     typeof obj.createdAt === 'string' &&
-    Array.isArray(obj.targetWords)
+    Array.isArray(obj.targetWords) &&
+    // 타입이 필수라고 적었으니 가드도 확인한다. 여기서 안 보면 화면은
+    // `patientNotes.filter(...)`에서 undefined로 터진다.
+    Array.isArray(obj.patientNotes)
   );
 }
 
