@@ -29,6 +29,8 @@ import sentMirrorData from '../../../../assets/data/qabSentMirror.json';
 import sentGeneratedData from '../../../../assets/data/qabSentGenerated.json';
 // 관계절 문항. 기존 가역문 장면 쌍을 그대로 쓰고 문장만 새로 쓴다(새 그림 0장).
 import sentRelativeData from '../../../../assets/data/qabSentRelative.json';
+// 내포절 문항. 사람과 자세는 같고 생각 풍선 속만 다른 장면 쌍을 쓴다.
+import sentEmbeddedData from '../../../../assets/data/qabSentEmbedded.json';
 import type {
   QabImageChoice,
   QabImageItem,
@@ -97,12 +99,41 @@ const NON_DISCRIMINATIVE_SENT_ITEMS: ReadonlySet<string> = new Set([
   'sentComp_05_m', 'sentComp_06_m', 'sentComp_07_m', 'sentComp_08_m',
 ]);
 
+/**
+ * 혼합 퀴즈 풀에서 빼는 문장 문항 — **내포절 밴드에 있는 단문 둘.**
+ *
+ *   09  아빠는 엄마가 요리를 한다고 생각해요   ← 내포절
+ *   09_m 아빠가 혼자 요리를 하고 있어요        ← **단문**
+ *   10  선생님은 학생이 공부를 잘한다고 믿어요 ← 내포절
+ *   10_m 학생이 선생님을 믿고 있어요           ← **단문**
+ *
+ * 거울 문항이 내포절이 아니다. 09·10의 그림 쌍이 역할 뒤집기가 아니라
+ * "떠올린다 ↔ 실제로 한다"의 대비라, 오답 그림을 가리키는 문장이 자연히
+ * 단문이 된다. 그런데 둘 다 `embedded-clause`로 기록돼, 레벨 5가 내는 넷 중
+ * 둘이 단문이었다 — **"레벨 5 정답률"의 절반이 단문 정답률이었다.**
+ *
+ * 대신 내포절끼리 갈리는 장면 둘을 새로 그려 넣었다(`qabSentEmbedded.json`).
+ * 밴드는 4개에서 6개로 늘었다.
+ *
+ * 표준 sentComp 검사에서는 그대로 쓴다 — 거기서는 통사 유형이 난이도
+ * 손잡이가 아니다.
+ */
+const NON_EMBEDDED_MIRRORS: ReadonlySet<string> = new Set([
+  'sentComp_09_m',
+  'sentComp_10_m',
+]);
+
 const SENT_ITEMS: RawSentItem[] = [
   ...(sentCompData as unknown as RawSentItem[]),
   ...((sentMirrorData as { items: RawSentItem[] }).items),
   ...((sentGeneratedData as { items: RawSentItem[] }).items),
   ...((sentRelativeData as { items: RawSentItem[] }).items),
-].filter((it) => !NON_DISCRIMINATIVE_SENT_ITEMS.has(it.itemId));
+  ...((sentEmbeddedData as { items: RawSentItem[] }).items),
+].filter(
+  (it) =>
+    !NON_DISCRIMINATIVE_SENT_ITEMS.has(it.itemId) &&
+    !NON_EMBEDDED_MIRRORS.has(it.itemId),
+);
 
 const WORD_INSTRUCTION = '들려주는 단어의 그림을 골라주세요';
 const SENT_INSTRUCTION = '들려주는 문장에 맞는 그림을 골라주세요';

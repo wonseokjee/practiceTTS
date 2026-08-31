@@ -1,0 +1,151 @@
+{
+  "comment": "내포절 문항. 장면 넷을 쓴다. 한 장면에 두 문항이 붙고, 두 문장은 주절('엄마는 … 생각해요')이 통째로 같고 내포절 안의 서술어만 다르다. 그림도 사람과 자세가 같고 생각 풍선 속만 다르다.",
+  "why": "내포절 밴드가 내포절을 재게 하려면 변별력이 내포절 안에 있어야 한다. 09·10의 거울 문항은 내포절이 아니라 단문이었고('아빠가 혼자 요리를 하고 있어요'), 그래서 레벨 5 정답률의 절반이 단문 정답률이었다. 여기서는 주절이 두 그림 모두에서 참이라 아무것도 가르지 않는다 — 엄마는 무엇을 떠올리든 생각하고 있다.",
+  "note": "가역문·관계절과 달리 역할 뒤집기가 아니다. 내포절은 '누가 무엇을 한다고 생각하는가'라, 뒤집을 논항이 아니라 떠올린 내용이 달라져야 한다. 그래서 그림 두 장이 풍선 속만 다르다.",
+  "items": [
+    {
+      "itemId": "se_01_a",
+      "sentence": "엄마는 아이가 자고 있다고 생각해요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "embedded-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/se_01_correct.png",
+          "altText": "엄마가 아이는 자고 있다고 떠올리는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/se_01_distractor.png",
+          "altText": "엄마가 아이는 놀고 있다고 떠올리는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "se_01_b",
+      "sentence": "엄마는 아이가 놀고 있다고 생각해요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "embedded-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/se_01_distractor.png",
+          "altText": "엄마가 아이는 놀고 있다고 떠올리는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/se_01_correct.png",
+          "altText": "엄마가 아이는 자고 있다고 떠올리는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "se_02_a",
+      "sentence": "할아버지는 강아지가 밥을 먹고 있다고 생각해요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "embedded-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/se_02_correct.png",
+          "altText": "할아버지가 강아지는 밥을 먹고 있다고 떠올리는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/se_02_distractor.png",
+          "altText": "할아버지가 강아지는 뛰고 있다고 떠올리는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "se_02_b",
+      "sentence": "할아버지는 강아지가 뛰고 있다고 생각해요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "embedded-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/se_02_distractor.png",
+          "altText": "할아버지가 강아지는 뛰고 있다고 떠올리는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/se_02_correct.png",
+          "altText": "할아버지가 강아지는 밥을 먹고 있다고 떠올리는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "se_03_a",
+      "sentence": "아빠는 아이가 책을 읽고 있다고 생각해요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "embedded-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/se_03_correct.png",
+          "altText": "아빠가 아이는 책을 읽고 있다고 떠올리는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/se_03_distractor.png",
+          "altText": "아빠가 아이는 그림을 그리고 있다고 떠올리는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "se_03_b",
+      "sentence": "아빠는 아이가 그림을 그리고 있다고 생각해요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "embedded-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/se_03_distractor.png",
+          "altText": "아빠가 아이는 그림을 그리고 있다고 떠올리는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/se_03_correct.png",
+          "altText": "아빠가 아이는 책을 읽고 있다고 떠올리는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "se_04_a",
+      "sentence": "할머니는 고양이가 우유를 마시고 있다고 생각해요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "embedded-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/se_04_correct.png",
+          "altText": "할머니가 고양이는 우유를 마시고 있다고 떠올리는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/se_04_distractor.png",
+          "altText": "할머니가 고양이는 나무에 오르고 있다고 떠올리는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "se_04_b",
+      "sentence": "할머니는 고양이가 나무에 오르고 있다고 생각해요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "embedded-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/se_04_distractor.png",
+          "altText": "할머니가 고양이는 나무에 오르고 있다고 떠올리는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/se_04_correct.png",
+          "altText": "할머니가 고양이는 우유를 마시고 있다고 떠올리는 장면",
+          "isCorrect": false
+        }
+      ]
+    }
+  ]
+}
