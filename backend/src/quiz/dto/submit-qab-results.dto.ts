@@ -67,6 +67,15 @@ export class QabResultItemDto {
   @IsBoolean()
   assisted?: boolean;
 
+  // 이름대기에서 몇 단계까지 단서를 받았나(E18). 없으면 단서 개념이 없는 검사다.
+  //   0 무단서 · 1 의미 · (2 문장 완성 — 미구현) · 3 음소 · 4 통과
+  // 2를 허용 범위에 남겨 둔 이유는 M25 주석 참고.
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(4)
+  cueLevel?: number;
+
   // ddk 감지 횟수 등(없으면 생략). 비현실적 값 방지로 0..1000 범위.
   @IsOptional()
   @IsInt()

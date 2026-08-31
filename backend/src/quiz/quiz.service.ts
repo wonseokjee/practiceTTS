@@ -232,6 +232,26 @@ export interface QabSubtestSummary {
     phonological: number;
     unrelated: number;
   } | null;
+  /**
+   * 이름대기에서 **평균 몇 칸을 도왔나**(E18). 0에 가까울수록 스스로 한다.
+   *
+   *   0 무단서 · 1 의미 단서 · 3 음소 단서 · 4 정답을 알려줌
+   *
+   * 정답률과 재는 것이 다르다. 정답률은 `assisted`를 빼고 "도움 없이 몇 %"를
+   * 말하는데, 도움이 필요한 환자는 그 분모가 거의 비어 값이 안 나온다. 이 값은
+   * 그 도움 자체를 센다 — 4에서 3, 3에서 1로 내려오는 것이 회복이다.
+   *
+   * 표본이 없으면 null. 0으로 내려보내면 화면이 "평균 0단계"(늘 스스로 맞혔다)
+   * 라는 없는 사실을 그린다.
+   */
+  avgCueLevel: number | null;
+  /**
+   * 위 평균이 몇 문항에서 나왔나.
+   *
+   * 이 기능 이전의 이름대기 기록은 `cue_level`이 NULL이라 여기 안 들어간다.
+   * `assisted` 불리언만으로는 몇 단계였는지 복원할 수 없어서다.
+   */
+  cueScored: number;
 }
 
 export interface QabSummaryResult {
@@ -1174,7 +1194,13 @@ export class QuizService {
         subtest: r.subtest,
         itemRef: r.itemRef,
         isCorrect: r.isCorrect,
-        assisted: r.assisted ?? false,
+        // 단서를 한 칸이라도 받았으면 assisted도 참이다(E18). 기존 통계가
+        // `NOT r.assisted`로 거르고 있어 그 뜻을 유지해야 마이그레이션이 무해하다.
+        // 클라이언트가 assisted만 보내던 시절의 요청도 그대로 동작한다.
+        assisted: (r.assisted ?? false) || (r.cueLevel ?? 0) >= 1,
+        // 이름대기만 보낸다. 다른 검사에서 오면 뜻이 없으므로 떨군다 —
+        // foilKind를 정답 행에서 떨구는 것과 같은 이유다.
+        cueLevel: r.subtest === 'naming' ? (r.cueLevel ?? null) : null,
         metric: r.metric ?? null,
         score: r.score ?? null,
         presentedLevel: serverLevel,
@@ -1568,6 +1594,19 @@ export class QuizService {
         `COUNT(*) FILTER (WHERE NOT r.assisted AND r.foil_kind = 'unrelated')`,
         'foilUnrelated',
       )
+      // 단서 위계(E18) — 이름대기에서 **얼마나 도와야 했나**.
+      //
+      // `assisted`로 거르지 않는다. 여기서는 도움받은 문항이 빠질 대상이 아니라
+      // **재려는 대상 자체**다. 정답률이 "도움 없이 몇 %"를 말한다면 이 값은
+      // "평균 몇 칸을 도왔나"를 말한다.
+      //
+      // 이 기능 이전의 기록은 cue_level이 NULL이라 AVG가 알아서 뺀다. 0으로
+      // 메우면 "예전엔 단서 없이 다 맞혔다"는 거짓 회복 곡선이 그려진다.
+      .addSelect('AVG(r.cue_level)', 'avgCueLevel')
+      .addSelect(
+        'COUNT(*) FILTER (WHERE r.cue_level IS NOT NULL)',
+        'cueScored',
+      )
       .where('r.patient_id = :pid', { pid: effectivePatientId })
       .groupBy('r.subtest')
       .getRawMany<{
@@ -1582,6 +1621,8 @@ export class QuizService {
         foilSemantic: string;
         foilPhonological: string;
         foilUnrelated: string;
+        avgCueLevel: string | null;
+        cueScored: string;
       }>();
 
     const items: QabSubtestSummary[] = raw.map((row) => {
@@ -1610,6 +1651,15 @@ export class QuizService {
         semantic + phonological + unrelated > 0
           ? { semantic, phonological, unrelated }
           : null;
+      // 표본이 없으면 null이다. 0으로 내려보내면 화면이 "평균 0단계"(= 늘
+      // 무단서로 맞혔다)라는 없는 사실을 그린다 — foilKinds와 같은 이유다.
+      // `?? 0` — 실 DB는 항상 컬럼을 주지만, 없으면 Number(undefined)가 NaN이
+      // 되어 그대로 API로 샌다. NaN은 JSON에서 null이 되므로 조용히 틀린다.
+      const cueScored = Number(row.cueScored ?? 0);
+      const avgCueLevel =
+        cueScored === 0 || row.avgCueLevel === null
+          ? null
+          : Math.round(Number(row.avgCueLevel) * 10) / 10;
       return {
         subtest: row.subtest,
         total,
@@ -1621,6 +1671,8 @@ export class QuizService {
         avgScore,
         lastAt,
         foilKinds,
+        avgCueLevel,
+        cueScored,
       };
     });
 

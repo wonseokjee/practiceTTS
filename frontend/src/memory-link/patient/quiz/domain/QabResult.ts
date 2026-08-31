@@ -24,6 +24,16 @@ export interface QabResultInput {
   isCorrect: boolean;
   /** 보호자가 "넘어가기"로 통과시킨 문항이면 true. 정확도 집계에서 제외 */
   assisted?: boolean;
+  /**
+   * 이름대기에서 **몇 단계까지 단서를 받고 답했나**(E18).
+   *
+   *   0 무단서 · 1 의미 · (2 문장 완성 — 미구현) · 3 음소 · 4 통과
+   *
+   * `assisted`를 대체하지 않는다. 1 이상이면 둘 다 참으로 보낸다 — 기존 통계가
+   * `assisted`로 정답률을 거르고 있어 그 뜻을 유지해야 한다. 이름대기 외의
+   * 검사에는 단서 개념이 없어 서버가 떨군다.
+   */
+  cueLevel?: number;
   /** 수치 지표(ddk 감지 횟수 등). 없으면 생략 */
   metric?: number;
   /**
@@ -106,6 +116,15 @@ export interface QabSubtestSummary {
     phonological: number;
     unrelated: number;
   } | null;
+  /**
+   * 이름대기에서 **평균 몇 칸을 도왔나**(E18). 0에 가까울수록 스스로 한다.
+   * 표본이 없으면 null.
+   *
+   *   0 무단서 · 1 의미 단서 · 3 음소 단서 · 4 정답을 알려줌
+   */
+  avgCueLevel?: number | null;
+  /** 위 평균이 몇 문항에서 나왔나. 이 기능 이전의 기록은 안 들어간다. */
+  cueScored?: number;
 }
 
 /** 한 검사의 특정 주차 성적 (백엔드 QabWeeklyPoint 미러) */

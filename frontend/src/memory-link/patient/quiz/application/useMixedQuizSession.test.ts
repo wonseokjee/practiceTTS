@@ -478,7 +478,9 @@ describe('useMixedQuizSession', () => {
     // (회복추적에서 빠져 실력이 과소평가되는 것 방지).
     expect(submitQabResults).toHaveBeenCalledWith(
       'tok-1',
-      [{ subtest: 'naming', itemRef: 'naming_n1', isCorrect: true }],
+      // cueLevel 0 = 힌트를 한 번도 안 눌렀다. '미보조'라는 이 테스트의
+      // 취지를 숫자로도 못 박는다(E18).
+      [{ subtest: 'naming', itemRef: 'naming_n1', isCorrect: true, cueLevel: 0 }],
       1,
       true, // 마지막 문항 → 세션 자연 종료 → 완료 마커
       undefined, // 이름대기는 비레벨 검사라 보고할 눈높이가 없다
@@ -951,7 +953,16 @@ describe('useMixedQuizSession', () => {
     // 추세 기록은 assisted=true
     expect(submitQabResults).toHaveBeenCalledWith(
       'tok-1',
-      [{ subtest: 'naming', itemRef: 'naming_n1', isCorrect: true, assisted: true }],
+      // 넘어가기는 사다리의 꼭대기다 — 정답을 알려줬다(E18).
+      [
+        {
+          subtest: 'naming',
+          itemRef: 'naming_n1',
+          isCorrect: true,
+          assisted: true,
+          cueLevel: 4,
+        },
+      ],
       1,
       true, // 마지막 문항 → 세션 자연 종료 → 완료 마커
       undefined, // 도움받은 문항은 적응 기록에 안 들어간다
