@@ -27,7 +27,7 @@ import {
   type UsePracticeDeps,
 } from '../application/usePracticeSession.js';
 import { copulaSuffix } from '../../../../shared/domain/korean.js';
-import { QuizProgressBar } from '../../quiz/presentation/QuizProgressBar.js';
+import { ItemProgressBar } from '../../../../shared/components/ItemProgressBar.js';
 import { ImageChoiceQuizItem } from '../../quiz/presentation/components/ImageChoiceQuizItem.js';
 import { SpellTileItem } from '../../quiz/presentation/components/SpellTileItem.js';
 import { OddOneOutItem } from './components/OddOneOutItem.js';
@@ -200,7 +200,9 @@ export function PracticeScreen({ onExit, deps }: PracticeScreenProps) {
 
   return (
     <div className="font-pretendard mx-auto w-full max-w-2xl px-4 py-6">
-      <QuizProgressBar current={currentIndex + 1} total={totalCount} />
+      <div className="mb-6">
+        <ItemProgressBar current={currentIndex + 1} total={totalCount} />
+      </div>
 
       {/*
         key에 시도 번호를 포함한다. 철자 문항은 조립한 글자를 컴포넌트가 자체
