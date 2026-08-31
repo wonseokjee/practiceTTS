@@ -46,6 +46,33 @@ HOP_SEC = 0.02
 """RMS 프로파일 해상도. 단어 경계를 20ms까지 본다."""
 
 
+def _decode_pcm(raw: bytes, sampwidth: int) -> np.ndarray:
+    """PCM 바이트를 int16 스케일의 float32로 편다.
+
+    **비트 깊이를 가정하면 안 된다.** 예전에는 int16을 하드코딩했는데,
+    VS01에 24비트 5개와 32비트 5개가 섞여 있었다(TS01에는 없던 포맷이다).
+    24비트는 표본이 3바이트라 `frombuffer(raw, int16)`이 "buffer size must be a
+    multiple of element size"로 터지고, 32비트는 표본 하나가 int16 두 개로 읽혀
+    **소리 대신 잡음이 되는데 예외는 안 난다** — 조용히 엉뚱한 경계를 잡는 쪽이
+    더 나쁘다.
+
+    스케일을 int16으로 맞추는 건 엄밀히는 불필요하다(`floor`가 프로파일의
+    10백분위라 상대 기준이다). 그래도 맞춰 둬야 파일 간 프로파일을 눈으로
+    비교할 때 헷갈리지 않는다.
+    """
+    if sampwidth == 2:
+        return np.frombuffer(raw, dtype="<i2").astype(np.float32)
+    if sampwidth == 4:
+        return np.frombuffer(raw, dtype="<i4").astype(np.float32) / 65536.0
+    if sampwidth == 1:
+        return (np.frombuffer(raw, dtype=np.uint8).astype(np.float32) - 128.0) * 256.0
+    if sampwidth == 3:
+        b = np.frombuffer(raw, dtype=np.uint8).reshape(-1, 3).astype(np.int32)
+        v = b[:, 0] | (b[:, 1] << 8) | (b[:, 2].astype(np.int8).astype(np.int32) << 16)
+        return v.astype(np.float32) / 256.0
+    raise ValueError(f"지원하지 않는 표본 폭: {sampwidth}바이트")
+
+
 def rms_profile(wav_path: Path, hop_sec: float = HOP_SEC) -> tuple[np.ndarray, float]:
     """부모 wav 전체의 RMS 프로파일을 만든다 → (프로파일, hop 초).
 
@@ -55,13 +82,14 @@ def rms_profile(wav_path: Path, hop_sec: float = HOP_SEC) -> tuple[np.ndarray, f
     with contextlib.closing(wave.open(str(wav_path), "rb")) as w:
         sr = w.getframerate()
         ch = w.getnchannels()
+        sw = w.getsampwidth()
         hop = max(1, int(sr * hop_sec))
         out: list[float] = []
         while True:
             raw = w.readframes(hop * 512)
             if not raw:
                 break
-            a = np.frombuffer(raw, dtype=np.int16).astype(np.float32)
+            a = _decode_pcm(raw, sw)
             if ch > 1:
                 a = a.reshape(-1, ch).mean(axis=1)
             n = (len(a) // hop) * hop
