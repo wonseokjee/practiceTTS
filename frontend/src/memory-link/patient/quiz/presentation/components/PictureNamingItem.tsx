@@ -1,9 +1,19 @@
 // 그림 이름대기 문항 렌더러 (kind 'naming')
 //
 // QAB 검사5: 그림 한 장을 보여주고 환자가 "말로" 이름을 답한다(회상·이름대기 훈련).
-//  - 정답을 들려주면 과제가 무의미해지므로 TTS 발음 단서는 제공하지 않는다.
-//  - 흐름: 그림 표시 → 🎤 말하기 → 발음 평가 채점.
-//  - 막히면 "넘어가기"로 보호자가 통과 처리(정답 이름을 제출 → 정답 처리).
+//  - **정답은 끝까지 들려주지 않는다.** 들려준 뒤의 발화는 이름대기가 아니라
+//    따라말하기고, 그 검사는 로테이션에 따로 있다. 단서는 정답에 못 미치는
+//    것만 준다(무리 이름, 첫 소리).
+//  - 흐름: 그림 표시 → (막히면 💡 힌트) → 🎤 말하기 → 발음 평가 채점.
+//  - 끝내 막히면 "넘어가기" — 정답을 알려주고 사다리 꼭대기(4)로 기록한다.
+//
+// **단서 위계(E18).** 예전에는 도움이 두 단계뿐이었다 — 없음, 또는 넘어가기.
+// 그 사이가 비어서 "첫 소리만 들으면 말하는 환자"와 "아무리 해도 못 하는
+// 환자"가 같은 기록을 남겼다. 이제 몇 단계까지 받았는지를 남긴다(namingCue).
+//
+// 힌트는 **환자가 직접** 누른다. 보호자가 옆에 있다는 보장이 없고(솔로 홈),
+// 사람이 주면 기준이 달라져 기록이 사람을 재게 된다. 누른 것 자체가 "막혔다"는
+// 신호라 측정에 필요한 값이기도 하다.
 //
 // 채점 경로: repeat/reading과 동일하게 서버 발음 평가(/pronunciation)를 쓴다.
 // 예전엔 자유 STT 전사를 목표어와 문자열 매칭했는데, 단어 수준 구음장애 발화는
@@ -13,6 +23,15 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { createSpeechCaptureService } from '../../infrastructure/SpeechCaptureService.js';
+import {
+  CUE_GIVEN,
+  CUE_NONE,
+  cueForLevel,
+  nextCueLevel,
+  type Cue,
+} from '../../domain/namingCue.js';
+import { useTTS } from '../../../../../shared/hooks/useTTS.js';
+import { createTtsService } from '../../../../../shared/infrastructure/ttsFactory.js';
 import type { AzurePronunciationScores } from '../../domain/pronunciationScore.js';
 import type { QabNamingItem } from '../../domain/MixedQuiz.js';
 
@@ -23,7 +42,12 @@ interface PictureNamingItemProps {
   /** 채점 결과 — 피드백 단계에서만 의미 */
   isCorrect: boolean | null;
   /** azure는 음소 점수(가능할 때), 없으면 null(문자열 채점 폴백). */
-  onSubmit: (transcript: string, azure: AzurePronunciationScores | null) => void;
+  onSubmit: (
+    transcript: string,
+    azure: AzurePronunciationScores | null,
+    /** 몇 단계까지 단서를 받고 답했나(E18). */
+    cueLevel: number,
+  ) => void;
   /** 보호자 통과 처리(도움받음). 없으면 목표 이름 제출로 폴백. */
   onSkip?: () => void;
   /** 보호자가 자동 채점을 정정(피드백 단계). 발음 평가는 '무슨 단어인지'는 못
@@ -53,6 +77,16 @@ export function PictureNamingItem({
   const [transcript, setTranscript] = useState<string>('');
   const [azure, setAzure] = useState<AzurePronunciationScores | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>('');
+  /**
+   * 지금까지 받은 단서. **지우지 않고 쌓는다** — 1단계를 받고 2단계로 갔는데
+   * 앞의 것이 사라지면 환자가 방금 들은 말을 기억해야 해서, 이름대기에
+   * 작업기억 과제가 섞인다.
+   */
+  const [cues, setCues] = useState<Cue[]>([]);
+  const cueLevel = cues.length === 0 ? CUE_NONE : cues[cues.length - 1].level;
+
+  const ttsService = useMemo(() => createTtsService(), []);
+  const { speak } = useTTS(ttsService);
 
   // 캡처 인스턴스 (컴포넌트 생명주기와 동일). 문제 전환 시 부모가 key로 리마운트.
   const stt = useMemo(() => createSpeechCaptureService(), []);
@@ -95,17 +129,32 @@ export function PictureNamingItem({
 
   const handleSubmitTranscript = (): void => {
     if (transcript.trim().length === 0) return;
-    onSubmit(transcript.trim(), azure);
+    onSubmit(transcript.trim(), azure, cueLevel);
   };
 
-  // "넘어가기": 보호자가 답했다고 보고 통과 처리(도움받음).
+  // 사다리를 한 칸 오른다. 줄 수 없는 칸(범주 없는 자극의 의미 단서)은
+  // nextCueLevel이 건너뛴다.
+  const category = item.category ?? null;
+  const nextLevel = nextCueLevel(item.targetWord, category, cueLevel);
+  /** 통과는 힌트가 아니라 문항을 끝내는 동작이라 아래 넘어가기가 맡는다. */
+  const canHint = isSelectable && nextLevel !== CUE_GIVEN;
+
+  const handleHint = (): void => {
+    if (!canHint) return;
+    const cue = cueForLevel(item.targetWord, category, nextLevel);
+    if (cue === null) return;
+    setCues((prev) => [...prev, cue]);
+    if (cue.speak !== null) void speak(cue.speak);
+  };
+
+  // "넘어가기": 정답을 알려주고 통과 처리 — 사다리의 꼭대기(4)다.
   const handleSkip = (): void => {
     if (!isSelectable) return;
     if (onSkip) {
       onSkip();
       return;
     }
-    onSubmit(item.targetWord, null);
+    onSubmit(item.targetWord, null, CUE_GIVEN);
   };
 
   // 인식 결과 박스 색상 (피드백 단계).
@@ -184,6 +233,24 @@ export function PictureNamingItem({
         </div>
       )}
 
+      {/*
+        받은 단서 — 쌓아서 보여준다. 화면 글과 들려주는 말이 다를 수 있다
+        (자모는 "ㅅ"이 아니라 "시옷"으로 읽어야 TTS가 읽는다).
+      */}
+      {!showFeedback && cues.length > 0 && (
+        <ul className="flex flex-col gap-2" aria-label="받은 힌트">
+          {cues.map((cue) => (
+            <li
+              key={cue.level}
+              className="rounded-md bg-[#FBE9E2] px-4 py-3 text-lg text-[#7A2E15]"
+              role="status"
+            >
+              {cue.text}
+            </li>
+          ))}
+        </ul>
+      )}
+
       {/* 안내/에러 메시지 (피드백 단계 제외) */}
       {!showFeedback && status === 'listening' && (
         <p className="text-base text-[#2D6A56]" role="status">
@@ -246,6 +313,22 @@ export function PictureNamingItem({
               aria-label="제출"
             >
               제출
+            </button>
+          )}
+
+          {/*
+            힌트 — 사다리를 한 칸 오른다. 꼭대기(통과)에 닿으면 사라진다:
+            그때 남는 동작은 아래 넘어가기 하나뿐이다.
+          */}
+          {canHint && (
+            <button
+              type="button"
+              onClick={handleHint}
+              className="min-h-[48px] rounded-md bg-white px-5 py-3 text-base font-medium text-[#7A2E15] ring-1 ring-inset ring-[#E0A984] transition-colors duration-[180ms] ease-out hover:bg-[#FBE9E2]"
+              aria-label={cues.length === 0 ? '힌트 보기' : '힌트 하나 더 보기'}
+            >
+              <span aria-hidden="true">💡</span>{' '}
+              {cues.length === 0 ? '힌트' : '힌트 하나 더'}
             </button>
           )}
 

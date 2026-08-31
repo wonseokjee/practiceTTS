@@ -84,7 +84,9 @@ export function CaregiverWishCard({
 
   return (
     <section
-      className="font-pretendard mb-6 rounded-xl border border-[#E0A984] bg-[#FCF3EC] p-6"
+      // `mb-6`을 뺐다. 이 카드는 QuizScreen의 early return에서 화면의 유일한
+      // 자식이라, 아래 여백이 세로 가운데 정렬을 24px 위로 밀기만 했다.
+      className="font-pretendard rounded-xl border border-[#E0A984] bg-[#FCF3EC] p-6"
       aria-labelledby="wish-card-heading"
     >
       <div className="mb-3 flex items-center gap-2">

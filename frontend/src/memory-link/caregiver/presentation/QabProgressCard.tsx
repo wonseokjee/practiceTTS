@@ -274,11 +274,66 @@ export function QabProgressCard({
               {it.foilKinds != null && (
                 <FoilKindLine foilKinds={it.foilKinds} />
               )}
+              {/* 단서량 — 이름대기에만 값이 있다(E18). */}
+              {it.avgCueLevel != null && (
+                <CueLevelLine
+                  avgCueLevel={it.avgCueLevel}
+                  scored={it.cueScored ?? 0}
+                />
+              )}
             </li>
           );
         })}
       </ul>
     </section>
+  );
+}
+
+/**
+ * 이름대기 단서량 — **정답률이 못 말하는 것을 말한다.**
+ *
+ * 정답률은 도움받은 문항을 빼고 "혼자서 몇 %"를 센다. 그래서 도움이 필요한
+ * 환자일수록 분모가 비어 값이 안 나온다 — 실제로 이름대기가 오래 `직접 푼
+ * 1문항 중 1개 정답 · 도움 7회`였다. 8번 중 7번이 기록에서 사라진 것이다.
+ *
+ * 여기서는 그 도움 자체를 센다. **4에서 3으로, 3에서 1로 내려오는 것이
+ * 회복이다.** 그래서 막대를 거꾸로 채운다 — 왼쪽이 스스로 한 쪽이다.
+ *
+ * 단계는 0·1·3·4로 띄엄띄엄하다(2는 문장 완성 자리로 비워 뒀다). 그래서
+ * 막대는 4를 100%로 두고 비례로만 그리고, 정확한 값은 옆의 숫자가 맡는다.
+ */
+function CueLevelLine({
+  avgCueLevel,
+  scored,
+}: {
+  avgCueLevel: number;
+  scored: number;
+}) {
+  const 남은도움 = Math.min(100, Math.max(0, (avgCueLevel / 4) * 100));
+  return (
+    <div className="flex flex-col gap-1">
+      <p className="text-xs text-[#5C6661]">
+        평균{' '}
+        <span className="font-bold tabular-nums text-[#7A4A20]">
+          {avgCueLevel}단계
+        </span>{' '}
+        도움 · {scored}문항
+      </p>
+      <div
+        className="h-2 w-full overflow-hidden rounded-full bg-[#EBEAE6]"
+        role="progressbar"
+        aria-valuenow={avgCueLevel}
+        aria-valuemin={0}
+        aria-valuemax={4}
+        aria-label={`그림 이름대기 평균 ${avgCueLevel}단계 도움 (0에 가까울수록 스스로 함)`}
+      >
+        {/* 채운 쪽이 '스스로 한 만큼'이다. 도움이 줄면 막대가 자란다. */}
+        <div
+          className="h-full rounded-full bg-[#B85C36] transition-[width] duration-[250ms] ease-in-out"
+          style={{ width: `${100 - 남은도움}%` }}
+        />
+      </div>
+    </div>
   );
 }
 

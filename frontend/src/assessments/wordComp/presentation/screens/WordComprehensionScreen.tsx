@@ -25,7 +25,7 @@ import { LoadingOverlay } from '../../../../shared/components/LoadingOverlay.js'
 import { useWordComprehensionViewModel } from '../hooks/useWordComprehensionViewModel.js';
 import { AudioPlayerBar } from '../components/AudioPlayerBar.js';
 import { ImageChoiceGrid } from '../components/ImageChoiceGrid.js';
-import { ItemProgressBar } from '../components/ItemProgressBar.js';
+import { ItemProgressBar } from '../../../../shared/components/ItemProgressBar.js';
 import { SessionSummaryView } from '../components/SessionSummaryView.js';
 
 interface WordComprehensionScreenProps {
@@ -210,10 +210,7 @@ const WordComprehensionScreenInner: React.FC<InnerProps> = ({
 
       <main className="flex-1 px-4 py-4 max-w-xl mx-auto w-full flex flex-col gap-4 overflow-y-auto min-h-0">
         {/* 문항 진행 바 */}
-        <ItemProgressBar
-          current={currentItemIndex + 1}
-          total={totalItems}
-        />
+        <ItemProgressBar current={currentItemIndex + 1} total={totalItems} />
 
         {/* 오디오 재생 바 */}
         <AudioPlayerBar
