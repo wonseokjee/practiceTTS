@@ -124,18 +124,25 @@ describe('QabItemBank', () => {
     expect(apple?.imageUrl).toBe('/assets/images/naming/apple.png');
   });
 
-  it('pickNamingItems: 사진이 없는 단어는 SVG로 폴백한다', () => {
-    // 사진을 20개 다 갖추기 전에도 검사가 깨지면 안 된다.
-    // 사진 없는 단어는 단어이해 SVG를 그대로 쓴다.
-    const items = pickNamingItems(100);
-    const withoutPhoto = items.filter(
-      (i) => i.imageUrl.includes('/wordComp/'),
-    );
+  it('pickNamingItems: 사진이 없는 단어는 아예 안 나온다', () => {
+    // 예전에는 단어이해 SVG로 폴백했다. 사진이 모자라던 때의 임시방편이고,
+    // 지금은 90/95라 다섯을 빼도 통이 넉넉하다. 실물 사진과 만화풍 아이콘은
+    // 이름을 떠올리는 난이도가 달라, 섞이면 정답률이 낱말이 아니라 그날 뽑힌
+    // 자극을 재게 된다.
+    const items = pickNamingItems(300);
+    const svg = items.filter((i) => !i.imageUrl.startsWith('/assets/images/naming/'));
+    expect(svg.map((i) => i.targetWord), '사진 없이 나온 낱말').toEqual([]);
+  });
 
-    // 아직 대부분은 SVG 폴백이다.
-    expect(withoutPhoto.length).toBeGreaterThan(0);
-    for (const item of withoutPhoto) {
-      expect(item.imageUrl).toMatch(/\.svg$/);
+  it('pickNamingItems: 빠진 낱말은 단어이해에는 그대로 남는다', () => {
+    // 이름대기에서 빼는 것과 낱말 자체를 버리는 것은 다르다. 단어이해에서는
+    // SVG가 폴백이 아니라 원래 맞는 자극이라, 여기서까지 사라지면 안 된다.
+    const 이름대기 = new Set(pickNamingItems(300).map((i) => i.targetWord));
+    // 단어이해는 4지선다라 targetWord가 없다. 목표 낱말은 promptText다.
+    const 단어이해 = new Set(pickWordItems(300).map((i) => i.promptText));
+    for (const 낱말 of ['텔레비전', '당근', '코', '학교', '은행']) {
+      expect(이름대기.has(낱말), `이름대기에 남아 있다: ${낱말}`).toBe(false);
+      expect(단어이해.has(낱말), `단어이해에서 사라졌다: ${낱말}`).toBe(true);
     }
   });
 
@@ -884,10 +891,13 @@ describe('폴백·자극 종류를 기록한다 (D3·E11)', () => {
     }
   });
 
-  it('이름대기 자극에 사진과 아이콘이 둘 다 있다', () => {
-    // 한쪽만 나오면 위 테스트가 항진명제가 된다. 실측 33%가 SVG다.
-    const kinds = new Set(pickNamingItems(200).map((i) => i.stimulusKind));
-    expect(kinds).toEqual(new Set(['photo', 'svg']));
+  it('이름대기 자극은 이제 전부 사진이다', () => {
+    // 예전엔 사진과 아이콘이 섞여 나왔고, 그래서 어느 쪽인지 기록했다(E11).
+    // 폴백을 없앤 지금은 한 종류뿐이라 교란 자체가 없다. `stimulusKind`는
+    // 남겨 둔다 — 이미 저장된 예전 결과에 'svg'가 들어 있어서, 타입에서
+    // 빼면 그 기록을 읽을 수 없게 된다.
+    const kinds = new Set(pickNamingItems(300).map((i) => i.stimulusKind));
+    expect(kinds).toEqual(new Set(['photo']));
   });
 });
 

@@ -506,25 +506,33 @@ function slugFromUrl(url: string): string {
  *   단어이해(4지선다)는 변별이 핵심이라 통제를 유지(선화)한다 — 정답만
  *   사진이면 단어를 몰라도 사진만 골라 다 맞아 검사가 무효가 된다.
  *
- * 구현: 사진이 준비된 단어는 /assets/images/naming/<slug>.png를, 아직 없는
- * 단어는 단어이해 SVG를 그대로 쓴다(폴백). 정답 선택지가 없으면 null.
+ * 구현: **사진이 있는 낱말만 낸다.** 없으면 null이라 이름대기에 안 나온다.
+ *
+ * 예전에는 사진이 없으면 단어이해 SVG로 폴백했다. 사진이 67/84뿐이던 때는
+ * 그게 맞았다 — 폴백을 없앴다면 한 세션을 채울 문항이 모자랐다. 지금은
+ * 90/95라, 다섯을 빼도 통이 넉넉하다.
+ *
+ * 폴백을 없애는 쪽이 나은 이유는 재는 값이 깨끗해지기 때문이다. 실물 사진과
+ * 만화풍 아이콘은 이름을 떠올리는 난이도가 다르다. 섞여 나오면 이름대기
+ * 정답률이 "낱말을 아는 정도"가 아니라 "그날 어떤 자극이 뽑혔는가"에 흔들린다.
+ * `stimulusKind`로 기록은 남겼지만(E11), 기록은 교란을 설명할 뿐 없애지는
+ * 못한다. 이제 자극이 한 종류라 그 교란 자체가 사라진다.
+ *
+ * 빠지는 다섯(텔레비전·당근·코·학교·은행)은 단어이해에는 그대로 남는다.
+ * 거기서는 SVG가 폴백이 아니라 원래 맞는 자극이다.
  */
 function toNamingItem(it: RawWordItem, level?: number): QabNamingItem | null {
   const correct = it.choices.find((c) => c.isCorrect);
   if (!correct) return null;
   const slug = slugFromUrl(correct.imageUrl);
-  // 사진이 준비된 낱말은 실물 사진, 없으면 SVG 아이콘. 33%(30/91)가 SVG로
-  // 떨어지는데 예전에는 그 사실이 아무 데도 안 남았다 — 실물 사진과 만화풍
-  // 아이콘은 이름을 떠올리는 난이도가 달라서, 남기지 않으면 이름대기 정답률이
-  // 무엇을 재는 값인지 알 수 없다(E11).
-  const hasPhoto = NAMING_PHOTO_SLUGS.has(slug);
+  if (!NAMING_PHOTO_SLUGS.has(slug)) return null;
   return {
     itemId: `naming_${it.itemId}`,
-    imageUrl: hasPhoto ? `/assets/images/naming/${slug}.png` : correct.imageUrl,
+    imageUrl: `/assets/images/naming/${slug}.png`,
     targetWord: it.targetWord,
     instruction: NAMING_INSTRUCTION,
     presentedLevel: level,
-    stimulusKind: hasPhoto ? 'photo' : 'svg',
+    stimulusKind: 'photo',
     // 단서 위계(E18)가 의미 단서를 만들 때 쓴다. 값은 이미 여기 있었는데
     // 문항에 안 실려서 화면이 못 쓰고 있었다.
     category: slug in WORD_CATEGORY ? WORD_CATEGORY[slug] : null,
