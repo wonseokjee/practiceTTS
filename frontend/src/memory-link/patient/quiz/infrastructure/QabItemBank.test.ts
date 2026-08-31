@@ -1053,6 +1053,15 @@ describe('관계절 밴드', () => {
   const 장면 = (url: string) =>
     url.split('/').pop()!.replace(/\.[^.]+$/, '').replace(/_(correct|distractor)$/, '');
 
+  const 짝 = () => {
+    const m = new Map<string, 문항[]>();
+    for (const it of 관계절) {
+      const s = 장면(it.choices[0].imageUrl);
+      m.set(s, [...(m.get(s) ?? []), it]);
+    }
+    return m;
+  };
+
   it('레벨 3~4가 내는 유형이 이 밴드다', () => {
     // 이 연결이 끊기면 아래 검사들이 아무 레벨도 지키지 못한다.
     expect(sentTypeForLevel(3)).toBe('relative-clause');
@@ -1060,40 +1069,50 @@ describe('관계절 밴드', () => {
     expect(관계절.every((i) => i.sentenceType === 'relative-clause')).toBe(true);
   });
 
-  it('짝끼리 조사 한 글자만 다르다', () => {
-    // **이 밴드의 전부다.** 두 문장이 관계절 안의 조사 하나만 빼고 같으면,
+  it('짝끼리 격조사 하나만 다르다', () => {
+    // **이 밴드의 전부다.** 두 문장이 관계절 안의 격조사 하나만 빼고 같으면,
     // 정답을 고르는 단서가 그 조사밖에 없다. 주절이 조금이라도 다르면 거기서
     // 답이 새고, 그게 예전 05~08이 관계절을 안 재던 이유였다.
-    const 짝 = new Map<string, 문항[]>();
-    for (const it of 관계절) {
-      const s = 장면(it.choices[0].imageUrl);
-      짝.set(s, [...(짝.get(s) ?? []), it]);
-    }
-    expect(짝.size).toBeGreaterThan(0);
+    //
+    // 처음엔 "한 글자만 다르다"였다. 여격 문항(`에게` ↔ `가`)이 들어오면서
+    // 글자 수가 아니라 **다른 자리가 격조사 하나인가**로 일반화했다 — 재는
+    // 것은 그대로고 받는 조사만 늘었다.
+    const 격조사 = new Set(['이', '가', '을', '를', '에게', '에', '께']);
+    const 짝목록 = 짝();
+    expect(짝목록.size).toBeGreaterThan(0);
 
-    for (const [scene, 둘] of 짝) {
+    for (const [scene, 둘] of 짝목록) {
       expect(둘, `${scene}: 장면마다 문항이 둘이어야 한다`).toHaveLength(2);
       const [a, b] = 둘.map((i) => i.sentence);
-      expect(a.length, `${scene}: 길이가 다르다`).toBe(b.length);
 
-      const 다른자리 = [...a].map((_, i) => i).filter((i) => a[i] !== b[i]);
-      expect(다른자리, `${scene}: "${a}" vs "${b}"`).toHaveLength(1);
+      let head = 0;
+      while (head < a.length && head < b.length && a[head] === b[head]) head += 1;
+      let tail = 0;
+      while (
+        tail < a.length - head &&
+        tail < b.length - head &&
+        a[a.length - 1 - tail] === b[b.length - 1 - tail]
+      ) {
+        tail += 1;
+      }
+      const [x, y] = [a.slice(head, a.length - tail), b.slice(head, b.length - tail)];
 
-      const [x, y] = [a[다른자리[0]], b[다른자리[0]]];
-      expect([x, y].sort().join(''), `${scene}: 바뀐 글자가 조사가 아니다`).toMatch(
-        /^(가를|가을|이를|이을)$/,
-      );
+      expect(격조사.has(x), `${scene}: "${x}"는 격조사가 아니다 — "${a}"`).toBe(true);
+      expect(격조사.has(y), `${scene}: "${y}"는 격조사가 아니다 — "${b}"`).toBe(true);
+      expect(x, `${scene}: 두 문장이 같다`).not.toBe(y);
+
+      // 다른 자리가 **관계절 안**이어야 한다. 뒤쪽 공통부에 관형형 어미가
+      // 남아 있으면, 조사가 그 앞 — 곧 관계절 안 — 에 있었다는 뜻이다.
+      expect(
+        a.slice(a.length - tail),
+        `${scene}: 조사가 관계절 밖에 있다 — "${a}"`,
+      ).toMatch(/는 /);
     }
   });
 
   it('짝은 같은 그림 두 장을 쓰고 정답이 서로 반대다', () => {
     // 그림이 다르면 조사가 아니라 그림 내용으로 갈린다.
-    const 짝 = new Map<string, 문항[]>();
-    for (const it of 관계절) {
-      const s = 장면(it.choices[0].imageUrl);
-      짝.set(s, [...(짝.get(s) ?? []), it]);
-    }
-    for (const [scene, [a, b]] of 짝) {
+    for (const [scene, [a, b]] of 짝()) {
       const 그림 = (i: 문항) => i.choices.map((c) => c.imageUrl).sort().join('|');
       expect(그림(a), `${scene}: 두 문항이 다른 그림을 쓴다`).toBe(그림(b));
       const 정답 = (i: 문항) => i.choices.find((c) => c.isCorrect)!.imageUrl;
