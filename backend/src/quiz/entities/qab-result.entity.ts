@@ -135,6 +135,18 @@ export class QabResult {
   // 이 항목이 제시된 난이도 레벨(1~5). 적응형 레벨링의 윈도우를 "현재 레벨에서
   // 제시된 항목"으로 한정해 능력과 제시 난이도의 교란을 막는다. 컬럼 추가 이전
   // 구데이터는 null(레벨링 윈도우에서 제외).
+  /**
+   * 이름대기에서 **얼마나 도와야 맞혔나**(E18). NULL이면 단서 개념이 없는
+   * 하위검사이거나 이 기능 이전의 기록이다.
+   *
+   *   0 무단서 · 1 의미 단서 · (2 문장 완성 — 미구현) · 3 음소 단서 · 4 통과
+   *
+   * `assisted`를 대체하지 않는다. `cue_level >= 1`이면 둘 다 참이다 —
+   * 기존 통계가 `NOT r.assisted`로 거르고 있어 그 뜻을 유지해야 한다.
+   */
+  @Column({ name: 'cue_level', type: 'smallint', nullable: true })
+  cueLevel: number | null;
+
   @Column({ name: 'presented_level', type: 'smallint', nullable: true })
   presentedLevel: number | null;
 

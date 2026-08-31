@@ -35,6 +35,7 @@ describe('EntryListScreen — 대화 준비 상태', () => {
       objectTags: null,
       emotionTag: null,
       targetWords: [],
+      patientNotes: [],
       hasScenario: false,
       hasMaskedContext: true,
       createdAt: '2026-07-20T00:00:00.000Z',

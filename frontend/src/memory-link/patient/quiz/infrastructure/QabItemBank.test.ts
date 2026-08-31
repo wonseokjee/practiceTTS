@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import sentCompRaw from '../../../../assets/data/sentCompItems.json';
 import sentMirrorRaw from '../../../../assets/data/qabSentMirror.json';
 import sentGeneratedRaw from '../../../../assets/data/qabSentGenerated.json';
+import sentRelativeRaw from '../../../../assets/data/qabSentRelative.json';
 import sentEmbeddedRaw from '../../../../assets/data/qabSentEmbedded.json';
 import namingOnlyWords from '../../../../assets/data/namingOnlyWords.json';
 import namingPhotos from '../../../../assets/data/namingPhotos.json';
@@ -125,18 +126,25 @@ describe('QabItemBank', () => {
     expect(apple?.imageUrl).toBe('/assets/images/naming/apple.png');
   });
 
-  it('pickNamingItems: 사진이 없는 단어는 SVG로 폴백한다', () => {
-    // 사진을 20개 다 갖추기 전에도 검사가 깨지면 안 된다.
-    // 사진 없는 단어는 단어이해 SVG를 그대로 쓴다.
-    const items = pickNamingItems(100);
-    const withoutPhoto = items.filter(
-      (i) => i.imageUrl.includes('/wordComp/'),
-    );
+  it('pickNamingItems: 사진이 없는 단어는 아예 안 나온다', () => {
+    // 예전에는 단어이해 SVG로 폴백했다. 사진이 모자라던 때의 임시방편이고,
+    // 지금은 90/95라 다섯을 빼도 통이 넉넉하다. 실물 사진과 만화풍 아이콘은
+    // 이름을 떠올리는 난이도가 달라, 섞이면 정답률이 낱말이 아니라 그날 뽑힌
+    // 자극을 재게 된다.
+    const items = pickNamingItems(300);
+    const svg = items.filter((i) => !i.imageUrl.startsWith('/assets/images/naming/'));
+    expect(svg.map((i) => i.targetWord), '사진 없이 나온 낱말').toEqual([]);
+  });
 
-    // 아직 대부분은 SVG 폴백이다.
-    expect(withoutPhoto.length).toBeGreaterThan(0);
-    for (const item of withoutPhoto) {
-      expect(item.imageUrl).toMatch(/\.svg$/);
+  it('pickNamingItems: 빠진 낱말은 단어이해에는 그대로 남는다', () => {
+    // 이름대기에서 빼는 것과 낱말 자체를 버리는 것은 다르다. 단어이해에서는
+    // SVG가 폴백이 아니라 원래 맞는 자극이라, 여기서까지 사라지면 안 된다.
+    const 이름대기 = new Set(pickNamingItems(300).map((i) => i.targetWord));
+    // 단어이해는 4지선다라 targetWord가 없다. 목표 낱말은 promptText다.
+    const 단어이해 = new Set(pickWordItems(300).map((i) => i.promptText));
+    for (const 낱말 of ['텔레비전', '당근', '코', '학교', '은행']) {
+      expect(이름대기.has(낱말), `이름대기에 남아 있다: ${낱말}`).toBe(false);
+      expect(단어이해.has(낱말), `단어이해에서 사라졌다: ${낱말}`).toBe(true);
     }
   });
 
@@ -693,14 +701,16 @@ describe('pickSentItems — 통사 복잡도 위계', () => {
 
   /**
    * promptText로 원본 sentenceType을 되찾는다(테스트 전용 역인덱스).
-   * **뱅크와 같은 세 출처를 봐야 한다** — 하나라도 빠지면 undefined가 나와
-   * 엉뚱한 실패로 보인다(실제로 qabSentGenerated를 빠뜨려 한 번 겪었다).
+   * **뱅크와 같은 네 출처를 봐야 한다** — 하나라도 빠지면 undefined가 나와
+   * 엉뚱한 실패로 보인다(qabSentGenerated로 한 번, qabSentRelative로 또 한 번
+   * 겪었다. 이 주석이 예고한 그대로였다).
    */
   type RawSent = { sentence: string; sentenceType: string };
   const ALL_SENTS: RawSent[] = [
     ...(sentCompRaw as RawSent[]),
     ...(sentMirrorRaw as { items: RawSent[] }).items,
     ...(sentGeneratedRaw as { items: RawSent[] }).items,
+    ...(sentRelativeRaw as { items: RawSent[] }).items,
     ...(sentEmbeddedRaw as { items: RawSent[] }).items,
   ];
   function typeOf(prompt: string): string | undefined {
@@ -886,10 +896,13 @@ describe('폴백·자극 종류를 기록한다 (D3·E11)', () => {
     }
   });
 
-  it('이름대기 자극에 사진과 아이콘이 둘 다 있다', () => {
-    // 한쪽만 나오면 위 테스트가 항진명제가 된다. 실측 33%가 SVG다.
-    const kinds = new Set(pickNamingItems(200).map((i) => i.stimulusKind));
-    expect(kinds).toEqual(new Set(['photo', 'svg']));
+  it('이름대기 자극은 이제 전부 사진이다', () => {
+    // 예전엔 사진과 아이콘이 섞여 나왔고, 그래서 어느 쪽인지 기록했다(E11).
+    // 폴백을 없앤 지금은 한 종류뿐이라 교란 자체가 없다. `stimulusKind`는
+    // 남겨 둔다 — 이미 저장된 예전 결과에 'svg'가 들어 있어서, 타입에서
+    // 빼면 그 기록을 읽을 수 없게 된다.
+    const kinds = new Set(pickNamingItems(300).map((i) => i.stimulusKind));
+    expect(kinds).toEqual(new Set(['photo']));
   });
 });
 
@@ -948,6 +961,84 @@ describe('가역문 밴드 (E14)', () => {
     expect(ids).not.toContain('sg_02');
     expect(ids).not.toContain('sg_06');
     expect(가역문().length).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe('관계절 밴드', () => {
+  interface 문항 {
+    itemId: string;
+    sentence: string;
+    sentenceType: string;
+    choices: { imageUrl: string; altText: string; isCorrect: boolean }[];
+  }
+
+  const 관계절: 문항[] = (sentRelativeRaw as unknown as { items: 문항[] }).items;
+  const 장면 = (url: string) =>
+    url.split('/').pop()!.replace(/\.[^.]+$/, '').replace(/_(correct|distractor)$/, '');
+
+  it('레벨 3~4가 내는 유형이 이 밴드다', () => {
+    // 이 연결이 끊기면 아래 검사들이 아무 레벨도 지키지 못한다.
+    expect(sentTypeForLevel(3)).toBe('relative-clause');
+    expect(sentTypeForLevel(4)).toBe('relative-clause');
+    expect(관계절.every((i) => i.sentenceType === 'relative-clause')).toBe(true);
+  });
+
+  it('짝끼리 조사 한 글자만 다르다', () => {
+    // **이 밴드의 전부다.** 두 문장이 관계절 안의 조사 하나만 빼고 같으면,
+    // 정답을 고르는 단서가 그 조사밖에 없다. 주절이 조금이라도 다르면 거기서
+    // 답이 새고, 그게 예전 05~08이 관계절을 안 재던 이유였다.
+    const 짝 = new Map<string, 문항[]>();
+    for (const it of 관계절) {
+      const s = 장면(it.choices[0].imageUrl);
+      짝.set(s, [...(짝.get(s) ?? []), it]);
+    }
+    expect(짝.size).toBeGreaterThan(0);
+
+    for (const [scene, 둘] of 짝) {
+      expect(둘, `${scene}: 장면마다 문항이 둘이어야 한다`).toHaveLength(2);
+      const [a, b] = 둘.map((i) => i.sentence);
+      expect(a.length, `${scene}: 길이가 다르다`).toBe(b.length);
+
+      const 다른자리 = [...a].map((_, i) => i).filter((i) => a[i] !== b[i]);
+      expect(다른자리, `${scene}: "${a}" vs "${b}"`).toHaveLength(1);
+
+      const [x, y] = [a[다른자리[0]], b[다른자리[0]]];
+      expect([x, y].sort().join(''), `${scene}: 바뀐 글자가 조사가 아니다`).toMatch(
+        /^(가를|가을|이를|이을)$/,
+      );
+    }
+  });
+
+  it('짝은 같은 그림 두 장을 쓰고 정답이 서로 반대다', () => {
+    // 그림이 다르면 조사가 아니라 그림 내용으로 갈린다.
+    const 짝 = new Map<string, 문항[]>();
+    for (const it of 관계절) {
+      const s = 장면(it.choices[0].imageUrl);
+      짝.set(s, [...(짝.get(s) ?? []), it]);
+    }
+    for (const [scene, [a, b]] of 짝) {
+      const 그림 = (i: 문항) => i.choices.map((c) => c.imageUrl).sort().join('|');
+      expect(그림(a), `${scene}: 두 문항이 다른 그림을 쓴다`).toBe(그림(b));
+      const 정답 = (i: 문항) => i.choices.find((c) => c.isCorrect)!.imageUrl;
+      expect(정답(a), `${scene}: 정답이 같다`).not.toBe(정답(b));
+    }
+  });
+
+  it('관계절이 놀던 넷은 풀에서 빠졌다', () => {
+    // 05~08은 관계절이 두 선택지에서 똑같아, 통째로 흘려들어도 정답을 골랐다.
+    // 그런데 레벨 3~4가 그 넷을 내고 "관계절 정답률"로 기록했다.
+    const ids = pickSentItems(200, 3).map((i) => i.itemId.replace(/^sent_/, ''));
+    for (const 뺀것 of ['sentComp_05', 'sentComp_06', 'sentComp_07', 'sentComp_08']) {
+      expect(ids, `${뺀것}이 아직 나온다`).not.toContain(뺀것);
+      expect(ids, `${뺀것}_m이 아직 나온다`).not.toContain(`${뺀것}_m`);
+    }
+  });
+
+  it('밴드가 되돌림 없이 세션을 채운다', () => {
+    // 밴드가 얇으면 전체 풀로 되돌아가고(bandFallback), 그때 기록된 레벨은
+    // 실제 난이도를 뜻하지 않는다(D3). 한 세션의 문장 슬롯은 0~2개다.
+    expect(pickSentItems(2, 3).every((i) => i.bandFallback === undefined)).toBe(true);
+    expect(pickSentItems(2, 4).every((i) => i.bandFallback === undefined)).toBe(true);
   });
 });
 

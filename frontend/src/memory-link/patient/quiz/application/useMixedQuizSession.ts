@@ -54,6 +54,7 @@ import {
   rotationForToday,
 } from '../domain/subtestRotation.js';
 import { adaptedLevel } from '../domain/sessionAdaptation.js';
+import { CUE_GIVEN, CUE_NONE, CUE_SEMANTIC } from '../domain/namingCue.js';
 import { playableSubtest } from '../domain/MixedQuiz.js';
 import {
   pickRepeatItems,
@@ -97,6 +98,8 @@ export interface UseMixedQuizActions {
   submitNaming: (
     transcript: string,
     azure?: AzurePronunciationScores | null,
+    /** 몇 단계까지 단서를 받고 답했나(E18). 생략하면 무단서. */
+    cueLevel?: number,
   ) => void;
   /** QAB 따라말하기/소리내어읽기 음성 제출. azure 점수 있으면 음소 채점, 없으면 WER 폴백. */
   submitSpeech: (
@@ -674,7 +677,12 @@ export function useMixedQuizSession(
   );
 
   const submitNaming = useCallback(
-    (transcript: string, azure: AzurePronunciationScores | null = null): void => {
+    (
+      transcript: string,
+      azure: AzurePronunciationScores | null = null,
+      /** 몇 단계까지 단서를 받고 답했나(E18). 0이면 무단서. */
+      cueLevel: number = CUE_NONE,
+    ): void => {
       if (phaseRef.current !== 'answering') return;
       const item = itemsRef.current[indexRef.current];
       if (!item || item.kind !== 'naming') return;
@@ -691,6 +699,11 @@ export function useMixedQuizSession(
         subtest: 'naming',
         itemRef: item.item.itemId,
         isCorrect: correct,
+        cueLevel,
+        // 단서를 받았으면 도움받음이다. 기존 통계가 `NOT assisted`로 걸러
+        // 정답률을 내므로, 여기서 참으로 두지 않으면 단서받은 정답이
+        // 무단서 정답과 같은 값에 섞인다.
+        ...(cueLevel >= CUE_SEMANTIC ? { assisted: true } : {}),
         ...(evaluation ? { score: evaluation.score } : {}),
         ...observed(item.item),
       });
@@ -851,6 +864,9 @@ export function useMixedQuizSession(
       itemRef: item.id,
       isCorrect: true,
       assisted: true,
+      // 이름대기에서 넘어가기는 **사다리의 꼭대기**다(정답을 알려줬다).
+      // 다른 검사에는 단서 개념이 없어 값을 안 남긴다.
+      ...(subtest === 'naming' ? { cueLevel: CUE_GIVEN } : {}),
     });
     applyResult({ isCorrect: true, correctLabel }, null, true);
   }, [applyResult]);

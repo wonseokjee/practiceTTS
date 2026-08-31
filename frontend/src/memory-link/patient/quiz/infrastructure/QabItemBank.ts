@@ -27,6 +27,8 @@ import sentMirrorData from '../../../../assets/data/qabSentMirror.json';
 // AI 이미지 생성 스크립트(scripts/generate_sentcomp_images.py)가 만든 신규 장면 문항.
 // 이미지가 생성된 항목만 포함되며, 스크립트 실행 전에는 비어 있다.
 import sentGeneratedData from '../../../../assets/data/qabSentGenerated.json';
+// 관계절 문항. 기존 가역문 장면 쌍을 그대로 쓰고 문장만 새로 쓴다(새 그림 0장).
+import sentRelativeData from '../../../../assets/data/qabSentRelative.json';
 // 내포절 문항. 사람과 자세는 같고 생각 풍선 속만 다른 장면 쌍을 쓴다.
 import sentEmbeddedData from '../../../../assets/data/qabSentEmbedded.json';
 import type {
@@ -68,6 +70,36 @@ interface RawSentItem {
 const WORD_ITEMS: RawWordItem[] = (wordPoolData as { items: RawWordItem[] }).items;
 
 /**
+ * 혼합 퀴즈 풀에서 빼는 문장 문항 — **관계절이 놀고 있는 넷**과 그 거울.
+ *
+ * 넷 다 관계절을 달고 `relative-clause`로 기록됐지만, 두 그림이 관계절이
+ * 아니라 주절에서만 갈린다.
+ *
+ *   05  "**공을 차는** 아이가 웃고 있어요"  ↔  "**공을 차는** 아이가 울고 있어요"
+ *   06  "**책을 읽는** 여자가 안경을 썼어요" ↔  "…안경을 쓰지 않았어요"
+ *   07  "**노래하는** 남자가 기타를 들었어요" ↔ "…드럼을 들었어요"
+ *   08  "**뛰어가는** 강아지가 공을 물었어요" ↔ "…뼈를 물었어요"
+ *
+ * 굵은 부분이 두 선택지에서 똑같다. 관계절을 통째로 흘려들어도 정답을 고른다.
+ * 그런데 레벨 3~4가 내는 유형이 `relative-clause`라, 이 넷이 "관계절 정답률"로
+ * 기록되고 적응 레벨링이 그 값을 보고 승급을 판단했다.
+ *
+ * **고칠 방법이 없어서 뺀다.** 관계절이 일하게 하려면 그림에 후보가 둘 있어야
+ * 한다(공을 **차는** 아이와 **든** 아이가 한 그림에). 지금 그림에는 아이가
+ * 하나뿐이라, 문장을 고쳐서는 안 되고 그림을 새로 그려야 한다.
+ *
+ * 그래도 **문항 수는 그대로다** — 같은 수의 진짜 관계절 문항을 새 그림 없이
+ * 만들어 넣었다(`qabSentRelative.json`).
+ *
+ * 표준 sentComp 검사(`useSentCompViewModel`)에서는 그대로 쓴다. 거기서는
+ * 통사 유형이 난이도 손잡이가 아니라 문항일 뿐이고, 넷 다 멀쩡한 문항이다.
+ */
+const NON_DISCRIMINATIVE_SENT_ITEMS: ReadonlySet<string> = new Set([
+  'sentComp_05', 'sentComp_06', 'sentComp_07', 'sentComp_08',
+  'sentComp_05_m', 'sentComp_06_m', 'sentComp_07_m', 'sentComp_08_m',
+]);
+
+/**
  * 혼합 퀴즈 풀에서 빼는 문장 문항 — **내포절 밴드에 있는 단문 둘.**
  *
  *   09  아빠는 엄마가 요리를 한다고 생각해요   ← 내포절
@@ -95,8 +127,13 @@ const SENT_ITEMS: RawSentItem[] = [
   ...(sentCompData as unknown as RawSentItem[]),
   ...((sentMirrorData as { items: RawSentItem[] }).items),
   ...((sentGeneratedData as { items: RawSentItem[] }).items),
+  ...((sentRelativeData as { items: RawSentItem[] }).items),
   ...((sentEmbeddedData as { items: RawSentItem[] }).items),
-].filter((it) => !NON_EMBEDDED_MIRRORS.has(it.itemId));
+].filter(
+  (it) =>
+    !NON_DISCRIMINATIVE_SENT_ITEMS.has(it.itemId) &&
+    !NON_EMBEDDED_MIRRORS.has(it.itemId),
+);
 
 const WORD_INSTRUCTION = '들려주는 단어의 그림을 골라주세요';
 const SENT_INSTRUCTION = '들려주는 문장에 맞는 그림을 골라주세요';
@@ -511,6 +548,8 @@ const NAMING_ONLY_ITEMS: QabNamingItem[] = namingOnlyWords.items.map((w) => ({
   instruction: NAMING_INSTRUCTION,
   // 이 넷은 애초에 사진만 남은 낱말이다(Fluent 교체 때 아이콘이 사라졌다).
   stimulusKind: 'photo',
+  // 이쪽 JSON은 범주를 자기 안에 들고 있다(WORD_CATEGORY와 별개).
+  category: w.category,
 }));
 
 /** 이미지 URL에서 파일명 slug를 뽑는다. "/a/b/apple.svg" → "apple". */
@@ -532,25 +571,36 @@ function slugFromUrl(url: string): string {
  *   단어이해(4지선다)는 변별이 핵심이라 통제를 유지(선화)한다 — 정답만
  *   사진이면 단어를 몰라도 사진만 골라 다 맞아 검사가 무효가 된다.
  *
- * 구현: 사진이 준비된 단어는 /assets/images/naming/<slug>.png를, 아직 없는
- * 단어는 단어이해 SVG를 그대로 쓴다(폴백). 정답 선택지가 없으면 null.
+ * 구현: **사진이 있는 낱말만 낸다.** 없으면 null이라 이름대기에 안 나온다.
+ *
+ * 예전에는 사진이 없으면 단어이해 SVG로 폴백했다. 사진이 67/84뿐이던 때는
+ * 그게 맞았다 — 폴백을 없앴다면 한 세션을 채울 문항이 모자랐다. 지금은
+ * 90/95라, 다섯을 빼도 통이 넉넉하다.
+ *
+ * 폴백을 없애는 쪽이 나은 이유는 재는 값이 깨끗해지기 때문이다. 실물 사진과
+ * 만화풍 아이콘은 이름을 떠올리는 난이도가 다르다. 섞여 나오면 이름대기
+ * 정답률이 "낱말을 아는 정도"가 아니라 "그날 어떤 자극이 뽑혔는가"에 흔들린다.
+ * `stimulusKind`로 기록은 남겼지만(E11), 기록은 교란을 설명할 뿐 없애지는
+ * 못한다. 이제 자극이 한 종류라 그 교란 자체가 사라진다.
+ *
+ * 빠지는 다섯(텔레비전·당근·코·학교·은행)은 단어이해에는 그대로 남는다.
+ * 거기서는 SVG가 폴백이 아니라 원래 맞는 자극이다.
  */
 function toNamingItem(it: RawWordItem, level?: number): QabNamingItem | null {
   const correct = it.choices.find((c) => c.isCorrect);
   if (!correct) return null;
   const slug = slugFromUrl(correct.imageUrl);
-  // 사진이 준비된 낱말은 실물 사진, 없으면 SVG 아이콘. 33%(30/91)가 SVG로
-  // 떨어지는데 예전에는 그 사실이 아무 데도 안 남았다 — 실물 사진과 만화풍
-  // 아이콘은 이름을 떠올리는 난이도가 달라서, 남기지 않으면 이름대기 정답률이
-  // 무엇을 재는 값인지 알 수 없다(E11).
-  const hasPhoto = NAMING_PHOTO_SLUGS.has(slug);
+  if (!NAMING_PHOTO_SLUGS.has(slug)) return null;
   return {
     itemId: `naming_${it.itemId}`,
-    imageUrl: hasPhoto ? `/assets/images/naming/${slug}.png` : correct.imageUrl,
+    imageUrl: `/assets/images/naming/${slug}.png`,
     targetWord: it.targetWord,
     instruction: NAMING_INSTRUCTION,
     presentedLevel: level,
-    stimulusKind: hasPhoto ? 'photo' : 'svg',
+    stimulusKind: 'photo',
+    // 단서 위계(E18)가 의미 단서를 만들 때 쓴다. 값은 이미 여기 있었는데
+    // 문항에 안 실려서 화면이 못 쓰고 있었다.
+    category: slug in WORD_CATEGORY ? WORD_CATEGORY[slug] : null,
   };
 }
 
