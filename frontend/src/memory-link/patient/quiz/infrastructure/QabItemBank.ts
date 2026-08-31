@@ -483,6 +483,8 @@ const NAMING_ONLY_ITEMS: QabNamingItem[] = namingOnlyWords.items.map((w) => ({
   instruction: NAMING_INSTRUCTION,
   // 이 넷은 애초에 사진만 남은 낱말이다(Fluent 교체 때 아이콘이 사라졌다).
   stimulusKind: 'photo',
+  // 이쪽 JSON은 범주를 자기 안에 들고 있다(WORD_CATEGORY와 별개).
+  category: w.category,
 }));
 
 /** 이미지 URL에서 파일명 slug를 뽑는다. "/a/b/apple.svg" → "apple". */
@@ -531,6 +533,9 @@ function toNamingItem(it: RawWordItem, level?: number): QabNamingItem | null {
     instruction: NAMING_INSTRUCTION,
     presentedLevel: level,
     stimulusKind: 'photo',
+    // 단서 위계(E18)가 의미 단서를 만들 때 쓴다. 값은 이미 여기 있었는데
+    // 문항에 안 실려서 화면이 못 쓰고 있었다.
+    category: slug in WORD_CATEGORY ? WORD_CATEGORY[slug] : null,
   };
 }
 

@@ -83,6 +83,13 @@ export interface QabNamingItem {
    * 이름대기 정답률이 무엇을 재는 값인지 알 수 없다.
    */
   stimulusKind?: 'photo' | 'svg';
+  /**
+   * 의미 범주(`WORD_CATEGORY`). 단서 위계 1단계가 이 값으로 문장을 만든다.
+   *
+   * `null`이면 어느 무리에도 안 든다 — 91개 중 9개다. 그 자극은 의미 단서를
+   * 건너뛰고 음소 단서로 간다(namingCue의 `nextCueLevel`).
+   */
+  category?: string | null;
 }
 
 /**

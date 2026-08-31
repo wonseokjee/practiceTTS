@@ -20,6 +20,71 @@ function summary(overrides?: Partial<QabSubtestSummary>): QabSubtestSummary {
   };
 }
 
+describe('QabProgressCard — 단서량 (E18)', () => {
+  // 정답률이 못 말하는 것을 말하는 줄이다. 이름대기는 도움이 직접 푼 것보다
+  // 많아서 정답률 분모가 거의 비는데, 그 도움 자체가 여기서는 측정값이다.
+
+  it('평균 단서 단계와 표본 수를 보여준다', async () => {
+    const fetchSummary = vi.fn().mockResolvedValue([
+      summary({
+        subtest: 'naming',
+        total: 1,
+        correct: 1,
+        accuracy: 100,
+        assisted: 7,
+        avgCueLevel: 2.4,
+        cueScored: 8,
+      }),
+    ]);
+    render(<QabProgressCard fetchSummary={fetchSummary} />);
+
+    await waitFor(() =>
+      expect(screen.getByText('2.4단계')).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/8문항/)).toBeInTheDocument();
+  });
+
+  it('막대는 스스로 한 만큼을 채운다 — 도움이 줄면 자란다', async () => {
+    // 0단계(늘 스스로)면 가득, 4단계(늘 알려줌)면 비어야 한다. 거꾸로 그리면
+    // 도움이 많을수록 좋아 보인다.
+    const render단계 = async (avgCueLevel: number) => {
+      const { container, unmount } = render(
+        <QabProgressCard
+          fetchSummary={vi.fn().mockResolvedValue([
+            summary({ subtest: 'naming', avgCueLevel, cueScored: 5 }),
+          ])}
+        />,
+      );
+      await waitFor(() =>
+        expect(screen.getByText(`${avgCueLevel}단계`)).toBeInTheDocument(),
+      );
+      const bar = container.querySelector<HTMLElement>(
+        '[aria-label*="단계 도움"] > div',
+      );
+      const width = bar!.style.width;
+      unmount();
+      return width;
+    };
+
+    expect(await render단계(0)).toBe('100%');
+    expect(await render단계(4)).toBe('0%');
+  });
+
+  it('표본이 없으면 줄 자체를 안 그린다', async () => {
+    // avgCueLevel이 null이면 이 기능 이전의 기록뿐이라는 뜻이다. 0으로
+    // 그리면 "늘 스스로 맞혔다"는 없는 사실이 된다.
+    const fetchSummary = vi.fn().mockResolvedValue([
+      summary({ subtest: 'naming', avgCueLevel: null, cueScored: 0 }),
+    ]);
+    render(<QabProgressCard fetchSummary={fetchSummary} />);
+
+    await waitFor(() =>
+      expect(screen.getByText('그림 이름대기')).toBeInTheDocument(),
+    );
+    expect(screen.queryByText(/단계 도움/)).toBeNull();
+  });
+});
+
 describe('QabProgressCard', () => {
   it('데이터가 있으면 검사별 정답률을 표시한다', async () => {
     const fetchSummary = vi.fn().mockResolvedValue([summary()]);

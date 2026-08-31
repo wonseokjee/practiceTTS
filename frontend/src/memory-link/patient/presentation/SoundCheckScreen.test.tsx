@@ -27,8 +27,9 @@ function renderScreen(overrides: Partial<Parameters<typeof SoundCheckScreen>[0]>
     destination: '연습' as const,
     ...overrides,
   };
-  render(<SoundCheckScreen {...props} />);
-  return props;
+  const { container } = render(<SoundCheckScreen {...props} />);
+  // props와 함께 container도 돌려준다 — 배치 테스트가 루트 요소를 봐야 한다.
+  return { ...props, container };
 }
 
 describe('SoundCheckScreen', () => {
@@ -123,5 +124,33 @@ describe('SoundCheckScreen', () => {
     ).toBeInTheDocument();
     // 자동 재생이 끝나기 전에 테스트가 끝나면 act 경고가 난다.
     await screen.findByText('소리가 잘 들리셨나요?');
+  });
+
+  // ── 세로 배치 (DR8) ────────────────────────────────────────────
+  //
+  // 390×844에서 콘텐츠가 503px만 쓰고 아래 342px(40%)이 비어 있었다. 빈 것보다
+  // 나쁜 건 기본 동작이 화면 위쪽이라 엄지가 올라가야 했던 것과, `돌아가기`가
+  // 답변 버튼 바로 밑에 붙어 있던 것이다.
+
+  it('화면 높이를 채운다', async () => {
+    const { container } = renderScreen();
+    await screen.findByText('소리가 잘 들리셨나요?');
+    const root = container.firstElementChild as HTMLElement;
+
+    // `100vh`가 아니라 `100dvh`다 — vh는 모바일에서 주소창을 포함한 높이라
+    // 바닥에 붙인 버튼이 화면 밖으로 밀린다.
+    const classes = root.className.split(' ');
+    expect(classes).toContain('min-h-dvh');
+    expect(classes).not.toContain('min-h-screen');
+  });
+
+  it('돌아가기를 답변 버튼과 같은 덩어리에 두지 않는다', async () => {
+    const { container } = renderScreen();
+    const 답 = await screen.findByText('잘 들려요');
+    const 돌아가기 = screen.getByText('돌아가기');
+
+    // 같은 부모에 있으면 손가락이 헷갈린다. 본문은 가운데, 이건 바닥이다.
+    expect(돌아가기.parentElement).not.toBe(답.parentElement);
+    expect(container.firstElementChild!.lastElementChild).toBe(돌아가기);
   });
 });

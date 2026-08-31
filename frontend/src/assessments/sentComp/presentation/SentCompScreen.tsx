@@ -15,7 +15,7 @@ import { useSentCompViewModel } from './useSentCompViewModel.js';
 import { SentenceAudioPlayer } from './components/SentenceAudioPlayer.js';
 import { ImageChoiceGrid } from './components/ImageChoiceGrid.js';
 import { ScoreResultPanel } from './components/ScoreResultPanel.js';
-import { AssessmentProgressBar } from '../../../shared/components/AssessmentProgressBar.js';
+import { ItemProgressBar } from '../../../shared/components/ItemProgressBar.js';
 import { LoadingOverlay } from '../../../shared/components/LoadingOverlay.js';
 import type { ScoreDTO } from '../application/dtos.js';
 
@@ -131,7 +131,7 @@ export function SentCompScreen({ onComplete }: SentCompScreenProps) {
           currentItem !== null && (
             <>
               {/* 진행 바 */}
-              <AssessmentProgressBar
+              <ItemProgressBar
                 current={currentItemIndex + 1}
                 total={totalItems > 0 ? totalItems : 10}
               />
