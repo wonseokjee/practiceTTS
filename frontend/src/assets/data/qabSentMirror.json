@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "sentCompItems.json의 거울 문항(정답/오답 그림을 뒤집고 문장을 반대 해석으로). 새 이미지 없이 문장이해 문항을 2배로 늘리기 위함. QAB 혼합 퀴즈 전용(표준 sentComp 검사 JSON은 미변경).",
+  "note": "sentCompItems.json과 qabSentGenerated.json의 거울 문항(정답/오답 그림을 뒤집고 문장을 반대 해석으로). 새 이미지 없이 문장이해 문항을 2배로 늘리기 위함. QAB 혼합 퀴즈 전용(표준 sentComp 검사 JSON은 미변경).",
   "items": [
     {
       "itemId": "sentComp_01_m",
@@ -8,8 +8,16 @@
       "sentenceAudioUrl": "",
       "sentenceType": "reversible",
       "choices": [
-        { "imageUrl": "/assets/images/sentComp/sentComp_01_distractor.png", "altText": "고양이가 개를 쫓는 장면", "isCorrect": true },
-        { "imageUrl": "/assets/images/sentComp/sentComp_01_correct.png", "altText": "개가 고양이를 쫓는 장면", "isCorrect": false }
+        {
+          "imageUrl": "/assets/images/sentComp/sentComp_01_distractor.png",
+          "altText": "고양이가 개를 쫓는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sentComp_01_correct.png",
+          "altText": "개가 고양이를 쫓는 장면",
+          "isCorrect": false
+        }
       ]
     },
     {
@@ -18,8 +26,16 @@
       "sentenceAudioUrl": "",
       "sentenceType": "reversible",
       "choices": [
-        { "imageUrl": "/assets/images/sentComp/sentComp_02_distractor.png", "altText": "아이가 엄마에게 밥을 먹이는 장면", "isCorrect": true },
-        { "imageUrl": "/assets/images/sentComp/sentComp_02_correct.png", "altText": "엄마가 아이에게 밥을 먹이는 장면", "isCorrect": false }
+        {
+          "imageUrl": "/assets/images/sentComp/sentComp_02_distractor.png",
+          "altText": "아이가 엄마에게 밥을 먹이는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sentComp_02_correct.png",
+          "altText": "엄마가 아이에게 밥을 먹이는 장면",
+          "isCorrect": false
+        }
       ]
     },
     {
@@ -28,8 +44,16 @@
       "sentenceAudioUrl": "",
       "sentenceType": "reversible",
       "choices": [
-        { "imageUrl": "/assets/images/sentComp/sentComp_03_distractor.png", "altText": "소녀가 소년에게 꽃을 주는 장면", "isCorrect": true },
-        { "imageUrl": "/assets/images/sentComp/sentComp_03_correct.png", "altText": "소년이 소녀에게 꽃을 주는 장면", "isCorrect": false }
+        {
+          "imageUrl": "/assets/images/sentComp/sentComp_03_distractor.png",
+          "altText": "소녀가 소년에게 꽃을 주는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sentComp_03_correct.png",
+          "altText": "소년이 소녀에게 꽃을 주는 장면",
+          "isCorrect": false
+        }
       ]
     },
     {
@@ -38,8 +62,16 @@
       "sentenceAudioUrl": "",
       "sentenceType": "reversible",
       "choices": [
-        { "imageUrl": "/assets/images/sentComp/sentComp_04_distractor.png", "altText": "학생이 선생님에게 책을 건네주는 장면", "isCorrect": true },
-        { "imageUrl": "/assets/images/sentComp/sentComp_04_correct.png", "altText": "선생님이 학생에게 책을 건네주는 장면", "isCorrect": false }
+        {
+          "imageUrl": "/assets/images/sentComp/sentComp_04_distractor.png",
+          "altText": "학생이 선생님에게 책을 건네주는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sentComp_04_correct.png",
+          "altText": "선생님이 학생에게 책을 건네주는 장면",
+          "isCorrect": false
+        }
       ]
     },
     {
@@ -48,8 +80,16 @@
       "sentenceAudioUrl": "",
       "sentenceType": "relative-clause",
       "choices": [
-        { "imageUrl": "/assets/images/sentComp/sentComp_05_distractor.png", "altText": "공을 차며 우는 아이", "isCorrect": true },
-        { "imageUrl": "/assets/images/sentComp/sentComp_05_correct.png", "altText": "공을 차며 웃는 아이", "isCorrect": false }
+        {
+          "imageUrl": "/assets/images/sentComp/sentComp_05_distractor.png",
+          "altText": "공을 차며 우는 아이",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sentComp_05_correct.png",
+          "altText": "공을 차며 웃는 아이",
+          "isCorrect": false
+        }
       ]
     },
     {
@@ -58,8 +98,16 @@
       "sentenceAudioUrl": "",
       "sentenceType": "relative-clause",
       "choices": [
-        { "imageUrl": "/assets/images/sentComp/sentComp_06_distractor.png", "altText": "책을 읽는 여자가 안경 없이 있는 장면", "isCorrect": true },
-        { "imageUrl": "/assets/images/sentComp/sentComp_06_correct.png", "altText": "책을 읽는 여자가 안경을 쓴 장면", "isCorrect": false }
+        {
+          "imageUrl": "/assets/images/sentComp/sentComp_06_distractor.png",
+          "altText": "책을 읽는 여자가 안경 없이 있는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sentComp_06_correct.png",
+          "altText": "책을 읽는 여자가 안경을 쓴 장면",
+          "isCorrect": false
+        }
       ]
     },
     {
@@ -68,8 +116,16 @@
       "sentenceAudioUrl": "",
       "sentenceType": "relative-clause",
       "choices": [
-        { "imageUrl": "/assets/images/sentComp/sentComp_07_distractor.png", "altText": "노래하며 드럼을 든 남자", "isCorrect": true },
-        { "imageUrl": "/assets/images/sentComp/sentComp_07_correct.png", "altText": "노래하며 기타를 든 남자", "isCorrect": false }
+        {
+          "imageUrl": "/assets/images/sentComp/sentComp_07_distractor.png",
+          "altText": "노래하며 드럼을 든 남자",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sentComp_07_correct.png",
+          "altText": "노래하며 기타를 든 남자",
+          "isCorrect": false
+        }
       ]
     },
     {
@@ -78,8 +134,16 @@
       "sentenceAudioUrl": "",
       "sentenceType": "relative-clause",
       "choices": [
-        { "imageUrl": "/assets/images/sentComp/sentComp_08_distractor.png", "altText": "뛰어가는 강아지가 뼈를 문 장면", "isCorrect": true },
-        { "imageUrl": "/assets/images/sentComp/sentComp_08_correct.png", "altText": "뛰어가는 강아지가 공을 문 장면", "isCorrect": false }
+        {
+          "imageUrl": "/assets/images/sentComp/sentComp_08_distractor.png",
+          "altText": "뛰어가는 강아지가 뼈를 문 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sentComp_08_correct.png",
+          "altText": "뛰어가는 강아지가 공을 문 장면",
+          "isCorrect": false
+        }
       ]
     },
     {
@@ -88,8 +152,16 @@
       "sentenceAudioUrl": "",
       "sentenceType": "embedded-clause",
       "choices": [
-        { "imageUrl": "/assets/images/sentComp/sentComp_09_distractor.png", "altText": "아빠가 혼자 요리하는 장면", "isCorrect": true },
-        { "imageUrl": "/assets/images/sentComp/sentComp_09_correct.png", "altText": "아빠가 엄마가 요리하는 것을 생각하는 장면", "isCorrect": false }
+        {
+          "imageUrl": "/assets/images/sentComp/sentComp_09_distractor.png",
+          "altText": "아빠가 혼자 요리하는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sentComp_09_correct.png",
+          "altText": "아빠가 엄마가 요리하는 것을 생각하는 장면",
+          "isCorrect": false
+        }
       ]
     },
     {
@@ -98,8 +170,88 @@
       "sentenceAudioUrl": "",
       "sentenceType": "embedded-clause",
       "choices": [
-        { "imageUrl": "/assets/images/sentComp/sentComp_10_distractor.png", "altText": "학생이 선생님을 믿는 장면", "isCorrect": true },
-        { "imageUrl": "/assets/images/sentComp/sentComp_10_correct.png", "altText": "선생님이 학생의 공부를 믿는 장면", "isCorrect": false }
+        {
+          "imageUrl": "/assets/images/sentComp/sentComp_10_distractor.png",
+          "altText": "학생이 선생님을 믿는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sentComp_10_correct.png",
+          "altText": "선생님이 학생의 공부를 믿는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "sg_01_m",
+      "sentence": "여자가 남자에게 꽃다발을 주고 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "reversible",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sg_01_distractor.png",
+          "altText": "여자가 남자에게 꽃다발을 주는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sg_01_correct.png",
+          "altText": "남자가 여자에게 꽃다발을 주는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "sg_03_m",
+      "sentence": "할아버지가 아이를 밀고 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "reversible",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sg_03_distractor.png",
+          "altText": "할아버지가 아이를 미는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sg_03_correct.png",
+          "altText": "아이가 할아버지를 미는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "sg_04_m",
+      "sentence": "거북이가 토끼를 따라가고 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "reversible",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sg_04_distractor.png",
+          "altText": "거북이가 토끼를 따라가는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sg_04_correct.png",
+          "altText": "토끼가 거북이를 따라가는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "sg_05_m",
+      "sentence": "남자가 여자의 머리를 자르고 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "reversible",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sg_05_distractor.png",
+          "altText": "남자가 여자의 머리를 자르는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sg_05_correct.png",
+          "altText": "여자가 남자의 머리를 자르는 장면",
+          "isCorrect": false
+        }
       ]
     }
   ]
