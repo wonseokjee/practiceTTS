@@ -1039,3 +1039,47 @@ describe('관계절 밴드', () => {
     expect(pickSentItems(2, 4).every((i) => i.bandFallback === undefined)).toBe(true);
   });
 });
+
+describe('거울 문항', () => {
+  interface 문항 {
+    itemId: string;
+    sentence: string;
+    sentenceType: string;
+    choices: { imageUrl: string; altText: string; isCorrect: boolean }[];
+  }
+
+  const 원본: 문항[] = [
+    ...(sentCompRaw as unknown as 문항[]),
+    ...(sentGeneratedRaw as unknown as { items: 문항[] }).items,
+  ];
+  const 거울: 문항[] = (sentMirrorRaw as unknown as { items: 문항[] }).items;
+  const 정답 = (i: 문항) => i.choices.find((c) => c.isCorrect)!.imageUrl;
+  const 오답 = (i: 문항) => i.choices.find((c) => !c.isCorrect)!.imageUrl;
+
+  it('거울마다 원본이 있고 정답이 정확히 뒤집혀 있다', () => {
+    // 거울 문항은 **그림 없이 문항을 두 배로 늘리는 수법**이다. 같은 그림 두 장에
+    // 반대 문장을 얹고 정답만 바꾼다. 그래서 정답·오답이 원본과 정확히 반대가
+    // 아니면 문항이 조용히 거짓이 된다 — 화면은 멀쩡하고 채점만 틀린다.
+    expect(거울.length).toBeGreaterThan(0);
+    for (const m of 거울) {
+      const baseId = m.itemId.replace(/_m$/, '');
+      expect(m.itemId, `${m.itemId}: 이름이 _m로 끝나야 한다`).toMatch(/_m$/);
+      const base = 원본.find((x) => x.itemId === baseId);
+      expect(base, `${m.itemId}: 원본 ${baseId}이 없다`).toBeDefined();
+      expect(정답(m), `${m.itemId}: 정답이 원본의 오답이어야 한다`).toBe(오답(base!));
+      expect(오답(m), `${m.itemId}: 오답이 원본의 정답이어야 한다`).toBe(정답(base!));
+      expect(m.sentence, `${m.itemId}: 문장이 원본과 같다`).not.toBe(base!.sentence);
+      expect(m.sentenceType, `${m.itemId}: 유형이 원본과 다르다`).toBe(base!.sentenceType);
+    }
+  });
+
+  it('그림이 있는 가역문 장면은 거울을 다 갖췄다', () => {
+    // 거울이 빠진 장면은 그림 두 장을 쓰고 문항 하나만 낸다 — 공짜로 늘릴 수
+    // 있는 것을 안 늘린 상태다. sg_03·sg_04는 그림이 실제로 뒤집혀 있지 않아
+    // 오래 빠져 있었고(#105가 고쳤다), 그 뒤에야 거울을 붙일 수 있었다.
+    const 가역문원본 = 원본.filter((i) => i.sentenceType === 'reversible');
+    const 거울있음 = new Set(거울.map((m) => m.itemId.replace(/_m$/, '')));
+    const 없는것 = 가역문원본.filter((i) => !거울있음.has(i.itemId)).map((i) => i.itemId);
+    expect(없는것, `거울이 없다: ${없는것.join(', ')}`).toEqual([]);
+  });
+});
