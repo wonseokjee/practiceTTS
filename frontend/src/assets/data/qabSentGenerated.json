@@ -73,6 +73,60 @@
           "isCorrect": false
         }
       ]
+    },
+    {
+      "itemId": "sr_01",
+      "sentence": "아이가 강아지를 쫓고 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "reversible",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sr_01_correct.png",
+          "altText": "아이가 강아지를 쫓는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sr_01_distractor.png",
+          "altText": "강아지가 아이를 쫓는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "sr_02",
+      "sentence": "학생이 선생님을 따라가고 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "reversible",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sr_02_correct.png",
+          "altText": "학생이 선생님을 따라가는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sr_02_distractor.png",
+          "altText": "선생님이 학생을 따라가는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "sr_03",
+      "sentence": "여자가 남자를 밀고 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "reversible",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sr_03_correct.png",
+          "altText": "여자가 남자를 미는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sr_03_distractor.png",
+          "altText": "남자가 여자를 미는 장면",
+          "isCorrect": false
+        }
+      ]
     }
   ]
 }
