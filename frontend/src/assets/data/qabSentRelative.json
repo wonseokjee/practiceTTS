@@ -1,0 +1,151 @@
+{
+  "comment": "관계절 문항. 그림은 새로 그리지 않고 기존 가역문 장면 쌍을 그대로 쓴다. 한 장면에 두 문항이 붙고, 두 문장은 관계절 안의 조사 한 글자(를↔가)만 다르다. 주격 관계절은 correct, 목적격 관계절은 distractor가 정답이다.",
+  "why": "관계절 밴드가 관계절을 재게 하려면 변별력이 관계절 안에 있어야 한다. 주절은 두 그림 모두에서 참이라 아무것도 가르지 않는다 — 개는 쫓든 쫓기든 달리고, 아이는 밀든 밀리든 걷는다. 그래서 문장을 맞히는 유일한 단서가 조사 한 글자다.",
+  "dependsOn": "sentComp_02는 PR #104, sg_03·sg_04는 PR #105가 그림의 역할을 바로잡은 뒤에 참이 된다. 그 전 main의 그림은 목적격 쪽이 실제로 뒤집혀 있지 않다.",
+  "items": [
+    {
+      "itemId": "rc_01_s",
+      "sentence": "고양이를 쫓는 개가 달리고 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "relative-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sentComp_01_correct.png",
+          "altText": "개가 고양이를 쫓는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sentComp_01_distractor.png",
+          "altText": "고양이가 개를 쫓는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "rc_01_o",
+      "sentence": "고양이가 쫓는 개가 달리고 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "relative-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sentComp_01_distractor.png",
+          "altText": "고양이가 개를 쫓는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sentComp_01_correct.png",
+          "altText": "개가 고양이를 쫓는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "rc_02_s",
+      "sentence": "아이를 먹이는 엄마가 앉아 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "relative-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sentComp_02_correct.png",
+          "altText": "엄마가 아이에게 밥을 먹이는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sentComp_02_distractor.png",
+          "altText": "아이가 엄마에게 밥을 먹이는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "rc_02_o",
+      "sentence": "아이가 먹이는 엄마가 앉아 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "relative-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sentComp_02_distractor.png",
+          "altText": "아이가 엄마에게 밥을 먹이는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sentComp_02_correct.png",
+          "altText": "엄마가 아이에게 밥을 먹이는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "rc_03_s",
+      "sentence": "할아버지를 미는 아이가 걷고 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "relative-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sg_03_correct.png",
+          "altText": "아이가 할아버지를 미는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sg_03_distractor.png",
+          "altText": "할아버지가 아이를 미는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "rc_03_o",
+      "sentence": "할아버지가 미는 아이가 걷고 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "relative-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sg_03_distractor.png",
+          "altText": "할아버지가 아이를 미는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sg_03_correct.png",
+          "altText": "아이가 할아버지를 미는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "rc_04_s",
+      "sentence": "거북이를 따라가는 토끼가 뛰고 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "relative-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sg_04_correct.png",
+          "altText": "토끼가 거북이를 따라가는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sg_04_distractor.png",
+          "altText": "거북이가 토끼를 따라가는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "rc_04_o",
+      "sentence": "거북이가 따라가는 토끼가 뛰고 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "relative-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sg_04_distractor.png",
+          "altText": "거북이가 토끼를 따라가는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sg_04_correct.png",
+          "altText": "토끼가 거북이를 따라가는 장면",
+          "isCorrect": false
+        }
+      ]
+    }
+  ]
+}

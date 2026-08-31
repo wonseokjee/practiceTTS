@@ -27,6 +27,8 @@ import sentMirrorData from '../../../../assets/data/qabSentMirror.json';
 // AI 이미지 생성 스크립트(scripts/generate_sentcomp_images.py)가 만든 신규 장면 문항.
 // 이미지가 생성된 항목만 포함되며, 스크립트 실행 전에는 비어 있다.
 import sentGeneratedData from '../../../../assets/data/qabSentGenerated.json';
+// 관계절 문항. 기존 가역문 장면 쌍을 그대로 쓰고 문장만 새로 쓴다(새 그림 0장).
+import sentRelativeData from '../../../../assets/data/qabSentRelative.json';
 import type {
   QabImageChoice,
   QabImageItem,
@@ -64,11 +66,43 @@ interface RawSentItem {
 }
 
 const WORD_ITEMS: RawWordItem[] = (wordPoolData as { items: RawWordItem[] }).items;
+
+/**
+ * 혼합 퀴즈 풀에서 빼는 문장 문항 — **관계절이 놀고 있는 넷**과 그 거울.
+ *
+ * 넷 다 관계절을 달고 `relative-clause`로 기록됐지만, 두 그림이 관계절이
+ * 아니라 주절에서만 갈린다.
+ *
+ *   05  "**공을 차는** 아이가 웃고 있어요"  ↔  "**공을 차는** 아이가 울고 있어요"
+ *   06  "**책을 읽는** 여자가 안경을 썼어요" ↔  "…안경을 쓰지 않았어요"
+ *   07  "**노래하는** 남자가 기타를 들었어요" ↔ "…드럼을 들었어요"
+ *   08  "**뛰어가는** 강아지가 공을 물었어요" ↔ "…뼈를 물었어요"
+ *
+ * 굵은 부분이 두 선택지에서 똑같다. 관계절을 통째로 흘려들어도 정답을 고른다.
+ * 그런데 레벨 3~4가 내는 유형이 `relative-clause`라, 이 넷이 "관계절 정답률"로
+ * 기록되고 적응 레벨링이 그 값을 보고 승급을 판단했다.
+ *
+ * **고칠 방법이 없어서 뺀다.** 관계절이 일하게 하려면 그림에 후보가 둘 있어야
+ * 한다(공을 **차는** 아이와 **든** 아이가 한 그림에). 지금 그림에는 아이가
+ * 하나뿐이라, 문장을 고쳐서는 안 되고 그림을 새로 그려야 한다.
+ *
+ * 그래도 **문항 수는 그대로다** — 같은 수의 진짜 관계절 문항을 새 그림 없이
+ * 만들어 넣었다(`qabSentRelative.json`).
+ *
+ * 표준 sentComp 검사(`useSentCompViewModel`)에서는 그대로 쓴다. 거기서는
+ * 통사 유형이 난이도 손잡이가 아니라 문항일 뿐이고, 넷 다 멀쩡한 문항이다.
+ */
+const NON_DISCRIMINATIVE_SENT_ITEMS: ReadonlySet<string> = new Set([
+  'sentComp_05', 'sentComp_06', 'sentComp_07', 'sentComp_08',
+  'sentComp_05_m', 'sentComp_06_m', 'sentComp_07_m', 'sentComp_08_m',
+]);
+
 const SENT_ITEMS: RawSentItem[] = [
   ...(sentCompData as unknown as RawSentItem[]),
   ...((sentMirrorData as { items: RawSentItem[] }).items),
   ...((sentGeneratedData as { items: RawSentItem[] }).items),
-];
+  ...((sentRelativeData as { items: RawSentItem[] }).items),
+].filter((it) => !NON_DISCRIMINATIVE_SENT_ITEMS.has(it.itemId));
 
 const WORD_INSTRUCTION = '들려주는 단어의 그림을 골라주세요';
 const SENT_INSTRUCTION = '들려주는 문장에 맞는 그림을 골라주세요';

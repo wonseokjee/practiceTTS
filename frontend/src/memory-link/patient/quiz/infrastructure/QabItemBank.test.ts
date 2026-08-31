@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import sentCompRaw from '../../../../assets/data/sentCompItems.json';
 import sentMirrorRaw from '../../../../assets/data/qabSentMirror.json';
 import sentGeneratedRaw from '../../../../assets/data/qabSentGenerated.json';
+import sentRelativeRaw from '../../../../assets/data/qabSentRelative.json';
 import namingOnlyWords from '../../../../assets/data/namingOnlyWords.json';
 import namingPhotos from '../../../../assets/data/namingPhotos.json';
 import {
@@ -699,14 +700,16 @@ describe('pickSentItems — 통사 복잡도 위계', () => {
 
   /**
    * promptText로 원본 sentenceType을 되찾는다(테스트 전용 역인덱스).
-   * **뱅크와 같은 세 출처를 봐야 한다** — 하나라도 빠지면 undefined가 나와
-   * 엉뚱한 실패로 보인다(실제로 qabSentGenerated를 빠뜨려 한 번 겪었다).
+   * **뱅크와 같은 네 출처를 봐야 한다** — 하나라도 빠지면 undefined가 나와
+   * 엉뚱한 실패로 보인다(qabSentGenerated로 한 번, qabSentRelative로 또 한 번
+   * 겪었다. 이 주석이 예고한 그대로였다).
    */
   type RawSent = { sentence: string; sentenceType: string };
   const ALL_SENTS: RawSent[] = [
     ...(sentCompRaw as RawSent[]),
     ...(sentMirrorRaw as { items: RawSent[] }).items,
     ...(sentGeneratedRaw as { items: RawSent[] }).items,
+    ...(sentRelativeRaw as { items: RawSent[] }).items,
   ];
   function typeOf(prompt: string): string | undefined {
     return ALL_SENTS.find((x) => x.sentence === prompt)?.sentenceType;
@@ -956,5 +959,83 @@ describe('가역문 밴드 (E14)', () => {
     expect(ids).not.toContain('sg_02');
     expect(ids).not.toContain('sg_06');
     expect(가역문().length).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe('관계절 밴드', () => {
+  interface 문항 {
+    itemId: string;
+    sentence: string;
+    sentenceType: string;
+    choices: { imageUrl: string; altText: string; isCorrect: boolean }[];
+  }
+
+  const 관계절: 문항[] = (sentRelativeRaw as unknown as { items: 문항[] }).items;
+  const 장면 = (url: string) =>
+    url.split('/').pop()!.replace(/\.[^.]+$/, '').replace(/_(correct|distractor)$/, '');
+
+  it('레벨 3~4가 내는 유형이 이 밴드다', () => {
+    // 이 연결이 끊기면 아래 검사들이 아무 레벨도 지키지 못한다.
+    expect(sentTypeForLevel(3)).toBe('relative-clause');
+    expect(sentTypeForLevel(4)).toBe('relative-clause');
+    expect(관계절.every((i) => i.sentenceType === 'relative-clause')).toBe(true);
+  });
+
+  it('짝끼리 조사 한 글자만 다르다', () => {
+    // **이 밴드의 전부다.** 두 문장이 관계절 안의 조사 하나만 빼고 같으면,
+    // 정답을 고르는 단서가 그 조사밖에 없다. 주절이 조금이라도 다르면 거기서
+    // 답이 새고, 그게 예전 05~08이 관계절을 안 재던 이유였다.
+    const 짝 = new Map<string, 문항[]>();
+    for (const it of 관계절) {
+      const s = 장면(it.choices[0].imageUrl);
+      짝.set(s, [...(짝.get(s) ?? []), it]);
+    }
+    expect(짝.size).toBeGreaterThan(0);
+
+    for (const [scene, 둘] of 짝) {
+      expect(둘, `${scene}: 장면마다 문항이 둘이어야 한다`).toHaveLength(2);
+      const [a, b] = 둘.map((i) => i.sentence);
+      expect(a.length, `${scene}: 길이가 다르다`).toBe(b.length);
+
+      const 다른자리 = [...a].map((_, i) => i).filter((i) => a[i] !== b[i]);
+      expect(다른자리, `${scene}: "${a}" vs "${b}"`).toHaveLength(1);
+
+      const [x, y] = [a[다른자리[0]], b[다른자리[0]]];
+      expect([x, y].sort().join(''), `${scene}: 바뀐 글자가 조사가 아니다`).toMatch(
+        /^(가를|가을|이를|이을)$/,
+      );
+    }
+  });
+
+  it('짝은 같은 그림 두 장을 쓰고 정답이 서로 반대다', () => {
+    // 그림이 다르면 조사가 아니라 그림 내용으로 갈린다.
+    const 짝 = new Map<string, 문항[]>();
+    for (const it of 관계절) {
+      const s = 장면(it.choices[0].imageUrl);
+      짝.set(s, [...(짝.get(s) ?? []), it]);
+    }
+    for (const [scene, [a, b]] of 짝) {
+      const 그림 = (i: 문항) => i.choices.map((c) => c.imageUrl).sort().join('|');
+      expect(그림(a), `${scene}: 두 문항이 다른 그림을 쓴다`).toBe(그림(b));
+      const 정답 = (i: 문항) => i.choices.find((c) => c.isCorrect)!.imageUrl;
+      expect(정답(a), `${scene}: 정답이 같다`).not.toBe(정답(b));
+    }
+  });
+
+  it('관계절이 놀던 넷은 풀에서 빠졌다', () => {
+    // 05~08은 관계절이 두 선택지에서 똑같아, 통째로 흘려들어도 정답을 골랐다.
+    // 그런데 레벨 3~4가 그 넷을 내고 "관계절 정답률"로 기록했다.
+    const ids = pickSentItems(200, 3).map((i) => i.itemId.replace(/^sent_/, ''));
+    for (const 뺀것 of ['sentComp_05', 'sentComp_06', 'sentComp_07', 'sentComp_08']) {
+      expect(ids, `${뺀것}이 아직 나온다`).not.toContain(뺀것);
+      expect(ids, `${뺀것}_m이 아직 나온다`).not.toContain(`${뺀것}_m`);
+    }
+  });
+
+  it('밴드가 되돌림 없이 세션을 채운다', () => {
+    // 밴드가 얇으면 전체 풀로 되돌아가고(bandFallback), 그때 기록된 레벨은
+    // 실제 난이도를 뜻하지 않는다(D3). 한 세션의 문장 슬롯은 0~2개다.
+    expect(pickSentItems(2, 3).every((i) => i.bandFallback === undefined)).toBe(true);
+    expect(pickSentItems(2, 4).every((i) => i.bandFallback === undefined)).toBe(true);
   });
 });
