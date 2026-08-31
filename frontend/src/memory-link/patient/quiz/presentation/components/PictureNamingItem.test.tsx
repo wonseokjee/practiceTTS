@@ -143,7 +143,7 @@ describe('PictureNamingItem', () => {
   // 재는 값이 "맞혔나"에서 "얼마나 도와야 맞혔나"로 바뀐다. 그 값이 제출까지
   // 실려 가지 않으면 이 기능이 만든 정보가 화면에서 끝난다.
 
-  it('힌트를 누르면 의미 단서가 뜨고, 한 번 더 누르면 음소 단서가 쌓인다', () => {
+  it('힌트를 누를 때마다 의미 → 문장 완성 → 음소로 쌓인다', () => {
     const { onSubmit } = renderItem({
       item: { ...ITEM, category: 'food' },
     });
@@ -152,10 +152,14 @@ describe('PictureNamingItem', () => {
     expect(screen.getByText('먹는 거예요.')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '힌트 하나 더 보기' }));
+    expect(screen.getByText('빨갛고 아삭아삭한 ___')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '힌트 하나 더 보기' }));
     expect(screen.getByText('사…')).toBeInTheDocument();
     // **앞의 단서를 지우지 않는다** — 지우면 환자가 방금 들은 말을 기억해야 해서
     // 이름대기에 작업기억 과제가 섞인다.
     expect(screen.getByText('먹는 거예요.')).toBeInTheDocument();
+    expect(screen.getByText('빨갛고 아삭아삭한 ___')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '이름 말하기' }));
     act(() => {
@@ -165,12 +169,17 @@ describe('PictureNamingItem', () => {
     expect(onSubmit).toHaveBeenCalledWith('사과', null, 3);
   });
 
-  it('범주가 없는 자극은 의미 단서를 건너뛴다', () => {
-    // 91개 중 9개가 그렇다(가방·풍선·바구니 등). 없는 단서를 빈 칸으로
-    // 보여주느니 다음 칸으로 간다.
+  it('범주가 없는 자극은 의미 단서만 건너뛴다', () => {
+    // 95개 중 13개가 그렇다(가방·풍선·바구니 등). 없는 단서를 빈 칸으로
+    // 보여주느니 다음 칸으로 간다. 문장 완성은 범주와 무관해 그대로 받는다.
     renderItem({ item: { ...ITEM, targetWord: '가방', category: null } });
 
     fireEvent.click(screen.getByRole('button', { name: '힌트 보기' }));
+    expect(
+      screen.getByText('어깨에 메고 짐을 넣어 다니는 ___'),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '힌트 하나 더 보기' }));
     expect(screen.getByText('가…')).toBeInTheDocument();
   });
 
@@ -178,7 +187,9 @@ describe('PictureNamingItem', () => {
     renderItem({ item: { ...ITEM, targetWord: '책', category: null } });
 
     fireEvent.click(screen.getByRole('button', { name: '힌트 보기' }));
+    fireEvent.click(screen.getByRole('button', { name: '힌트 하나 더 보기' }));
     expect(screen.getByText('첫소리는 ㅊ')).toBeInTheDocument();
+    // 문장 완성 문구에도 정답이 없어야 한다.
     expect(screen.queryByText('책')).toBeNull();
   });
 
@@ -187,6 +198,7 @@ describe('PictureNamingItem', () => {
     renderItem({ item: { ...ITEM, category: 'food' } });
 
     fireEvent.click(screen.getByRole('button', { name: '힌트 보기' }));
+    fireEvent.click(screen.getByRole('button', { name: '힌트 하나 더 보기' }));
     fireEvent.click(screen.getByRole('button', { name: '힌트 하나 더 보기' }));
     expect(screen.queryByRole('button', { name: /힌트/ })).toBeNull();
     expect(screen.getByRole('button', { name: '넘어가기' })).toBeInTheDocument();
