@@ -964,6 +964,83 @@ describe('가역문 밴드 (E14)', () => {
   });
 });
 
+describe('내포절 밴드', () => {
+  interface 문항 {
+    itemId: string;
+    sentence: string;
+    sentenceType: string;
+    choices: { imageUrl: string; altText: string; isCorrect: boolean }[];
+  }
+
+  const 내포절: 문항[] = (sentEmbeddedRaw as unknown as { items: 문항[] }).items;
+  const 장면 = (url: string) =>
+    url.split('/').pop()!.replace(/\.[^.]+$/, '').replace(/_(correct|distractor)$/, '');
+
+  const 짝 = () => {
+    const m = new Map<string, 문항[]>();
+    for (const it of 내포절) {
+      const s = 장면(it.choices[0].imageUrl);
+      m.set(s, [...(m.get(s) ?? []), it]);
+    }
+    return m;
+  };
+
+  it('레벨 5가 내는 유형이 이 밴드다', () => {
+    expect(sentTypeForLevel(5)).toBe('embedded-clause');
+    expect(내포절.every((i) => i.sentenceType === 'embedded-clause')).toBe(true);
+  });
+
+  it('주절은 그대로 두고 내포절 안에서만 갈린다', () => {
+    // **이 밴드의 전부다.** 주절("엄마는 … 생각해요")이 두 문장에 통째로 같아야
+    // 답을 정하는 단서가 내포절 안에만 남는다. 예전 09_m·10_m은 아예 내포절이
+    // 없어서, 레벨 5가 단문 정답률을 내포절 정답률로 기록했다.
+    for (const [scene, 둘] of 짝()) {
+      expect(둘, `${scene}: 장면마다 문항이 둘이어야 한다`).toHaveLength(2);
+      const [a, b] = 둘.map((i) => i.sentence);
+
+      // 공통 앞부분 = 주절의 주어 + 내포절의 주어까지.
+      let head = 0;
+      while (head < a.length && head < b.length && a[head] === b[head]) head += 1;
+      // 공통 뒷부분 = 내포 표지 + 주절 서술어.
+      let tail = 0;
+      while (
+        tail < a.length - head &&
+        tail < b.length - head &&
+        a[a.length - 1 - tail] === b[b.length - 1 - tail]
+      ) {
+        tail += 1;
+      }
+
+      expect(a.slice(0, head), `${scene}: 내포절 주어까지 같아야 한다`).toMatch(/[이가] $/);
+      expect(
+        a.slice(a.length - tail),
+        `${scene}: 주절이 두 문장에 같아야 한다 — "${a}" vs "${b}"`,
+      ).toContain('고 생각해요');
+    }
+  });
+
+  it('짝은 같은 그림 두 장을 쓰고 정답이 서로 반대다', () => {
+    for (const [scene, [a, b]] of 짝()) {
+      const 그림 = (i: 문항) => i.choices.map((c) => c.imageUrl).sort().join('|');
+      expect(그림(a), `${scene}: 두 문항이 다른 그림을 쓴다`).toBe(그림(b));
+      const 정답 = (i: 문항) => i.choices.find((c) => c.isCorrect)!.imageUrl;
+      expect(정답(a), `${scene}: 정답이 같다`).not.toBe(정답(b));
+    }
+  });
+
+  it('내포절이 아니던 거울 둘은 풀에서 빠졌다', () => {
+    const ids = pickSentItems(200, 5).map((i) => i.itemId.replace(/^sent_/, ''));
+    expect(ids, 'sentComp_09_m이 아직 나온다').not.toContain('sentComp_09_m');
+    expect(ids, 'sentComp_10_m이 아직 나온다').not.toContain('sentComp_10_m');
+  });
+
+  it('밴드가 되돌림 없이 세션을 채운다', () => {
+    // 한 세션의 문장 슬롯은 0~2개다. 밴드가 얇으면 전체 풀로 되돌아가고,
+    // 그때 기록된 레벨은 실제 난이도를 뜻하지 않는다(D3).
+    expect(pickSentItems(2, 5).every((i) => i.bandFallback === undefined)).toBe(true);
+  });
+});
+
 describe('관계절 밴드', () => {
   interface 문항 {
     itemId: string;
@@ -1039,82 +1116,5 @@ describe('관계절 밴드', () => {
     // 실제 난이도를 뜻하지 않는다(D3). 한 세션의 문장 슬롯은 0~2개다.
     expect(pickSentItems(2, 3).every((i) => i.bandFallback === undefined)).toBe(true);
     expect(pickSentItems(2, 4).every((i) => i.bandFallback === undefined)).toBe(true);
-  });
-});
-
-describe('내포절 밴드', () => {
-  interface 문항 {
-    itemId: string;
-    sentence: string;
-    sentenceType: string;
-    choices: { imageUrl: string; altText: string; isCorrect: boolean }[];
-  }
-
-  const 내포절: 문항[] = (sentEmbeddedRaw as unknown as { items: 문항[] }).items;
-  const 장면 = (url: string) =>
-    url.split('/').pop()!.replace(/\.[^.]+$/, '').replace(/_(correct|distractor)$/, '');
-
-  const 짝 = () => {
-    const m = new Map<string, 문항[]>();
-    for (const it of 내포절) {
-      const s = 장면(it.choices[0].imageUrl);
-      m.set(s, [...(m.get(s) ?? []), it]);
-    }
-    return m;
-  };
-
-  it('레벨 5가 내는 유형이 이 밴드다', () => {
-    expect(sentTypeForLevel(5)).toBe('embedded-clause');
-    expect(내포절.every((i) => i.sentenceType === 'embedded-clause')).toBe(true);
-  });
-
-  it('주절은 그대로 두고 내포절 안에서만 갈린다', () => {
-    // **이 밴드의 전부다.** 주절("엄마는 … 생각해요")이 두 문장에 통째로 같아야
-    // 답을 정하는 단서가 내포절 안에만 남는다. 예전 09_m·10_m은 아예 내포절이
-    // 없어서, 레벨 5가 단문 정답률을 내포절 정답률로 기록했다.
-    for (const [scene, 둘] of 짝()) {
-      expect(둘, `${scene}: 장면마다 문항이 둘이어야 한다`).toHaveLength(2);
-      const [a, b] = 둘.map((i) => i.sentence);
-
-      // 공통 앞부분 = 주절의 주어 + 내포절의 주어까지.
-      let head = 0;
-      while (head < a.length && head < b.length && a[head] === b[head]) head += 1;
-      // 공통 뒷부분 = 내포 표지 + 주절 서술어.
-      let tail = 0;
-      while (
-        tail < a.length - head &&
-        tail < b.length - head &&
-        a[a.length - 1 - tail] === b[b.length - 1 - tail]
-      ) {
-        tail += 1;
-      }
-
-      expect(a.slice(0, head), `${scene}: 내포절 주어까지 같아야 한다`).toMatch(/[이가] $/);
-      expect(
-        a.slice(a.length - tail),
-        `${scene}: 주절이 두 문장에 같아야 한다 — "${a}" vs "${b}"`,
-      ).toContain('고 생각해요');
-    }
-  });
-
-  it('짝은 같은 그림 두 장을 쓰고 정답이 서로 반대다', () => {
-    for (const [scene, [a, b]] of 짝()) {
-      const 그림 = (i: 문항) => i.choices.map((c) => c.imageUrl).sort().join('|');
-      expect(그림(a), `${scene}: 두 문항이 다른 그림을 쓴다`).toBe(그림(b));
-      const 정답 = (i: 문항) => i.choices.find((c) => c.isCorrect)!.imageUrl;
-      expect(정답(a), `${scene}: 정답이 같다`).not.toBe(정답(b));
-    }
-  });
-
-  it('내포절이 아니던 거울 둘은 풀에서 빠졌다', () => {
-    const ids = pickSentItems(200, 5).map((i) => i.itemId.replace(/^sent_/, ''));
-    expect(ids, 'sentComp_09_m이 아직 나온다').not.toContain('sentComp_09_m');
-    expect(ids, 'sentComp_10_m이 아직 나온다').not.toContain('sentComp_10_m');
-  });
-
-  it('밴드가 되돌림 없이 세션을 채운다', () => {
-    // 한 세션의 문장 슬롯은 0~2개다. 밴드가 얇으면 전체 풀로 되돌아가고,
-    // 그때 기록된 레벨은 실제 난이도를 뜻하지 않는다(D3).
-    expect(pickSentItems(2, 5).every((i) => i.bandFallback === undefined)).toBe(true);
   });
 });
