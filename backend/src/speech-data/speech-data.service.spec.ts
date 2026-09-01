@@ -2,6 +2,25 @@ import { promises as fs } from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { SpeechDataService } from './speech-data.service';
+import { SpeechRecording } from './entities/speech-recording.entity';
+import { User } from '../auth/entities/user.entity';
+import { SpecMock, specMock } from '../common/testing/spec-mock';
+
+/**
+ * 서비스가 `insert`에 넘기는 행. 엔티티에서 골라 오므로, 컬럼 이름이 바뀌면
+ * 마이그레이션이 아니라 **이 스펙이 먼저** 깨진다 — 아래 단언들이 실제로 그
+ * 필드를 읽고 있기 때문이다.
+ */
+type InsertedRecording = Pick<
+  SpeechRecording,
+  | 'patientId'
+  | 'task'
+  | 'targetText'
+  | 'recognizedText'
+  | 'audioPath'
+  | 'durationMs'
+  | 'score'
+>;
 
 /**
  * 핵심 불변식: **동의 없이는 어떤 오디오도 저장되지 않는다.** (프라이버시 게이트)
@@ -10,12 +29,15 @@ import { SpeechDataService } from './speech-data.service';
 describe('SpeechDataService', () => {
   let tmp: string;
   let recordings: {
-    insert: jest.Mock;
-    find: jest.Mock;
-    delete: jest.Mock;
-    count: jest.Mock;
+    insert: jest.Mock<Promise<unknown>, [InsertedRecording]>;
+    find: SpecMock;
+    delete: SpecMock;
+    count: SpecMock;
   };
-  let users: { findOne: jest.Mock; update: jest.Mock };
+  let users: {
+    findOne: SpecMock;
+    update: jest.Mock<Promise<unknown>, [string, Partial<User>]>;
+  };
   let svc: SpeechDataService;
 
   const PID = 'patient-1';
@@ -23,12 +45,19 @@ describe('SpeechDataService', () => {
   beforeEach(async () => {
     tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'speech-test-'));
     recordings = {
-      insert: jest.fn().mockResolvedValue({}),
-      find: jest.fn().mockResolvedValue([]),
-      delete: jest.fn().mockResolvedValue({}),
-      count: jest.fn().mockResolvedValue(0),
+      insert: jest
+        .fn<Promise<unknown>, [InsertedRecording]>()
+        .mockResolvedValue({}),
+      find: specMock().mockResolvedValue([]),
+      delete: specMock().mockResolvedValue({}),
+      count: specMock().mockResolvedValue(0),
     };
-    users = { findOne: jest.fn(), update: jest.fn().mockResolvedValue({}) };
+    users = {
+      findOne: specMock(),
+      update: jest
+        .fn<Promise<unknown>, [string, Partial<User>]>()
+        .mockResolvedValue({}),
+    };
     const config = {
       get: (_k: string, d: string) => (_k === 'SPEECH_DATA_DIR' ? tmp : d),
     };
