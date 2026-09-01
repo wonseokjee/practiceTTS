@@ -16,7 +16,8 @@ import { QuizGenerationClient } from './quiz-generation.client';
  */
 describe('QuizGenerationClient', () => {
   let client: QuizGenerationClient;
-  let httpServiceMock: { post: jest.Mock };
+  // post(url, body) — body를 꺼내 검사하므로 인자 자리를 실제 모양으로 둔다.
+  let httpServiceMock: { post: jest.Mock<unknown, [string, unknown]> };
   let configServiceMock: { get: jest.Mock };
 
   /** FastAPI 정상 응답 (snake_case 원시 형태) 팩토리 */
@@ -48,7 +49,7 @@ describe('QuizGenerationClient', () => {
 
   beforeEach(() => {
     httpServiceMock = {
-      post: jest.fn(() => of(buildRawResponse())),
+      post: jest.fn<unknown, [string, unknown]>(() => of(buildRawResponse())),
     };
     configServiceMock = {
       get: jest.fn(() => 'http://localhost:8000'),

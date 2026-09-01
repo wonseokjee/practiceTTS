@@ -88,7 +88,9 @@ describe('retryTransient', () => {
       .fn()
       .mockRejectedValueOnce(httpError(503))
       .mockResolvedValue('ok');
-    const onRetry = jest.fn();
+    // 인자를 실제 콜백 시그니처로 고정한다 — attempt/delayMs가 뒤바뀌면
+    // 여기가 먼저 깨진다.
+    const onRetry = jest.fn<void, [number, number, unknown]>();
 
     await retryTransient(fn, {}, onRetry);
 

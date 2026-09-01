@@ -4,10 +4,15 @@ import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import * as request from 'supertest';
+import type { App } from 'supertest/types';
 import { AiProxyController } from './ai-proxy.controller';
 import { SpeechDataService } from '../speech-data/speech-data.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RATE_LIMIT_KEY, RateLimitGuard } from '../common/rate-limit.guard';
+import {
+  RATE_LIMIT_KEY,
+  RateLimitGuard,
+  RateLimitOptions,
+} from '../common/rate-limit.guard';
 
 /**
  * STT 레이트리밋이 **업로드 파싱보다 먼저** 동작하는지 고정한다.
@@ -61,10 +66,16 @@ describe('AiProxyController 레이트리밋', () => {
     await app.close();
   });
 
+  /**
+   * supertest에 넘길 서버. `getHttpServer()`가 any를 주므로 여기서 한 번만
+   * 좁힌다 — 호출부마다 any가 퍼지지 않게.
+   */
+  const server = (): App => app.getHttpServer() as App;
+
   /** STT 한도(12/분)를 소진시킨다. */
   async function exhaustSttLimit(): Promise<void> {
     for (let i = 0; i < 12; i += 1) {
-      await request(app.getHttpServer())
+      await request(server())
         .post('/ai/stt')
         .attach('audio', Buffer.from('x'), 'a.wav');
     }
@@ -73,7 +84,7 @@ describe('AiProxyController 레이트리밋', () => {
   it('한도를 넘으면 429를 준다', async () => {
     await exhaustSttLimit();
 
-    const res = await request(app.getHttpServer())
+    const res = await request(server())
       .post('/ai/stt')
       .attach('audio', Buffer.from('x'), 'a.wav');
 
@@ -89,18 +100,22 @@ describe('AiProxyController 레이트리밋', () => {
     // 한도를 넘긴 요청도 업로드 본문을 메모리에 다 올리게 된다.
     const reflector = new Reflector();
 
-    const sttMeta = reflector.get(
+    // 핸들러를 **호출하지 않고** 메타데이터 키로만 쓴다. this가 없어도 되므로
+    // unbound-method 경고는 여기서만 끈다.
+    /* eslint-disable @typescript-eslint/unbound-method */
+    const sttMeta = reflector.get<RateLimitOptions>(
       RATE_LIMIT_KEY,
       AiProxyController.prototype.stt,
     );
-    const ttsMeta = reflector.get(
+    const ttsMeta = reflector.get<RateLimitOptions>(
       RATE_LIMIT_KEY,
       AiProxyController.prototype.tts,
     );
-    const pronMeta = reflector.get(
+    const pronMeta = reflector.get<RateLimitOptions>(
       RATE_LIMIT_KEY,
       AiProxyController.prototype.pronunciation,
     );
+    /* eslint-enable @typescript-eslint/unbound-method */
 
     expect(sttMeta).toMatchObject({ name: 'stt' });
     expect(ttsMeta).toMatchObject({ name: 'tts' });
@@ -124,7 +139,7 @@ describe('AiProxyController 레이트리밋', () => {
     // 없으면 클라이언트가 즉시 재시도 루프에 빠져 부하를 더 키운다.
     await exhaustSttLimit();
 
-    const res = await request(app.getHttpServer())
+    const res = await request(server())
       .post('/ai/stt')
       .attach('audio', Buffer.from('x'), 'a.wav');
 
@@ -135,7 +150,7 @@ describe('AiProxyController 레이트리밋', () => {
   it('STT와 TTS 한도는 서로 간섭하지 않는다', async () => {
     await exhaustSttLimit();
 
-    const res = await request(app.getHttpServer()).get('/ai/tts?text=안녕');
+    const res = await request(server()).get('/ai/tts?text=안녕');
 
     expect(res.status).not.toBe(429);
   });

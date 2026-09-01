@@ -20,6 +20,7 @@ import { FastApiClientService } from '../memory/services/fast-api-client.service
 import { PersonaContextService } from '../profile/services/persona-context.service';
 import type { PersonaSource, ProfileService } from '../profile/profile.service';
 import { QuizService } from './quiz.service';
+import { SpecMock, specMock } from '../common/testing/spec-mock';
 
 /**
  * QuizService 통합 비즈니스 로직 단위 테스트 (Plan §11 Phase 3).
@@ -56,9 +57,9 @@ describe('QuizService', () => {
   let orIgnoreCalls: boolean[];
   let memoryEntryRepo: ReturnType<typeof buildRepoMock>;
   let patientMemoryNoteRepo: ReturnType<typeof buildRepoMock>;
-  let generationClientMock: { generate: jest.Mock };
-  let scorerMock: { isCorrect: jest.Mock; toScore: jest.Mock };
-  let wishClientMock: { convert: jest.Mock };
+  let generationClientMock: { generate: SpecMock };
+  let scorerMock: { isCorrect: SpecMock; toScore: SpecMock };
+  let wishClientMock: { convert: SpecMock };
 
   // 페르소나는 목이 아니라 실제 구현을 쓴다(스텁 프로필 소스만 주입).
   // 토큰화·역치환이 실제로 도는지 검증해야 PII 경계가 보장되기 때문.
@@ -66,19 +67,19 @@ describe('QuizService', () => {
   let personaContextMock: PersonaContextService;
 
   // /mask 목 — 기본은 입력을 그대로 돌려준다(마스킹 통과).
-  let fastApiClientMock: { mask: jest.Mock };
+  let fastApiClientMock: { mask: SpecMock };
 
   function buildRepoMock() {
     return {
-      find: jest.fn(),
-      findOne: jest.fn(),
-      save: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-      increment: jest.fn(),
-      upsert: jest.fn(),
-      createQueryBuilder: jest.fn(),
+      find: specMock(),
+      findOne: specMock(),
+      save: specMock(),
+      create: specMock(),
+      update: specMock(),
+      delete: specMock(),
+      increment: specMock(),
+      upsert: specMock(),
+      createQueryBuilder: specMock(),
     };
   }
 
@@ -164,9 +165,9 @@ describe('QuizService', () => {
     qabSessionCompletionRepo = buildRepoMock();
     memoryEntryRepo = buildRepoMock();
     patientMemoryNoteRepo = buildRepoMock();
-    generationClientMock = { generate: jest.fn() };
-    scorerMock = { isCorrect: jest.fn(), toScore: jest.fn() };
-    wishClientMock = { convert: jest.fn() };
+    generationClientMock = { generate: specMock() };
+    scorerMock = { isCorrect: specMock(), toScore: specMock() };
+    wishClientMock = { convert: specMock() };
 
     // create는 입력을 그대로 반환하는 기본 동작
     quizSetRepo.create.mockImplementation((x: unknown) => x);
@@ -240,15 +241,15 @@ describe('QuizService', () => {
                   // 넣으려 했나" assertion을 그대로 살린다. orIgnore는 별도 spy로
                   // 노출해, 멱등이 DB 수준에서 보장되는지 테스트가 확인할 수 있게 한다.
                   createQueryBuilder: () => ({
-                    select: jest.fn().mockReturnThis(),
-                    where: jest.fn().mockReturnThis(),
-                    andWhere: jest.fn().mockReturnThis(),
-                    orderBy: jest.fn().mockReturnThis(),
-                    addOrderBy: jest.fn().mockReturnThis(),
-                    limit: jest.fn().mockReturnThis(),
-                    getRawMany: jest.fn().mockResolvedValue([]),
-                    insert: jest.fn().mockReturnThis(),
-                    into: jest.fn().mockReturnThis(),
+                    select: specMock().mockReturnThis(),
+                    where: specMock().mockReturnThis(),
+                    andWhere: specMock().mockReturnThis(),
+                    orderBy: specMock().mockReturnThis(),
+                    addOrderBy: specMock().mockReturnThis(),
+                    limit: specMock().mockReturnThis(),
+                    getRawMany: specMock().mockResolvedValue([]),
+                    insert: specMock().mockReturnThis(),
+                    into: specMock().mockReturnThis(),
                     values: jest.fn(function (this: unknown, rows: unknown) {
                       insertedValues.push(rows);
                       return this;
@@ -715,7 +716,7 @@ describe('QuizService', () => {
 
       await service.generateForMemoryEntry(MEMORY_ENTRY_ID);
 
-      const createCalls = quizQuestionRepo.create.mock.calls as unknown[][];
+      const createCalls = quizQuestionRepo.create.mock.calls;
       const createdTypes = createCalls.map(
         (c) => (c[0] as { type: string }).type,
       );
@@ -768,7 +769,7 @@ describe('QuizService', () => {
 
       await service.generateForMemoryEntry(MEMORY_ENTRY_ID);
 
-      const calls = generationClientMock.generate.mock.calls as unknown[][];
+      const calls = generationClientMock.generate.mock.calls;
       const payload = calls[0][0] as Record<string, unknown>;
       expect(payload).not.toHaveProperty('mood');
       expect(payload).not.toHaveProperty('caregiverReflection');
@@ -1093,7 +1094,7 @@ describe('QuizService', () => {
       ]);
       // 신규 답안은 단일 save 호출로 일괄 저장 (배치 = 원자성)
       expect(quizAttemptRepo.save).toHaveBeenCalledTimes(1);
-      const saveCalls = quizAttemptRepo.save.mock.calls as unknown[][];
+      const saveCalls = quizAttemptRepo.save.mock.calls;
       const savedArg = saveCalls[0][0] as unknown[];
       expect(savedArg).toHaveLength(2);
       // 2문제 세트 모두 답함 → 완료
@@ -1539,9 +1540,11 @@ describe('QuizService', () => {
       await service.recoverStuckSets();
 
       // pending/failed 두 조건 모두 attempts < 3 으로 제한되어야 한다
-      const where = quizSetRepo.find.mock.calls[0][0].where as Array<
-        Record<string, unknown>
-      >;
+      const where = (
+        quizSetRepo.find.mock.calls[0][0] as {
+          where: Array<Record<string, unknown>>;
+        }
+      ).where;
       expect(where).toHaveLength(2);
       for (const condition of where) {
         expect(condition.generationAttempts).toBeDefined();
@@ -1713,7 +1716,12 @@ describe('QuizService', () => {
       const dto: SubmitQabResultsDto = {
         sessionToken: SESSION_TOKEN,
         results: [
-          { subtest: 'naming', itemRef: 'n_1', isCorrect: true, assisted: true },
+          {
+            subtest: 'naming',
+            itemRef: 'n_1',
+            isCorrect: true,
+            assisted: true,
+          },
         ],
       };
 
@@ -1905,7 +1913,7 @@ describe('QuizService', () => {
         manifestVersion: 3,
       } as SubmitQabResultsDto);
 
-      const rows = qabResultRepo.create.mock.calls.map((c: unknown[]) => c[0]);
+      const rows = qabResultRepo.create.mock.calls.map((c) => c[0]);
       expect(rows[0]).toMatchObject({ manifestVersion: 3 });
     });
 
@@ -1918,7 +1926,7 @@ describe('QuizService', () => {
         results: [{ subtest: 'word', itemRef: 'a', isCorrect: true }],
       } as SubmitQabResultsDto);
 
-      const rows = qabResultRepo.create.mock.calls.map((c: unknown[]) => c[0]);
+      const rows = qabResultRepo.create.mock.calls.map((c) => c[0]);
       expect(rows[0]).toMatchObject({ manifestVersion: null });
     });
 
@@ -1945,7 +1953,7 @@ describe('QuizService', () => {
         ],
       } as SubmitQabResultsDto);
 
-      const rows = qabResultRepo.create.mock.calls.map((c: unknown[]) => c[0]);
+      const rows = qabResultRepo.create.mock.calls.map((c) => c[0]);
       expect(rows[0]).toMatchObject({ bandFallback: true, stimulusKind: null });
       expect(rows[1]).toMatchObject({
         bandFallback: null,
@@ -2080,11 +2088,11 @@ describe('QuizService', () => {
   describe('getActivityDays', () => {
     it('완료 날짜 배열(YYYY-MM-DD)을 반환한다', async () => {
       const qb = {
-        select: jest.fn().mockReturnThis(),
-        distinct: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        orderBy: jest.fn().mockReturnThis(),
+        select: specMock().mockReturnThis(),
+        distinct: specMock().mockReturnThis(),
+        where: specMock().mockReturnThis(),
+        andWhere: specMock().mockReturnThis(),
+        orderBy: specMock().mockReturnThis(),
         getRawMany: jest
           .fn()
           .mockResolvedValue([{ day: '2026-08-12' }, { day: '2026-08-10' }]),
@@ -2108,23 +2116,23 @@ describe('QuizService', () => {
       notes: unknown[] = [],
     ) {
       const qb = {
-        select: jest.fn().mockReturnThis(),
-        addSelect: jest.fn().mockReturnThis(),
-        innerJoin: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        groupBy: jest.fn().mockReturnThis(),
-        orderBy: jest.fn().mockReturnThis(),
-        getRawMany: jest.fn().mockResolvedValue(played),
+        select: specMock().mockReturnThis(),
+        addSelect: specMock().mockReturnThis(),
+        innerJoin: specMock().mockReturnThis(),
+        where: specMock().mockReturnThis(),
+        andWhere: specMock().mockReturnThis(),
+        groupBy: specMock().mockReturnThis(),
+        orderBy: specMock().mockReturnThis(),
+        getRawMany: specMock().mockResolvedValue(played),
       };
       quizAttemptRepo.createQueryBuilder.mockReturnValue(qb);
       memoryEntryRepo.createQueryBuilder.mockReturnValue({
-        where: jest.fn().mockReturnThis(),
+        where: specMock().mockReturnThis(),
         getMany: jest.fn().mockResolvedValue(entries),
       });
       patientMemoryNoteRepo.createQueryBuilder.mockReturnValue({
-        where: jest.fn().mockReturnThis(),
-        orderBy: jest.fn().mockReturnThis(),
+        where: specMock().mockReturnThis(),
+        orderBy: specMock().mockReturnThis(),
         getMany: jest.fn().mockResolvedValue(notes),
       });
       return qb;
@@ -2237,15 +2245,15 @@ describe('QuizService', () => {
     /** createQueryBuilder 체이닝 mock — getRawMany 결과를 지정 */
     function arrangeRecent(rows: unknown[]) {
       const qb = {
-        select: jest.fn().mockReturnThis(),
-        addSelect: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        groupBy: jest.fn().mockReturnThis(),
-        orderBy: jest.fn().mockReturnThis(),
-        addOrderBy: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockReturnThis(),
-        getRawMany: jest.fn().mockResolvedValue(rows),
+        select: specMock().mockReturnThis(),
+        addSelect: specMock().mockReturnThis(),
+        where: specMock().mockReturnThis(),
+        andWhere: specMock().mockReturnThis(),
+        groupBy: specMock().mockReturnThis(),
+        orderBy: specMock().mockReturnThis(),
+        addOrderBy: specMock().mockReturnThis(),
+        limit: specMock().mockReturnThis(),
+        getRawMany: specMock().mockResolvedValue(rows),
       };
       qabResultRepo.createQueryBuilder.mockReturnValue(qb);
       return qb;
@@ -2352,12 +2360,12 @@ describe('QuizService', () => {
       completions: Array<{ token: string }> = [],
     ) {
       const buildQb = (rows: unknown[]) => ({
-        select: jest.fn().mockReturnThis(),
-        addSelect: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        groupBy: jest.fn().mockReturnThis(),
-        getRawMany: jest.fn().mockResolvedValue(rows),
+        select: specMock().mockReturnThis(),
+        addSelect: specMock().mockReturnThis(),
+        where: specMock().mockReturnThis(),
+        andWhere: specMock().mockReturnThis(),
+        groupBy: specMock().mockReturnThis(),
+        getRawMany: specMock().mockResolvedValue(rows),
       });
       qabResultRepo.createQueryBuilder.mockReturnValue(buildQb(qab));
       quizAttemptRepo.createQueryBuilder.mockReturnValue(buildQb(attempts));
@@ -2509,11 +2517,11 @@ describe('QuizService', () => {
       // 정답률은 몇 개 틀렸는지까지만 말한다. 무엇이 어려운지는 어떤 오답을
       // 골랐는가가 말한다.
       const qb = {
-        select: jest.fn().mockReturnThis(),
-        addSelect: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        groupBy: jest.fn().mockReturnThis(),
-        getRawMany: jest.fn().mockResolvedValue([
+        select: specMock().mockReturnThis(),
+        addSelect: specMock().mockReturnThis(),
+        where: specMock().mockReturnThis(),
+        groupBy: specMock().mockReturnThis(),
+        getRawMany: specMock().mockResolvedValue([
           {
             subtest: 'word',
             total: '20',
@@ -2557,11 +2565,11 @@ describe('QuizService', () => {
 
     it('검사별 정확도/지표를 집계해 반환한다', async () => {
       const qb = {
-        select: jest.fn().mockReturnThis(),
-        addSelect: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        groupBy: jest.fn().mockReturnThis(),
-        getRawMany: jest.fn().mockResolvedValue([
+        select: specMock().mockReturnThis(),
+        addSelect: specMock().mockReturnThis(),
+        where: specMock().mockReturnThis(),
+        groupBy: specMock().mockReturnThis(),
+        getRawMany: specMock().mockResolvedValue([
           {
             subtest: 'word',
             total: '4',
@@ -2635,11 +2643,11 @@ describe('QuizService', () => {
       // 못 잰 1개를 분모에 넣으면 67%가 되는데, 그건 환자가 틀렸다는 뜻이
       // 되어 버린다 — 실제로는 채점기가 실패한 것이다.
       const qb = {
-        select: jest.fn().mockReturnThis(),
-        addSelect: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        groupBy: jest.fn().mockReturnThis(),
-        getRawMany: jest.fn().mockResolvedValue([
+        select: specMock().mockReturnThis(),
+        addSelect: specMock().mockReturnThis(),
+        where: specMock().mockReturnThis(),
+        groupBy: specMock().mockReturnThis(),
+        getRawMany: specMock().mockResolvedValue([
           {
             subtest: 'repeat',
             total: '2',
@@ -2664,9 +2672,7 @@ describe('QuizService', () => {
         unscored: 1,
       });
       // 분모/분자 SQL 양쪽에 unscored 제외가 들어가 있어야 한다.
-      const selects = (qb.addSelect.mock.calls as unknown[][]).map((c) =>
-        String(c[0]),
-      );
+      const selects = qb.addSelect.mock.calls.map((c) => String(c[0]));
       expect(
         selects.some((s) => s.includes('NOT r.assisted AND NOT r.unscored')),
       ).toBe(true);
@@ -2681,11 +2687,11 @@ describe('QuizService', () => {
 
     it('데이터가 없으면 빈 배열', async () => {
       const qb = {
-        select: jest.fn().mockReturnThis(),
-        addSelect: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        groupBy: jest.fn().mockReturnThis(),
-        getRawMany: jest.fn().mockResolvedValue([]),
+        select: specMock().mockReturnThis(),
+        addSelect: specMock().mockReturnThis(),
+        where: specMock().mockReturnThis(),
+        groupBy: specMock().mockReturnThis(),
+        getRawMany: specMock().mockResolvedValue([]),
       };
       qabResultRepo.createQueryBuilder.mockReturnValue(qb);
 
@@ -2697,14 +2703,14 @@ describe('QuizService', () => {
   describe('getQabTrend', () => {
     function trendQb(rows: unknown[]) {
       return {
-        select: jest.fn().mockReturnThis(),
-        addSelect: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        groupBy: jest.fn().mockReturnThis(),
-        addGroupBy: jest.fn().mockReturnThis(),
-        orderBy: jest.fn().mockReturnThis(),
-        getRawMany: jest.fn().mockResolvedValue(rows),
+        select: specMock().mockReturnThis(),
+        addSelect: specMock().mockReturnThis(),
+        where: specMock().mockReturnThis(),
+        andWhere: specMock().mockReturnThis(),
+        groupBy: specMock().mockReturnThis(),
+        addGroupBy: specMock().mockReturnThis(),
+        orderBy: specMock().mockReturnThis(),
+        getRawMany: specMock().mockResolvedValue(rows),
       };
     }
 
