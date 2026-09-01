@@ -26,5 +26,10 @@
  */
 export type SpecMock = jest.Mock<any, unknown[]>;
 
-/** {@link SpecMock} 타입의 빈 목. */
-export const specMock = (): SpecMock => jest.fn();
+/**
+ * {@link SpecMock} 타입의 빈 목.
+ *
+ * 제네릭을 여기서 채워 준다 — 인자 없는 `jest.fn()`은 `Mock<any, any>`라
+ * 반환하는 순간 any가 새어 나온다.
+ */
+export const specMock = (): SpecMock => jest.fn<any, unknown[]>();
