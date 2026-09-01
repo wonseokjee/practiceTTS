@@ -1631,10 +1631,7 @@ export class QuizService {
       // 이 기능 이전의 기록은 cue_level이 NULL이라 AVG가 알아서 뺀다. 0으로
       // 메우면 "예전엔 단서 없이 다 맞혔다"는 거짓 회복 곡선이 그려진다.
       .addSelect('AVG(r.cue_level)', 'avgCueLevel')
-      .addSelect(
-        'COUNT(*) FILTER (WHERE r.cue_level IS NOT NULL)',
-        'cueScored',
-      )
+      .addSelect('COUNT(*) FILTER (WHERE r.cue_level IS NOT NULL)', 'cueScored')
       .where('r.patient_id = :pid', { pid: effectivePatientId })
       .groupBy('r.subtest')
       .getRawMany<{
