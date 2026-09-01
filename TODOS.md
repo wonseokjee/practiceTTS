@@ -1,5 +1,60 @@
 # TODOS
 
+## 다음 할 일 (2026-09-01 기준)
+
+머지 대기 없음. main `f35313b`, 열린 PR 0개.
+`npx eslint "src/**/*.ts" "test/**/*.ts"` 0건(본 트리에서 실측, 2026-09-01).
+
+### 1. 문장이해 문항 52 → 70+ (2·3단계) — **Gemini 월 지출 한도에 막혀 있다**
+
+계획: `docs/history/20260831_SentCompExpansion_feature_plan.md`.
+1단계(관계절 +6, 그림 0장)는 끝났다. 지금 혼합 퀴즈가 쓰는 문장 문항은 **52개**다
+(원본 62 − 화면에서 빼는 10).
+
+남은 것은 그림이 필요한 두 단계다.
+
+- **2단계** 가역문 장면 여섯 중 **셋만 들어갔다**(`sr_01`~`sr_03`). 남은 셋은
+  429 `RESOURCE_EXHAUSTED`로 멈췄다.
+- **3단계** 내포절 장면 다섯 (그림 10장).
+
+**다시 시작할 때 반드시 지킬 것 둘.**
+
+1. **드문 방향을 먼저, 참조 없이 그린다.** `scripts/redraw_sentcomp_pair.py`의
+   머리말에 실측이 적혀 있다 — "엄마가 아이를 먹인다"를 참조로 주고 뒤집으라고
+   하면 9/9로 실패했고, 참조 없이 "아이가 엄마를 먹인다"만 시키면 첫 시도에
+   나왔다. 그 결과를 참조로 흔한 방향을 그린다.
+2. **머지 전에 `python scripts/optimize_sentcomp_images.py`를 돌린다.**
+   모델이 주는 2048px 원본은 한 장 5~6MB다. 640px·128색으로 줄인다(카드가
+   화면에서 202px이라 DPR 3에도 606px이면 충분하다).
+   `sentCompImages.test.ts`가 640px·300KB를 지키고 있어 안 돌리면 빨개진다.
+
+### 2. TODO-115 — 도서관·수영장 낱말 교체 (그림 0장)
+
+본문은 이 파일 아래 `TODO-115` 절. **그릴 그림은 없다.** Fluent에 도서관·수영장
+아이콘이 아예 없어서, 건물이 보이는 다른 장소 낱말로 **교체**하는 것이 답이다
+(학교·은행을 넣은 것과 같은 수법). 지금은
+`practiceOddOneOut.ts`의 `UNUSABLE_AS_GROUP_WORDS`가 두 낱말을 무리에서 빼고 있고,
+교체하면 그 목록이 빈다.
+
+**지우면 안 된다** — 두 그림을 `wordComprehensionItems.json`과
+`qabSpeechStimuli.json`도 쓴다.
+
+### 3. design-token-migration `P3` — 한 번에 해야 한다
+
+본문은 이 파일 `[design-review-2026-08-27]` 절의 표. 팔레트 색 873개(전체 hex 1300 /
+77파일)가 임의값으로 흩어져 있다. `@theme`에 토큰을 정의하고 전수 치환한다.
+
+**반만 하면 안 된다.** `accentContrast.test.ts`가 소스에서 `#E07B54` hex를
+grep하므로, 별칭이 생기는 순간 그 그물이 뚫린다. 그 테스트도 같이 고쳐야 한다.
+
+### 그 밖에 열려 있는 것
+
+- 문장 종합점수의 `completeness` 40% — 일부러 손대지 않았다. 누락 시나리오를
+  먼저 정해야 한다.
+- TODO-110 남은 쪽 — 소리가 안 난 검사 문항을 `assisted`로 볼지 무효로 볼지.
+  측정의 뜻을 정하는 문제라 코드로 정할 일이 아니다.
+
+
 ## 연습 모드 QA (2026-08-20)
 
 리포트: `.gstack/qa-reports/qa-report-practice-mode-2026-08-20.md`
@@ -438,7 +493,7 @@ score만 받아 **영역 외 터치도 '무반응'으로 기록**했다. 라벨�
 **주의:** 넷을 넣어도 **작은 범주 문제는 안 풀린다.** 그림 고르기에 안 나오므로
 `MASTER_WORDS`에 없고, 따라서 욕실(3)·가구(3)·가전(3)은 그대로다.
 
-### backend lint 부채 — 실제 코드 정리 완료, spec 93건 남음 (2026-08-25)
+### ~~backend lint 부채~~ — 해결 (2026-09-01, #117·#118)
 
 `.gitattributes`(#65)로 CRLF 잡음 561건을 걷어내니 진짜 문제 115건이 드러났다.
 그중 **실제 코드 21건을 정리했다.** 남은 93건은 전부 `.spec.ts`다.
@@ -486,10 +541,45 @@ score만 받아 **영역 외 터치도 '무반응'으로 기록**했다. 라벨�
  2 retry.util.spec
 ```
 
-`buildRepoMock`에 `jest.Mock<unknown, unknown[]>`를 한 번에 씌워 뿌리를 뽑으려
-했으나 이 jest 버전의 제네릭 인자 순서와 안 맞아 tsc가 깨졌다(되돌렸다). 목마다
-**실제 시그니처를 찾아 붙여야** 하고, 그게 이 저장소의 방침이다 —
-`practice.service.spec.ts`에 "체이닝 목은 명시 타입을 붙인다"고 적혀 있다.
+**해결 (2026-09-01) — 52건에서 0건으로.** 다시 재니 47이 아니라 **52**였다.
+2026-08-25 당시의 47은 낡은 작업 트리에서 잰 값이다.
+
+전에 실패했던 이유가 밝혀졌다. 제네릭 **인자 순서**가 문제가 아니라 **반환 타입**이었다.
+`jest.Mock<unknown, unknown[]>`처럼 반환을 `unknown`으로 두면
+`mockResolvedValue(value: T extends PromiseLike<infer U> ? U | T : never)`의 인자가
+`never`가 되어 목에 아무 값도 못 넣는다. 그래서 tsc가 깨졌던 것이다.
+
+그래서 **인자만** 좁혔다 — `src/common/testing/spec-mock.ts`:
+
+```ts
+export type SpecMock = jest.Mock<any, unknown[]>;
+export const specMock = (): SpecMock => jest.fn<any, unknown[]>();
+```
+
+반환이 `any`인 건 타협이 아니다. 반환값은 각 테스트가 직접 정하는 것이라 여기서
+지켜 줄 것이 없다. 지켜야 할 것은 **목이 무엇을 받았는가**이고, 린트 52건 중 45건이
+거기서 나왔다.
+
+목마다 실제 시그니처를 붙인다는 방침은 유효하되, **인자를 진짜로 아는 곳에만**
+적용하면 됐다. 두 곳이었다.
+
+| 목 | 타입 | 지키는 것 |
+|---|---|---|
+| `recordings.insert` | `[Pick<SpeechRecording, …>]` | 엔티티 컬럼이 표류하면 스펙이 먼저 깨진다 |
+| `onRetry` | `[number, number, unknown]` | attempt/delayMs가 뒤바뀌면 잡힌다 |
+
+되돌려보기 셋으로 확인했다 — 단언 필드명 오타는 `TS2551`, `SpecMock` 인자를
+`any[]`로 되돌리면 `no-unsafe-return` 7건 복귀, 엔티티 필드명을 바꾸면 스펙에서
+`TS2344`.
+
+`ai-proxy.rate-limit.spec`은 결이 달랐다(10건). `getHttpServer()`가 주는 any를
+`server(): App` 한 곳에서 좁히고, `reflector.get<RateLimitOptions>`를 붙이고,
+호출하지 않는 프로토타입 참조에만 `unbound-method`를 껐다.
+
+**놓쳤던 것.** #117을 머지하고 나서 전체(`src/**/*.ts`)를 다시 재니 2건이 남아
+있었다 — 스펙만 재고 끝냈기 때문이다. 그중 하나는 **#117이 새로 넣은 파일**이
+낸 것이었다(`specMock()`이 인자 없는 `jest.fn()`을 돌려줘 any가 샜다). #118로
+고쳤다. 검증 범위는 주장 범위와 같아야 한다.
 
 ### TODO-ADP-002: 보호자 effectivePatientId 레벨 오염 가드 — **전제가 틀렸다** (조사 2026-08-25)
 
