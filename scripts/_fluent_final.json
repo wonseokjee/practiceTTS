@@ -33,7 +33,6 @@
   "knife": "칼",
   "ladder": "사다리",
   "spoon": "숟가락",
-  "library": "도서관",
   "lion": "사자",
   "mailbox": "우체통",
   "melon": "멜론",
@@ -42,7 +41,6 @@
   "pencil": "연필",
   "phone": "전화기",
   "piano": "피아노",
-  "pool": "수영장",
   "television": "텔레비전",
   "rock": "돌",
   "scissors": "가위",
@@ -90,7 +88,9 @@
   "screwdriver": "드라이버",
   "school": "학교",
   "bank": "은행",
-  "sweet_potato": "고구마"
+  "sweet_potato": "고구마",
+  "post_office": "우체국",
+  "department_store": "백화점"
  },
  "namemap": {
   "airplane": "airplane",
@@ -126,7 +126,6 @@
   "knife": "kitchen-knife",
   "ladder": "ladder",
   "spoon": "spoon",
-  "library": "books",
   "lion": "lion",
   "mailbox": "closed-mailbox-with-lowered-flag",
   "melon": "melon",
@@ -135,7 +134,6 @@
   "pencil": "pencil",
   "phone": "telephone",
   "piano": "musical-keyboard",
-  "pool": "person-swimming",
   "television": "television",
   "rock": "rock",
   "scissors": "scissors",
@@ -183,7 +181,9 @@
   "screwdriver": "screwdriver",
   "school": "school",
   "bank": "bank",
-  "sweet_potato": "roasted-sweet-potato"
+  "sweet_potato": "roasted-sweet-potato",
+  "post_office": "post-office",
+  "department_store": "department-store"
  },
  "new_categories": {
   "candle": "object",
@@ -215,7 +215,9 @@
   "baby": "person",
   "firefighter": "person",
   "school": "place",
-  "bank": "place"
+  "bank": "place",
+  "post_office": "place",
+  "department_store": "place"
  },
  "removed": [
   "comb",
@@ -255,6 +257,8 @@
   "baby": "아기",
   "firefighter": "소방관",
   "school": "학교",
-  "bank": "은행"
+  "bank": "은행",
+  "post_office": "우체국",
+  "department_store": "백화점"
  }
 }

@@ -66,6 +66,15 @@ NEW.update({
     "school": ("학교", "place", "school"),
     "bank": ("은행", "place", "bank"),
 })
+# 2026-09-02 — TODO-115를 닫는다. 도서관·수영장은 아이콘이 장소로 안 보여
+# (책 더미·헤엄치는 사람) 이름대기 전용으로 옮겼고, 건물이 보이는 장소 낱말 둘을
+# 대신 넣는다. **두 slug를 REMOVED에 넣으면 안 된다** — 표준 검사
+# (wordComprehensionItems.json)와 발화 자극이 같은 SVG를 아직 쓴다. 지우면 그
+# 화면이 깨진 이미지로 뜬다.
+NEW.update({
+    "post_office": ("우체국", "place", "post-office"),
+    "department_store": ("백화점", "place", "department-store"),
+})
 # 기존 단어의 이름 교정/명시(오매칭 방지). slug -> fluent-name
 EXPLICIT = {
     "flower": "tulip", "melon": "melon", "phone": "telephone",

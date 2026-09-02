@@ -14,6 +14,7 @@ import { join } from 'node:path';
 import photos from './namingPhotos.json';
 import credits from '../../../public/assets/images/naming/_credits.json';
 import pool from './qabWordPool.json';
+import namingOnly from './namingOnlyWords.json';
 
 const DIR = join(process.cwd(), 'public/assets/images/naming');
 
@@ -51,8 +52,10 @@ describe('namingPhotos', () => {
   });
 
   it('낱말 풀에 없는 slug를 들고 있지 않다', () => {
-    // 이름대기 전용 낱말 4개(빗·책상·수건·냉장고)는 풀 밖이므로 예외로 둔다.
-    const NAMING_ONLY = ['comb', 'desk', 'towel', 'refrigerator'];
+    // 이름대기 전용 낱말은 풀 밖이므로 예외로 둔다. 목록을 여기 베껴 적지
+    // 않는다 — 손으로 적어 두었더니 도서관·수영장을 전용으로 옮길 때(TODO-115)
+    // 이 줄만 옛말이 되어 빨개졌다.
+    const NAMING_ONLY = namingOnly.items.map((w) => w.slug);
     const 풀 = new Set(pool.items.map(slugOf));
     const 낯선것 = photos.slugs.filter(
       (s) => !풀.has(s) && !NAMING_ONLY.includes(s),
