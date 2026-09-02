@@ -189,11 +189,15 @@ export const WORD_CATEGORY: Record<string, string | null> = {
   ship: 'vehicle', train: 'vehicle', truck: 'vehicle',
   // 식물 4
   cactus: 'plant', flower: 'plant', mushroom: 'plant', tree: 'plant',
-  // 장소 6 — 여섯 다 그림에 건물이 보인다. 도서관·수영장은 아이콘이 책 더미와
-  // 헤엄치는 사람이라 셋을 늘어놓아도 한 무리로 안 보였다. 사진은 멀쩡하므로
-  // 이름대기 전용으로 옮기고(namingOnlyWords) 우체국·백화점을 넣었다(TODO-115).
-  bank: 'place', department_store: 'place', hospital: 'place',
-  house: 'place', post_office: 'place', school: 'place',
+  // 장소 5 — 다섯 다 **어떤 건물인지**가 그림에 보인다. 기둥과 화폐(은행), 시계탑과
+  // 깃발(학교), 지붕과 문(집), 종탑 십자가(교회), 굴뚝(공장).
+  //
+  // 여기서 세 낱말이 빠져 있다. 도서관·수영장·병원은 아이콘이 각각 책 더미·헤엄치는
+  // 사람·십자가 붙은 판이라 건물로 안 보였고, 셋 다 **실물 사진은 멀쩡해서**
+  // 이름대기 전용으로 옮겼다(namingOnlyWords). 우체국·백화점은 건물이기는 한데
+  // 어떤 건물인지가 안 보여(유럽식 나팔, 사무실 빌딩) 넣은 날 물렸다.
+  bank: 'place', church: 'place', factory: 'place',
+  house: 'place', school: 'place',
   // 신체 6
   ear: 'body', eye: 'body', foot: 'body', hand: 'body', mouth: 'body',
   nose: 'body',

@@ -22,7 +22,10 @@ CDN = "https://api.iconify.design/fluent-emoji-flat/{name}.svg"
 #
 # 국자·모래는 아이콘이 없고 낱말로도 안 쓰기로 정했다(2026-08-25). 실사 사진도
 # 지웠다 — 쓸 수 없는 파일을 남겨두면 다음 사람이 또 "왜 안 쓰지"를 묻는다.
-REMOVED = ["comb", "desk", "ladle", "towel", "sand", "refrigerator"]
+# post_office·department_store는 2026-09-02에 넣었다가 같은 날 물렸다(위 주석).
+# 낱말 풀 밖이고 다른 화면도 안 쓰므로 파일째 지운다.
+REMOVED = ["comb", "desk", "ladle", "towel", "sand", "refrigerator",
+           "post_office", "department_store"]
 # 신규(교체 6 + 추가 10): slug -> (한국어, 범주, fluent-name)
 NEW = {
     "candle": ("양초", "object", "candle"),
@@ -67,13 +70,21 @@ NEW.update({
     "bank": ("은행", "place", "bank"),
 })
 # 2026-09-02 — TODO-115를 닫는다. 도서관·수영장은 아이콘이 장소로 안 보여
-# (책 더미·헤엄치는 사람) 이름대기 전용으로 옮겼고, 건물이 보이는 장소 낱말 둘을
-# 대신 넣는다. **두 slug를 REMOVED에 넣으면 안 된다** — 표준 검사
+# (책 더미·헤엄치는 사람) 이름대기 전용으로 옮겼고, 건물이 보이는 장소 낱말을
+# 대신 넣는다. **library·pool을 REMOVED에 넣으면 안 된다** — 표준 검사
 # (wordComprehensionItems.json)와 발화 자극이 같은 SVG를 아직 쓴다. 지우면 그
-# 화면이 깨진 이미지로 뜬다.
+# 화면이 깨진 이미지로 뜬다. hospital도 같은 이유로 남긴다.
+#
+# 처음에 넣은 우체국·백화점은 **같은 날 물렸다.** 건물이기는 한데 *어떤* 건물인지가
+# 안 보였다 — 우체국은 유럽식 나팔 표지고 백화점은 그냥 사무실 빌딩이다. 소유자
+# 확인(2026-09-02). 기호를 배워야 읽히는 그림은 이 검사에서 낱말 그림이 아니다.
+#
+# 교회(종탑 십자가)·공장(굴뚝)은 실루엣만으로 갈린다. 호텔·편의점도 후보였지만
+# 아이콘에 로마자 H·24 H가 박혀 있어 뺐다 — "그림에 글자가 없다"(wordCompAssets)에
+# 걸리고, 읽어서 맞히면 검사가 무효다.
 NEW.update({
-    "post_office": ("우체국", "place", "post-office"),
-    "department_store": ("백화점", "place", "department-store"),
+    "church": ("교회", "place", "church"),
+    "factory": ("공장", "place", "factory"),
 })
 # 기존 단어의 이름 교정/명시(오매칭 방지). slug -> fluent-name
 EXPLICIT = {
