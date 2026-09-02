@@ -189,10 +189,11 @@ export const WORD_CATEGORY: Record<string, string | null> = {
   ship: 'vehicle', train: 'vehicle', truck: 'vehicle',
   // 식물 4
   cactus: 'plant', flower: 'plant', mushroom: 'plant', tree: 'plant',
-  // 장소 6 — library·pool은 태그는 맞지만 그림이 장소로 안 보인다.
-  // 무리 쪽으로 못 쓰는 이유는 practiceOddOneOut.ts의 UNUSABLE_AS_GROUP_WORDS.
-  bank: 'place', hospital: 'place', house: 'place', library: 'place',
-  pool: 'place', school: 'place',
+  // 장소 6 — 여섯 다 그림에 건물이 보인다. 도서관·수영장은 아이콘이 책 더미와
+  // 헤엄치는 사람이라 셋을 늘어놓아도 한 무리로 안 보였다. 사진은 멀쩡하므로
+  // 이름대기 전용으로 옮기고(namingOnlyWords) 우체국·백화점을 넣었다(TODO-115).
+  bank: 'place', department_store: 'place', hospital: 'place',
+  house: 'place', post_office: 'place', school: 'place',
   // 신체 6
   ear: 'body', eye: 'body', foot: 'body', hand: 'body', mouth: 'body',
   nose: 'body',

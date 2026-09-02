@@ -121,16 +121,26 @@ describe('buildOddOneOutItems', () => {
    * 무리로 쓸 수 있는 범주는 object를 뺀 15개다(2026-08-22, 낱말 90개).
    * 늘리는 방법은 `docs/ASSETS-NEEDED.md`에 있다.
    */
-  it('그림이 장소로 안 보이는 도서관·수영장은 무리에 넣지 않는다', () => {
-    // 태그는 place가 맞지만 도서관은 책 더미로, 수영장은 헤엄치는 사람으로
-    // 그려져 있다. 셋을 늘어놓으면 화면에는 건물·사람·책이 보인다.
-    // place 범주 자체는 병원·집·학교·은행으로 선다 — 문제는 이 두 그림이다.
+  it('그림이 장소로 안 보이던 도서관·수영장은 어디에도 안 나온다', () => {
+    // 태그는 place가 맞았지만 도서관은 책 더미로, 수영장은 헤엄치는 사람으로
+    // 그려져 있어 셋을 늘어놓으면 화면에는 건물·사람·책이 보였다.
+    //
+    // TODO-115에서 **낱말을 바꿔서** 닫았다(2026-09-02). 사진은 멀쩡하므로 둘을
+    // 이름대기 전용(`namingOnlyWords.json`)으로 옮기고 건물이 보이는 우체국·
+    // 백화점을 낱말 풀에 넣었다. 그래서 이제는 무리에서만 빠지는 게 아니라
+    // **정답으로도** 안 나온다 — 낱말 풀에 없기 때문이다.
     const bank = masterWords();
+    const slugs = bank.map((w) => w.slug);
+    expect(slugs).not.toContain('library');
+    expect(slugs).not.toContain('pool');
+    expect(slugs).toContain('post_office');
+    expect(slugs).toContain('department_store');
 
     for (const item of buildOddOneOutItems(bank, 99)) {
-      const group = item.choices.filter((c) => !c.isCorrect);
-      expect(group.map((c) => c.choiceId)).not.toContain('library');
-      expect(group.map((c) => c.choiceId)).not.toContain('pool');
+      for (const c of item.choices) {
+        expect(c.choiceId).not.toBe('library');
+        expect(c.choiceId).not.toBe('pool');
+      }
     }
   });
 

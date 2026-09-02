@@ -344,8 +344,8 @@
     },
     {
      "choiceId": "qw_013_c2",
-     "label": "수영장",
-     "imageUrl": "/assets/images/wordComp/pool.svg",
+     "label": "백화점",
+     "imageUrl": "/assets/images/wordComp/department_store.svg",
      "isCorrect": false
     },
     {
@@ -356,8 +356,8 @@
     },
     {
      "choiceId": "qw_013_c4",
-     "label": "도서관",
-     "imageUrl": "/assets/images/wordComp/library.svg",
+     "label": "우체국",
+     "imageUrl": "/assets/images/wordComp/post_office.svg",
      "isCorrect": false
     }
    ]
@@ -596,8 +596,8 @@
     },
     {
      "choiceId": "qw_021_c4",
-     "label": "수영장",
-     "imageUrl": "/assets/images/wordComp/pool.svg",
+     "label": "백화점",
+     "imageUrl": "/assets/images/wordComp/department_store.svg",
      "isCorrect": false
     }
    ]
@@ -890,8 +890,8 @@
     },
     {
      "choiceId": "qw_031_c3",
-     "label": "도서관",
-     "imageUrl": "/assets/images/wordComp/library.svg",
+     "label": "우체국",
+     "imageUrl": "/assets/images/wordComp/post_office.svg",
      "isCorrect": false
     },
     {
@@ -944,8 +944,8 @@
     },
     {
      "choiceId": "qw_033_c2",
-     "label": "도서관",
-     "imageUrl": "/assets/images/wordComp/library.svg",
+     "label": "우체국",
+     "imageUrl": "/assets/images/wordComp/post_office.svg",
      "isCorrect": false
     },
     {
@@ -988,36 +988,6 @@
      "choiceId": "qw_034_c4",
      "label": "병아리",
      "imageUrl": "/assets/images/wordComp/chick.svg",
-     "isCorrect": false
-    }
-   ]
-  },
-  {
-   "itemId": "qw_035",
-   "targetWord": "도서관",
-   "choices": [
-    {
-     "choiceId": "qw_035_c1",
-     "label": "도서관",
-     "imageUrl": "/assets/images/wordComp/library.svg",
-     "isCorrect": true
-    },
-    {
-     "choiceId": "qw_035_c2",
-     "label": "기차",
-     "imageUrl": "/assets/images/wordComp/train.svg",
-     "isCorrect": false
-    },
-    {
-     "choiceId": "qw_035_c3",
-     "label": "비행기",
-     "imageUrl": "/assets/images/wordComp/airplane.svg",
-     "isCorrect": false
-    },
-    {
-     "choiceId": "qw_035_c4",
-     "label": "버스",
-     "imageUrl": "/assets/images/wordComp/bus.svg",
      "isCorrect": false
     }
    ]
@@ -1154,8 +1124,8 @@
     },
     {
      "choiceId": "qw_041_c2",
-     "label": "도서관",
-     "imageUrl": "/assets/images/wordComp/library.svg",
+     "label": "우체국",
+     "imageUrl": "/assets/images/wordComp/post_office.svg",
      "isCorrect": false
     },
     {
@@ -1263,36 +1233,6 @@
    ]
   },
   {
-   "itemId": "qw_047",
-   "targetWord": "수영장",
-   "choices": [
-    {
-     "choiceId": "qw_047_c1",
-     "label": "수영장",
-     "imageUrl": "/assets/images/wordComp/pool.svg",
-     "isCorrect": true
-    },
-    {
-     "choiceId": "qw_047_c2",
-     "label": "우산",
-     "imageUrl": "/assets/images/wordComp/umbrella.svg",
-     "isCorrect": false
-    },
-    {
-     "choiceId": "qw_047_c3",
-     "label": "나팔",
-     "imageUrl": "/assets/images/wordComp/trumpet.svg",
-     "isCorrect": false
-    },
-    {
-     "choiceId": "qw_047_c4",
-     "label": "비행기",
-     "imageUrl": "/assets/images/wordComp/airplane.svg",
-     "isCorrect": false
-    }
-   ]
-  },
-  {
    "itemId": "qw_049",
    "targetWord": "텔레비전",
    "choices": [
@@ -1310,8 +1250,8 @@
     },
     {
      "choiceId": "qw_049_c3",
-     "label": "수영장",
-     "imageUrl": "/assets/images/wordComp/pool.svg",
+     "label": "백화점",
+     "imageUrl": "/assets/images/wordComp/department_store.svg",
      "isCorrect": false
     },
     {
@@ -2654,8 +2594,8 @@
     },
     {
      "choiceId": "qw_100_c2",
-     "label": "수영장",
-     "imageUrl": "/assets/images/wordComp/pool.svg",
+     "label": "백화점",
+     "imageUrl": "/assets/images/wordComp/department_store.svg",
      "isCorrect": false
     },
     {
@@ -2728,6 +2668,66 @@
      "choiceId": "qw_102_c4",
      "label": "옥수수",
      "imageUrl": "/assets/images/wordComp/corn.svg",
+     "isCorrect": false
+    }
+   ]
+  },
+  {
+   "itemId": "qw_103",
+   "targetWord": "우체국",
+   "choices": [
+    {
+     "choiceId": "qw_103_c1",
+     "label": "우체국",
+     "imageUrl": "/assets/images/wordComp/post_office.svg",
+     "isCorrect": true
+    },
+    {
+     "choiceId": "qw_103_c2",
+     "label": "사자",
+     "imageUrl": "/assets/images/wordComp/lion.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_103_c3",
+     "label": "딸기",
+     "imageUrl": "/assets/images/wordComp/strawberry.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_103_c4",
+     "label": "의자",
+     "imageUrl": "/assets/images/wordComp/chair.svg",
+     "isCorrect": false
+    }
+   ]
+  },
+  {
+   "itemId": "qw_104",
+   "targetWord": "백화점",
+   "choices": [
+    {
+     "choiceId": "qw_104_c1",
+     "label": "백화점",
+     "imageUrl": "/assets/images/wordComp/department_store.svg",
+     "isCorrect": true
+    },
+    {
+     "choiceId": "qw_104_c2",
+     "label": "토끼",
+     "imageUrl": "/assets/images/wordComp/rabbit.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_104_c3",
+     "label": "우유",
+     "imageUrl": "/assets/images/wordComp/milk.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_104_c4",
+     "label": "망치",
+     "imageUrl": "/assets/images/wordComp/hammer.svg",
      "isCorrect": false
     }
    ]
