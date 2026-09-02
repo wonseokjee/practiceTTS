@@ -252,6 +252,30 @@ def main() -> int:
     for r in rows:
         by_parent[r["parent_file_id"]].append(r)
 
+    # 부모 오디오를 파일명으로 찾는다 — `audio_root / fid`로 직접 이어붙이지 않는다.
+    # segments.jsonl은 parent_file_id를 **파일명만**(align_608의 file_id) 담는데,
+    # audio_root가 평평한지 매니페스트 구조를 그대로 재현한 중첩 폴더인지는
+    # 배치마다 다르다. TS01은 평평한 `wav/`라 우연히 맞았지만, VS01처럼 카테고리
+    # 하위 폴더가 있으면(`VS01_뇌신경장애/11.중풍/...`) `audio_root / fid`가
+    # 항상 실패해 **모든 부모가 "원본 없음"으로 건너뛰어지고 산출 0개로 조용히
+    # 끝난다.** 죽지 않고 통계만 0으로 나오니 원인 파악이 늦어진다.
+    # 한 번 훑어 파일명 → 실제 경로 색인을 만들면 평평·중첩 둘 다 된다.
+    audio_index: dict[str, Path] = {}
+    dup: set[str] = set()
+    for p in args.audio_root.rglob("*.wav"):
+        if p.name in audio_index:
+            dup.add(p.name)
+        else:
+            audio_index[p.name] = p
+    if dup:
+        # 같은 파일명이 서로 다른 카테고리 폴더에 있으면 어느 쪽인지 못 정한다.
+        # 조용히 하나를 고르면 엉뚱한 오디오로 재정렬하는 사고가 나므로 멈춘다.
+        raise SystemExit(
+            f"파일명이 여러 폴더에 중복된다({len(dup)}개, 예: {sorted(dup)[:3]}). "
+            "audio_root 아래에 같은 이름의 wav가 두 곳 이상 있다."
+        )
+    print(f"오디오 색인: {len(audio_index)}개 (audio_root 아래 재귀 탐색)")
+
     args.out_dir.mkdir(parents=True, exist_ok=True)
     out_path = args.out_dir / "segments.jsonl"
     done_path = args.out_dir / ".done_parents.txt"
@@ -423,8 +447,8 @@ def main() -> int:
             if fid in done_parents:
                 skipped_done += 1
                 continue
-            src = args.audio_root / fid
-            if not src.exists():
+            src = audio_index.get(fid)
+            if src is None or not src.exists():
                 print(f"[{pi}/{len(by_parent)}] {fid} 원본 없음 — 건너뜀")
                 continue
 

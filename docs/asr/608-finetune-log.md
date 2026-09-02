@@ -1310,6 +1310,19 @@ ai-service/venv/Scripts/python.exe scripts/asr_eval/prepare_colab_trainset.py   
 
 ### 밟았던 함정
 
+- **`refine_segments.py`가 `audio_root`를 평평한 구조로 가정하고 있었다
+  (2026-09-01, VS01).** `align_608`은 `audio_root / expected_audio_relpath`
+  (매니페스트 경로, 중첩)로 오디오를 찾는데, `refine_segments`는
+  `audio_root / fid`(파일명만)로 찾았다. TS01은 로컬에서 평평한 `wav/` 폴더를
+  썼기 때문에 이 불일치가 우연히 안 드러났다. VS01은 매니페스트 구조를 그대로
+  뒀는데(`VS01_뇌신경장애/11.중풍/...`), refine이 253개 부모 전부를 "원본
+  없음 — 건너뜀"으로 넘겨 **산출 0개로 조용히 끝났다.** 죽지 않고 통계만
+  0으로 나와 원인 파악이 늦어졌다(align 셀도 "경과 0.0분"으로 헷갈렸다 —
+  같은 근본 원인의 다른 증상이었다).
+  → `refine_segments.py`가 이제 `audio_root`를 한 번 재귀 탐색해 파일명→경로
+  색인을 만든다. 평평·중첩 둘 다 된다. 같은 파일명이 여러 폴더에 있으면
+  조용히 하나를 고르지 않고 멈춘다. 로컬 검증: VS01(4개 카테고리 전부)과
+  TS01(평평) 양쪽에서 "원본 없음" 없이 통과, 기존 회귀 테스트 53개 전부 통과.
 - **정렬 직후 세그먼트를 그대로 쓰지 말 것.** 단어 클립의 25~49%가 단어를 놓치고
   (3절 (2)), 문장 클립은 79%가 침묵이다(3-2절). `refine_segments.py`를 반드시
   거치고, 문장까지 처리하려면 `--narrative refine`을 명시한다(기본은 skip).
