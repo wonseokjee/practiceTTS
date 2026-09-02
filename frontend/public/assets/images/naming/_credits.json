@@ -356,14 +356,6 @@
     "savedAt": "2026-07-25"
   },
   {
-    "slug": "hospital",
-    "ko": "병원",
-    "title": "Hospital collage element, cute illustrat",
-    "license": "cc0 1.0",
-    "source": "https://www.rawpixel.com/image/6771323/vector-sticker-medicine-public-domain",
-    "savedAt": "2026-07-25"
-  },
-  {
     "slug": "house",
     "ko": "집",
     "title": "excise house",
@@ -762,5 +754,13 @@
     "license": "cc0 1.0",
     "source": "https://www.rawpixel.com/image/9975590/photo-image-vintage-animal-fish",
     "savedAt": "2026-07-25"
+  },
+  {
+    "slug": "pharmacy",
+    "ko": "약국",
+    "title": "Logo pharmacy, Pharmacy, Banner pharmacy",
+    "license": "Pixabay Content License",
+    "source": "https://pixabay.com/photos/logo-pharmacy-pharmacy-symbol-3215049/",
+    "savedAt": "2026-09-02"
   }
 ]

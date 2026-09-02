@@ -121,23 +121,26 @@ describe('buildOddOneOutItems', () => {
    * 무리로 쓸 수 있는 범주는 object를 뺀 15개다(2026-08-22, 낱말 90개).
    * 늘리는 방법은 `docs/ASSETS-NEEDED.md`에 있다.
    */
-  it('그림이 낱말을 안 보여 주던 장소 셋은 어디에도 안 나온다', () => {
-    // 도서관은 책 더미, 수영장은 헤엄치는 사람, 병원은 십자가가 붙은 보라색 판이다.
-    // 셋을 건물들 사이에 늘어놓으면 한 무리로 안 보인다.
+  it('그림이(또는 이름대기 사진이) 낱말을 안 보여 주던 장소 넷은 어디에도 안 나온다', () => {
+    // 도서관은 책 더미, 수영장은 헤엄치는 사람 — 아이콘이 건물이 아니었다. 실물
+    // 사진은 멀쩡해서 이름대기 전용(`namingOnlyWords.json`)으로 옮겼다.
     //
-    // TODO-115에서 **낱말을 바꿔서** 닫았다(2026-09-02). 셋 다 실물 사진은 멀쩡하므로
-    // 이름대기 전용(`namingOnlyWords.json`)으로 옮겼다. 그래서 이제는 무리에서만
-    // 빠지는 게 아니라 **정답으로도** 안 나온다 — 낱말 풀에 없기 때문이다.
+    // 병원은 두 겹으로 부족했다. 아이콘은 십자가 붙은 판이라 건물로 안 보였고,
+    // **낱말 풀의 이름대기 사진도 실물이 아니라 3D 일러스트**였다(rawpixel
+    // "cute illustration"). 이름대기 전용으로 옮겨도 안 풀리는 문제라, 옮기는
+    // 대신 **낱말째** 약국으로 갈았다(2026-09-02) — 진짜 사진(Pixabay, 건물 벽에
+    // 걸린 초록 십자가 간판)을 새로 구하고, 아이콘도 같은 화풍으로 새로 그렸다.
     //
-    // 빈 자리는 실루엣만으로 갈리는 낱말로 채웠다. 처음에 넣은 우체국·백화점은
-    // 같은 날 물렸다 — 건물이기는 한데 *어떤* 건물인지가 안 보였다(유럽식 나팔
-    // 표지, 사무실 빌딩). 교회는 종탑 십자가, 공장은 굴뚝으로 갈린다.
+    // 우체국·백화점은 같은 날 물렸다 — 건물이기는 한데 *어떤* 건물인지가 안
+    // 보였다(유럽식 나팔 표지, 사무실 빌딩). 교회는 종탑 십자가, 공장은 굴뚝,
+    // 약국은 초록 십자가로 갈린다.
     const 안보이던것 = ['library', 'pool', 'hospital', 'post_office', 'department_store'];
     const bank = masterWords();
     const slugs = bank.map((w) => w.slug);
     for (const s of 안보이던것) expect(slugs, `${s}이 아직 풀에 있다`).not.toContain(s);
     expect(slugs).toContain('church');
     expect(slugs).toContain('factory');
+    expect(slugs).toContain('pharmacy');
 
     for (const item of buildOddOneOutItems(bank, 99)) {
       for (const c of item.choices) {
