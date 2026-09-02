@@ -307,6 +307,60 @@
           "isCorrect": false
         }
       ]
+    },
+    {
+      "itemId": "sr_04_m",
+      "sentence": "아이가 아빠를 안고 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "reversible",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sr_04_distractor.png",
+          "altText": "아이가 아빠를 안는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sr_04_correct.png",
+          "altText": "아빠가 아이를 안는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "sr_05_m",
+      "sentence": "여자가 남자를 그리고 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "reversible",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sr_05_distractor.png",
+          "altText": "여자가 남자를 그리는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sr_05_correct.png",
+          "altText": "남자가 여자를 그리는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "sr_06_m",
+      "sentence": "소년이 소녀를 깨우고 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "reversible",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sr_06_distractor.png",
+          "altText": "소년이 소녀를 깨우는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sr_06_correct.png",
+          "altText": "소녀가 소년을 깨우는 장면",
+          "isCorrect": false
+        }
+      ]
     }
   ]
 }

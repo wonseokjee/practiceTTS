@@ -362,6 +362,114 @@
           "isCorrect": false
         }
       ]
+    },
+    {
+      "itemId": "sr_04_rs",
+      "sentence": "아이를 안는 아빠가 웃고 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "relative-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sr_04_correct.png",
+          "altText": "아빠가 아이를 안는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sr_04_distractor.png",
+          "altText": "아이가 아빠를 안는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "sr_04_ro",
+      "sentence": "아이가 안는 아빠가 웃고 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "relative-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sr_04_distractor.png",
+          "altText": "아이가 아빠를 안는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sr_04_correct.png",
+          "altText": "아빠가 아이를 안는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "sr_05_rs",
+      "sentence": "여자를 그리는 남자가 웃고 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "relative-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sr_05_correct.png",
+          "altText": "남자가 여자를 그리는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sr_05_distractor.png",
+          "altText": "여자가 남자를 그리는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "sr_05_ro",
+      "sentence": "여자가 그리는 남자가 웃고 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "relative-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sr_05_distractor.png",
+          "altText": "여자가 남자를 그리는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sr_05_correct.png",
+          "altText": "남자가 여자를 그리는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "sr_06_rs",
+      "sentence": "소년을 깨우는 소녀가 보여요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "relative-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sr_06_correct.png",
+          "altText": "소녀가 소년을 깨우는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sr_06_distractor.png",
+          "altText": "소년이 소녀를 깨우는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "sr_06_ro",
+      "sentence": "소년이 깨우는 소녀가 보여요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "relative-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sr_06_distractor.png",
+          "altText": "소년이 소녀를 깨우는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sr_06_correct.png",
+          "altText": "소녀가 소년을 깨우는 장면",
+          "isCorrect": false
+        }
+      ]
     }
   ]
 }
