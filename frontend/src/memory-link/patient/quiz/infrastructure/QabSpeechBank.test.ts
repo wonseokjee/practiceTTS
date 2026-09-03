@@ -1,12 +1,29 @@
 // QabSpeechBank.ts — 발화 검사 자극 뱅크 테스트
 
 import { describe, expect, it } from 'vitest';
+import stimuli from '../../../../assets/data/qabSpeechStimuli.json';
 import {
   ddkSpecForLevel,
   pickDdkItems,
   pickReadingItems,
   pickRepeatItems,
+  readingRangeForLevel,
 } from './QabSpeechBank.js';
+
+/**
+ * 레벨 밴드에 실제로 드는 읽기 자극.
+ *
+ * `pickReadingItems(999, lv)`로는 못 센다 — 요청이 밴드보다 크면 되돌리기가
+ * 걸려 **전체 풀**이 돌아온다. 밴드를 재려면 자료를 규칙(`readingRangeForLevel`)에
+ * 직접 걸어야 한다.
+ */
+function 읽기밴드(level: number): string[] {
+  const { min, max } = readingRangeForLevel(level);
+  return stimuli.readingSentences.filter((s) => {
+    const n = s.trim().split(/\s+/).length;
+    return n >= min && n <= max;
+  });
+}
 
 describe('QabSpeechBank', () => {
   it('pickRepeatItems: 요청 개수만큼, 단어/문장 카테고리를 가진다', () => {
@@ -194,8 +211,16 @@ describe('QabSpeechBank — 레벨별 난이도', () => {
 
   it('레벨 범위의 문항이 부족하면 범위를 풀어 세션이 비지 않게 한다', () => {
     // 문항이 조용히 사라지는 것보다 난이도가 조금 어긋나는 편이 낫다.
-    // 후보(레벨1 읽기는 3개)보다 많이 요청하면 폴백이 걸려 그만큼 채워진다.
-    expect(pickReadingItems(10, 1).length).toBeGreaterThan(3);
+    //
+    // 요청 수를 **밴드 크기에서 끌어온다.** 예전엔 `pickReadingItems(10, 1)`이
+    // 3보다 큰지 봤는데, 그때 레벨1 밴드가 3개뿐이라 10을 부르면 폴백이 걸렸다.
+    // 밴드를 39개로 늘리자 10은 폴백 없이 채워졌고 — 10 > 3이라 테스트는 그냥
+    // 통과했다. 재려던 것을 더 이상 안 보는데 초록불이 켜지는 상태다.
+    const 밴드 = 읽기밴드(1).length;
+    const 폴백 = pickReadingItems(밴드 + 5, 1);
+    expect(폴백.length).toBe(밴드 + 5);
+    expect(폴백.some((it) => it.bandFallback === true)).toBe(true);
+
     expect(pickDdkItems(4, 1).length).toBe(4);
   });
 });
@@ -243,8 +268,8 @@ describe('pickReadingItems — exclude(겹침 방지)', () => {
   });
 
   it('exclude가 밴드를 통째로 비우면 같은 레벨 안에서 겹침을 허용한다', () => {
-    // 레벨1이 가장 얇은 밴드다(3개). 전부 exclude하면 밴드 안에서는 못 채우고,
-    // 밴드 자체는 그대로 써서 bandFallback 없이 채워야 한다.
+    // 밴드를 통째로 exclude하면 밴드 안에서는 못 채우고, 밴드 자체는 그대로
+    // 써서 bandFallback 없이 채워야 한다. 겹침이 레벨보다 먼저 풀리는 단이다.
     const wholeBand = pickReadingItems(999, 1);
     const exclude = new Set(wholeBand.map((i) => i.itemId));
     const picked = pickReadingItems(2, 1, { exclude });
@@ -254,5 +279,60 @@ describe('pickReadingItems — exclude(겹침 방지)', () => {
 
   it('exclude 없이 부르면 예전과 같다', () => {
     expect(pickReadingItems(2, 2)).toHaveLength(2);
+  });
+});
+
+/**
+ * 밴드 크기 — **겹침 방지가 실제로 작동하려면 얼마나 필요한가.**
+ *
+ * exclude를 배선해도(#125·#127) 밴드가 얇으면 아무 일도 일어나지 않는다.
+ * 최근에 낸 것을 빼고 나면 후보가 요청 수보다 적어져 되돌리기가 걸리고,
+ * 결국 같은 문항이 다시 나온다. 기능은 있는데 콘텐츠가 못 먹여주는 상태다.
+ *
+ * **필요한 수는 조회 창이 정한다.** `useMixedQuizSession`의 `fetchExclude`는
+ * `getRecentItems(subtest)`를 days 없이 부르고, 백엔드 기본값이 30일이다
+ * (`quiz.controller.ts`). 로테이션은 하루 하위검사 3개 × 검사당 3문항이라
+ * 한 검사가 주 9문항 나간다. 그래서
+ *
+ *     30일 ÷ 7일 × 9문항 ≈ 39
+ *
+ * 가 "조회 창 안에서 한 번도 안 겹치는" 최소 밴드 크기다.
+ *
+ * 90일 무겹침(116개)은 그 다음 목표이고, 콘텐츠만으로는 안 된다 — 조회 창도
+ * 90일로 올려야 짝이 맞는다(`days`는 180까지 받는다). 지금은 39가 목표다.
+ *
+ * **밴드는 겹친다**(lv2=2~3어절, lv3=3~4어절 …). 그래서 길이별 개수가 아니라
+ * 레벨별로 실제 후보 수를 세야 한다 — 뽑기 함수에게 직접 물어본다.
+ */
+describe('소리 내어 읽기 — 밴드 크기', () => {
+  /** 조회 창(30일) 안에서 겹치지 않으려면 밴드마다 있어야 하는 문항 수. */
+  const 최소밴드 = 39;
+
+  it('다섯 레벨 모두 39개 이상이다', () => {
+    for (const lv of [1, 2, 3, 4, 5]) {
+      expect(읽기밴드(lv).length, `lv${lv}`).toBeGreaterThanOrEqual(최소밴드);
+    }
+  });
+
+  it('로테이션 한 달치를 겹침 없이 낼 수 있다', () => {
+    // 위 숫자가 무슨 뜻인지를 행동으로 확인한다. 주 9문항 × 30일이면
+    // 39문항 — 그동안 낸 것을 계속 exclude에 쌓아도 되돌리기가 안 걸려야 한다.
+    for (const lv of [1, 2, 3, 4, 5]) {
+      const seen = new Set<string>();
+      for (let session = 0; session < 13; session += 1) {
+        const picked = pickReadingItems(3, lv, { exclude: seen });
+        expect(picked, `lv${lv} 세션${session}`).toHaveLength(3);
+        for (const it of picked) {
+          expect(seen.has(it.itemId), `lv${lv}에서 ${it.text} 재출제`).toBe(
+            false,
+          );
+          expect(it.bandFallback, `lv${lv} 세션${session} 되돌림`).toBe(
+            undefined,
+          );
+          seen.add(it.itemId);
+        }
+      }
+      expect(seen.size, `lv${lv}`).toBe(39);
+    }
   });
 });
