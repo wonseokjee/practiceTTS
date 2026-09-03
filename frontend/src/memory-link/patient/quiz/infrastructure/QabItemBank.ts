@@ -189,19 +189,20 @@ export const WORD_CATEGORY: Record<string, string | null> = {
   ship: 'vehicle', train: 'vehicle', truck: 'vehicle',
   // 식물 4
   cactus: 'plant', flower: 'plant', mushroom: 'plant', tree: 'plant',
-  // 장소 6 — 여섯 다 **어떤 건물인지**가 그림에 보인다. 기둥과 화폐(은행), 시계탑과
-  // 깃발(학교), 지붕과 문(집), 종탑 십자가(교회), 굴뚝(공장), 초록 십자가 간판(약국).
-  // 약국은 Fluent에 아이콘이 없어 같은 화풍으로 직접 그렸다 — 한국 약국의 표지가
-  // 실제로 초록 십자가다.
+  // 장소 7 — 일곱 다 **어떤 건물인지**가 그림에 보인다. 기둥과 화폐(은행), 시계탑과
+  // 깃발(학교), 지붕과 문(집), 종탑 십자가(교회), 굴뚝(공장), 지붕 위 불꽃(소방서),
+  // 방패 속 별(경찰서). 소방서·경찰서는 Fluent에 건물 아이콘이 없어(소방차·경찰관
+  // 이모지뿐) 같은 화풍으로 직접 그렸다.
   //
-  // 여기서 두 낱말이 빠져 있다. 도서관·수영장은 아이콘이 책 더미·헤엄치는 사람이라
+  // 여기서 세 낱말이 빠져 있다. 도서관·수영장은 아이콘이 책 더미·헤엄치는 사람이라
   // 건물로 안 보였고, **실물 사진은 멀쩡해서** 이름대기 전용으로 옮겼다
   // (namingOnlyWords). 병원은 아이콘도 나빴고(십자가 붙은 판) 낱말 풀의 이름대기
-  // 사진도 실물이 아니라 3D 일러스트였다 — 둘 다 부족해 낱말째 약국으로 갈았다.
-  // 우체국·백화점은 건물이기는 한데 어떤 건물인지가 안 보여(유럽식 나팔, 사무실
-  // 빌딩) 넣은 날 물렸다.
-  bank: 'place', church: 'place', factory: 'place',
-  house: 'place', pharmacy: 'place', school: 'place',
+  // 사진도 실물이 아니라 3D 일러스트였다 — 둘 다 부족했다. 대신으로 약국을 넣었다가
+  // (초록 십자가, 직접 그림) 소유자가 소방서·경찰서를 더 원해 그쪽으로 갈았다
+  // (2026-09-02, 같은 날 다섯 번째 손질). 우체국·백화점은 건물이기는 한데 어떤
+  // 건물인지가 안 보여(유럽식 나팔, 사무실 빌딩) 넣은 날 물렸다.
+  bank: 'place', church: 'place', factory: 'place', fire_station: 'place',
+  house: 'place', police_station: 'place', school: 'place',
   // 신체 6
   ear: 'body', eye: 'body', foot: 'body', hand: 'body', mouth: 'body',
   nose: 'body',

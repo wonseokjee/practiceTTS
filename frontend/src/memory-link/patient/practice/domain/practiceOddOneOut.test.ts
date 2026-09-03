@@ -121,26 +121,32 @@ describe('buildOddOneOutItems', () => {
    * 무리로 쓸 수 있는 범주는 object를 뺀 15개다(2026-08-22, 낱말 90개).
    * 늘리는 방법은 `docs/ASSETS-NEEDED.md`에 있다.
    */
-  it('그림이(또는 이름대기 사진이) 낱말을 안 보여 주던 장소 넷은 어디에도 안 나온다', () => {
+  it('그림이(또는 이름대기 사진이) 낱말을 안 보여 주던 장소 다섯은 어디에도 안 나온다', () => {
     // 도서관은 책 더미, 수영장은 헤엄치는 사람 — 아이콘이 건물이 아니었다. 실물
     // 사진은 멀쩡해서 이름대기 전용(`namingOnlyWords.json`)으로 옮겼다.
     //
     // 병원은 두 겹으로 부족했다. 아이콘은 십자가 붙은 판이라 건물로 안 보였고,
     // **낱말 풀의 이름대기 사진도 실물이 아니라 3D 일러스트**였다(rawpixel
     // "cute illustration"). 이름대기 전용으로 옮겨도 안 풀리는 문제라, 옮기는
-    // 대신 **낱말째** 약국으로 갈았다(2026-09-02) — 진짜 사진(Pixabay, 건물 벽에
-    // 걸린 초록 십자가 간판)을 새로 구하고, 아이콘도 같은 화풍으로 새로 그렸다.
+    // 대신 **낱말째** 갈았다.
     //
     // 우체국·백화점은 같은 날 물렸다 — 건물이기는 한데 *어떤* 건물인지가 안
-    // 보였다(유럽식 나팔 표지, 사무실 빌딩). 교회는 종탑 십자가, 공장은 굴뚝,
-    // 약국은 초록 십자가로 갈린다.
+    // 보였다(유럽식 나팔 표지, 사무실 빌딩).
+    //
+    // 병원 자리는 처음엔 약국(초록 십자가, 직접 그림)으로 갔다 — 그림 자체는
+    // 멀쩡했지만 소유자가 소방서·경찰서를 더 원해 그쪽으로 다시 갈았다
+    // (2026-09-02, 같은 날 다섯 번째 손질). 교회는 종탑 십자가, 공장은 굴뚝,
+    // 소방서는 지붕 위 불꽃, 경찰서는 방패 속 별로 갈린다. 약국의 SVG·아이콘은
+    // 어디서도 안 써서 파일째 지웠다.
     const 안보이던것 = ['library', 'pool', 'hospital', 'post_office', 'department_store'];
+    const 물러난것 = [...안보이던것, 'pharmacy'];
     const bank = masterWords();
     const slugs = bank.map((w) => w.slug);
-    for (const s of 안보이던것) expect(slugs, `${s}이 아직 풀에 있다`).not.toContain(s);
+    for (const s of 물러난것) expect(slugs, `${s}이 아직 풀에 있다`).not.toContain(s);
     expect(slugs).toContain('church');
     expect(slugs).toContain('factory');
-    expect(slugs).toContain('pharmacy');
+    expect(slugs).toContain('fire_station');
+    expect(slugs).toContain('police_station');
 
     for (const item of buildOddOneOutItems(bank, 99)) {
       for (const c of item.choices) {
