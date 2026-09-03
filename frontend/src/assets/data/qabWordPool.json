@@ -50,8 +50,8 @@
     },
     {
      "choiceId": "qw_002_c3",
-     "label": "병원",
-     "imageUrl": "/assets/images/wordComp/hospital.svg",
+     "label": "우산",
+     "imageUrl": "/assets/images/wordComp/umbrella.svg",
      "isCorrect": false
     },
     {
@@ -224,8 +224,8 @@
     },
     {
      "choiceId": "qw_008_c2",
-     "label": "병원",
-     "imageUrl": "/assets/images/wordComp/hospital.svg",
+     "label": "시계",
+     "imageUrl": "/assets/images/wordComp/clock.svg",
      "isCorrect": false
     },
     {
@@ -344,8 +344,8 @@
     },
     {
      "choiceId": "qw_013_c2",
-     "label": "백화점",
-     "imageUrl": "/assets/images/wordComp/department_store.svg",
+     "label": "공장",
+     "imageUrl": "/assets/images/wordComp/factory.svg",
      "isCorrect": false
     },
     {
@@ -356,8 +356,8 @@
     },
     {
      "choiceId": "qw_013_c4",
-     "label": "우체국",
-     "imageUrl": "/assets/images/wordComp/post_office.svg",
+     "label": "교회",
+     "imageUrl": "/assets/images/wordComp/church.svg",
      "isCorrect": false
     }
    ]
@@ -596,8 +596,8 @@
     },
     {
      "choiceId": "qw_021_c4",
-     "label": "백화점",
-     "imageUrl": "/assets/images/wordComp/department_store.svg",
+     "label": "공장",
+     "imageUrl": "/assets/images/wordComp/factory.svg",
      "isCorrect": false
     }
    ]
@@ -716,8 +716,8 @@
     },
     {
      "choiceId": "qw_025_c4",
-     "label": "병원",
-     "imageUrl": "/assets/images/wordComp/hospital.svg",
+     "label": "열쇠",
+     "imageUrl": "/assets/images/wordComp/key.svg",
      "isCorrect": false
     }
    ]
@@ -843,36 +843,6 @@
    ]
   },
   {
-   "itemId": "qw_030",
-   "targetWord": "병원",
-   "choices": [
-    {
-     "choiceId": "qw_030_c1",
-     "label": "병원",
-     "imageUrl": "/assets/images/wordComp/hospital.svg",
-     "isCorrect": true
-    },
-    {
-     "choiceId": "qw_030_c2",
-     "label": "비행기",
-     "imageUrl": "/assets/images/wordComp/airplane.svg",
-     "isCorrect": false
-    },
-    {
-     "choiceId": "qw_030_c3",
-     "label": "사과",
-     "imageUrl": "/assets/images/wordComp/apple.svg",
-     "isCorrect": false
-    },
-    {
-     "choiceId": "qw_030_c4",
-     "label": "학생",
-     "imageUrl": "/assets/images/wordComp/student.svg",
-     "isCorrect": false
-    }
-   ]
-  },
-  {
    "itemId": "qw_031",
    "targetWord": "주스",
    "choices": [
@@ -890,8 +860,8 @@
     },
     {
      "choiceId": "qw_031_c3",
-     "label": "우체국",
-     "imageUrl": "/assets/images/wordComp/post_office.svg",
+     "label": "교회",
+     "imageUrl": "/assets/images/wordComp/church.svg",
      "isCorrect": false
     },
     {
@@ -944,8 +914,8 @@
     },
     {
      "choiceId": "qw_033_c2",
-     "label": "우체국",
-     "imageUrl": "/assets/images/wordComp/post_office.svg",
+     "label": "교회",
+     "imageUrl": "/assets/images/wordComp/church.svg",
      "isCorrect": false
     },
     {
@@ -1124,8 +1094,8 @@
     },
     {
      "choiceId": "qw_041_c2",
-     "label": "우체국",
-     "imageUrl": "/assets/images/wordComp/post_office.svg",
+     "label": "교회",
+     "imageUrl": "/assets/images/wordComp/church.svg",
      "isCorrect": false
     },
     {
@@ -1250,8 +1220,8 @@
     },
     {
      "choiceId": "qw_049_c3",
-     "label": "백화점",
-     "imageUrl": "/assets/images/wordComp/department_store.svg",
+     "label": "공장",
+     "imageUrl": "/assets/images/wordComp/factory.svg",
      "isCorrect": false
     },
     {
@@ -1454,8 +1424,8 @@
     },
     {
      "choiceId": "qw_060_c2",
-     "label": "병원",
-     "imageUrl": "/assets/images/wordComp/hospital.svg",
+     "label": "바구니",
+     "imageUrl": "/assets/images/wordComp/basket.svg",
      "isCorrect": false
     },
     {
@@ -2594,8 +2564,8 @@
     },
     {
      "choiceId": "qw_100_c2",
-     "label": "백화점",
-     "imageUrl": "/assets/images/wordComp/department_store.svg",
+     "label": "공장",
+     "imageUrl": "/assets/images/wordComp/factory.svg",
      "isCorrect": false
     },
     {
@@ -2673,29 +2643,29 @@
    ]
   },
   {
-   "itemId": "qw_103",
-   "targetWord": "우체국",
+   "itemId": "qw_105",
+   "targetWord": "교회",
    "choices": [
     {
-     "choiceId": "qw_103_c1",
-     "label": "우체국",
-     "imageUrl": "/assets/images/wordComp/post_office.svg",
+     "choiceId": "qw_105_c1",
+     "label": "교회",
+     "imageUrl": "/assets/images/wordComp/church.svg",
      "isCorrect": true
     },
     {
-     "choiceId": "qw_103_c2",
+     "choiceId": "qw_105_c2",
      "label": "사자",
      "imageUrl": "/assets/images/wordComp/lion.svg",
      "isCorrect": false
     },
     {
-     "choiceId": "qw_103_c3",
+     "choiceId": "qw_105_c3",
      "label": "딸기",
      "imageUrl": "/assets/images/wordComp/strawberry.svg",
      "isCorrect": false
     },
     {
-     "choiceId": "qw_103_c4",
+     "choiceId": "qw_105_c4",
      "label": "의자",
      "imageUrl": "/assets/images/wordComp/chair.svg",
      "isCorrect": false
@@ -2703,31 +2673,61 @@
    ]
   },
   {
-   "itemId": "qw_104",
-   "targetWord": "백화점",
+   "itemId": "qw_106",
+   "targetWord": "공장",
    "choices": [
     {
-     "choiceId": "qw_104_c1",
-     "label": "백화점",
-     "imageUrl": "/assets/images/wordComp/department_store.svg",
+     "choiceId": "qw_106_c1",
+     "label": "공장",
+     "imageUrl": "/assets/images/wordComp/factory.svg",
      "isCorrect": true
     },
     {
-     "choiceId": "qw_104_c2",
+     "choiceId": "qw_106_c2",
      "label": "토끼",
      "imageUrl": "/assets/images/wordComp/rabbit.svg",
      "isCorrect": false
     },
     {
-     "choiceId": "qw_104_c3",
+     "choiceId": "qw_106_c3",
      "label": "우유",
      "imageUrl": "/assets/images/wordComp/milk.svg",
      "isCorrect": false
     },
     {
-     "choiceId": "qw_104_c4",
+     "choiceId": "qw_106_c4",
      "label": "망치",
      "imageUrl": "/assets/images/wordComp/hammer.svg",
+     "isCorrect": false
+    }
+   ]
+  },
+  {
+   "itemId": "qw_107",
+   "targetWord": "성",
+   "choices": [
+    {
+     "choiceId": "qw_107_c1",
+     "label": "성",
+     "imageUrl": "/assets/images/wordComp/castle.svg",
+     "isCorrect": true
+    },
+    {
+     "choiceId": "qw_107_c2",
+     "label": "사자",
+     "imageUrl": "/assets/images/wordComp/lion.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_107_c3",
+     "label": "딸기",
+     "imageUrl": "/assets/images/wordComp/strawberry.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_107_c4",
+     "label": "의자",
+     "imageUrl": "/assets/images/wordComp/chair.svg",
      "isCorrect": false
     }
    ]

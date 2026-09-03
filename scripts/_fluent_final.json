@@ -28,7 +28,6 @@
   "guitar": "기타",
   "hammer": "망치",
   "hat": "모자",
-  "hospital": "병원",
   "juice": "주스",
   "knife": "칼",
   "ladder": "사다리",
@@ -89,8 +88,8 @@
   "school": "학교",
   "bank": "은행",
   "sweet_potato": "고구마",
-  "post_office": "우체국",
-  "department_store": "백화점"
+  "church": "교회",
+  "factory": "공장"
  },
  "namemap": {
   "airplane": "airplane",
@@ -121,7 +120,6 @@
   "guitar": "guitar",
   "hammer": "hammer",
   "hat": "billed-cap",
-  "hospital": "hospital",
   "juice": "cup-with-straw",
   "knife": "kitchen-knife",
   "ladder": "ladder",
@@ -182,8 +180,8 @@
   "school": "school",
   "bank": "bank",
   "sweet_potato": "roasted-sweet-potato",
-  "post_office": "post-office",
-  "department_store": "department-store"
+  "church": "church",
+  "factory": "factory"
  },
  "new_categories": {
   "candle": "object",
@@ -216,8 +214,8 @@
   "firefighter": "person",
   "school": "place",
   "bank": "place",
-  "post_office": "place",
-  "department_store": "place"
+  "church": "place",
+  "factory": "place"
  },
  "removed": [
   "comb",
@@ -225,7 +223,9 @@
   "ladle",
   "towel",
   "sand",
-  "refrigerator"
+  "refrigerator",
+  "post_office",
+  "department_store"
  ],
  "new": {
   "candle": "양초",
@@ -258,7 +258,7 @@
   "firefighter": "소방관",
   "school": "학교",
   "bank": "은행",
-  "post_office": "우체국",
-  "department_store": "백화점"
+  "church": "교회",
+  "factory": "공장"
  }
 }

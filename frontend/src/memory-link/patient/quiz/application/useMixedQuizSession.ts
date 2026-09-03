@@ -61,6 +61,7 @@ import {
   pickReadingItems,
   pickDdkItems,
 } from '../infrastructure/QabSpeechBank.js';
+import type { PickSpeechOptions } from '../infrastructure/QabSpeechBank.js';
 import { toQuizErrorInfo } from './quizError.js';
 
 export type MixedPhase =
@@ -158,9 +159,17 @@ export interface UseMixedQuizDeps {
     options?: PickSpellOptions,
   ) => QabSpellItem[];
   /** QAB 따라말하기 문항 추출기 (테스트 주입용) */
-  pickRepeatItems?: (count: number, level?: number) => QabRepeatItem[];
+  pickRepeatItems?: (
+    count: number,
+    level?: number,
+    options?: PickSpeechOptions,
+  ) => QabRepeatItem[];
   /** QAB 소리 내어 읽기 문항 추출기 (테스트 주입용) */
-  pickReadingItems?: (count: number, level?: number) => QabReadingItem[];
+  pickReadingItems?: (
+    count: number,
+    level?: number,
+    options?: PickSpeechOptions,
+  ) => QabReadingItem[];
   /** QAB 말운동(DDK) 문항 추출기 (테스트 주입용) */
   pickDdkItems?: (count: number, level?: number) => QabDdkItem[];
   generateSessionToken?: () => string;
@@ -349,19 +358,22 @@ export function useMixedQuizSession(
       const dailyItems: PlayableItem[] = dailySorted
         .slice(0, dailyCount)
         .map((q) => ({ kind: 'daily', id: q.id, question: q }));
-      // `GET /quiz/recent-items`를 최대 넷(word·sentence·naming·spell) 병렬
-      // 조회한다. 로테이션이 하루 3검사만 내므로 실제로는 최대 셋만 count>0.
+      // `GET /quiz/recent-items`를 최대 여섯(word·sentence·naming·repeat·
+      // reading·spell) 병렬 조회한다. 로테이션이 하루 3검사만 내므로 실제로는
+      // 최대 셋만 count>0.
       //
-      // **넷의 쓰임이 갈린다.** spell은 그 결과를 재출제 **우선순위**로 쓴다 —
+      // **여섯의 쓰임이 갈린다.** spell은 그 결과를 재출제 **우선순위**로 쓴다 —
       // 실어증 치료는 훈련한 항목이 멀리 전이되지 않으므로(limited transfer),
       // 같은 목표가 여러 세션에 반복돼야 의미가 있다. 백엔드가 이미
       // (틀린 것 먼저, 마지막 출제가 오래된 것 먼저) 순으로 주므로 그 순서를
       // 그대로 넘기면 간격 반복이 된다.
       //
-      // word·sentence·naming은 **정답률로 회복을 재는 측정용**이다. 같은
-      // 문항이 자주 나오면 정답률이 이해력이 아니라 그 문항의 암기도를 재게
-      // 된다 — 그래서 여기는 결과를 **제외 집합**으로 쓴다. spell과 정확히
-      // 반대 방향이다(TODOS "QAB 세션" 절 eng review, 2026-09-02).
+      // 나머지 다섯(word·sentence·naming·repeat·reading)은 **정답률로 회복을
+      // 재는 측정용**이다. 같은 문항이 자주 나오면 정답률이 이해력이 아니라
+      // 그 문항의 암기도를 재게 된다 — 그래서 여기는 결과를 **제외 집합**으로
+      // 쓴다. spell과 정확히 반대 방향이다. repeat·reading은 원래 재출제 장치가
+      // 없던 순수 무작위 검사였고 정답률이 같은 레벨·추세로 나가므로 이 다섯에
+      // 합류시켰다(TODOS "QAB 세션" 절, 2026-09-02).
       //
       // 조회 실패는 무작위로 떨어질 뿐이라 세션은 그대로 진행한다.
       const fetchExclude = async (
@@ -374,22 +386,34 @@ export function useMixedQuizSession(
           return undefined;
         }
       };
-      const [wordExclude, sentExclude, namingExclude, spellPriority] =
-        await Promise.all([
-          wordCount > 0 ? fetchExclude('word') : Promise.resolve(undefined),
-          sentenceCount > 0
-            ? fetchExclude('sentence')
-            : Promise.resolve(undefined),
-          namingCount > 0
-            ? fetchExclude('naming')
-            : Promise.resolve(undefined),
-          spellCount > 0
-            ? apiRef.current
-                .getRecentItems('spell')
-                .then((recent) => recent.map((r) => asItemRef(r.itemRef)))
-                .catch((): SpellItemRef[] => [])
-            : Promise.resolve<SpellItemRef[]>([]),
-        ]);
+      const [
+        wordExclude,
+        sentExclude,
+        namingExclude,
+        repeatExclude,
+        readingExclude,
+        spellPriority,
+      ] = await Promise.all([
+        wordCount > 0 ? fetchExclude('word') : Promise.resolve(undefined),
+        sentenceCount > 0
+          ? fetchExclude('sentence')
+          : Promise.resolve(undefined),
+        namingCount > 0
+          ? fetchExclude('naming')
+          : Promise.resolve(undefined),
+        repeatCount > 0
+          ? fetchExclude('repeat')
+          : Promise.resolve(undefined),
+        readingCount > 0
+          ? fetchExclude('reading')
+          : Promise.resolve(undefined),
+        spellCount > 0
+          ? apiRef.current
+              .getRecentItems('spell')
+              .then((recent) => recent.map((r) => asItemRef(r.itemRef)))
+              .catch((): SpellItemRef[] => [])
+          : Promise.resolve<SpellItemRef[]>([]),
+      ]);
       // 낱말과 문장은 화면에선 같은 종류('듣고 그림 고르기')지만 하위검사로는
       // 별개다. 로테이션이 둘 중 무엇을 낼지 정하므로 각 풀에서 따로 뽑는다.
       const qabItems: PlayableItem[] = [
@@ -421,10 +445,10 @@ export function useMixedQuizSession(
       // 같은 과제를 계속 내면서 숫자만 오르내리는 구조였다. 재활 앱에서 그건
       // 단순한 UI 오류가 아니라 보호자의 임상 판단을 오염시키는 거짓 신호다.
       const repeatItems: PlayableItem[] = pickRepeatRef
-        .current(repeatCount, levels?.repeat)
+        .current(repeatCount, levels?.repeat, { exclude: repeatExclude })
         .map((it) => ({ kind: 'repeat', id: it.itemId, item: it }));
       const readingItems: PlayableItem[] = pickReadingRef
-        .current(readingCount, levels?.reading)
+        .current(readingCount, levels?.reading, { exclude: readingExclude })
         .map((it) => ({ kind: 'reading', id: it.itemId, item: it }));
       const ddkItems: PlayableItem[] = pickDdkRef
         .current(ddkCount, levels?.ddk)
@@ -513,9 +537,10 @@ export function useMixedQuizSession(
       const draw = (n: number): PlayableItem[] => {
         switch (subtest) {
           // 레벨이 바뀌어 다시 뽑는 소수 문항이라, 세션 시작 때 조회한
-          // 겹침 방지 exclude는 여기까지 안 넘긴다 — `used`가 이미 이번
-          // 세션 안의 중복은 막는다. spell의 재출제(priority)도 같은
-          // 이유로 이 redraw까지는 안 간다(spokenWords exclude만 간다).
+          // 겹침 방지 exclude는 여기까지 안 넘긴다(word·sentence·repeat·
+          // reading 전부) — `used`가 이미 이번 세션 안의 중복은 막는다.
+          // spell의 재출제(priority)도 같은 이유로 이 redraw까지는 안 간다
+          // (spokenWords exclude만 간다).
           case 'word':
             return pickWordRef.current(n, level).map((it) => ({
               kind: 'qab' as const, id: it.itemId, item: it,
