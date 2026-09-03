@@ -43,13 +43,25 @@ const STIMULI = stimuliData as RawStimuli;
  * 낫다. 문제는 그게 **조용했다**는 것이다. 그렇게 나온 문항의 `presentedLevel`은
  * 실제 난이도를 뜻하지 않는데, 집계는 그 사실을 모른 채 레벨별로 센다.
  * `fellBack`을 함께 돌려줘 호출부가 문항에 표시하게 한다(D3).
+ *
+ * **exclude는 겹침 방지(다양성)다** — QabItemBank의 문장이해와 같은 2단
+ * 되돌리기를 쓴다. 밴드 안에서 exclude를 지키며 채울 수 있으면 그대로,
+ * 안 되면 먼저 exclude만 풀어 **같은 레벨 안에서** 채우고(`fellBack` 안 붙음),
+ * 그래도 모자라면 레벨째 되돌린다. `exclude`·`getId`를 안 넘기면(ddk) 예전과
+ * 완전히 같다.
  */
 function withinOrFallback<T>(
   pool: readonly T[],
   inRange: (item: T) => boolean,
   want: number,
+  options?: { exclude?: ReadonlySet<string>; getId?: (item: T) => string },
 ): { items: T[]; fellBack: boolean } {
   const eligible = pool.filter(inRange);
+  const { exclude, getId } = options ?? {};
+  if (exclude && getId) {
+    const fresh = eligible.filter((it) => !exclude.has(getId(it)));
+    if (fresh.length >= want) return { items: fresh, fellBack: false };
+  }
   return eligible.length >= want
     ? { items: [...eligible], fellBack: false }
     : { items: [...pool], fellBack: true };
@@ -69,12 +81,25 @@ const DDK_INSTRUCTION = '아래 소리를 최대한 빠르고 또렷하게 반�
 
 
 /**
+ * `pickRepeatItems`·`pickReadingItems`가 같이 쓰는 옵션.
+ *
+ * `QabItemBank.PickQabOptions`와 같은 개념(세션을 넘는 최근 문항 제외, 다양성이
+ * 목적)이다 — spell의 재출제(priority)와는 반대다. 여기 둘은 원래 재출제
+ * 장치가 없던 순수 무작위 검사였고, 정답률이 word·sentence·naming과 같은
+ * 레벨·추세로 나가므로 같은 처방을 쓴다(TODOS "QAB 세션" 절, 2026-09-02).
+ */
+export interface PickSpeechOptions {
+  exclude?: ReadonlySet<string>;
+}
+
+/**
  * 따라말하기 문항 추출. 레벨이 종류(단어/문장)와 길이를 함께 정한다.
  * level 미지정 시 콜드스타트(2) — 2~3음절 단어.
  */
 export function pickRepeatItems(
   count: number,
   level?: number,
+  options?: PickSpeechOptions,
 ): QabRepeatItem[] {
   const want = Math.max(0, count);
   if (want === 0) return [];
@@ -108,7 +133,10 @@ export function pickRepeatItems(
     return n >= spec.min && n <= spec.max;
   };
 
-  const picked = withinOrFallback(pool, inRange, want);
+  const picked = withinOrFallback(pool, inRange, want, {
+    exclude: options?.exclude,
+    getId: (it) => it.itemId,
+  });
   return markFallback(shuffle(picked.items).slice(0, want), picked.fellBack);
 }
 
@@ -116,6 +144,7 @@ export function pickRepeatItems(
 export function pickReadingItems(
   count: number,
   level?: number,
+  options?: PickSpeechOptions,
 ): QabReadingItem[] {
   const want = Math.max(0, count);
   if (want === 0) return [];
@@ -132,7 +161,10 @@ export function pickReadingItems(
     return n >= min && n <= max;
   };
 
-  const picked = withinOrFallback(items, inRange, want);
+  const picked = withinOrFallback(items, inRange, want, {
+    exclude: options?.exclude,
+    getId: (it) => it.itemId,
+  });
   return markFallback(shuffle(picked.items).slice(0, want), picked.fellBack);
 }
 

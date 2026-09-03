@@ -199,3 +199,60 @@ describe('QabSpeechBank — 레벨별 난이도', () => {
     expect(pickDdkItems(4, 1).length).toBe(4);
   });
 });
+
+/**
+ * `PickSpeechOptions.exclude` — 겹침 방지(다양성).
+ *
+ * word·sentence·naming과 같은 이유·같은 모양이다. repeat·reading은 spell과
+ * 달리 원래 재출제 장치가 없던 순수 무작위 검사였고, 정답률이 같은 레벨·추세로
+ * 나가므로 다양성 처방을 쓴다(TODOS "QAB 세션" 절, 2026-09-02).
+ */
+describe('pickRepeatItems — exclude(겹침 방지)', () => {
+  it('exclude에 있는 itemId는 안 나온다', () => {
+    const first = pickRepeatItems(5, 3);
+    const exclude = new Set(first.map((i) => i.itemId));
+    const second = pickRepeatItems(5, 3, { exclude });
+    for (const it of second) {
+      expect(exclude.has(it.itemId), it.itemId).toBe(false);
+    }
+  });
+
+  it('exclude가 밴드를 통째로 비우면 같은 레벨 안에서 겹침을 허용한다', () => {
+    // 레벨5가 가장 얇은 밴드다(문장뿐). 전부 exclude해도 bandFallback은
+    // 안 붙어야 한다 — 겹침이 레벨보다 먼저 풀리는 단이다.
+    const wholeBand = pickRepeatItems(999, 5);
+    const exclude = new Set(wholeBand.map((i) => i.itemId));
+    const picked = pickRepeatItems(3, 5, { exclude });
+    expect(picked.length).toBeGreaterThan(0);
+    expect(picked.every((i) => i.bandFallback === undefined)).toBe(true);
+  });
+
+  it('exclude 없이 부르면 예전과 같다', () => {
+    expect(pickRepeatItems(3, 2)).toHaveLength(3);
+  });
+});
+
+describe('pickReadingItems — exclude(겹침 방지)', () => {
+  it('exclude에 있는 itemId는 안 나온다', () => {
+    const first = pickReadingItems(3, 3);
+    const exclude = new Set(first.map((i) => i.itemId));
+    const second = pickReadingItems(3, 3, { exclude });
+    for (const it of second) {
+      expect(exclude.has(it.itemId), it.itemId).toBe(false);
+    }
+  });
+
+  it('exclude가 밴드를 통째로 비우면 같은 레벨 안에서 겹침을 허용한다', () => {
+    // 레벨1이 가장 얇은 밴드다(3개). 전부 exclude하면 밴드 안에서는 못 채우고,
+    // 밴드 자체는 그대로 써서 bandFallback 없이 채워야 한다.
+    const wholeBand = pickReadingItems(999, 1);
+    const exclude = new Set(wholeBand.map((i) => i.itemId));
+    const picked = pickReadingItems(2, 1, { exclude });
+    expect(picked.length).toBeGreaterThan(0);
+    expect(picked.every((i) => i.bandFallback === undefined)).toBe(true);
+  });
+
+  it('exclude 없이 부르면 예전과 같다', () => {
+    expect(pickReadingItems(2, 2)).toHaveLength(2);
+  });
+});

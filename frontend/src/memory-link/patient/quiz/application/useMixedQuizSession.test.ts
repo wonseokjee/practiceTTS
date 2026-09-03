@@ -1651,6 +1651,110 @@ describe('겹침 방지 — word·sentence·naming (spell의 재출제와 반대
   });
 });
 
+describe('겹침 방지 — repeat·reading (2026-09-02 합류, 원래 재출제 장치가 없던 검사)', () => {
+  it('repeat: 최근 이력을 exclude 집합으로 넘긴다', async () => {
+    const api = makeApi();
+    vi.spyOn(api, 'getRecentItems').mockResolvedValue([
+      { itemRef: 'repeat_w3', lastCorrect: true, lastAt: '2026-08-01T00:00:00Z' },
+    ]);
+    const spy = vi.fn().mockReturnValue([]);
+
+    renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: api,
+        pickWordItems: () => [],
+        generateSessionToken: () => 'tok-repeat-exclude',
+        dailyCount: 0,
+        wordCount: 0,
+        ...ISOLATED,
+        pickRepeatItems: spy,
+        repeatCount: 2,
+      }),
+    );
+
+    await waitFor(() => expect(spy).toHaveBeenCalled());
+    expect(api.getRecentItems).toHaveBeenCalledWith('repeat');
+    const exclude = spy.mock.calls[0][2]?.exclude as Set<string>;
+    expect([...exclude]).toEqual(['repeat_w3']);
+  });
+
+  it('reading: 최근 이력을 exclude 집합으로 넘긴다', async () => {
+    const api = makeApi();
+    vi.spyOn(api, 'getRecentItems').mockResolvedValue([
+      { itemRef: 'reading_2', lastCorrect: false, lastAt: '2026-08-01T00:00:00Z' },
+    ]);
+    const spy = vi.fn().mockReturnValue([]);
+
+    renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: api,
+        pickWordItems: () => [],
+        generateSessionToken: () => 'tok-reading-exclude',
+        dailyCount: 0,
+        wordCount: 0,
+        ...ISOLATED,
+        pickReadingItems: spy,
+        readingCount: 1,
+      }),
+    );
+
+    await waitFor(() => expect(spy).toHaveBeenCalled());
+    expect(api.getRecentItems).toHaveBeenCalledWith('reading');
+    const exclude = spy.mock.calls[0][2]?.exclude as Set<string>;
+    expect([...exclude]).toEqual(['reading_2']);
+  });
+
+  it('개수가 0이면 이력을 조회하지 않는다', async () => {
+    const api = makeApi();
+
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: api,
+        pickWordItems: () => [],
+        generateSessionToken: () => 'tok-no-fetch-speech',
+        dailyCount: 0,
+        wordCount: 0,
+        ...ISOLATED,
+      }),
+    );
+
+    // word~ddk가 다 0이라 뽑을 게 없다 — phase가 loading을 벗어나면(빈 세션도
+    // answering으로 끝난다) fetchAndApply가 다 끝났다는 뜻이라 그 시점에 확인한다.
+    await waitFor(() => expect(result.current[0].phase).not.toBe('loading'));
+    expect(api.getRecentItems).not.toHaveBeenCalledWith('repeat');
+    expect(api.getRecentItems).not.toHaveBeenCalledWith('reading');
+  });
+
+  it('이력 조회가 실패해도 세션은 진행된다', async () => {
+    const api = makeApi();
+    vi.spyOn(api, 'getRecentItems').mockRejectedValue(new Error('network'));
+    const spy = vi.fn().mockReturnValue([
+      {
+        itemId: 'repeat_w1',
+        category: 'word' as const,
+        text: '사과',
+        instruction: '들려주는 말을 잘 듣고 따라 말해주세요',
+      },
+    ]);
+
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: api,
+        pickWordItems: () => [],
+        generateSessionToken: () => 'tok-repeat-fail',
+        dailyCount: 0,
+        wordCount: 0,
+        ...ISOLATED,
+        pickRepeatItems: spy,
+        repeatCount: 1,
+      }),
+    );
+
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+    expect(spy.mock.calls[0][2]?.exclude).toBeUndefined();
+  });
+});
+
 describe('세션 내 적응 — 같은 검사 안에서 눈높이가 움직인다', () => {
   /** 요청받은 레벨을 이름에 박아 돌려주는 말운동 추출기. */
   function 기록추출기() {
