@@ -25,7 +25,7 @@ function ChoiceImage({ src }: { src: string }) {
     <>
       {status !== 'loaded' && (
         <div
-          className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-[#F2F1ED] text-[#A8AFA9]"
+          className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-surface-dim text-muted-faint"
           aria-hidden="true"
           style={{ zIndex: 0 }}
         >
@@ -94,7 +94,7 @@ export function ImageChoiceQuizItem({
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-base text-[#5C6661]">{item.instruction}</p>
+      <p className="text-base text-muted-sage">{item.instruction}</p>
 
       {/* 소리가 안 났으면 알린다 — 듣기가 이 문항의 전부다. */}
       {ttsError !== null && <TtsFailureNotice />}
@@ -103,7 +103,7 @@ export function ImageChoiceQuizItem({
         type="button"
         onClick={() => void speak(item.promptText)}
         disabled={isPlaying}
-        className="flex min-h-[56px] items-center justify-center gap-2 rounded-md bg-white px-5 py-3 text-lg font-medium text-[#2D6A56] ring-1 ring-inset ring-[#2D6A56] transition-colors duration-[180ms] ease-out hover:bg-[#EBF4F0] disabled:cursor-not-allowed disabled:text-[#A8AFA9] disabled:ring-[#C5C8C5]"
+        className="flex min-h-[56px] items-center justify-center gap-2 rounded-md bg-white px-5 py-3 text-lg font-medium text-primary ring-1 ring-inset ring-primary transition-colors duration-[180ms] ease-out hover:bg-primary-light disabled:cursor-not-allowed disabled:text-muted-faint disabled:ring-disabled-surface"
         aria-label={`${listenLabel} 다시 듣기`}
       >
         <span aria-hidden="true" className="text-2xl">🔊</span>
@@ -119,25 +119,25 @@ export function ImageChoiceQuizItem({
           const isChosen = selectedChoiceId === choice.choiceId;
 
           // 피드백 단계 강조: 정답=초록, 내가 고른 오답=빨강.
-          let ring = 'border-[#E5E5E0]';
+          let ring = 'border-line-soft';
           let icon: string | null = null;
           if (showFeedback && answerOnly) {
             // 연습: 정답만 알려준다. ✗도 빨강도 없다.
             ring = choice.isCorrect
-              ? 'border-[#2D6A56]'
-              : 'border-[#E5E5E0] opacity-50';
+              ? 'border-primary'
+              : 'border-line-soft opacity-50';
           } else if (showFeedback) {
             if (choice.isCorrect) {
-              ring = 'border-[#2D6A56]';
+              ring = 'border-primary';
               icon = '✓';
             } else if (isChosen) {
-              ring = 'border-[#B85C36]';
+              ring = 'border-accent-strong';
               icon = '✗';
             } else {
-              ring = 'border-[#E5E5E0] opacity-60';
+              ring = 'border-line-soft opacity-60';
             }
           } else if (isChosen) {
-            ring = 'border-[#2D6A56]';
+            ring = 'border-primary';
           }
 
           return (
@@ -150,7 +150,7 @@ export function ImageChoiceQuizItem({
               }}
               aria-label={`${choice.label} 선택`}
               className={`relative aspect-square w-full overflow-hidden rounded-2xl border-4 transition-all duration-150 disabled:cursor-default ${ring} ${
-                isSelectable ? 'hover:border-[#A8AFA9] active:scale-[0.97]' : ''
+                isSelectable ? 'hover:border-muted-faint active:scale-[0.97]' : ''
               }`}
             >
               {/* 그림 — 로딩/실패 시 라벨(정답) 노출 없이 중립 표시 */}

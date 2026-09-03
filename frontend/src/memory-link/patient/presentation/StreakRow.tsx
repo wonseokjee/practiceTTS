@@ -18,23 +18,23 @@ interface DotStyle {
 function dotStyle(status: DayStatus): DotStyle {
   switch (status) {
     case 'done':
-      return { circle: 'bg-[#2D6A56] text-white', content: '✓' };
+      return { circle: 'bg-primary text-white', content: '✓' };
     case 'today-done':
       // 오늘이면서 완료 — 세이지 채움 + 오늘 링을 함께.
       return {
-        circle: 'bg-[#2D6A56] text-white ring-2 ring-[#2D6A56] ring-offset-2 ring-offset-[#FFFFFF]',
+        circle: 'bg-primary text-white ring-2 ring-primary ring-offset-2 ring-offset-[#FFFFFF]',
         content: '✓',
       };
     case 'today':
       return {
-        circle: 'bg-[#EBF4F0] border-2 border-[#2D6A56] text-[#2D6A56]',
+        circle: 'bg-primary-light border-2 border-primary text-primary',
         content: '오늘',
       };
     case 'missed':
       // 중립: 테두리만. 빨강·✗ 없음.
-      return { circle: 'border-2 border-[#E8E4DC]', content: '' };
+      return { circle: 'border-2 border-line', content: '' };
     case 'future':
-      return { circle: 'border-2 border-dashed border-[#E8E4DC]', content: '' };
+      return { circle: 'border-2 border-dashed border-line', content: '' };
   }
 }
 
@@ -46,10 +46,10 @@ interface StreakRowProps {
 export function StreakRow({ days }: StreakRowProps) {
   return (
     <section
-      className="rounded-3xl border border-[#E8E4DC] bg-white p-6"
+      className="rounded-3xl border border-line bg-white p-6"
       aria-label="이번 주 연습"
     >
-      <p className="mb-4 text-sm font-semibold text-[#6B6560]">이번 주</p>
+      <p className="mb-4 text-sm font-semibold text-muted">이번 주</p>
       <ol className="flex items-start justify-between" role="list">
         {days.map((day, i) => {
           const s = dotStyle(day.status);
@@ -67,7 +67,7 @@ export function StreakRow({ days }: StreakRowProps) {
                 {s.content}
               </span>
               <span
-                className={`text-xs ${isToday ? 'font-bold text-[#2D6A56]' : 'text-[#6B6560]'}`}
+                className={`text-xs ${isToday ? 'font-bold text-primary' : 'text-muted'}`}
                 aria-hidden="true"
               >
                 {day.label}

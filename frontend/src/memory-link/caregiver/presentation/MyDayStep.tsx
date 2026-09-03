@@ -53,7 +53,7 @@ export function MyDayStep({
       </header>
 
       <div className="rounded-xl bg-white p-5">
-        <p className="text-base font-medium text-[#1F2A26]">
+        <p className="text-base font-medium text-ink-sage">
           {question ? question.text : '질문을 불러오는 중입니다…'}
         </p>
 
@@ -66,7 +66,7 @@ export function MyDayStep({
             placeholder="자유롭게 적어주세요 (선택)"
             maxLength={MAX_CAREGIVER_ANSWER_LENGTH}
             rows={5}
-            className="w-full resize-none rounded-xl border border-[#D9D5E0] bg-[#FBFAFE] p-3 text-sm leading-relaxed text-[#1F2A26] focus:border-[#6B5BA8] focus:outline-none focus:ring-1 focus:ring-[#6B5BA8] disabled:bg-[#F0EEF5]"
+            className="w-full resize-none rounded-xl border border-[#D9D5E0] bg-[#FBFAFE] p-3 text-sm leading-relaxed text-ink-sage focus:border-[#6B5BA8] focus:outline-none focus:ring-1 focus:ring-[#6B5BA8] disabled:bg-[#F0EEF5]"
             aria-label="나의 하루 답변"
           />
         </label>

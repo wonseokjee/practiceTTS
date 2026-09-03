@@ -71,17 +71,17 @@ export function PatientDayStep({
 
   return (
     <section
-      className="font-pretendard rounded-xl bg-[#F7F6F3] p-6 sm:p-8"
+      className="font-pretendard rounded-xl bg-canvas p-6 sm:p-8"
       aria-labelledby="patient-step-heading"
     >
       <header className="mb-6">
         <h2
           id="patient-step-heading"
-          className="text-2xl font-bold text-[#2D6A56]"
+          className="text-2xl font-bold text-primary"
         >
           환자분의 하루
         </h2>
-        <p className="mt-2 text-sm text-[#5C6661]">
+        <p className="mt-2 text-sm text-muted-sage">
           내일 환자분이 풀 문제를 위해 함께 기록해주세요.
         </p>
       </header>
@@ -102,16 +102,16 @@ export function PatientDayStep({
       {/* 사진 첨부 (옵션) */}
       <div className="mt-6 rounded-xl bg-white p-5">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-medium text-[#1F2A26]">
+          <h3 className="text-base font-medium text-ink-sage">
             사진 첨부{' '}
-            <span className="text-xs font-normal text-[#5C6661]">(선택)</span>
+            <span className="text-xs font-normal text-muted-sage">(선택)</span>
           </h3>
           {photo && (
             <button
               type="button"
               onClick={onClearPhoto}
               disabled={isSubmitting}
-              className="text-xs text-[#5C6661] underline transition-colors hover:text-[#B85C36] disabled:opacity-50"
+              className="text-xs text-muted-sage underline transition-colors hover:text-accent-strong disabled:opacity-50"
               aria-label="첨부한 사진 제거"
             >
               제거
@@ -120,7 +120,7 @@ export function PatientDayStep({
         </div>
 
         {/* 사진은 선택이지만, 첨부하면 더 풍부한 훈련 시나리오가 생성됨 */}
-        <p className="mt-1 text-xs text-[#5C6661]">
+        <p className="mt-1 text-xs text-muted-sage">
           사진이 없어도 시나리오를 만들 수 있어요. 다만 사진을 첨부하면 더 생생한
           훈련 시나리오가 만들어집니다.
         </p>
@@ -136,7 +136,7 @@ export function PatientDayStep({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={isSubmitting}
-            className="mt-3 flex h-32 w-full flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-[#D4D8D4] bg-[#F7F6F3] text-[#5C6661] transition-colors duration-[180ms] ease-out hover:border-[#2D6A56] hover:bg-[#EBF4F0] disabled:opacity-50"
+            className="mt-3 flex h-32 w-full flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-line-strong bg-canvas text-muted-sage transition-colors duration-[180ms] ease-out hover:border-primary hover:bg-primary-light disabled:opacity-50"
             aria-label="사진 선택"
           >
             <span className="text-2xl" aria-hidden="true">
@@ -162,7 +162,7 @@ export function PatientDayStep({
       </div>
 
       {/* 지금 듣고 싶은 한마디 (Phase 6, 선택) — 점선 박스로 구분 */}
-      <div className="mt-6 rounded-xl border-2 border-dashed border-[#E0A984] bg-[#FCF3EC] p-5">
+      <div className="mt-6 rounded-xl border-2 border-dashed border-accent-line bg-accent-faint p-5">
         <label
           htmlFor="caregiver-wish"
           className="flex items-center gap-2 text-base font-medium text-[#7A4A20]"
@@ -182,7 +182,7 @@ export function PatientDayStep({
           placeholder="예: 오늘도 사랑해 우리 손녀"
           maxLength={MAX_CAREGIVER_WISH_LENGTH}
           rows={2}
-          className="mt-3 w-full resize-none rounded-xl border border-[#E0A984] bg-white p-3 text-sm leading-relaxed text-[#1F2A26] focus:border-[#B85C36] focus:outline-none focus:ring-1 focus:ring-[#B85C36] disabled:bg-[#F0F1F0]"
+          className="mt-3 w-full resize-none rounded-xl border border-accent-line bg-white p-3 text-sm leading-relaxed text-ink-sage focus:border-accent-strong focus:outline-none focus:ring-1 focus:ring-accent-strong disabled:bg-[#F0F1F0]"
           aria-label="지금 듣고 싶은 한마디"
         />
         <div className="mt-1 text-right text-xs text-[#9A7A50]" aria-live="polite">
@@ -196,7 +196,7 @@ export function PatientDayStep({
 
       {!canSubmit && !isSubmitting && (
         <p
-          className="mt-4 text-xs text-[#5C6661]"
+          className="mt-4 text-xs text-muted-sage"
           aria-live="polite"
           role="status"
         >
@@ -207,7 +207,7 @@ export function PatientDayStep({
       {error && (
         <div
           role="alert"
-          className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#E07B54] bg-[#FBE9E2] p-3 text-sm text-[#7A2E15]"
+          className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-accent bg-accent-soft p-3 text-sm text-accent-ink"
         >
           <span>{error}</span>
           {hasMissingQuestion && onRetryQuestions && (
@@ -215,7 +215,7 @@ export function PatientDayStep({
               type="button"
               onClick={onRetryQuestions}
               disabled={isSubmitting}
-              className="rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-[#7A2E15] underline transition-colors hover:bg-[#FCF3EC] disabled:opacity-50"
+              className="rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-accent-ink underline transition-colors hover:bg-accent-faint disabled:opacity-50"
               aria-label="질문 다시 불러오기"
             >
               질문 다시 불러오기
@@ -229,7 +229,7 @@ export function PatientDayStep({
           type="button"
           onClick={onPrev}
           disabled={isSubmitting}
-          className="rounded-xl px-5 py-3 text-sm font-medium text-[#5C6661] transition-colors duration-[180ms] ease-out hover:bg-[#EBF4F0] disabled:opacity-50"
+          className="rounded-xl px-5 py-3 text-sm font-medium text-muted-sage transition-colors duration-[180ms] ease-out hover:bg-primary-light disabled:opacity-50"
           aria-label="이전 단계로"
         >
           이전
@@ -239,7 +239,7 @@ export function PatientDayStep({
           type="button"
           onClick={onSubmit}
           disabled={!canSubmit}
-          className="rounded-xl bg-[#2D6A56] px-8 py-3 text-base font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240] disabled:cursor-not-allowed disabled:bg-[#C5C8C5] disabled:text-[#7A7E7A]"
+          className="rounded-xl bg-primary px-8 py-3 text-base font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-disabled-surface disabled:text-disabled-ink"
           aria-label={isSubmitting ? '저장 중' : '오늘의 일기 저장'}
         >
           {isSubmitting ? '저장 중…' : '저장'}
@@ -279,13 +279,13 @@ function PatientCategoryCard({
         </span>
         <span
           id={`category-${meta.category}-label`}
-          className="text-xs font-semibold uppercase tracking-wide text-[#2D6A56]"
+          className="text-xs font-semibold uppercase tracking-wide text-primary"
         >
           {meta.label}
         </span>
       </div>
 
-      <p className="mb-3 text-base font-medium text-[#1F2A26]">
+      <p className="mb-3 text-base font-medium text-ink-sage">
         {question ? question.text : '질문을 불러오는 중입니다…'}
       </p>
 
@@ -296,11 +296,11 @@ function PatientCategoryCard({
         placeholder="짧게라도 적어주세요"
         maxLength={MAX_PATIENT_ANSWER_LENGTH}
         rows={3}
-        className="w-full resize-none rounded-xl border border-[#D4D8D4] bg-[#FBFBFA] p-3 text-sm leading-relaxed text-[#1F2A26] focus:border-[#2D6A56] focus:outline-none focus:ring-1 focus:ring-[#2D6A56] disabled:bg-[#F0F1F0]"
+        className="w-full resize-none rounded-xl border border-line-strong bg-surface-soft p-3 text-sm leading-relaxed text-ink-sage focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:bg-[#F0F1F0]"
         aria-label={`${meta.label} 카테고리 답변`}
       />
 
-      <div className="mt-2 text-right text-xs text-[#5C6661]" aria-live="polite">
+      <div className="mt-2 text-right text-xs text-muted-sage" aria-live="polite">
         <span className="font-medium tabular-nums">{charCount}</span>
         {' / '}
         <span className="tabular-nums">{MAX_PATIENT_ANSWER_LENGTH}</span>

@@ -60,7 +60,7 @@ export function CaptureScreen({
   if (!patientId) {
     return (
       <div
-        className="font-pretendard mx-auto max-w-md rounded-xl border border-[#E0A984] bg-[#FCF3EC] p-6 text-center"
+        className="font-pretendard mx-auto max-w-md rounded-xl border border-accent-line bg-accent-faint p-6 text-center"
         role="alert"
       >
         <p className="text-sm text-[#7A4A20]">
@@ -69,7 +69,7 @@ export function CaptureScreen({
         <button
           type="button"
           onClick={onCancel}
-          className="mt-4 rounded-xl bg-white px-5 py-2 text-sm font-medium text-[#5C6661] hover:bg-[#F7F6F3]"
+          className="mt-4 rounded-xl bg-white px-5 py-2 text-sm font-medium text-muted-sage hover:bg-canvas"
         >
           돌아가기
         </button>
@@ -143,7 +143,7 @@ export function CaptureScreen({
         <button
           type="button"
           onClick={onCancel}
-          className="text-xs text-[#6B6560] transition-colors hover:text-[#3F4A44]"
+          className="text-xs text-muted transition-colors hover:text-[#3F4A44]"
           aria-label="캡처 취소"
         >
           취소하고 목록으로
@@ -178,21 +178,21 @@ function StepIndicator({ step }: StepIndicatorProps) {
         <div key={s} className="flex items-center gap-2">
           <span
             className={`block h-2.5 w-2.5 rounded-full transition-colors duration-[180ms] ease-out ${
-              i <= safeIndex ? 'bg-[#2D6A56]' : 'bg-[#D4D8D4]'
+              i <= safeIndex ? 'bg-primary' : 'bg-line-strong'
             }`}
             aria-hidden="true"
           />
           {i < stepOrder.length - 1 && (
             <span
               className={`block h-px w-6 transition-colors duration-[180ms] ease-out ${
-                i < safeIndex ? 'bg-[#2D6A56]' : 'bg-[#D4D8D4]'
+                i < safeIndex ? 'bg-primary' : 'bg-line-strong'
               }`}
               aria-hidden="true"
             />
           )}
         </div>
       ))}
-      <span className="ml-3 text-xs tabular-nums text-[#5C6661]">
+      <span className="ml-3 text-xs tabular-nums text-muted-sage">
         {safeIndex + 1} / {stepOrder.length}
       </span>
     </div>
@@ -202,18 +202,18 @@ function StepIndicator({ step }: StepIndicatorProps) {
 function SubmittingOverlay() {
   return (
     <div
-      className="font-pretendard fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#F7F6F3]/95 backdrop-blur-sm"
+      className="font-pretendard fixed inset-0 z-50 flex flex-col items-center justify-center bg-canvas/95 backdrop-blur-sm"
       role="status"
       aria-live="polite"
     >
       <div
-        className="mb-6 h-14 w-14 animate-pulse rounded-full bg-[#2D6A56]"
+        className="mb-6 h-14 w-14 animate-pulse rounded-full bg-primary"
         aria-hidden="true"
       />
-      <p className="text-lg font-medium text-[#1F2A26]">
+      <p className="text-lg font-medium text-ink-sage">
         AI가 문제를 만들고 있어요
       </p>
-      <p className="mt-2 text-sm text-[#5C6661]">
+      <p className="mt-2 text-sm text-muted-sage">
         잠시만 기다려주세요. 보통 10~20초 정도 걸려요.
       </p>
     </div>
@@ -249,9 +249,9 @@ function DoneCard({ memoryEntryId, quizExpected, onBack }: DoneCardProps) {
     ? '문제 만들기에 실패했어요'
     : '오늘의 일기가 저장되었어요';
 
-  const bgClass = isFailed ? 'bg-[#FBE9E2]' : 'bg-[#EBF4F0]';
-  const iconBgClass = isFailed ? 'bg-[#E07B54]' : 'bg-[#2D6A56]';
-  const headlineColor = isFailed ? 'text-[#7A2E15]' : 'text-[#1F5240]';
+  const bgClass = isFailed ? 'bg-accent-soft' : 'bg-primary-light';
+  const iconBgClass = isFailed ? 'bg-accent' : 'bg-primary';
+  const headlineColor = isFailed ? 'text-accent-ink' : 'text-primary-dark';
 
   let body: string;
   if (isFailed) {
@@ -284,14 +284,14 @@ function DoneCard({ memoryEntryId, quizExpected, onBack }: DoneCardProps) {
         )}
       </div>
       <h2 className={`text-xl font-bold ${headlineColor}`}>{headline}</h2>
-      <p className="mt-2 text-sm text-[#5C6661]">{body}</p>
+      <p className="mt-2 text-sm text-muted-sage">{body}</p>
 
       <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
         {(isFailed || isTimeout) && (
           <button
             type="button"
             onClick={retry}
-            className="rounded-xl bg-[#2D6A56] px-6 py-3 text-sm font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240]"
+            className="rounded-xl bg-primary px-6 py-3 text-sm font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark"
             aria-label={isFailed ? '문제 다시 만들기' : '생성 상태 다시 확인'}
           >
             {isFailed ? '다시 만들기' : '다시 확인'}
@@ -302,8 +302,8 @@ function DoneCard({ memoryEntryId, quizExpected, onBack }: DoneCardProps) {
           onClick={onBack}
           className={
             isFailed || isTimeout
-              ? 'rounded-xl bg-white px-6 py-3 text-sm font-medium text-[#5C6661] transition-colors hover:bg-[#F7F6F3]'
-              : 'rounded-xl bg-[#2D6A56] px-6 py-3 text-sm font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240]'
+              ? 'rounded-xl bg-white px-6 py-3 text-sm font-medium text-muted-sage transition-colors hover:bg-canvas'
+              : 'rounded-xl bg-primary px-6 py-3 text-sm font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark'
           }
           aria-label="대시보드로 돌아가기"
         >

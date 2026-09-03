@@ -1,27 +1,90 @@
 @import "tailwindcss";
 
+/* 테스트 파일은 클래스 출처가 아니다.
+ *
+ * Tailwind는 소스를 **텍스트로** 훑어 클래스 후보를 뽑는다. 산문도 예외가
+ * 아니라서, 주석에 적은 `text-accent`·`accent-ink` 같은 토큰 이름이 그대로
+ * 후보가 되어 아무도 안 쓰는 규칙을 스타일시트에 만들었다(실측 3건).
+ *
+ * 테스트가 렌더하는 클래스는 컴포넌트에서 오고 컴포넌트는 이미 스캔되므로,
+ * 여기서 빼도 잃는 것이 없다. 색 이야기를 하는 주석을 마음 놓고 쓰기 위해
+ * 필요한 선이다. */
+@source not "**/*.test.ts";
+@source not "**/*.test.tsx";
+
 /* ── Design System: Warm Clinical ─────────────────────────────
  *
- * **색은 여기에 없다.** 컴포넌트가 `bg-[#2D6A56]`처럼 임의값으로 직접 쓴다.
- * 어떤 hex가 무슨 뜻인지는 DESIGN.md의 팔레트 표가 정한다.
+ * **색의 집이 여기다.** 컴포넌트는 `bg-primary`처럼 토큰 유틸만 쓰고, hex는
+ * 이 블록에만 있다. 색 하나를 바꾸려면 여기 한 줄을 고친다.
  *
- * 예전에는 이 자리에 Tailwind의 `blue-*` 스케일을 세이지 그린으로 갈아끼우는
- * 11줄이 있었고, 주석은 "기존 bg-blue-* 클래스가 자동으로 브랜드 색이 된다"고
- * 했다. 그 문장이 참이던 시절이 지나갔다 — 앱이 임의값 hex로 옮겨가면서
- * `bg-blue-*`·`gray-*` 사용처가 **0**이 됐고, 남은 건 아무도 부르지 않는
- * 유틸을 정의하는 죽은 블록이었다. 지우는 쪽이 정직하다.
+ * 예전에는 반대였다 — 76개 파일에 hex 1,300개가 임의값(`bg-[#2D6A56]` 꼴)으로
+ * 흩어져 있었고, DESIGN.md의 표가 "어떤 hex가 무슨 뜻인지"를 문서로만 정했다.
+ * 색 하나를 바꾸는 데 전수 치환이 필요했다(TODOS의 design-token-migration).
  *
- * 색을 진짜 토큰으로 옮기는 건 별도 작업이다(TODOS의 design-token-migration).
- * **반만 옮기면 안 된다:** accentContrast.test.ts가 소스에서 `#E07B54` hex를
- * grep해 잉크 오용을 막는데, `bg-accent` 같은 별칭이 생기면 그 그물에 구멍이
- * 뚫린다. 옮긴다면 한 번에 옮기고 그 테스트도 같이 고쳐야 한다.
+ * **이름은 실측이 정했다.** 문서화된 팔레트는 12색이었지만 실제로 쓰이는 색은
+ * 28색이었다. 없는 척하는 대신 다 이름을 붙였다 — 이름이 없으면 다음 사람이
+ * 또 임의값을 적는다.
  *
- * 폰트는 반대로 살아 있다 — `font-pretendard`가 27곳에서 쓰인다.
+ * **합친 것은 한 쌍뿐이다.** `#F2F1EC`(9곳) → `#F2F1ED`(10곳)는 ΔE 0.5로 눈이
+ * 구분하지 못하는 오타였다. 나머지 "중복처럼 보이던" 쌍은 재 보니 아니었다:
+ * `ink`/`ink-sage` ΔE 9.2, `muted`/`muted-sage` ΔE 6.7, 비활성 회색 셋은
+ * 대비가 3.82·2.47·2.07로 **역할이 다르다**(DR9에서 WCAG 예외로 의도해 남긴
+ * 것들이다). 눈에 보이는 색을 조용히 바꾸지 않으려고 그대로 뒀다.
+ *
+ * 역할이 겹치는데 색만 다른 쌍(`ink`↔`ink-sage`, `muted`↔`muted-sage`)은
+ * 남은 부채다. 합치려면 135곳의 텍스트 색이 실제로 바뀌므로 눈으로 보고
+ * 정해야 한다 — TODOS에 수치와 함께 적어 뒀다.
  * ──────────────────────────────────────────────────────────── */
 @theme {
   --font-sans: 'Pretendard', system-ui, -apple-system, sans-serif;
   /* `font-pretendard` 유틸 활성화 — 컴포넌트가 명시적으로 사용. */
   --font-pretendard: 'Pretendard', system-ui, -apple-system, sans-serif;
+
+  /* ── 면 ── */
+  --color-canvas: #f7f6f3; /* 페이지 배경(크림 베이지). DESIGN.md --bg */
+  --color-canvas-hover: #ebeae6; /* 크림 면의 hover */
+  --color-surface-soft: #fbfbfa; /* 흰색에 가까운 면 */
+  --color-surface-dim: #f2f1ed; /* 카드 안 자리표시자·배지 면 */
+
+  /* ── 세이지 그린 ── */
+  --color-primary: #2d6a56; /* 주색상. DESIGN.md --primary */
+  --color-primary-dark: #1f5240; /* 눌림·hover, 그린 계열 짙은 잉크 */
+  --color-primary-light: #ebf4f0; /* 연한 그린 면. DESIGN.md --primary-light */
+
+  /* ── 텍스트 ──
+   * `ink`는 따뜻한 검정, `ink-sage`는 초록기 도는 검정이다. 둘 다 본문에
+   * 쓰인다(76곳·59곳). `muted`/`muted-sage`도 같은 관계다(151곳·95곳). */
+  --color-ink: #1a1916; /* 기본 텍스트. DESIGN.md --text */
+  --color-ink-sage: #1f2a26;
+  --color-muted: #6b6560; /* 보조 텍스트. DESIGN.md --muted */
+  --color-muted-sage: #5c6661;
+  --color-muted-faint: #a8afa9; /* 흐린 보조·hover 테두리 */
+  --color-muted-disabled: #9aa09b; /* 비활성 글자(WCAG 예외, DR9) */
+  --color-disabled-ink: #7a7e7a; /* 비활성 글자 중 진한 쪽 */
+
+  /* ── 선 ── */
+  --color-line: #e8e4dc; /* 구분선·테두리. DESIGN.md --border */
+  --color-line-strong: #d4d8d4; /* 또렷한 테두리·링 */
+  --color-line-soft: #e5e5e0; /* 옅은 테두리 */
+  --color-disabled-surface: #c5c8c5; /* 비활성 컨트롤의 면·테두리 */
+
+  /* ── 테라코타 ──
+   * 면(`accent`)과 잉크(`accent-strong`)를 나눈 이유는 DESIGN.md 참고.
+   * `accent`는 흰색과 2.95:1이라 **잉크로 쓰면 안 된다.**
+   * accentContrast.test.ts가 그 오용을 소스에서 막는다. */
+  --color-accent: #e07b54; /* 면. DESIGN.md --accent */
+  --color-accent-strong: #b85c36; /* 잉크(흰색 대비 4.54:1). --accent-strong */
+  --color-accent-hover: #a04f2d; /* accent-strong의 hover(5.75:1) */
+  --color-accent-ink: #7a2e15; /* 연한 테라코타 면 위의 짙은 글자 */
+  --color-accent-soft: #fbe9e2; /* 피드백 카드 채움 */
+  --color-accent-faint: #fcf3ec; /* 가장 옅은 테라코타 면 */
+  --color-accent-line: #e0a984; /* 테라코타 테두리·링 */
+
+  /* ── 상태 ── */
+  --color-danger: #c94040; /* 오류·위험 동작. DESIGN.md --danger */
+  --color-danger-ink: #8b2020; /* 연한 danger 면 위의 글자 */
+  --color-danger-soft: #fef0f0; /* danger 알림 채움 */
+  --color-warning: #e8a23c; /* 경고. DESIGN.md --warning */
 }
 
 :root {

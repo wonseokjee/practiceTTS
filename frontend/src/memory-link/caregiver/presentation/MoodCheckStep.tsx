@@ -27,17 +27,17 @@ export function MoodCheckStep({
 
   return (
     <section
-      className="font-pretendard rounded-xl bg-[#F7F6F3] p-6 sm:p-8"
+      className="font-pretendard rounded-xl bg-canvas p-6 sm:p-8"
       aria-labelledby="mood-step-heading"
     >
       <header className="mb-6 text-center">
         <h2
           id="mood-step-heading"
-          className="text-2xl font-bold text-[#2D6A56]"
+          className="text-2xl font-bold text-primary"
         >
           오늘 본인의 마음은 어떠셨나요?
         </h2>
-        <p className="mt-2 text-sm text-[#5C6661]">
+        <p className="mt-2 text-sm text-muted-sage">
           1초 안에 가까운 표정을 골라주세요.
         </p>
       </header>
@@ -60,7 +60,7 @@ export function MoodCheckStep({
       {error && (
         <div
           role="alert"
-          className="mt-6 rounded-xl border border-[#E07B54] bg-[#FBE9E2] p-3 text-sm text-[#7A2E15]"
+          className="mt-6 rounded-xl border border-accent bg-accent-soft p-3 text-sm text-accent-ink"
         >
           {error}
         </div>
@@ -71,7 +71,7 @@ export function MoodCheckStep({
           type="button"
           onClick={onNext}
           disabled={!hasSelection}
-          className="rounded-xl bg-[#2D6A56] px-8 py-3 text-base font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240] disabled:cursor-not-allowed disabled:bg-[#C5C8C5] disabled:text-[#7A7E7A]"
+          className="rounded-xl bg-primary px-8 py-3 text-base font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-disabled-surface disabled:text-disabled-ink"
           aria-label="다음 단계로 이동"
         >
           다음
@@ -107,14 +107,14 @@ function MoodButton({ token, isSelected, onSelect }: MoodButtonProps) {
       className={`flex aspect-square w-full min-h-[88px] flex-col items-center justify-center gap-1 rounded-xl border-2 transition-all duration-[180ms] ease-out ${
         isSelected
           ? 'shadow-sm'
-          : 'border-[#E5E5E0] bg-white hover:border-[#A8AFA9]'
+          : 'border-line-soft bg-white hover:border-muted-faint'
       }`}
       style={buttonStyle}
     >
       <span className="text-3xl sm:text-4xl" aria-hidden="true">
         {token.emoji}
       </span>
-      <span className="text-xs text-[#5C6661] sm:text-sm">{token.label}</span>
+      <span className="text-xs text-muted-sage sm:text-sm">{token.label}</span>
     </button>
   );
 }

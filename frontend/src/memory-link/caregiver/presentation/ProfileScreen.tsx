@@ -69,7 +69,7 @@ export function ProfileScreen({
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[300px] items-center justify-center text-sm text-[#5C6661]">
+      <div className="flex min-h-[300px] items-center justify-center text-sm text-muted-sage">
         불러오는 중...
       </div>
     );
@@ -81,7 +81,7 @@ export function ProfileScreen({
         <button
           type="button"
           onClick={onBack}
-          className="mb-4 flex items-center gap-1 text-sm text-[#5C6661] transition-colors hover:text-[#2D6A56]"
+          className="mb-4 flex items-center gap-1 text-sm text-muted-sage transition-colors hover:text-primary"
           aria-label={`${backLabel}(으)로 돌아가기`}
         >
           ← {backLabel}
@@ -89,8 +89,8 @@ export function ProfileScreen({
       )}
 
       <header className="mb-6">
-        <h2 className="text-2xl font-bold text-[#2D6A56]">환자 정보</h2>
-        <p className="mt-2 text-sm text-[#5C6661]">
+        <h2 className="text-2xl font-bold text-primary">환자 정보</h2>
+        <p className="mt-2 text-sm text-muted-sage">
           가족과 추억의 장소를 등록하면, AI가 환자분의 이름·관계를 활용해 더 생생한
           훈련 시나리오를 만들어 드려요. (실명은 안전하게 암호화되며 외부 AI에는
           노출되지 않습니다.)
@@ -100,7 +100,7 @@ export function ProfileScreen({
       {error && (
         <div
           role="alert"
-          className="mb-4 rounded-xl border border-[#C94040]/30 bg-[#C94040]/10 p-3 text-sm text-[#7A2E15]"
+          className="mb-4 rounded-xl border border-danger/30 bg-danger/10 p-3 text-sm text-accent-ink"
         >
           {error}
         </div>
@@ -108,32 +108,32 @@ export function ProfileScreen({
 
       {/* 기본 정보 */}
       <section className="mb-4 rounded-xl bg-white p-5">
-        <h3 className="mb-3 text-base font-medium text-[#1F2A26]">기본 정보</h3>
+        <h3 className="mb-3 text-base font-medium text-ink-sage">기본 정보</h3>
         <label className="mb-3 block">
-          <span className="mb-1 block text-xs font-medium text-[#5C6661]">고향</span>
+          <span className="mb-1 block text-xs font-medium text-muted-sage">고향</span>
           <input
             type="text"
             value={hometown}
             onChange={(e) => setHometown(e.target.value)}
             placeholder="예: 강릉"
-            className="w-full rounded-xl border border-[#D4D8D4] bg-[#FBFBFA] p-3 text-sm text-[#1F2A26] focus:border-[#2D6A56] focus:outline-none focus:ring-1 focus:ring-[#2D6A56]"
+            className="w-full rounded-xl border border-line-strong bg-surface-soft p-3 text-sm text-ink-sage focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-[#5C6661]">직업</span>
+          <span className="mb-1 block text-xs font-medium text-muted-sage">직업</span>
           <input
             type="text"
             value={occupation}
             onChange={(e) => setOccupation(e.target.value)}
             placeholder="예: 교사"
-            className="w-full rounded-xl border border-[#D4D8D4] bg-[#FBFBFA] p-3 text-sm text-[#1F2A26] focus:border-[#2D6A56] focus:outline-none focus:ring-1 focus:ring-[#2D6A56]"
+            className="w-full rounded-xl border border-line-strong bg-surface-soft p-3 text-sm text-ink-sage focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </label>
       </section>
 
       {/* 취미 */}
       <section className="mb-4 rounded-xl bg-white p-5">
-        <h3 className="mb-3 text-base font-medium text-[#1F2A26]">취미</h3>
+        <h3 className="mb-3 text-base font-medium text-ink-sage">취미</h3>
         <ChipEditor
           items={hobbies}
           onChange={setHobbies}
@@ -144,7 +144,7 @@ export function ProfileScreen({
 
       {/* 의미있는 장소 */}
       <section className="mb-4 rounded-xl bg-white p-5">
-        <h3 className="mb-3 text-base font-medium text-[#1F2A26]">
+        <h3 className="mb-3 text-base font-medium text-ink-sage">
           의미 있는 장소
         </h3>
         <ChipEditor
@@ -157,13 +157,13 @@ export function ProfileScreen({
 
       {/* 가족 구성원 */}
       <section className="mb-4 rounded-xl bg-white p-5">
-        <h3 className="mb-3 text-base font-medium text-[#1F2A26]">가족 구성원</h3>
+        <h3 className="mb-3 text-base font-medium text-ink-sage">가족 구성원</h3>
         <FamilyEditor family={family} onChange={setFamily} />
       </section>
 
       {saved && (
         <p
-          className="mb-3 text-center text-sm text-[#2D6A56]"
+          className="mb-3 text-center text-sm text-primary"
           role="status"
         >
           저장되었습니다.
@@ -174,7 +174,7 @@ export function ProfileScreen({
         type="button"
         onClick={() => void handleSave()}
         disabled={isSaving}
-        className="w-full rounded-xl bg-[#2D6A56] px-8 py-3 text-base font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240] disabled:cursor-not-allowed disabled:bg-[#C5C8C5]"
+        className="w-full rounded-xl bg-primary px-8 py-3 text-base font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-disabled-surface"
       >
         {isSaving ? '저장 중…' : '저장'}
       </button>
@@ -218,12 +218,12 @@ function ChipEditor({ items, onChange, placeholder, label }: ChipEditorProps) {
           }}
           placeholder={placeholder}
           aria-label={label}
-          className="flex-1 rounded-xl border border-[#D4D8D4] bg-[#FBFBFA] p-3 text-sm text-[#1F2A26] focus:border-[#2D6A56] focus:outline-none focus:ring-1 focus:ring-[#2D6A56]"
+          className="flex-1 rounded-xl border border-line-strong bg-surface-soft p-3 text-sm text-ink-sage focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
         />
         <button
           type="button"
           onClick={add}
-          className="rounded-xl bg-[#EBF4F0] px-4 text-sm font-medium text-[#2D6A56] transition-colors hover:bg-[#D9EAE3]"
+          className="rounded-xl bg-primary-light px-4 text-sm font-medium text-primary transition-colors hover:bg-[#D9EAE3]"
         >
           추가
         </button>
@@ -233,13 +233,13 @@ function ChipEditor({ items, onChange, placeholder, label }: ChipEditorProps) {
           {items.map((item) => (
             <span
               key={item}
-              className="inline-flex items-center gap-1 rounded-full bg-[#EBF4F0] px-3 py-1 text-sm text-[#2D6A56]"
+              className="inline-flex items-center gap-1 rounded-full bg-primary-light px-3 py-1 text-sm text-primary"
             >
               {item}
               <button
                 type="button"
                 onClick={() => onChange(items.filter((i) => i !== item))}
-                className="text-[#5C6661] hover:text-[#B85C36]"
+                className="text-muted-sage hover:text-accent-strong"
                 aria-label={`${item} 삭제`}
               >
                 ×
@@ -278,7 +278,7 @@ function FamilyEditor({ family, onChange }: FamilyEditorProps) {
         <select
           value={relation}
           onChange={(e) => setRelation(e.target.value as FamilyRelation)}
-          className="rounded-xl border border-[#D4D8D4] bg-[#FBFBFA] p-3 text-sm text-[#1F2A26] focus:border-[#2D6A56] focus:outline-none"
+          className="rounded-xl border border-line-strong bg-surface-soft p-3 text-sm text-ink-sage focus:border-primary focus:outline-none"
           aria-label="관계 선택"
         >
           {FAMILY_RELATION_OPTIONS.map((r) => (
@@ -299,12 +299,12 @@ function FamilyEditor({ family, onChange }: FamilyEditorProps) {
           }}
           placeholder="이름 (예: 민준)"
           aria-label="가족 이름"
-          className="min-w-[120px] flex-1 rounded-xl border border-[#D4D8D4] bg-[#FBFBFA] p-3 text-sm text-[#1F2A26] focus:border-[#2D6A56] focus:outline-none focus:ring-1 focus:ring-[#2D6A56]"
+          className="min-w-[120px] flex-1 rounded-xl border border-line-strong bg-surface-soft p-3 text-sm text-ink-sage focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
         />
         <select
           value={gender}
           onChange={(e) => setGender(e.target.value as Gender)}
-          className="rounded-xl border border-[#D4D8D4] bg-[#FBFBFA] p-3 text-sm text-[#1F2A26] focus:border-[#2D6A56] focus:outline-none"
+          className="rounded-xl border border-line-strong bg-surface-soft p-3 text-sm text-ink-sage focus:border-primary focus:outline-none"
           aria-label="성별 선택"
         >
           <option value="U">성별</option>
@@ -314,7 +314,7 @@ function FamilyEditor({ family, onChange }: FamilyEditorProps) {
         <button
           type="button"
           onClick={add}
-          className="rounded-xl bg-[#EBF4F0] px-4 text-sm font-medium text-[#2D6A56] transition-colors hover:bg-[#D9EAE3]"
+          className="rounded-xl bg-primary-light px-4 text-sm font-medium text-primary transition-colors hover:bg-[#D9EAE3]"
         >
           추가
         </button>
@@ -325,10 +325,10 @@ function FamilyEditor({ family, onChange }: FamilyEditorProps) {
           {family.map((m, idx) => (
             <li
               key={`${m.relation}-${m.name}-${idx}`}
-              className="flex items-center justify-between rounded-xl bg-[#F7F6F3] px-3 py-2 text-sm"
+              className="flex items-center justify-between rounded-xl bg-canvas px-3 py-2 text-sm"
             >
-              <span className="text-[#1F2A26]">
-                <span className="font-medium text-[#2D6A56]">
+              <span className="text-ink-sage">
+                <span className="font-medium text-primary">
                   {FAMILY_RELATION_LABELS[m.relation]}
                 </span>{' '}
                 · {m.name}
@@ -336,7 +336,7 @@ function FamilyEditor({ family, onChange }: FamilyEditorProps) {
               <button
                 type="button"
                 onClick={() => onChange(family.filter((_, i) => i !== idx))}
-                className="text-xs text-[#5C6661] underline hover:text-[#B85C36]"
+                className="text-xs text-muted-sage underline hover:text-accent-strong"
                 aria-label={`${m.name} 삭제`}
               >
                 삭제

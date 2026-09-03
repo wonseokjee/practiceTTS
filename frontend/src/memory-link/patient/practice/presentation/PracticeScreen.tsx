@@ -172,8 +172,8 @@ export function PracticeScreen({ onExit, deps }: PracticeScreenProps) {
         <span aria-hidden="true" className="text-6xl">
           🌿
         </span>
-        <h2 className="text-2xl font-bold text-[#1F2A26]">오늘 연습 끝!</h2>
-        <p className="text-center text-lg leading-relaxed text-[#5C6661]">
+        <h2 className="text-2xl font-bold text-ink-sage">오늘 연습 끝!</h2>
+        <p className="text-center text-lg leading-relaxed text-muted-sage">
           함께 해주셔서 고맙습니다.
           <br />
           내일 또 만나요.
@@ -181,7 +181,7 @@ export function PracticeScreen({ onExit, deps }: PracticeScreenProps) {
         <button
           type="button"
           onClick={onExit}
-          className="min-h-[56px] w-full rounded-full bg-[#2D6A56] px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240]"
+          className="min-h-[56px] w-full rounded-full bg-primary px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark"
         >
           마치기
         </button>
@@ -221,7 +221,7 @@ export function PracticeScreen({ onExit, deps }: PracticeScreenProps) {
       {message !== null && (
         <div className="mt-6" ref={messageRef}>
           <p
-            className="mb-4 text-center text-lg font-medium text-[#5C6661]"
+            className="mb-4 text-center text-lg font-medium text-muted-sage"
             role="status"
             aria-live="polite"
           >
@@ -231,7 +231,7 @@ export function PracticeScreen({ onExit, deps }: PracticeScreenProps) {
             <button
               type="button"
               onClick={actions.next}
-              className="min-h-[56px] w-full rounded-full bg-[#2D6A56] px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240]"
+              className="min-h-[56px] w-full rounded-full bg-primary px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark"
               aria-label={advanceLabel}
             >
               {advanceLabel}
@@ -244,7 +244,7 @@ export function PracticeScreen({ onExit, deps }: PracticeScreenProps) {
         <button
           type="button"
           onClick={actions.endSession}
-          className="mt-8 min-h-[48px] w-full text-base text-[#6B6560] underline underline-offset-4"
+          className="mt-8 min-h-[48px] w-full text-base text-muted underline underline-offset-4"
           aria-label="오늘은 그만하기"
         >
           오늘은 그만하기

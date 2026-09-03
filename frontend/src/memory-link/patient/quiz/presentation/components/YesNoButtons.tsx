@@ -45,21 +45,21 @@ export function YesNoButtons({
         const isCorrectAnswer = correctAnswer === opt.value;
 
         let stateClass =
-          'border-[#E5E5E0] bg-white text-[#1F2A26] hover:border-[#A8AFA9]';
+          'border-line-soft bg-white text-ink-sage hover:border-muted-faint';
         let icon: string | null = null;
 
         if (showFeedback) {
           if (isCorrectAnswer) {
-            stateClass = 'border-[#2D6A56] bg-[#EBF4F0] text-[#1F5240]';
+            stateClass = 'border-primary bg-primary-light text-primary-dark';
             icon = '✓';
           } else if (isSelected) {
-            stateClass = 'border-[#E07B54] bg-[#FBE9E2] text-[#7A2E15]';
+            stateClass = 'border-accent bg-accent-soft text-accent-ink';
             icon = '✗';
           } else {
-            stateClass = 'border-[#E5E5E0] bg-white text-[#9AA09B]';
+            stateClass = 'border-line-soft bg-white text-muted-disabled';
           }
         } else if (isSelected) {
-          stateClass = 'border-[#2D6A56] bg-[#EBF4F0] text-[#1F5240]';
+          stateClass = 'border-primary bg-primary-light text-primary-dark';
         }
 
         return (

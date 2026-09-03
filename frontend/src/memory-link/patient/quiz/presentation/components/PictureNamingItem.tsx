@@ -162,22 +162,22 @@ export function PictureNamingItem({
   // 피드백 단계의 isCorrect === null은 **채점 불가**다(미응답이 아니다).
   // 정답도 오답도 아니므로 중립색으로 둔다.
   const isUnscored = showFeedback && isCorrect === null;
-  let resultBoxClass = 'border-[#D4D8D4] bg-white text-[#1F2A26]';
+  let resultBoxClass = 'border-line-strong bg-white text-ink-sage';
   if (showFeedback) {
     resultBoxClass =
       isCorrect === true
-        ? 'border-[#2D6A56] bg-[#EBF4F0] text-[#1F5240]'
+        ? 'border-primary bg-primary-light text-primary-dark'
         : isCorrect === false
-          ? 'border-[#E07B54] bg-[#FBE9E2] text-[#7A2E15]'
-          : 'border-[#D4D8D4] bg-[#F2F1ED] text-[#5C6661]';
+          ? 'border-accent bg-accent-soft text-accent-ink'
+          : 'border-line-strong bg-surface-dim text-muted-sage';
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-base text-[#5C6661]">{item.instruction}</p>
+      <p className="text-base text-muted-sage">{item.instruction}</p>
 
       {/* 이름을 말해야 하는 그림 */}
-      <div className="relative mx-auto aspect-square w-full max-w-[280px] overflow-hidden rounded-2xl border-4 border-[#E5E5E0] bg-[#F2F1ED]">
+      <div className="relative mx-auto aspect-square w-full max-w-[280px] overflow-hidden rounded-2xl border-4 border-line-soft bg-surface-dim">
         <div
           className="absolute inset-0 flex items-center justify-center text-4xl"
           aria-hidden="true"
@@ -215,9 +215,9 @@ export function PictureNamingItem({
 
       {/* 피드백: 오답이면 정답 이름 노출 */}
       {showFeedback && isCorrect === false && (
-        <p className="text-base text-[#5C6661]">
+        <p className="text-base text-muted-sage">
           정답:{' '}
-          <span className="font-bold text-[#2D6A56]">{item.targetWord}</span>
+          <span className="font-bold text-primary">{item.targetWord}</span>
         </p>
       )}
 
@@ -225,8 +225,8 @@ export function PictureNamingItem({
           옆의 보호자가 최종 판정한다. 채점 불가일 때도 낸다: 그때는 정정이
           아니라 **유일하게 남은 잣대**다. */}
       {showFeedback && onOverride && (
-        <div className="flex items-center justify-between gap-3 rounded-md bg-[#F2F1ED] px-4 py-2.5">
-          <span className="text-sm text-[#5C6661]">
+        <div className="flex items-center justify-between gap-3 rounded-md bg-surface-dim px-4 py-2.5">
+          <span className="text-sm text-muted-sage">
             {isUnscored
               ? '보호자님, 이번엔 확인하지 못했어요. 맞게 말씀하셨나요?'
               : '보호자님, 자동 채점이 맞나요?'}
@@ -234,7 +234,7 @@ export function PictureNamingItem({
           <button
             type="button"
             onClick={() => onOverride(!isCorrect)}
-            className="shrink-0 rounded-md bg-white px-4 py-2 text-sm font-medium text-[#5C6661] ring-1 ring-inset ring-[#D4D8D4] transition-colors duration-[180ms] ease-out hover:bg-[#EBEAE6]"
+            className="shrink-0 rounded-md bg-white px-4 py-2 text-sm font-medium text-muted-sage ring-1 ring-inset ring-line-strong transition-colors duration-[180ms] ease-out hover:bg-canvas-hover"
             aria-label={isCorrect ? '오답으로 정정' : '정답으로 정정'}
           >
             {isCorrect ? '✗ 오답으로 정정' : '✓ 정답으로 정정'}
@@ -251,7 +251,7 @@ export function PictureNamingItem({
           {cues.map((cue) => (
             <li
               key={cue.level}
-              className="rounded-md bg-[#FBE9E2] px-4 py-3 text-lg text-[#7A2E15]"
+              className="rounded-md bg-accent-soft px-4 py-3 text-lg text-accent-ink"
               role="status"
             >
               {cue.text}
@@ -262,17 +262,17 @@ export function PictureNamingItem({
 
       {/* 안내/에러 메시지 (피드백 단계 제외) */}
       {!showFeedback && status === 'listening' && (
-        <p className="text-base text-[#2D6A56]" role="status">
+        <p className="text-base text-primary" role="status">
           듣고 있어요… 그림의 이름을 또박또박 말씀해주세요.
         </p>
       )}
       {!showFeedback && status === 'processing' && (
-        <p className="text-base text-[#2D6A56]" role="status">
+        <p className="text-base text-primary" role="status">
           인식하고 있어요…
         </p>
       )}
       {!showFeedback && status === 'error' && errorMessage.length > 0 && (
-        <p className="text-base text-[#7A2E15]" role="alert">
+        <p className="text-base text-accent-ink" role="alert">
           {errorMessage}
         </p>
       )}
@@ -284,7 +284,7 @@ export function PictureNamingItem({
             <button
               type="button"
               onClick={handleStopRecord}
-              className="flex min-h-[64px] items-center justify-center gap-2 rounded-md border-2 border-[#B85C36] bg-white px-6 py-4 text-xl font-medium text-[#7A2E15] transition-colors duration-[180ms] ease-out hover:bg-[#FBE9E2]"
+              className="flex min-h-[64px] items-center justify-center gap-2 rounded-md border-2 border-accent-strong bg-white px-6 py-4 text-xl font-medium text-accent-ink transition-colors duration-[180ms] ease-out hover:bg-accent-soft"
               aria-label="다 말했어요"
             >
               <span aria-hidden="true" className="text-2xl">✓</span>
@@ -294,7 +294,7 @@ export function PictureNamingItem({
             <button
               type="button"
               disabled
-              className="flex min-h-[64px] items-center justify-center gap-2 rounded-md border-2 border-[#C5C8C5] bg-white px-6 py-4 text-xl font-medium text-[#A8AFA9]"
+              className="flex min-h-[64px] items-center justify-center gap-2 rounded-md border-2 border-disabled-surface bg-white px-6 py-4 text-xl font-medium text-muted-faint"
               aria-label="인식 중"
             >
               <span aria-hidden="true" className="animate-pulse text-2xl">⏳</span>
@@ -305,7 +305,7 @@ export function PictureNamingItem({
               type="button"
               onClick={handleStartRecord}
               disabled={!isSelectable}
-              className="flex min-h-[64px] items-center justify-center gap-2 rounded-md border-2 border-[#2D6A56] bg-white px-6 py-4 text-xl font-medium text-[#2D6A56] transition-colors duration-[180ms] ease-out hover:bg-[#EBF4F0] disabled:cursor-not-allowed disabled:border-[#C5C8C5] disabled:text-[#A8AFA9]"
+              className="flex min-h-[64px] items-center justify-center gap-2 rounded-md border-2 border-primary bg-white px-6 py-4 text-xl font-medium text-primary transition-colors duration-[180ms] ease-out hover:bg-primary-light disabled:cursor-not-allowed disabled:border-disabled-surface disabled:text-muted-faint"
               aria-label={status === 'idle' ? '이름 말하기' : '다시 말하기'}
             >
               <span aria-hidden="true" className="text-2xl">🎤</span>
@@ -318,7 +318,7 @@ export function PictureNamingItem({
               type="button"
               onClick={handleSubmitTranscript}
               disabled={!isSelectable || transcript.trim().length === 0}
-              className="min-h-[56px] rounded-md bg-[#2D6A56] px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240] disabled:cursor-not-allowed disabled:bg-[#C5C8C5] disabled:text-[#7A7E7A]"
+              className="min-h-[56px] rounded-md bg-primary px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-disabled-surface disabled:text-disabled-ink"
               aria-label="제출"
             >
               제출
@@ -333,7 +333,7 @@ export function PictureNamingItem({
             <button
               type="button"
               onClick={handleHint}
-              className="min-h-[48px] rounded-md bg-white px-5 py-3 text-base font-medium text-[#7A2E15] ring-1 ring-inset ring-[#E0A984] transition-colors duration-[180ms] ease-out hover:bg-[#FBE9E2]"
+              className="min-h-[48px] rounded-md bg-white px-5 py-3 text-base font-medium text-accent-ink ring-1 ring-inset ring-accent-line transition-colors duration-[180ms] ease-out hover:bg-accent-soft"
               aria-label={cues.length === 0 ? '힌트 보기' : '힌트 하나 더 보기'}
             >
               <span aria-hidden="true">💡</span>{' '}
@@ -346,7 +346,7 @@ export function PictureNamingItem({
             type="button"
             onClick={handleSkip}
             disabled={!isSelectable}
-            className="min-h-[48px] rounded-md bg-white px-5 py-3 text-base font-medium text-[#5C6661] ring-1 ring-inset ring-[#D4D8D4] transition-colors duration-[180ms] ease-out hover:bg-[#EBEAE6] disabled:cursor-not-allowed disabled:text-[#C5C8C5]"
+            className="min-h-[48px] rounded-md bg-white px-5 py-3 text-base font-medium text-muted-sage ring-1 ring-inset ring-line-strong transition-colors duration-[180ms] ease-out hover:bg-canvas-hover disabled:cursor-not-allowed disabled:text-disabled-surface"
             aria-label="넘어가기"
           >
             넘어가기

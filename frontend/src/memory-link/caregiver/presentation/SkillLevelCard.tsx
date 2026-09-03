@@ -38,7 +38,7 @@ function LevelDots({ level, label }: { level: number; label: string }) {
           key={i}
           aria-hidden="true"
           className={`h-2.5 w-2.5 rounded-full ${
-            i < clamped ? 'bg-[#2D6A56]' : 'border border-[#D8DAD6]'
+            i < clamped ? 'bg-primary' : 'border border-[#D8DAD6]'
           }`}
         />
       ))}
@@ -72,11 +72,11 @@ export function SkillLevelCard({ fetchLevels }: SkillLevelCardProps) {
 
   return (
     <section
-      className="mb-6 rounded-2xl border border-[#E5E5E0] bg-white p-5"
+      className="mb-6 rounded-2xl border border-line-soft bg-white p-5"
       aria-label="스킬별 연습 눈높이"
     >
-      <h2 className="mb-1 text-base font-bold text-[#1F2A26]">연습 눈높이</h2>
-      <p className="mb-4 text-sm text-[#5C6661]">
+      <h2 className="mb-1 text-base font-bold text-ink-sage">연습 눈높이</h2>
+      <p className="mb-4 text-sm text-muted-sage">
         스킬마다 지금 어느 난이도에서 연습 중인지예요. 잘하는 만큼 눈높이가
         올라가고, 어려우면 부드럽게 내려가 늘 알맞은 난이도로 맞춰져요.
       </p>
@@ -95,7 +95,7 @@ export function SkillLevelCard({ fetchLevels }: SkillLevelCardProps) {
         받침이 그때그때 달라져 `은/는`이 틀어진다.
       */}
       {NON_LEVELED_SUBTESTS.length > 0 && (
-        <p className="mb-4 text-sm text-[#6B6560]">
+        <p className="mb-4 text-sm text-muted">
           난이도를 단계로 나눌 수 있는 검사만 여기 나와요. (
           {NON_LEVELED_SUBTESTS.map(subtestLabel).join(' · ')} 제외)
         </p>
@@ -112,10 +112,10 @@ export function SkillLevelCard({ fetchLevels }: SkillLevelCardProps) {
           const lvl = Math.max(1, Math.min(MAX_LEVEL, raw));
           return (
             <li key={key} className="flex items-center justify-between">
-              <span className="text-sm font-medium text-[#1F2A26]">{label}</span>
+              <span className="text-sm font-medium text-ink-sage">{label}</span>
               <span className="flex items-center gap-2">
                 <LevelDots level={lvl} label={label} />
-                <span className="w-14 text-right text-sm tabular-nums text-[#5C6661]">
+                <span className="w-14 text-right text-sm tabular-nums text-muted-sage">
                   {lvl}단계
                 </span>
               </span>

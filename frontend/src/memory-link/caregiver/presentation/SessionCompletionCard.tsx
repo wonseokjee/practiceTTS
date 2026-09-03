@@ -55,20 +55,20 @@ export function SessionCompletionCard({
 
   return (
     <section
-      className="mb-6 rounded-2xl border border-[#E5E5E0] bg-white p-5"
+      className="mb-6 rounded-2xl border border-line-soft bg-white p-5"
       aria-label="연습 마무리"
     >
-      <h2 className="mb-1 text-base font-bold text-[#1F2A26]">연습 마무리</h2>
-      <p className="mb-4 text-sm text-[#5C6661]">
+      <h2 className="mb-1 text-base font-bold text-ink-sage">연습 마무리</h2>
+      <p className="mb-4 text-sm text-muted-sage">
         시작한 연습 중 끝까지 마친 비율이에요. 중간에 그만둔 연습도 푼 문항까지는
         기록에 남아 있어요.
       </p>
 
       <div className="mb-3 flex items-baseline gap-2">
-        <span className="text-3xl font-bold tabular-nums text-[#2D6A56]">
+        <span className="text-3xl font-bold tabular-nums text-primary">
           {rate}%
         </span>
-        <span className="text-sm text-[#5C6661]">
+        <span className="text-sm text-muted-sage">
           최근 {WINDOW_DAYS}일 · 시작 {stats.started}회 중 {stats.completed}회
           완료
         </span>
@@ -81,15 +81,15 @@ export function SessionCompletionCard({
         aria-label={`완료율 ${rate}퍼센트`}
       >
         <div
-          className="h-full rounded-full bg-[#2D6A56] transition-[width] duration-[250ms] ease-in-out"
+          className="h-full rounded-full bg-primary transition-[width] duration-[250ms] ease-in-out"
           style={{ width: `${Math.max(0, Math.min(100, rate))}%` }}
         />
       </div>
 
       {stats.avgItemsBeforeDropoff !== null && (
-        <p className="mb-2 text-sm text-[#5C6661]">
+        <p className="mb-2 text-sm text-muted-sage">
           중간에 그만둔 연습은 평균{' '}
-          <span className="font-medium tabular-nums text-[#1F2A26]">
+          <span className="font-medium tabular-nums text-ink-sage">
             {stats.avgItemsBeforeDropoff}문항
           </span>
           까지 진행했어요. 자꾸 비슷한 지점에서 멈춘다면 그때쯤 힘들어진다는
@@ -99,7 +99,7 @@ export function SessionCompletionCard({
 
       {/* 스트릭과 기준이 다르다. 같은 화면에서 숫자가 어긋나 보이면 보호자가
           어느 쪽을 믿을지 몰라 한다 — 먼저 밝혀 둔다. */}
-      <p className="text-xs text-[#6B6560]">
+      <p className="text-xs text-muted">
         환자 홈의 &lsquo;연습한 날&rsquo;은 한 문항이라도 푼 날을 세요. 여기
         완료율과는 기준이 달라요.
       </p>

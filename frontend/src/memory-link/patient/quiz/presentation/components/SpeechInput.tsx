@@ -99,22 +99,22 @@ export function SpeechInput({
   };
 
   // 인식 결과 박스 색상 (피드백 단계).
-  let resultBoxClass = 'border-[#D4D8D4] bg-white text-[#1F2A26]';
+  let resultBoxClass = 'border-line-strong bg-white text-ink-sage';
   if (showFeedback) {
     resultBoxClass =
       isCorrect === true
-        ? 'border-[#2D6A56] bg-[#EBF4F0] text-[#1F5240]'
-        : 'border-[#E07B54] bg-[#FBE9E2] text-[#7A2E15]';
+        ? 'border-primary bg-primary-light text-primary-dark'
+        : 'border-accent bg-accent-soft text-accent-ink';
   }
 
   return (
     <div className="flex flex-col gap-4">
       {/* 따라 읽을 단어 (크게) */}
       <div
-        className="flex min-h-[96px] items-center justify-center rounded-md border-2 border-[#D4D8D4] bg-white px-5 py-6"
+        className="flex min-h-[96px] items-center justify-center rounded-md border-2 border-line-strong bg-white px-5 py-6"
         aria-label={`따라 읽을 단어: ${word}`}
       >
-        <span className="text-4xl font-bold tracking-wide text-[#1F2A26]">
+        <span className="text-4xl font-bold tracking-wide text-ink-sage">
           {word || '—'}
         </span>
       </div>
@@ -128,7 +128,7 @@ export function SpeechInput({
           type="button"
           onClick={handleListenModel}
           disabled={isPlaying || word.length === 0}
-          className="flex min-h-[48px] items-center justify-center gap-2 rounded-md bg-white px-5 py-3 text-base font-medium text-[#2D6A56] ring-1 ring-inset ring-[#2D6A56] transition-colors duration-[180ms] ease-out hover:bg-[#EBF4F0] disabled:cursor-not-allowed disabled:text-[#A8AFA9] disabled:ring-[#C5C8C5]"
+          className="flex min-h-[48px] items-center justify-center gap-2 rounded-md bg-white px-5 py-3 text-base font-medium text-primary ring-1 ring-inset ring-primary transition-colors duration-[180ms] ease-out hover:bg-primary-light disabled:cursor-not-allowed disabled:text-muted-faint disabled:ring-disabled-surface"
           aria-label="모범 발음 들어보기"
         >
           <span aria-hidden="true" className="text-xl">🔊</span>
@@ -153,20 +153,20 @@ export function SpeechInput({
       )}
 
       {showFeedback && isCorrect === false && correctAnswer !== null && (
-        <p className="text-base text-[#5C6661]">
+        <p className="text-base text-muted-sage">
           정답:{' '}
-          <span className="font-bold text-[#2D6A56]">{correctAnswer}</span>
+          <span className="font-bold text-primary">{correctAnswer}</span>
         </p>
       )}
 
       {/* 안내/에러 메시지 (피드백 단계 제외) */}
       {!showFeedback && status === 'listening' && (
-        <p className="text-base text-[#2D6A56]" role="status">
+        <p className="text-base text-primary" role="status">
           듣고 있어요… 또박또박 따라 말씀해주세요.
         </p>
       )}
       {!showFeedback && status === 'error' && errorMessage.length > 0 && (
-        <p className="text-base text-[#7A2E15]" role="alert">
+        <p className="text-base text-accent-ink" role="alert">
           {errorMessage}
         </p>
       )}
@@ -178,7 +178,7 @@ export function SpeechInput({
             <button
               type="button"
               onClick={handleStopRecord}
-              className="flex min-h-[64px] items-center justify-center gap-2 rounded-md border-2 border-[#B85C36] bg-white px-6 py-4 text-xl font-medium text-[#7A2E15] transition-colors duration-[180ms] ease-out hover:bg-[#FBE9E2]"
+              className="flex min-h-[64px] items-center justify-center gap-2 rounded-md border-2 border-accent-strong bg-white px-6 py-4 text-xl font-medium text-accent-ink transition-colors duration-[180ms] ease-out hover:bg-accent-soft"
               aria-label="다 말했어요"
             >
               <span aria-hidden="true" className="text-2xl">✓</span>
@@ -189,7 +189,7 @@ export function SpeechInput({
               type="button"
               onClick={handleStartRecord}
               disabled={!isSelectable}
-              className="flex min-h-[64px] items-center justify-center gap-2 rounded-md border-2 border-[#2D6A56] bg-white px-6 py-4 text-xl font-medium text-[#2D6A56] transition-colors duration-[180ms] ease-out hover:bg-[#EBF4F0] disabled:cursor-not-allowed disabled:border-[#C5C8C5] disabled:text-[#A8AFA9]"
+              className="flex min-h-[64px] items-center justify-center gap-2 rounded-md border-2 border-primary bg-white px-6 py-4 text-xl font-medium text-primary transition-colors duration-[180ms] ease-out hover:bg-primary-light disabled:cursor-not-allowed disabled:border-disabled-surface disabled:text-muted-faint"
               aria-label={status === 'idle' ? '따라 말하기' : '다시 말하기'}
             >
               <span aria-hidden="true" className="text-2xl">🎤</span>
@@ -202,7 +202,7 @@ export function SpeechInput({
               type="button"
               onClick={handleSubmitTranscript}
               disabled={!isSelectable || transcript.trim().length === 0}
-              className="min-h-[56px] rounded-md bg-[#2D6A56] px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240] disabled:cursor-not-allowed disabled:bg-[#C5C8C5] disabled:text-[#7A7E7A]"
+              className="min-h-[56px] rounded-md bg-primary px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-disabled-surface disabled:text-disabled-ink"
               aria-label="제출"
             >
               제출
@@ -214,7 +214,7 @@ export function SpeechInput({
             type="button"
             onClick={handleSkip}
             disabled={!isSelectable || word.length === 0}
-            className="min-h-[48px] rounded-md bg-white px-5 py-3 text-base font-medium text-[#5C6661] ring-1 ring-inset ring-[#D4D8D4] transition-colors duration-[180ms] ease-out hover:bg-[#EBEAE6] disabled:cursor-not-allowed disabled:text-[#C5C8C5]"
+            className="min-h-[48px] rounded-md bg-white px-5 py-3 text-base font-medium text-muted-sage ring-1 ring-inset ring-line-strong transition-colors duration-[180ms] ease-out hover:bg-canvas-hover disabled:cursor-not-allowed disabled:text-disabled-surface"
             aria-label="넘어가기"
           >
             넘어가기

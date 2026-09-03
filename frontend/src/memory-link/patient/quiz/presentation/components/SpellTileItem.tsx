@@ -32,10 +32,10 @@ export function SpellTileItem({
 }: SpellTileItemProps) {
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-base text-[#5C6661]">{item.instruction}</p>
+      <p className="text-base text-muted-sage">{item.instruction}</p>
 
       {/* 만들 낱말의 그림 단서 */}
-      <div className="relative mx-auto aspect-square w-full max-w-[280px] overflow-hidden rounded-2xl border-4 border-[#E5E5E0] bg-[#F2F1ED]">
+      <div className="relative mx-auto aspect-square w-full max-w-[280px] overflow-hidden rounded-2xl border-4 border-line-soft bg-surface-dim">
         <div
           className="absolute inset-0 flex items-center justify-center text-4xl"
           aria-hidden="true"
@@ -72,7 +72,7 @@ export function SpellTileItem({
           type="button"
           onClick={onSkip}
           disabled={!isSelectable}
-          className="min-h-[48px] rounded-md bg-white px-5 py-3 text-base font-medium text-[#5C6661] ring-1 ring-inset ring-[#D4D8D4] transition-colors duration-[180ms] ease-out hover:bg-[#EBEAE6] disabled:cursor-not-allowed disabled:text-[#C5C8C5]"
+          className="min-h-[48px] rounded-md bg-white px-5 py-3 text-base font-medium text-muted-sage ring-1 ring-inset ring-line-strong transition-colors duration-[180ms] ease-out hover:bg-canvas-hover disabled:cursor-not-allowed disabled:text-disabled-surface"
           aria-label="넘어가기"
         >
           넘어가기
