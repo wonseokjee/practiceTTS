@@ -121,25 +121,37 @@ describe('buildOddOneOutItems', () => {
    * 무리로 쓸 수 있는 범주는 object를 뺀 15개다(2026-08-22, 낱말 90개).
    * 늘리는 방법은 `docs/ASSETS-NEEDED.md`에 있다.
    */
-  it('그림이 장소로 안 보이던 도서관·수영장은 어디에도 안 나온다', () => {
-    // 태그는 place가 맞았지만 도서관은 책 더미로, 수영장은 헤엄치는 사람으로
-    // 그려져 있어 셋을 늘어놓으면 화면에는 건물·사람·책이 보였다.
+  it('그림이(또는 이름대기 사진이) 낱말을 안 보여 주던 장소 다섯은 어디에도 안 나온다', () => {
+    // 도서관은 책 더미, 수영장은 헤엄치는 사람 — 아이콘이 건물이 아니었다. 실물
+    // 사진은 멀쩡해서 이름대기 전용(`namingOnlyWords.json`)으로 옮겼다.
     //
-    // TODO-115에서 **낱말을 바꿔서** 닫았다(2026-09-02). 사진은 멀쩡하므로 둘을
-    // 이름대기 전용(`namingOnlyWords.json`)으로 옮기고 건물이 보이는 우체국·
-    // 백화점을 낱말 풀에 넣었다. 그래서 이제는 무리에서만 빠지는 게 아니라
-    // **정답으로도** 안 나온다 — 낱말 풀에 없기 때문이다.
+    // 병원은 두 겹으로 부족했다. 아이콘은 십자가 붙은 판이라 건물로 안 보였고,
+    // **낱말 풀의 이름대기 사진도 실물이 아니라 3D 일러스트**였다(rawpixel
+    // "cute illustration"). 이름대기 전용으로 옮겨도 안 풀리는 문제라, 옮기는
+    // 대신 **낱말째** 갈았다.
+    //
+    // 우체국·백화점은 같은 날 물렸다 — 건물이기는 한데 *어떤* 건물인지가 안
+    // 보였다(유럽식 나팔 표지, 사무실 빌딩).
+    //
+    // 병원 자리는 약국(초록 십자가) → 소방서·경찰서(직접 그림)를 거쳐 성으로
+    // 왔다(2026-09-02, 같은 날 다섯·여섯 번째 손질). 소방서·경찰서는 그림
+    // 자체는 읽혔지만 Fluent에 건물이 없어 손으로 그렸고, 다른 다섯이 전부
+    // Fluent 원본이라 나란히 놓으면 화풍·완성도가 어긋났다. 손그림을 다듬는
+    // 대신 Fluent 안에서 겹치지 않고 글자 없는 건물을 다시 찾아 성(castle)으로
+    // 갈았다 — 탑·성벽으로 실루엣이 갈린다. 교회는 종탑 십자가, 공장은 굴뚝.
+    // 약국·소방서·경찰서의 SVG는 어디서도 안 써서 파일째 지웠다.
+    const 안보이던것 = ['library', 'pool', 'hospital', 'post_office', 'department_store'];
+    const 물러난것 = [...안보이던것, 'pharmacy', 'fire_station', 'police_station'];
     const bank = masterWords();
     const slugs = bank.map((w) => w.slug);
-    expect(slugs).not.toContain('library');
-    expect(slugs).not.toContain('pool');
-    expect(slugs).toContain('post_office');
-    expect(slugs).toContain('department_store');
+    for (const s of 물러난것) expect(slugs, `${s}이 아직 풀에 있다`).not.toContain(s);
+    expect(slugs).toContain('church');
+    expect(slugs).toContain('factory');
+    expect(slugs).toContain('castle');
 
     for (const item of buildOddOneOutItems(bank, 99)) {
       for (const c of item.choices) {
-        expect(c.choiceId).not.toBe('library');
-        expect(c.choiceId).not.toBe('pool');
+        expect(안보이던것, `${c.choiceId}이 무리에 나온다`).not.toContain(c.choiceId);
       }
     }
   });
