@@ -8,7 +8,11 @@ import {
   pickReadingItems,
   pickRepeatItems,
   readingRangeForLevel,
+  repeatSpecForLevel,
 } from './QabSpeechBank.js';
+
+const 어절수 = (s: string): number => s.trim().split(/\s+/).length;
+const 음절수 = (s: string): number => Array.from(s.replace(/\s+/g, '')).length;
 
 /**
  * 레벨 밴드에 실제로 드는 읽기 자극.
@@ -20,9 +24,24 @@ import {
 function 읽기밴드(level: number): string[] {
   const { min, max } = readingRangeForLevel(level);
   return stimuli.readingSentences.filter((s) => {
-    const n = s.trim().split(/\s+/).length;
+    const n = 어절수(s);
     return n >= min && n <= max;
   });
+}
+
+/**
+ * 레벨 밴드에 실제로 드는 따라말하기 자극.
+ *
+ * 읽기와 달리 통이 둘이고 **재는 단위가 다르다** — 단어는 음절, 문장은 어절.
+ * 레벨이 통까지 정한다(`kind`).
+ */
+function 따라말하기밴드(level: number): string[] {
+  const { kind, min, max } = repeatSpecForLevel(level);
+  const 범위 = (n: number): boolean => n >= min && n <= max;
+  const 단어 = kind === 'sentence' ? [] : stimuli.repeatWords.filter((w) => 범위(음절수(w)));
+  const 문장 =
+    kind === 'word' ? [] : stimuli.repeatSentences.filter((s) => 범위(어절수(s)));
+  return [...단어, ...문장];
 }
 
 describe('QabSpeechBank', () => {
@@ -302,7 +321,10 @@ describe('pickReadingItems — exclude(겹침 방지)', () => {
  * 90일로 올려야 짝이 맞는다(`days`는 180까지 받는다). 지금은 39가 목표다.
  *
  * **밴드는 겹친다**(lv2=2~3어절, lv3=3~4어절 …). 그래서 길이별 개수가 아니라
- * 레벨별로 실제 후보 수를 세야 한다 — 뽑기 함수에게 직접 물어본다.
+ * 레벨별로 실제 후보 수를 세야 한다.
+ *
+ * 세는 일을 `pickReadingItems(999, lv)`에게 시킬 수는 없다 — 요청이 밴드보다
+ * 크면 되돌리기가 걸려 **전체 풀**이 돌아온다. 자료를 규칙에 직접 건다.
  */
 describe('소리 내어 읽기 — 밴드 크기', () => {
   /** 조회 창(30일) 안에서 겹치지 않으려면 밴드마다 있어야 하는 문항 수. */
@@ -333,6 +355,86 @@ describe('소리 내어 읽기 — 밴드 크기', () => {
         }
       }
       expect(seen.size, `lv${lv}`).toBe(39);
+    }
+  });
+});
+
+/**
+ * 따라말하기도 같은 기준이다 — 밴드마다 39개.
+ *
+ * 읽기와 다른 점 둘. **통이 둘이고 재는 단위가 다르다**(단어는 음절, 문장은
+ * 어절), 그리고 레벨이 어느 통을 쓸지도 정한다(`kind`). 그래서 lv3(섞임)은
+ * 두 통에서 함께 채워진다.
+ */
+describe('따라말하기 — 밴드 크기', () => {
+  const 최소밴드 = 39;
+
+  it('다섯 레벨 모두 39개 이상이다', () => {
+    for (const lv of [1, 2, 3, 4, 5]) {
+      expect(따라말하기밴드(lv).length, `lv${lv}`).toBeGreaterThanOrEqual(
+        최소밴드,
+      );
+    }
+  });
+
+  it('로테이션 한 달치를 겹침 없이 낼 수 있다', () => {
+    for (const lv of [1, 2, 3, 4, 5]) {
+      const seen = new Set<string>();
+      for (let session = 0; session < 13; session += 1) {
+        const picked = pickRepeatItems(3, lv, { exclude: seen });
+        expect(picked, `lv${lv} 세션${session}`).toHaveLength(3);
+        for (const it of picked) {
+          expect(seen.has(it.itemId), `lv${lv}에서 ${it.text} 재출제`).toBe(
+            false,
+          );
+          expect(it.bandFallback, `lv${lv} 세션${session} 되돌림`).toBe(
+            undefined,
+          );
+          seen.add(it.itemId);
+        }
+      }
+      expect(seen.size, `lv${lv}`).toBe(39);
+    }
+  });
+});
+
+/**
+ * 읽기와 따라말하기는 **같은 문장을 쓰면 안 된다.**
+ *
+ * 두 검사가 재는 것이 다르다 — 읽기는 글자를 소리로 바꾸는 일이고,
+ * 따라말하기는 들은 것을 붙드는 일이다. 그런데 같은 문장이 양쪽에 있으면
+ * "며칠 전에 읽어 봤다"가 따라말하기 점수에 섞인다. 정답률이 능력이 아니라
+ * 노출 이력을 재게 되는데, 그건 이 풀 확장이 없애려는 교란 그 자체다.
+ *
+ * 자극을 쓰다 실제로 하나 겹쳤다(`누나가 창문을 닦아요`). 눈으로는 못 잡는다.
+ */
+describe('읽기와 따라말하기 자극', () => {
+  it('한 문장도 겹치지 않는다', () => {
+    const 읽기 = new Set<string>(stimuli.readingSentences);
+    const 겹침 = stimuli.repeatSentences.filter((s) => 읽기.has(s));
+    expect(겹침, `\n겹친 문장:\n${겹침.join('\n')}\n`).toEqual([]);
+  });
+});
+
+/**
+ * 어느 레벨도 안 고르는 자극이 있다 — `repeatSentences`의 2어절 셋.
+ *
+ * 따라말하기에서 문장이 처음 나오는 곳은 lv3(섞임 3~4어절)이고, lv1·lv2는
+ * 단어만 낸다. 그래서 2어절 문장은 되돌림이 걸렸을 때만 화면에 나온다.
+ *
+ * **버그로 보고 지우지 말 것.** 짧은 발화는 단어 통이 이미 담당하므로 설계가
+ * 맞다. 이 테스트는 그 사실을 적어 두는 자리다 — 다음 사람이 "2어절 밴드가
+ * 얇네" 하고 문장을 더 넣는 일을 막는다. 정말 필요해지면 늘릴 것은 자극이
+ * 아니라 `repeatSpecForLevel`의 범위다.
+ */
+describe('따라말하기 — 안 쓰이는 자극', () => {
+  it('2어절 문장은 어느 레벨의 밴드에도 안 들어간다', () => {
+    const 짧은문장 = stimuli.repeatSentences.filter((s) => 어절수(s) === 2);
+    expect(짧은문장.length).toBeGreaterThan(0);
+
+    const 모든밴드 = new Set([1, 2, 3, 4, 5].flatMap(따라말하기밴드));
+    for (const s of 짧은문장) {
+      expect(모든밴드.has(s), s).toBe(false);
     }
   });
 });
