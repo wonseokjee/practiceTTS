@@ -1,6 +1,6 @@
 {
  "version": 1,
- "totalItems": 92,
+ "totalItems": 91,
  "items": [
   {
    "itemId": "qw_001",
@@ -2704,12 +2704,12 @@
   },
   {
    "itemId": "qw_107",
-   "targetWord": "소방서",
+   "targetWord": "성",
    "choices": [
     {
      "choiceId": "qw_107_c1",
-     "label": "소방서",
-     "imageUrl": "/assets/images/wordComp/fire_station.svg",
+     "label": "성",
+     "imageUrl": "/assets/images/wordComp/castle.svg",
      "isCorrect": true
     },
     {
@@ -2728,36 +2728,6 @@
      "choiceId": "qw_107_c4",
      "label": "의자",
      "imageUrl": "/assets/images/wordComp/chair.svg",
-     "isCorrect": false
-    }
-   ]
-  },
-  {
-   "itemId": "qw_108",
-   "targetWord": "경찰서",
-   "choices": [
-    {
-     "choiceId": "qw_108_c1",
-     "label": "경찰서",
-     "imageUrl": "/assets/images/wordComp/police_station.svg",
-     "isCorrect": true
-    },
-    {
-     "choiceId": "qw_108_c2",
-     "label": "토끼",
-     "imageUrl": "/assets/images/wordComp/rabbit.svg",
-     "isCorrect": false
-    },
-    {
-     "choiceId": "qw_108_c3",
-     "label": "우유",
-     "imageUrl": "/assets/images/wordComp/milk.svg",
-     "isCorrect": false
-    },
-    {
-     "choiceId": "qw_108_c4",
-     "label": "망치",
-     "imageUrl": "/assets/images/wordComp/hammer.svg",
      "isCorrect": false
     }
    ]

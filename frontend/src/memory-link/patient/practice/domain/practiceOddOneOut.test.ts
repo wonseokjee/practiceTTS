@@ -133,20 +133,21 @@ describe('buildOddOneOutItems', () => {
     // 우체국·백화점은 같은 날 물렸다 — 건물이기는 한데 *어떤* 건물인지가 안
     // 보였다(유럽식 나팔 표지, 사무실 빌딩).
     //
-    // 병원 자리는 처음엔 약국(초록 십자가, 직접 그림)으로 갔다 — 그림 자체는
-    // 멀쩡했지만 소유자가 소방서·경찰서를 더 원해 그쪽으로 다시 갈았다
-    // (2026-09-02, 같은 날 다섯 번째 손질). 교회는 종탑 십자가, 공장은 굴뚝,
-    // 소방서는 지붕 위 불꽃, 경찰서는 방패 속 별로 갈린다. 약국의 SVG·아이콘은
-    // 어디서도 안 써서 파일째 지웠다.
+    // 병원 자리는 약국(초록 십자가) → 소방서·경찰서(직접 그림)를 거쳐 성으로
+    // 왔다(2026-09-02, 같은 날 다섯·여섯 번째 손질). 소방서·경찰서는 그림
+    // 자체는 읽혔지만 Fluent에 건물이 없어 손으로 그렸고, 다른 다섯이 전부
+    // Fluent 원본이라 나란히 놓으면 화풍·완성도가 어긋났다. 손그림을 다듬는
+    // 대신 Fluent 안에서 겹치지 않고 글자 없는 건물을 다시 찾아 성(castle)으로
+    // 갈았다 — 탑·성벽으로 실루엣이 갈린다. 교회는 종탑 십자가, 공장은 굴뚝.
+    // 약국·소방서·경찰서의 SVG는 어디서도 안 써서 파일째 지웠다.
     const 안보이던것 = ['library', 'pool', 'hospital', 'post_office', 'department_store'];
-    const 물러난것 = [...안보이던것, 'pharmacy'];
+    const 물러난것 = [...안보이던것, 'pharmacy', 'fire_station', 'police_station'];
     const bank = masterWords();
     const slugs = bank.map((w) => w.slug);
     for (const s of 물러난것) expect(slugs, `${s}이 아직 풀에 있다`).not.toContain(s);
     expect(slugs).toContain('church');
     expect(slugs).toContain('factory');
-    expect(slugs).toContain('fire_station');
-    expect(slugs).toContain('police_station');
+    expect(slugs).toContain('castle');
 
     for (const item of buildOddOneOutItems(bank, 99)) {
       for (const c of item.choices) {

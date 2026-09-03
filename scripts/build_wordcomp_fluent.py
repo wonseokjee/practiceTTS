@@ -86,6 +86,16 @@ NEW.update({
     "church": ("교회", "place", "church"),
     "factory": ("공장", "place", "factory"),
 })
+# 2026-09-02(같은 날 여섯 번째) — 일곱 번째 자리를 소방서·경찰서 → 성(castle)으로
+# 갈았다. Fluent에 소방서·경찰서 건물이 없어(소방차·경찰관 이모지뿐) 직접
+# 그렸는데, 다른 다섯이 전부 Fluent 원본이라 화풍·완성도가 확연히 어긋났다
+# (하나는 완성된 삽화, 하나는 단순 도형 — 나란히 놓으면 바로 티가 난다).
+# 손그림 품질을 올리는 대신 Fluent 안에서 겹치지 않고 글자 없는 건물을 다시
+# 찾았다 — 호텔은 간판에 `H`가 박혀 있어 걸리고(wordCompAssets), 나머지 후보는
+# 이미 있는 집과 겹친다. 성만 남았다: 탑·성벽으로 실루엣이 뚜렷하다.
+NEW.update({
+    "castle": ("성", "place", "castle"),
+})
 # 기존 단어의 이름 교정/명시(오매칭 방지). slug -> fluent-name
 EXPLICIT = {
     "flower": "tulip", "melon": "melon", "phone": "telephone",
