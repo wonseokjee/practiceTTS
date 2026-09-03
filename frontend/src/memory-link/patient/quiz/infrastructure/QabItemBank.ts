@@ -189,7 +189,7 @@ export const WORD_CATEGORY: Record<string, string | null> = {
   ship: 'vehicle', train: 'vehicle', truck: 'vehicle',
   // 식물 4
   cactus: 'plant', flower: 'plant', mushroom: 'plant', tree: 'plant',
-  // 장소 7 — 일곱 다 **어떤 건물인지**가 그림에 보인다. 기둥과 화폐(은행), 시계탑과
+  // 장소 6 — 여섯 다 **어떤 건물인지**가 그림에 보인다. 기둥과 화폐(은행), 시계탑과
   // 깃발(학교), 지붕과 문(집), 종탑 십자가(교회), 굴뚝(공장), 탑과 성벽(성).
   // 전부 Fluent 원본이다.
   //
@@ -626,7 +626,10 @@ function toNamingItem(it: RawWordItem, level?: number): QabNamingItem | null {
  * 저장돼 보호자 화면에 눈높이 단계로 표시됐다. 없는 사실을 만들지 않으려면
  * 스탬핑도 하면 안 된다. 자세한 이유는 {@link NON_LEVELED_SUBTESTS}.
  */
-export function pickNamingItems(count: number): QabNamingItem[] {
+export function pickNamingItems(
+  count: number,
+  options?: PickQabOptions,
+): QabNamingItem[] {
   const fromPool = WORD_ITEMS.map((it) => toNamingItem(it, undefined)).filter(
     (x): x is QabNamingItem => x !== null,
   );
@@ -636,7 +639,12 @@ export function pickNamingItems(count: number): QabNamingItem[] {
     ...it,
     presentedLevel: undefined,
   }));
-  return shuffle([...fromPool, ...namingOnly]).slice(0, Math.max(0, count));
+  const all = [...fromPool, ...namingOnly];
+  const want = Math.max(0, count);
+  const excluded = options?.exclude;
+  const fresh = excluded ? all.filter((it) => !excluded.has(it.itemId)) : all;
+  const pool = fresh.length >= want ? fresh : all;
+  return shuffle(pool).slice(0, want);
 }
 
 // ─── 글자 조합(spell) ─────────────────────────────────────────────
@@ -814,10 +822,38 @@ function toSpellItem(it: RawWordItem, level?: number): QabSpellItem | null {
   };
 }
 
+/**
+ * `pickWordItems`·`pickSentItems`·`pickNamingItems`가 같이 쓰는 옵션.
+ *
+ * `PickSpellOptions.exclude`(같은 세션 안, 낱말 문자열)와는 다른 개념이다 —
+ * 여기 `exclude`는 **문항 식별자**이고 **세션을 넘어** 최근 며칠을 가리킨다.
+ * 목적도 반대다: spell의 재출제(priority)는 치료를 위해 겹침을 **일부러**
+ * 만들고, 이 exclude는 정답률이 이해력을 재도록 겹침을 **막는다**(측정용
+ * 세 검사 — 낱말·문장·이름대기 — 에서만 쓴다). `GET /quiz/recent-items`가
+ * 돌려주는 itemRef가 각 뱅크의 itemId와 그대로 같다(접두사 변환 없음).
+ */
+export interface PickQabOptions {
+  exclude?: ReadonlySet<string>;
+}
+
 /** 단어이해 문항을 무작위 count개 추출. level로 선택지 난이도를 정한다. */
-export function pickWordItems(count: number, level?: number): QabImageItem[] {
-  return shuffle(WORD_ITEMS)
-    .slice(0, Math.max(0, count))
+export function pickWordItems(
+  count: number,
+  level?: number,
+  options?: PickQabOptions,
+): QabImageItem[] {
+  const want = Math.max(0, count);
+  if (want === 0) return [];
+  const excluded = options?.exclude;
+  // 최근에 낸 것을 뺀다 — 정답률이 이해력이 아니라 그 문항의 암기도를 재지
+  // 않게(다양성이 목적이다, spell의 우선 재출제와는 반대 방향). 빼고 나서
+  // 모자라면 전체 풀로 되돌린다 — 빈 세션보다 겹침이 낫다(D3와 같은 원칙).
+  const fresh = excluded
+    ? WORD_ITEMS.filter((it) => !excluded.has(it.itemId))
+    : WORD_ITEMS;
+  const pool = fresh.length >= want ? fresh : WORD_ITEMS;
+  return shuffle(pool)
+    .slice(0, want)
     .map((it) => toWordItem(it, level));
 }
 
@@ -840,26 +876,36 @@ export function pickWordItems(count: number, level?: number): QabImageItem[] {
  * 이 레벨의 통사 유형만 남긴다. 모자라면 전체 풀로 되돌려 세션이 비지 않게
  * 한다(난이도가 어긋나는 편이 문항이 사라지는 것보다 낫다).
  *
- * 가장 얇은 밴드가 내포절 **4문항**이다. 한 세션의 문장 슬롯은 0~2개라 되돌림은
- * 사실상 안 걸리지만, 같은 문항이 자주 돌아오는 것은 남는 위험이다 —
- * 2지선다라 외우면 그냥 맞는다. TODOS의 sent-level-axis에 적어 뒀다.
+ * 가장 얇은 밴드가 내포절 **20문항**이다. 최근에 낸 것을 뺀 뒤에도 채울 수
+ * 있으면 그대로 쓰고, 밴드 자체가 얇거나 exclude가 밴드를 비우면 **2단으로**
+ * 되돌린다 — 먼저 exclude만 풀어 같은 레벨 안에서 채우고(정답률의 뜻은
+ * 그대로다, 겹침만 허용), 그래도 모자라면 레벨째 되돌린다(D3, `bandFallback`).
+ * 겹침 하나로 곧장 다른 레벨을 내면 안 잰 것을 잰 척하게 된다.
  */
 function sentPoolForLevel(
   want: number,
   level?: number,
+  excluded?: ReadonlySet<string>,
 ): { pool: RawSentItem[]; fellBack: boolean } {
   const type = sentTypeForLevel(level);
   const eligible = SENT_ITEMS.filter((it) => it.sentenceType === type);
-  return eligible.length >= want
-    ? { pool: eligible, fellBack: false }
-    : { pool: [...SENT_ITEMS], fellBack: true };
+  const fresh = excluded
+    ? eligible.filter((it) => !excluded.has(it.itemId))
+    : eligible;
+  if (fresh.length >= want) return { pool: fresh, fellBack: false };
+  if (eligible.length >= want) return { pool: eligible, fellBack: false };
+  return { pool: [...SENT_ITEMS], fellBack: true };
 }
 
 /** 문장이해 문항을 무작위 count개 추출. */
-export function pickSentItems(count: number, level?: number): QabImageItem[] {
+export function pickSentItems(
+  count: number,
+  level?: number,
+  options?: PickQabOptions,
+): QabImageItem[] {
   const want = Math.max(0, count);
   if (want === 0) return [];
-  const { pool, fellBack } = sentPoolForLevel(want, level);
+  const { pool, fellBack } = sentPoolForLevel(want, level, options?.exclude);
   return shuffle(pool)
     .slice(0, want)
     .map((it) => {

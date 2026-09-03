@@ -1181,3 +1181,78 @@ describe('거울 문항', () => {
     expect(없는것, `거울이 없다: ${없는것.join(', ')}`).toEqual([]);
   });
 });
+
+/**
+ * `PickQabOptions.exclude` — 겹침 방지(다양성).
+ *
+ * `PickSpellOptions.exclude`(같은 세션, 낱말 문자열)와는 다르다. 여기는 세션을
+ * 넘어 최근 며칠의 **문항 식별자**를 뺀다. spell의 재출제(priority)와는 정반대
+ * 목적이다 — spell은 겹침을 일부러 만들고, 여기는 정답률이 이해력을 재도록
+ * 겹침을 막는다(TODOS "QAB 세션" 절 eng review 참고).
+ */
+describe('pickWordItems — exclude(겹침 방지)', () => {
+  it('exclude에 있는 itemId는 안 나온다', () => {
+    const first = pickWordItems(10);
+    const exclude = new Set(first.map((i) => i.itemId));
+    const second = pickWordItems(10, undefined, { exclude });
+    for (const it of second) {
+      expect(exclude.has(it.itemId), it.itemId).toBe(false);
+    }
+  });
+
+  it('exclude가 풀을 다 비우면 전체 풀로 되돌린다 — 빈 세션보다 겹침이 낫다', () => {
+    const all = pickWordItems(9999);
+    const exclude = new Set(all.map((i) => i.itemId));
+    const picked = pickWordItems(5, undefined, { exclude });
+    expect(picked).toHaveLength(5);
+  });
+
+  it('exclude 없이 부르면 예전과 같다', () => {
+    expect(pickWordItems(5)).toHaveLength(5);
+  });
+});
+
+describe('pickSentItems — exclude(겹침 방지, 레벨보다 먼저 풀린다)', () => {
+  it('밴드 안에서 채울 수 있으면 exclude를 지키고 레벨도 그대로다', () => {
+    const first = pickSentItems(5, 1);
+    const exclude = new Set(first.map((i) => i.itemId));
+    const second = pickSentItems(5, 1, { exclude });
+    for (const it of second) {
+      expect(exclude.has(it.itemId), it.itemId).toBe(false);
+    }
+    expect(second.every((i) => i.bandFallback === undefined)).toBe(true);
+  });
+
+  it('exclude가 밴드를 통째로 비우면 같은 레벨 안에서 겹침을 허용한다', () => {
+    // 레벨5(내포절)가 가장 얇은 밴드다. 그 밴드를 전부 exclude해도
+    // bandFallback은 안 붙어야 한다 — 겹침이 레벨보다 먼저 풀리는 단이다.
+    const wholeBand = pickSentItems(999, 5);
+    const exclude = new Set(wholeBand.map((i) => i.itemId));
+    const picked = pickSentItems(5, 5, { exclude });
+    expect(picked).toHaveLength(5);
+    expect(picked.every((i) => i.bandFallback === undefined)).toBe(true);
+  });
+
+  it('밴드 자체가 want보다 작으면(레벨 무관) 여전히 bandFallback이 붙는다', () => {
+    const picked = pickSentItems(999, 5);
+    expect(picked.some((i) => i.bandFallback === true)).toBe(true);
+  });
+});
+
+describe('pickNamingItems — exclude(겹침 방지)', () => {
+  it('exclude에 있는 itemId는 안 나온다', () => {
+    const first = pickNamingItems(10);
+    const exclude = new Set(first.map((i) => i.itemId));
+    const second = pickNamingItems(10, { exclude });
+    for (const it of second) {
+      expect(exclude.has(it.itemId), it.itemId).toBe(false);
+    }
+  });
+
+  it('exclude가 풀을 다 비우면 전체 풀로 되돌린다', () => {
+    const all = pickNamingItems(9999);
+    const exclude = new Set(all.map((i) => i.itemId));
+    const picked = pickNamingItems(5, { exclude });
+    expect(picked).toHaveLength(5);
+  });
+});

@@ -40,6 +40,7 @@ import {
   asWordLabel,
 } from '../infrastructure/QabItemBank.js';
 import type {
+  PickQabOptions,
   PickSpellOptions,
   SpellItemRef,
   SpellWordLabel,
@@ -133,12 +134,23 @@ export interface UseMixedQuizDeps {
    * 판정 지연이 11세션이었다. 로테이션은 어느 검사를 낼지 명시적으로 정하므로
    * 추첨이 필요 없다 — 두 풀을 따로 뽑는다.
    */
-  pickWordItems?: (count: number, level?: number) => QabImageItem[];
+  pickWordItems?: (
+    count: number,
+    level?: number,
+    options?: PickQabOptions,
+  ) => QabImageItem[];
   /** 문장 이해 문항 추출기 (테스트 주입용). level로 제시 난이도 지정. */
-  pickSentItems?: (count: number, level?: number) => QabImageItem[];
+  pickSentItems?: (
+    count: number,
+    level?: number,
+    options?: PickQabOptions,
+  ) => QabImageItem[];
   /** QAB 그림 이름대기 문항 추출기 (테스트 주입용). level로 제시 난이도 지정. */
   /** 이름대기 문항 추출기 (테스트 주입용). 이름대기는 비레벨 검사라 level이 없다. */
-  pickNamingItems?: (count: number) => QabNamingItem[];
+  pickNamingItems?: (
+    count: number,
+    options?: PickQabOptions,
+  ) => QabNamingItem[];
   /** 글자 조합 문항 추출(테스트 주입용). level이 방해 타일 수를 정한다. */
   pickSpellItems?: (
     count: number,
@@ -337,37 +349,61 @@ export function useMixedQuizSession(
       const dailyItems: PlayableItem[] = dailySorted
         .slice(0, dailyCount)
         .map((q) => ({ kind: 'daily', id: q.id, question: q }));
+      // `GET /quiz/recent-items`를 최대 넷(word·sentence·naming·spell) 병렬
+      // 조회한다. 로테이션이 하루 3검사만 내므로 실제로는 최대 셋만 count>0.
+      //
+      // **넷의 쓰임이 갈린다.** spell은 그 결과를 재출제 **우선순위**로 쓴다 —
+      // 실어증 치료는 훈련한 항목이 멀리 전이되지 않으므로(limited transfer),
+      // 같은 목표가 여러 세션에 반복돼야 의미가 있다. 백엔드가 이미
+      // (틀린 것 먼저, 마지막 출제가 오래된 것 먼저) 순으로 주므로 그 순서를
+      // 그대로 넘기면 간격 반복이 된다.
+      //
+      // word·sentence·naming은 **정답률로 회복을 재는 측정용**이다. 같은
+      // 문항이 자주 나오면 정답률이 이해력이 아니라 그 문항의 암기도를 재게
+      // 된다 — 그래서 여기는 결과를 **제외 집합**으로 쓴다. spell과 정확히
+      // 반대 방향이다(TODOS "QAB 세션" 절 eng review, 2026-09-02).
+      //
+      // 조회 실패는 무작위로 떨어질 뿐이라 세션은 그대로 진행한다.
+      const fetchExclude = async (
+        subtest: QabSubtest,
+      ): Promise<Set<string> | undefined> => {
+        try {
+          const recent = await apiRef.current.getRecentItems(subtest);
+          return new Set(recent.map((r) => r.itemRef));
+        } catch {
+          return undefined;
+        }
+      };
+      const [wordExclude, sentExclude, namingExclude, spellPriority] =
+        await Promise.all([
+          wordCount > 0 ? fetchExclude('word') : Promise.resolve(undefined),
+          sentenceCount > 0
+            ? fetchExclude('sentence')
+            : Promise.resolve(undefined),
+          namingCount > 0
+            ? fetchExclude('naming')
+            : Promise.resolve(undefined),
+          spellCount > 0
+            ? apiRef.current
+                .getRecentItems('spell')
+                .then((recent) => recent.map((r) => asItemRef(r.itemRef)))
+                .catch((): SpellItemRef[] => [])
+            : Promise.resolve<SpellItemRef[]>([]),
+        ]);
       // 낱말과 문장은 화면에선 같은 종류('듣고 그림 고르기')지만 하위검사로는
       // 별개다. 로테이션이 둘 중 무엇을 낼지 정하므로 각 풀에서 따로 뽑는다.
       const qabItems: PlayableItem[] = [
-        ...pickWordRef.current(wordCount, levels?.word),
-        ...pickSentRef.current(sentenceCount, levels?.sentence),
+        ...pickWordRef.current(wordCount, levels?.word, {
+          exclude: wordExclude,
+        }),
+        ...pickSentRef.current(sentenceCount, levels?.sentence, {
+          exclude: sentExclude,
+        }),
       ].map((it) => ({ kind: 'qab', id: it.itemId, item: it }));
       // 이름대기는 비레벨 검사다 — levels.naming을 넘기지 않는다.
       const namingItems: PlayableItem[] = pickNamingRef
-        .current(namingCount)
+        .current(namingCount, { exclude: namingExclude })
         .map((it) => ({ kind: 'naming', id: it.itemId, item: it }));
-      // 재출제 순서 = 간격 반복. 백엔드가 (틀린 것 먼저, 그 안에서 마지막 출제가
-      // 오래된 것 먼저) 순으로 주므로 **응답 순서를 그대로 넘긴다.** 여기서
-      // 거르지 않는 게 핵심이다 — 맞힌 문항까지 포함해야 "오래 안 나온 것부터"가
-      // 성립하고, 그래야 간격이 생긴다. 틀린 것만 남기면 맞힌 문항은 순서가
-      // 사라져 다음 세션에 우연히 또 나올 수도, 영영 안 나올 수도 있다.
-      //
-      // 후보가 레벨당 26~69개이고 세션당 1문항이라, 이 순서만으로 자연스럽게
-      // 26~69일 주기가 나온다. 별도의 간격 상수를 두지 않는 이유다.
-      //
-      // 실어증 치료 이득은 훈련한 그 항목을 크게 넘어가지 않으므로
-      // (limited transfer), 같은 목표가 여러 세션에 반복돼야 의미가 있다.
-      // 조회에 실패해도 세션은 진행한다(무작위로 떨어질 뿐).
-      let spellPriority: SpellItemRef[] = [];
-      if (spellCount > 0) {
-        try {
-          const recent = await apiRef.current.getRecentItems('spell');
-          spellPriority = recent.map((r) => asItemRef(r.itemRef));
-        } catch {
-          spellPriority = [];
-        }
-      }
       // 같은 세션의 단어이해 문항이 정답 단어를 TTS로 들려주므로(promptText),
       // 그 단어가 글자 조합으로 또 나오면 답을 알려준 셈이다.
       const spokenWords = qabItems
@@ -476,6 +512,10 @@ export function useMixedQuizSession(
     (subtest: QabSubtest, level: number, need: number, used: Set<string>) => {
       const draw = (n: number): PlayableItem[] => {
         switch (subtest) {
+          // 레벨이 바뀌어 다시 뽑는 소수 문항이라, 세션 시작 때 조회한
+          // 겹침 방지 exclude는 여기까지 안 넘긴다 — `used`가 이미 이번
+          // 세션 안의 중복은 막는다. spell의 재출제(priority)도 같은
+          // 이유로 이 redraw까지는 안 간다(spokenWords exclude만 간다).
           case 'word':
             return pickWordRef.current(n, level).map((it) => ({
               kind: 'qab' as const, id: it.itemId, item: it,

@@ -1532,6 +1532,125 @@ describe('글자 조합 — 반복과 중복 방지', () => {
   });
 });
 
+describe('겹침 방지 — word·sentence·naming (spell의 재출제와 반대 방향)', () => {
+  it('word: 최근 이력을 exclude 집합으로 넘긴다', async () => {
+    const api = makeApi();
+    vi.spyOn(api, 'getRecentItems').mockResolvedValue([
+      { itemRef: 'qw_001', lastCorrect: true, lastAt: '2026-08-01T00:00:00Z' },
+      { itemRef: 'qw_002', lastCorrect: false, lastAt: '2026-08-16T00:00:00Z' },
+    ]);
+    const spy = vi.fn().mockReturnValue(makeQabItems());
+
+    renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: api,
+        generateSessionToken: () => 'tok-word-exclude',
+        dailyCount: 0,
+        ...ISOLATED,
+        pickWordItems: spy,
+        wordCount: 2,
+      }),
+    );
+
+    await waitFor(() => expect(spy).toHaveBeenCalled());
+    expect(api.getRecentItems).toHaveBeenCalledWith('word');
+    const exclude = spy.mock.calls[0][2]?.exclude as Set<string>;
+    expect([...exclude]).toEqual(['qw_001', 'qw_002']);
+  });
+
+  it('sentence: 최근 이력을 exclude 집합으로 넘긴다', async () => {
+    const api = makeApi();
+    vi.spyOn(api, 'getRecentItems').mockResolvedValue([
+      { itemRef: 'sr_04', lastCorrect: true, lastAt: '2026-08-01T00:00:00Z' },
+    ]);
+    const spy = vi.fn().mockReturnValue([]);
+
+    renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: api,
+        pickWordItems: () => [],
+        generateSessionToken: () => 'tok-sent-exclude',
+        dailyCount: 0,
+        wordCount: 0,
+        ...ISOLATED,
+        pickSentItems: spy,
+        sentenceCount: 2,
+      }),
+    );
+
+    await waitFor(() => expect(spy).toHaveBeenCalled());
+    expect(api.getRecentItems).toHaveBeenCalledWith('sentence');
+    const exclude = spy.mock.calls[0][2]?.exclude as Set<string>;
+    expect([...exclude]).toEqual(['sr_04']);
+  });
+
+  it('naming: 최근 이력을 exclude 집합으로 넘긴다', async () => {
+    const api = makeApi();
+    vi.spyOn(api, 'getRecentItems').mockResolvedValue([
+      { itemRef: 'naming_qw_010', lastCorrect: false, lastAt: '2026-08-01T00:00:00Z' },
+    ]);
+    const spy = vi.fn().mockReturnValue(makeNamingItems());
+
+    renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: api,
+        pickWordItems: () => [],
+        generateSessionToken: () => 'tok-naming-exclude',
+        dailyCount: 0,
+        wordCount: 0,
+        ...ISOLATED,
+        pickNamingItems: spy,
+        namingCount: 1,
+      }),
+    );
+
+    await waitFor(() => expect(spy).toHaveBeenCalled());
+    expect(api.getRecentItems).toHaveBeenCalledWith('naming');
+    const exclude = spy.mock.calls[0][1]?.exclude as Set<string>;
+    expect([...exclude]).toEqual(['naming_qw_010']);
+  });
+
+  it('개수가 0인 검사는 이력을 조회하지 않는다 — 불필요한 네트워크 호출을 안 낸다', async () => {
+    const api = makeApi();
+
+    renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: api,
+        pickWordItems: () => makeQabItems(),
+        generateSessionToken: () => 'tok-no-fetch',
+        dailyCount: 0,
+        wordCount: 2,
+        ...ISOLATED,
+        // sentence·naming은 ISOLATED가 이미 0이다.
+      }),
+    );
+
+    await waitFor(() => expect(api.getRecentItems).toHaveBeenCalledWith('word'));
+    expect(api.getRecentItems).not.toHaveBeenCalledWith('sentence');
+    expect(api.getRecentItems).not.toHaveBeenCalledWith('naming');
+  });
+
+  it('이력 조회가 실패해도 세션은 진행된다 — exclude 없이 무작위로 떨어진다', async () => {
+    const api = makeApi();
+    vi.spyOn(api, 'getRecentItems').mockRejectedValue(new Error('network'));
+    const spy = vi.fn().mockReturnValue(makeQabItems());
+
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: api,
+        generateSessionToken: () => 'tok-word-fail',
+        dailyCount: 0,
+        ...ISOLATED,
+        pickWordItems: spy,
+        wordCount: 2,
+      }),
+    );
+
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+    expect(spy.mock.calls[0][2]?.exclude).toBeUndefined();
+  });
+});
+
 describe('세션 내 적응 — 같은 검사 안에서 눈높이가 움직인다', () => {
   /** 요청받은 레벨을 이름에 박아 돌려주는 말운동 추출기. */
   function 기록추출기() {
