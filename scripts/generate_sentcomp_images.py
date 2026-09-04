@@ -55,6 +55,40 @@ def load_env_value(path: Path, key: str) -> str:
     return ""
 
 
+def resolve_api_key() -> tuple[str, str]:
+    """키를 찾아 (값, 어디서 찾았는지)를 돌려준다.
+
+    **워크트리에서도 돌아가야 한다.** `.env`는 gitignore 대상이라 본 체크아웃에만
+    있고 `git worktree`로 만든 트리에는 없다. 이 저장소는 워크트리로 일하는 것이
+    기본이라(브랜치마다 따로 둔다), 워크트리의 `.env`만 보면 매번 막힌다.
+
+    찾는 순서:
+      1. 환경변수 `GEMINI_API_KEY` — 비밀을 디스크에 복사하지 않는 길
+      2. 이 트리의 `ai-service/.env`
+      3. **주 저장소**의 `ai-service/.env` — 워크트리면 `.git`이 파일이고
+         그 안의 `gitdir:`가 주 저장소를 가리킨다
+    """
+    env = os.getenv("GEMINI_API_KEY", "").strip()
+    if env:
+        return env, "환경변수"
+
+    v = load_env_value(ENV_PATH, "GEMINI_API_KEY")
+    if v:
+        return v, str(ENV_PATH)
+
+    git = ROOT / ".git"
+    if git.is_file():
+        head = git.read_text(encoding="utf-8").strip()
+        if head.startswith("gitdir:"):
+            # .../주저장소/.git/worktrees/<이름> → 주저장소
+            main_root = Path(head.split(":", 1)[1].strip()).resolve().parents[2]
+            alt = main_root / "ai-service" / ".env"
+            v = load_env_value(alt, "GEMINI_API_KEY")
+            if v:
+                return v, str(alt)
+    return "", ""
+
+
 def build_prompt(characters: str, role_prompt: str) -> str:
     chars = f"The two characters are {characters}. " if characters else ""
     return f"{STYLE_PREFIX}{chars}{role_prompt}"
@@ -98,10 +132,14 @@ def main() -> int:
 
     client = None
     if not args.dry_run:
-        api_key = load_env_value(ENV_PATH, "GEMINI_API_KEY")
+        api_key, source = resolve_api_key()
         if not api_key or api_key.lower().startswith("your_"):
-            print(f"[!] GEMINI_API_KEY가 비어있거나 플레이스홀더입니다: {ENV_PATH}")
+            print(
+                "[!] GEMINI_API_KEY를 못 찾았습니다. 환경변수로 넘기거나 "
+                f"{ENV_PATH} 에 적으세요."
+            )
             return 1
+        print(f"[i] 키 출처: {source}")
         from google import genai
 
         client = genai.Client(api_key=api_key)

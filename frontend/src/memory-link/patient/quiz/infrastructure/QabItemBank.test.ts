@@ -1104,7 +1104,11 @@ describe('관계절 밴드', () => {
     // 처음엔 "한 글자만 다르다"였다. 여격 문항(`에게` ↔ `가`)이 들어오면서
     // 글자 수가 아니라 **다른 자리가 격조사 하나인가**로 일반화했다 — 재는
     // 것은 그대로고 받는 조사만 늘었다.
-    const 격조사 = new Set(['이', '가', '을', '를', '에게', '에', '께']);
+    // 관형격 `의`도 격조사다. sg_05(머리 자르기)가 이걸 요구했다 —
+    // "여자**의** 머리를 자르는 남자"(남자가 자른다) ↔ "여자**가** 머리를 자르는
+    // 남자"(여자가 자른다). 조사 하나로 관계절 안의 역할이 갈리므로 이 밴드가
+    // 재려는 것 그대로다.
+    const 격조사 = new Set(['이', '가', '을', '를', '에게', '에', '께', '의']);
     const 짝목록 = 짝();
     expect(짝목록.size).toBeGreaterThan(0);
 
@@ -1217,6 +1221,74 @@ describe('거울 문항', () => {
  * 목적이다 — spell은 겹침을 일부러 만들고, 여기는 정답률이 이해력을 재도록
  * 겹침을 막는다(TODOS "QAB 세션" 절 eng review 참고).
  */
+/**
+ * 문장이해 밴드 크기 — 읽기·따라말하기·글자조합과 같은 기준(39).
+ *
+ * 근거는 QabSpeechBank.test.ts에 적어 뒀다: exclude의 조회 창이 30일이고
+ * 검사당 주 9문항이 나가므로 30÷7×9 ≈ 39다.
+ *
+ * **여기서만 그림이 든다.** 장면 하나가 문항 둘을 낸다(그림 각각이 한 번씩
+ * 정답). 그래서 39문항에는 장면 20개가 필요하고, 장면 하나에 그림 2장이 든다.
+ *
+ * 다만 **관계절은 새 그림이 필요 없다** — 가역문 장면 쌍을 그대로 빌려 문장만
+ * 관계절로 다시 쓴다. 그래서 가역문 장면을 늘리면 두 밴드가 같이 자란다.
+ * 내포절만 독자 장면이 필요하다(생각 풍선이 있어야 해서 가역문을 못 빌린다).
+ */
+describe('문장이해 — 밴드 크기', () => {
+  const 최소밴드 = 39;
+
+  interface 문항 {
+    itemId: string;
+    sentenceType: string;
+    choices: { imageUrl: string; isCorrect: boolean }[];
+  }
+
+  /** 뱅크가 실제로 쓰는 문항 — 다섯 파일을 합치고 제외 목록을 뺀다. */
+  const 살아있는문장 = (): 문항[] => {
+    const raws = [
+      sentCompRaw, (sentMirrorRaw as { items: unknown }).items,
+      (sentGeneratedRaw as { items: unknown }).items,
+      (sentRelativeRaw as { items: unknown }).items,
+      (sentEmbeddedRaw as { items: unknown }).items,
+    ] as unknown as 문항[][];
+    // QabItemBank가 빼는 것과 같은 목록. 여기서 어긋나면 밴드 수가 거짓이 된다.
+    const 제외 = new Set([
+      'sentComp_05', 'sentComp_06', 'sentComp_07', 'sentComp_08',
+      'sentComp_05_m', 'sentComp_06_m', 'sentComp_07_m', 'sentComp_08_m',
+      'sentComp_09_m', 'sentComp_10_m',
+    ]);
+    return raws.flat().filter((it) => !제외.has(it.itemId));
+  };
+
+  it('가역문과 관계절이 39개 이상이다', () => {
+    for (const [레벨, 유형] of [
+      [1, 'reversible'],
+      [3, 'relative-clause'],
+    ] as const) {
+      const band = 살아있는문장().filter((it) => it.sentenceType === 유형);
+      expect(band.length, 유형).toBeGreaterThanOrEqual(최소밴드);
+      expect(sentTypeForLevel(레벨)).toBe(유형);
+    }
+  });
+
+  it('내포절은 아직 모자란다 — 남은 작업을 숫자로 붙들어 둔다', () => {
+    // 이 테스트는 "아직 안 됐다"를 적어 두는 자리다. 내포절이 39에 닿으면
+    // 여기서 깨지고, 그때 위 테스트에 유형을 옮겨 적으면 된다.
+    const band = 살아있는문장().filter(
+      (it) => it.sentenceType === 'embedded-clause',
+    );
+    expect(band.length).toBeLessThan(최소밴드);
+    expect(sentTypeForLevel(5)).toBe('embedded-clause');
+  });
+
+  it('모든 문항에 정답이 정확히 하나다', () => {
+    for (const it of 살아있는문장()) {
+      const 정답수 = it.choices.filter((c) => c.isCorrect).length;
+      expect(정답수, it.itemId).toBe(1);
+    }
+  });
+});
+
 describe('pickWordItems — exclude(겹침 방지)', () => {
   it('exclude에 있는 itemId는 안 나온다', () => {
     const first = pickWordItems(10);

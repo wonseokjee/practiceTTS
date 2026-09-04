@@ -85,6 +85,96 @@
         "altText": "아이가 엄마를 업은 장면",
         "prompt": "The small CHILD (orange) is carrying the MOTHER (green shirt, bun hairstyle) on its back, piggyback style. The child stands and carries; the mother rides on the child's back."
       }
+    },
+    {
+      "itemId": "sg_07",
+      "sentenceType": "reversible",
+      "sentence": "할머니가 소년을 가리키고 있어요",
+      "characters": "an elderly woman with short grey hair wearing a purple cardigan, and a young boy with black hair wearing a yellow t-shirt",
+      "correct": {
+        "altText": "할머니가 소년을 가리키는 장면",
+        "prompt": "The ELDERLY WOMAN (grey hair, purple cardigan) on the LEFT is pointing her index finger straight at the BOY (yellow t-shirt) on the RIGHT. Her arm is extended toward him. The boy stands still with his arms down at his sides, not pointing."
+      },
+      "distractor": {
+        "altText": "소년이 할머니를 가리키는 장면",
+        "prompt": "The BOY (yellow t-shirt) on the LEFT is pointing his index finger straight at the ELDERLY WOMAN (grey hair, purple cardigan) on the RIGHT. His arm is extended toward her. The elderly woman stands still with her arms down at her sides, not pointing."
+      },
+      "unlikelyFirst": "none"
+    },
+    {
+      "itemId": "sg_08",
+      "sentenceType": "reversible",
+      "sentence": "남자가 여자를 찍고 있어요",
+      "characters": "a man with short black hair wearing a blue shirt and glasses, and a woman with long brown hair wearing a red dress",
+      "correct": {
+        "altText": "남자가 여자를 사진 찍는 장면",
+        "prompt": "The MAN (blue shirt, glasses) on the LEFT is holding a camera up to his eye and photographing the WOMAN (red dress) on the RIGHT. The camera is in the man's hands, lens aimed at the woman. The woman has no camera and is posing."
+      },
+      "distractor": {
+        "altText": "여자가 남자를 사진 찍는 장면",
+        "prompt": "The WOMAN (red dress) on the LEFT is holding a camera up to her eye and photographing the MAN (blue shirt, glasses) on the RIGHT. The camera is in the woman's hands, lens aimed at the man. The man has no camera and is posing."
+      },
+      "unlikelyFirst": "none"
+    },
+    {
+      "itemId": "sg_09",
+      "sentenceType": "reversible",
+      "sentence": "엄마가 아이를 업고 있어요",
+      "characters": "a mother with tied-back brown hair wearing a green blouse, and a small child with short black hair wearing an orange t-shirt",
+      "correct": {
+        "altText": "엄마가 아이를 업은 장면",
+        "prompt": "The MOTHER (green blouse) is carrying the CHILD (orange t-shirt) on her back, piggyback. The mother is standing and walking; the child's arms are around her neck and the child's feet are off the ground."
+      },
+      "distractor": {
+        "altText": "아이가 엄마를 업은 장면",
+        "prompt": "The small CHILD (orange t-shirt) is carrying the MOTHER (green blouse) on the child's back, piggyback. The CHILD is the one standing and bearing the weight; the MOTHER's arms are around the child's neck and the MOTHER's feet are off the ground. This is deliberately unusual - the small child carries the adult."
+      },
+      "unlikelyFirst": "distractor"
+    },
+    {
+      "itemId": "sg_10",
+      "sentenceType": "reversible",
+      "sentence": "소녀가 소년을 당기고 있어요",
+      "characters": "a girl with two braids wearing a pink dress, and a boy with short black hair wearing a light blue shirt",
+      "correct": {
+        "altText": "소녀가 소년을 당기는 장면",
+        "prompt": "The GIRL (pink dress, braids) on the LEFT is gripping the BOY's wrist and pulling him toward herself. She leans back and her arms pull; the BOY (light blue shirt) leans away and is being dragged toward her."
+      },
+      "distractor": {
+        "altText": "소년이 소녀를 당기는 장면",
+        "prompt": "The BOY (light blue shirt) on the LEFT is gripping the GIRL's wrist and pulling her toward himself. He leans back and his arms pull; the GIRL (pink dress, braids) leans away and is being dragged toward him."
+      },
+      "unlikelyFirst": "none"
+    },
+    {
+      "itemId": "sg_11",
+      "sentenceType": "reversible",
+      "sentence": "아빠가 아이에게 모자를 씌우고 있어요",
+      "characters": "a father with short black hair wearing a grey jacket, and a small child with curly hair wearing a green t-shirt",
+      "correct": {
+        "altText": "아빠가 아이에게 모자를 씌우는 장면",
+        "prompt": "The FATHER (grey jacket) is holding a yellow cap with both hands and placing it down onto the CHILD's head. The hat is in the father's hands, moving down toward the child's head. The child stands still, bare-headed, looking up."
+      },
+      "distractor": {
+        "altText": "아이가 아빠에게 모자를 씌우는 장면",
+        "prompt": "The small CHILD (green t-shirt) is reaching up high with both hands, holding a yellow cap and placing it down onto the FATHER's head. The hat is in the CHILD's hands. The father bends down so the child can reach; the father is bare-headed and receiving the hat."
+      },
+      "unlikelyFirst": "distractor"
+    },
+    {
+      "itemId": "sg_12",
+      "sentenceType": "reversible",
+      "sentence": "할아버지가 소녀에게 책을 읽어주고 있어요",
+      "characters": "an elderly man with white hair and a brown vest, and a young girl with a ponytail wearing a red dress",
+      "correct": {
+        "altText": "할아버지가 소녀에게 책을 읽어주는 장면",
+        "prompt": "The ELDERLY MAN (white hair, brown vest) is holding an open book in his hands and reading aloud from it to the GIRL (red dress, ponytail), who sits beside him and listens with empty hands. The book is in the MAN's hands."
+      },
+      "distractor": {
+        "altText": "소녀가 할아버지에게 책을 읽어주는 장면",
+        "prompt": "The GIRL (red dress, ponytail) is holding an open book in her hands and reading aloud from it to the ELDERLY MAN (white hair, brown vest), who sits beside her and listens with empty hands. The book is in the GIRL's hands."
+      },
+      "unlikelyFirst": "distractor"
     }
   ]
 }
