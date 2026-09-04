@@ -3,8 +3,8 @@
 // 검증 포인트 (Plan §4):
 //  - 선택 가능 시 클릭하면 onSelect(보기)
 //  - 선택 불가(disabled) 시 클릭 무시
-//  - 피드백 + 정답: sage 색(#2D6A56/#EBF4F0) + ✓
-//  - 피드백 + 오답 선택: terracotta 색(#E07B54/#FBE9E2) + ✗
+//  - 피드백 + 정답: sage 색(primary/primary-light) + ✓
+//  - 피드백 + 오답 선택: terracotta 색(accent/accent-soft) + ✗
 //
 // jsdom은 computed style 미지원이므로 className 문자열/아이콘으로 검증한다.
 
@@ -49,8 +49,8 @@ describe('MultipleChoiceCard', () => {
   it('피드백 단계에서 정답이면 sage 색상 클래스와 ✓ 아이콘을 보인다', () => {
     renderCard({ showFeedback: true, isCorrectAnswer: true });
     const btn = screen.getByRole('button', { name: '공원' });
-    expect(btn.className).toContain('border-[#2D6A56]');
-    expect(btn.className).toContain('bg-[#EBF4F0]');
+    expect(btn.className).toContain('border-primary');
+    expect(btn.className).toContain('bg-primary-light');
     expect(screen.getByText('✓')).toBeInTheDocument();
   });
 
@@ -61,8 +61,8 @@ describe('MultipleChoiceCard', () => {
       isSelected: true,
     });
     const btn = screen.getByRole('button', { name: '공원' });
-    expect(btn.className).toContain('border-[#E07B54]');
-    expect(btn.className).toContain('bg-[#FBE9E2]');
+    expect(btn.className).toContain('border-accent');
+    expect(btn.className).toContain('bg-accent-soft');
     expect(screen.getByText('✗')).toBeInTheDocument();
   });
 

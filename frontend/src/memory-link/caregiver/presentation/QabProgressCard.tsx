@@ -81,15 +81,15 @@ function FoilKindLine({
 
   return (
     <p
-      className="mt-2 text-sm leading-relaxed text-[#5C6661]"
+      className="mt-2 text-sm leading-relaxed text-muted-sage"
       title="소리가 닮은 그림은 눈높이 4단계부터 나와요. 그 아래에서는 고를 기회가 없어 0으로 보입니다."
     >
       고른 오답 {counted}개 중{' '}
-      <span className="font-semibold text-[#1F2A26]">
+      <span className="font-semibold text-ink-sage">
         뜻이 가까운 그림 {semantic}개
       </span>
       ,{' '}
-      <span className="font-semibold text-[#1F2A26]">
+      <span className="font-semibold text-ink-sage">
         소리가 닮은 그림 {phonological}개
       </span>
     </p>
@@ -144,14 +144,14 @@ export function QabProgressCard({
 
   return (
     <section
-      className="mb-6 rounded-2xl border border-[#E5E5E0] bg-white p-5"
+      className="mb-6 rounded-2xl border border-line-soft bg-white p-5"
       aria-label="발화 검사 회복 추세"
     >
-      <h2 className="mb-1 text-base font-bold text-[#1F2A26]">발화 검사 진행</h2>
-      <p className="mb-4 text-sm text-[#5C6661]">
+      <h2 className="mb-1 text-base font-bold text-ink-sage">발화 검사 진행</h2>
+      <p className="mb-4 text-sm text-muted-sage">
         환자분이 푼 검사별 정답률이에요. 꾸준히 오르는지 지켜봐 주세요.
         <br />
-        <span className="text-xs text-[#6B6560]">
+        <span className="text-xs text-muted">
           &lsquo;반복 연습&rsquo; 표시가 붙은 항목은 같은 낱말을 다시 내는
           과제예요. 정답률이 오르는 건 그 낱말에 익숙해진 것이라 회복 정도와는
           다르게 봐 주세요.
@@ -162,7 +162,7 @@ export function QabProgressCard({
         <button
           type="button"
           onClick={onOpenReport}
-          className="mb-4 min-h-[44px] text-sm font-medium text-[#2D6A56] hover:underline"
+          className="mb-4 min-h-[44px] text-sm font-medium text-primary hover:underline"
         >
           주차별 기록 보기 →
         </button>
@@ -195,11 +195,11 @@ export function QabProgressCard({
           return (
             <li key={it.subtest} className="flex flex-col gap-1">
               <div className="flex items-baseline justify-between">
-                <span className="flex items-center gap-2 text-sm font-medium text-[#1F2A26]">
+                <span className="flex items-center gap-2 text-sm font-medium text-ink-sage">
                   {label}
                   {IS_DRILL_BASED(it.subtest) ? (
                     <span
-                      className="rounded-full bg-[#EDEEEA] px-2 py-0.5 text-xs font-normal text-[#5C6661]"
+                      className="rounded-full bg-[#EDEEEA] px-2 py-0.5 text-xs font-normal text-muted-sage"
                       title="같은 낱말을 반복해서 연습하는 과제예요. 정답률이 오르는 건 그 낱말에 익숙해진 것이라, 회복 정도로 읽지 말아 주세요."
                     >
                       반복 연습
@@ -208,7 +208,7 @@ export function QabProgressCard({
                     <WeeklyTrend series={trend.get(it.subtest)} label={label} />
                   )}
                 </span>
-                <span className="text-sm tabular-nums text-[#5C6661]">
+                <span className="text-sm tabular-nums text-muted-sage">
                   {it.subtest === 'ddk' && it.maxMetric !== null ? (
                     <>최고 {it.maxMetric}회 · </>
                   ) : null}
@@ -217,11 +217,11 @@ export function QabProgressCard({
                     // 직접 풀었나'이지 비율이 아니다.
                     <>
                       직접 푼{' '}
-                      <span className="font-bold text-[#2D6A56]">
+                      <span className="font-bold text-primary">
                         {it.total}문항
                       </span>{' '}
                       중 {it.correct}개 정답 · 도움{' '}
-                      <span className="font-bold text-[#5C6661]">
+                      <span className="font-bold text-muted-sage">
                         {it.assisted}회
                       </span>
                     </>
@@ -232,7 +232,7 @@ export function QabProgressCard({
                         : IS_DRILL_BASED(it.subtest)
                           ? '연습 정답률'
                           : '정답률'}{' '}
-                      <span className="font-bold text-[#2D6A56]">
+                      <span className="font-bold text-primary">
                         {it.accuracy}%
                       </span>{' '}
                       ({it.correct}/{it.total}){assistedSuffix}
@@ -243,7 +243,7 @@ export function QabProgressCard({
                           {IS_REACTION_BASED(it.subtest)
                             ? ' · 평균 '
                             : ' · 발음 '}
-                          <span className="font-bold text-[#2D6A56]">
+                          <span className="font-bold text-primary">
                             {it.avgScore}점
                             {IS_REACTION_BASED(it.subtest) ? ' / 3' : ''}
                           </span>
@@ -266,7 +266,7 @@ export function QabProgressCard({
               */}
               {it.total > 0 && !표본부족 && (
                 <div
-                  className="h-2 w-full overflow-hidden rounded-full bg-[#EBEAE6]"
+                  className="h-2 w-full overflow-hidden rounded-full bg-canvas-hover"
                   role="progressbar"
                   aria-valuenow={it.accuracy}
                   aria-valuemin={0}
@@ -274,7 +274,7 @@ export function QabProgressCard({
                   aria-label={`${label} ${IS_REACTION_BASED(it.subtest) ? "반응률" : "정답률"} ${it.accuracy}%`}
                 >
                   <div
-                    className="h-full rounded-full bg-[#2D6A56] transition-[width] duration-[250ms] ease-in-out"
+                    className="h-full rounded-full bg-primary transition-[width] duration-[250ms] ease-in-out"
                     style={{ width: `${it.accuracy}%` }}
                   />
                 </div>
@@ -322,7 +322,7 @@ function CueLevelLine({
   const 남은도움 = Math.min(100, Math.max(0, (avgCueLevel / 4) * 100));
   return (
     <div className="flex flex-col gap-1">
-      <p className="text-xs text-[#5C6661]">
+      <p className="text-xs text-muted-sage">
         평균{' '}
         <span className="font-bold tabular-nums text-[#7A4A20]">
           {avgCueLevel}단계
@@ -330,7 +330,7 @@ function CueLevelLine({
         도움 · {scored}문항
       </p>
       <div
-        className="h-2 w-full overflow-hidden rounded-full bg-[#EBEAE6]"
+        className="h-2 w-full overflow-hidden rounded-full bg-canvas-hover"
         role="progressbar"
         aria-valuenow={avgCueLevel}
         aria-valuemin={0}
@@ -339,7 +339,7 @@ function CueLevelLine({
       >
         {/* 채운 쪽이 '스스로 한 만큼'이다. 도움이 줄면 막대가 자란다. */}
         <div
-          className="h-full rounded-full bg-[#B85C36] transition-[width] duration-[250ms] ease-in-out"
+          className="h-full rounded-full bg-accent-strong transition-[width] duration-[250ms] ease-in-out"
           style={{ width: `${100 - 남은도움}%` }}
         />
       </div>
@@ -382,7 +382,7 @@ function WeeklyTrend({
         label={`${label} 최근 ${values.length}주 추이: ${values.join(', ')}%`}
       />
       {delta !== null && delta !== 0 && (
-        <span className="text-xs tabular-nums text-[#5C6661]">
+        <span className="text-xs tabular-nums text-muted-sage">
           {delta > 0 ? '▲' : '▼'}
           {Math.abs(delta)}%p
         </span>

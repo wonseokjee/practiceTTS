@@ -52,16 +52,16 @@ export function WeekReviewScreen({ onBack, loadItems }: WeekReviewScreenProps) {
 
   return (
     <div className="mx-auto w-full max-w-2xl px-6 py-8">
-      <h1 className="mb-2 text-3xl font-bold text-[#1A1916]">
+      <h1 className="mb-2 text-3xl font-bold text-ink">
         함께 본 기억
       </h1>
-      <p className="mb-8 text-lg text-[#6B6560]">
+      <p className="mb-8 text-lg text-muted">
         요즘 연습에서 만난 기억이에요.
       </p>
 
       {error !== null && (
         <div
-          className="rounded-xl border border-[#C94040]/25 bg-[#FEF0F0] px-4 py-3 text-base text-[#8b2020]"
+          className="rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-base text-danger-ink"
           role="alert"
         >
           {error}
@@ -69,7 +69,7 @@ export function WeekReviewScreen({ onBack, loadItems }: WeekReviewScreenProps) {
       )}
 
       {error === null && items === null && (
-        <p className="py-16 text-center text-lg text-[#6B6560]" role="status">
+        <p className="py-16 text-center text-lg text-muted" role="status">
           불러오는 중...
         </p>
       )}
@@ -80,10 +80,10 @@ export function WeekReviewScreen({ onBack, loadItems }: WeekReviewScreenProps) {
       */}
       {error === null && items !== null && items.length === 0 && (
         <div className="py-16 text-center">
-          <p className="text-lg text-[#6B6560]">
+          <p className="text-lg text-muted">
             요즘 연습한 기억이 아직 없어요.
           </p>
-          <p className="mt-2 text-base text-[#6B6560]">
+          <p className="mt-2 text-base text-muted">
             오늘 연습을 하면 여기에 모여요.
           </p>
         </div>
@@ -93,7 +93,7 @@ export function WeekReviewScreen({ onBack, loadItems }: WeekReviewScreenProps) {
         {(items ?? []).map((item) => (
           <li
             key={item.memoryEntryId}
-            className="overflow-hidden rounded-2xl border border-[#E8E4DC] bg-white shadow-sm"
+            className="overflow-hidden rounded-2xl border border-line bg-white shadow-sm"
           >
             {item.photoUrl !== null ? (
               <AuthedImage
@@ -103,7 +103,7 @@ export function WeekReviewScreen({ onBack, loadItems }: WeekReviewScreenProps) {
               />
             ) : null}
             <div className="px-5 py-4">
-              <p className="text-sm text-[#6B6560]">
+              <p className="text-sm text-muted">
                 {formatDay(item.lastPlayedAt)}
               </p>
               {/*
@@ -119,7 +119,7 @@ export function WeekReviewScreen({ onBack, loadItems }: WeekReviewScreenProps) {
                 .map((note, i) => (
                   <p
                     key={i}
-                    className="mt-2 line-clamp-3 text-lg leading-relaxed text-[#1A1916]"
+                    className="mt-2 line-clamp-3 text-lg leading-relaxed text-ink"
                   >
                     {note.text}
                   </p>
@@ -132,7 +132,7 @@ export function WeekReviewScreen({ onBack, loadItems }: WeekReviewScreenProps) {
                     {tags.map((tag, i) => (
                       <li
                         key={i}
-                        className="rounded-full bg-[#EBF4F0] px-3 py-1 text-sm text-[#2D6A56]"
+                        className="rounded-full bg-primary-light px-3 py-1 text-sm text-primary"
                       >
                         {tag.text}
                       </li>
@@ -148,7 +148,7 @@ export function WeekReviewScreen({ onBack, loadItems }: WeekReviewScreenProps) {
       <button
         type="button"
         onClick={onBack}
-        className="mt-10 inline-flex min-h-[44px] w-full items-center justify-center rounded-full border-2 border-[#2D6A56] bg-white px-6 py-3 text-lg font-semibold text-[#2D6A56] transition-colors duration-[180ms] ease-out hover:bg-[#EBF4F0]"
+        className="mt-10 inline-flex min-h-[44px] w-full items-center justify-center rounded-full border-2 border-primary bg-white px-6 py-3 text-lg font-semibold text-primary transition-colors duration-[180ms] ease-out hover:bg-primary-light"
       >
         돌아가기
       </button>

@@ -25,29 +25,29 @@ export function AssessmentCard({
   return (
     <div
       className={`bg-white rounded-2xl shadow-sm border p-6 ${
-        isCompleted ? 'border-[#2D6A56]/25 bg-[#EBF4F0]' : 'border-[#c8e6d9]'
+        isCompleted ? 'border-primary/25 bg-primary-light' : 'border-[#c8e6d9]'
       }`}
     >
       <div className="flex items-start justify-between mb-3">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="text-base font-semibold text-[#1A1916]">{title}</h3>
+            <h3 className="text-base font-semibold text-ink">{title}</h3>
             {isCompleted && (
-              <span className="text-xs font-medium text-[#2D6A56] bg-[#EBF4F0] px-2 py-0.5 rounded-full">
+              <span className="text-xs font-medium text-primary bg-primary-light px-2 py-0.5 rounded-full">
                 완료
               </span>
             )}
           </div>
-          <p className="text-xs text-[#6B6560]">{subtitle}</p>
+          <p className="text-xs text-muted">{subtitle}</p>
         </div>
       </div>
-      <p className="text-sm text-[#6B6560] mb-4">{description}</p>
+      <p className="text-sm text-muted mb-4">{description}</p>
       <button
         type="button"
         className={`w-full py-3 rounded-xl text-sm font-semibold transition-colors ${
           isCompleted
-            ? 'bg-[#E8E4DC] text-[#6B6560] cursor-default'
-            : 'bg-[#2D6A56] hover:bg-[#1F5240] text-white'
+            ? 'bg-line text-muted cursor-default'
+            : 'bg-primary hover:bg-primary-dark text-white'
         }`}
         onClick={isCompleted ? undefined : onStart}
       >

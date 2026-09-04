@@ -7,43 +7,65 @@
 
 ## 컬러 팔레트
 
+**정본은 `frontend/src/index.css`의 `@theme` 블록이다.** 아래 표는 그 값의 사본이
+아니라 **역할 설명**이다 — hex를 고칠 일이 있으면 index.css를 고친다.
+
 | 토큰 | 값 | 용도 |
 |------|-----|------|
-| `--bg` | `#F7F6F3` | 크림 베이지 페이지 배경 |
-| `--surface` | `#FFFFFF` | 카드, 패널, 모달 |
-| `--primary` | `#2D6A56` | 세이지 그린 주색상 — 버튼, 링크, 강조 |
-| `--primary-light` | `#EBF4F0` | 연한 그린 배경 — 활성 상태, 뱃지 배경 |
-| `--accent` | `#E07B54` | 테라코타 **면** — 연한 배경, 피드백 카드 테두리, 아이콘 칩 |
-| `--accent-strong` | `#B85C36` | 테라코타 **잉크** — 흰 글씨를 받치는 채움, 강조 텍스트, 활성 컨트롤 경계 |
-| `--text` | `#1A1916` | 기본 텍스트 |
-| `--muted` | `#6B6560` | 보조 텍스트, 플레이스홀더 |
-| `--border` | `#E8E4DC` | 구분선, 테두리 |
-| `--warning` | `#E8A23C` | 경고 상태 |
-| `--danger` | `#C94040` | 오류, 세션 종료 등 위험 동작 |
+| `canvas` | `#F7F6F3` | 크림 베이지 페이지 배경 |
+| `canvas-hover` | `#EBEAE6` | 크림 면의 hover |
+| `surface-soft` | `#FBFBFA` | 흰색에 가까운 면 |
+| `surface-dim` | `#F2F1ED` | 카드 안 자리표시자·뱃지 면 |
+| `primary` | `#2D6A56` | 세이지 그린 주색상 — 버튼, 링크, 강조 |
+| `primary-dark` | `#1F5240` | 눌림·hover, 그린 계열 짙은 잉크 |
+| `primary-light` | `#EBF4F0` | 연한 그린 배경 — 활성 상태, 뱃지 배경 |
+| `accent` | `#E07B54` | 테라코타 **면** — 연한 배경, 피드백 카드 테두리, 아이콘 칩 |
+| `accent-strong` | `#B85C36` | 테라코타 **잉크** — 흰 글씨를 받치는 채움, 강조 텍스트, 활성 컨트롤 경계 |
+| `accent-hover` | `#A04F2D` | `accent-strong`의 hover (5.75:1) |
+| `accent-ink` | `#7A2E15` | 연한 테라코타 면 위의 짙은 글자 |
+| `accent-soft` | `#FBE9E2` | 피드백 카드 채움 |
+| `accent-faint` | `#FCF3EC` | 가장 옅은 테라코타 면 |
+| `accent-line` | `#E0A984` | 테라코타 테두리·링 |
+| `ink` | `#1A1916` | 기본 텍스트 |
+| `ink-sage` | `#1F2A26` | 기본 텍스트(초록기) |
+| `muted` | `#6B6560` | 보조 텍스트, 플레이스홀더 |
+| `muted-sage` | `#5C6661` | 보조 텍스트(초록기) |
+| `muted-faint` | `#A8AFA9` | 흐린 보조·hover 테두리 |
+| `muted-disabled` | `#9AA09B` | 비활성 글자 — **AA 미달, 의도된 예외**(DR9) |
+| `disabled-ink` | `#7A7E7A` | 비활성 글자 중 진한 쪽 |
+| `disabled-surface` | `#C5C8C5` | 비활성 컨트롤의 면·테두리 |
+| `line` | `#E8E4DC` | 구분선, 테두리 |
+| `line-strong` | `#D4D8D4` | 또렷한 테두리·링 |
+| `line-soft` | `#E5E5E0` | 옅은 테두리 |
+| `warning` | `#E8A23C` | 경고 상태 |
+| `danger` | `#C94040` | 오류, 세션 종료 등 위험 동작 |
+| `danger-ink` | `#8B2020` | 연한 danger 면 위의 글자 |
+| `danger-soft` | `#FEF0F0` | danger 알림 채움 |
+
+흰색(`#FFFFFF`)은 토큰이 아니다 — Tailwind의 `bg-white`를 그대로 쓴다.
 
 ### 이 색들은 코드에서 어떻게 쓰이나
 
-**CSS 변수가 아니다.** 컴포넌트가 Tailwind 임의값으로 hex를 직접 쓴다.
-
 ```tsx
-<button className="bg-[#2D6A56] text-white">   {/* --primary */}
-<p className="text-[#6B6560]">                  {/* --muted */}
+<button className="bg-primary text-white">
+<p className="text-muted">
+<div className="bg-accent/8 border-accent-line">   {/* 투명도도 그대로 */}
 ```
 
-위 표의 `--이름`은 **CSS에 존재하는 변수가 아니라 이 문서의 어휘**다. 어떤 hex가
-무슨 뜻인지를 표가 정하고, 코드는 그 hex를 그대로 적는다. `index.css`에 있는
-것은 폰트 토큰 둘뿐이다.
+`@theme`에 `--color-이름`을 선언하면 Tailwind가 `bg-`·`text-`·`border-`·`ring-`·
+`fill-`·`stroke-` 유틸을 만들어 준다. `:root`에 넣으면 **유틸이 생기지 않으니**
+반드시 `@theme` 안에 둔다.
 
-> 이 절에는 예전에 `@layer base { :root { --color-bg: … } }` 블록이 적혀 있었다.
-> **그 코드는 어디에도 없었다.** 게다가 Tailwind v4에서 `:root`에 변수를 넣는 것은
-> 유틸리티를 만들지 않는다(`@theme`가 그 일을 한다). 위치도 존재 여부도 틀린
-> 스니펫이라, 보고 따라 쓰면 `bg-accent`가 조용히 아무 스타일도 내지 않는다.
+클래스를 쓸 수 없는 자리(런타임에 고르는 색, 인라인 `style`, 그라데이션)는
+`var(--color-이름)`으로 같은 변수를 참조한다 — `CaptureFlow.ts`의 무드 색과
+`theme.ts`의 배경 그라데이션이 그 예다. SVG의 `fill`/`stroke`는 **속성이 아니라
+클래스**로 준다(표현 속성은 CSS 값이 아니라 `var()`를 못 읽는다).
 
-**왜 토큰으로 안 옮겼나.** 옮길 대상이 77개 파일 1300개 hex(그중 팔레트 색 873개)다.
-P2 정합성 수정의 크기가 아니라 별도 작업이라 TODOS의 `design-token-migration`으로
-분리했다. 그리고 **반만 옮기면 안전망이 뚫린다** — `accentContrast.test.ts`가
-소스에서 `#E07B54`를 grep해 "테라코타를 잉크로 쓴 줄"을 막는데, `bg-accent` 같은
-별칭이 생기면 그 그물을 우회한다. 옮긴다면 한 번에 옮기고 그 테스트도 같이 고친다.
+**언제 hex를 그대로 써도 되나.** 세 경우뿐이고, 그 외에는
+`accentContrast.test.ts`가 막는다.
+1. 브랜드 규정색 — 구글·카카오 로그인 버튼
+2. 한 곳에서만 쓰는 일회성 색 — 이름을 지어도 부를 사람이 없다
+3. 주석에 적는 실측 근거 — "`#9AA09B`는 2.47:1이라 뺐다"
 
 ### 테라코타를 둘로 나눈 이유
 
@@ -52,21 +74,21 @@ P2 정합성 수정의 크기가 아니라 별도 작업이라 TODOS의 `design-
 쓰라고 적어둔 탓에, 앱에서 가장 눈에 띄어야 할 CTA가 가장 안 읽히는 버튼이었다.
 
 색을 통째로 어둡게 하면 Warm Clinical의 온도가 내려간다 — 테라코타는 "의료 앱의
-차가운 청색 관행을 거부"하려고 고른 색이다. 그래서 `--primary`/`--primary-light`가
+차가운 청색 관행을 거부"하려고 고른 색이다. 그래서 `primary`/`primary-light`가
 이미 쓰는 방식대로 **면과 잉크를 나눴다.**
 
 | 쓰임 | 토큰 | 흰색 대비 |
 |------|------|-----------|
-| 연한 배경(`/8`, `/15`), 아이콘 칩 | `--accent` | 해당 없음 |
-| `#FBE9E2` 채움과 함께 쓰는 피드백 테두리 | `--accent` | 채움이 형태를 알려주므로 경계에 기대지 않는다 |
-| 흰 글씨를 받치는 채움 | `--accent-strong` | **4.54:1** ✅ |
-| 흰 배경 위 강조 텍스트·아이콘 | `--accent-strong` | **4.54:1** ✅ |
-| 활성 컨트롤의 경계·포커스 링 | `--accent-strong` | **4.54:1** (3.0 필요) ✅ |
+| 연한 배경(`/8`, `/15`), 아이콘 칩 | `accent` | 해당 없음 |
+| `accent-soft` 채움과 함께 쓰는 피드백 테두리 | `accent` | 채움이 형태를 알려주므로 경계에 기대지 않는다 |
+| 흰 글씨를 받치는 채움 | `accent-strong` | **4.54:1** ✅ |
+| 흰 배경 위 강조 텍스트·아이콘 | `accent-strong` | **4.54:1** ✅ |
+| 활성 컨트롤의 경계·포커스 링 | `accent-strong` | **4.54:1** (3.0 필요) ✅ |
 
-`--accent-strong`의 hover는 `#A04F2D`(5.75:1).
+`accent-strong`의 hover는 `#A04F2D`(5.75:1).
 
-**판단 기준 한 줄:** 이 색이 **잉크이거나 컨트롤의 경계**면 `--accent-strong`,
-**면**이면 `--accent`.
+**판단 기준 한 줄:** 이 색이 **잉크이거나 컨트롤의 경계**면 `accent-strong`,
+**면**이면 `accent`.
 
 ---
 
@@ -129,11 +151,11 @@ P2 정합성 수정의 크기가 아니라 별도 작업이라 TODOS의 `design-
 
 | 변형 | 배경 | 텍스트 | 용도 |
 |------|------|--------|------|
-| `primary` | `--primary` | white | 주요 동작 — 검사 시작, 로그인 |
-| `secondary` | `--primary-light` | `--primary` | 보조 동작 — 다음으로 |
-| `ghost` | transparent | `--muted` | 취소, 세션 종료 |
-| `accent` | `--accent` | white | 강조 CTA — 기억 추가 |
-| `danger` | `--danger` | white | 위험 동작 (확인 후 노출) |
+| `primary` | `primary` | white | 주요 동작 — 검사 시작, 로그인 |
+| `secondary` | `primary-light` | `primary` | 보조 동작 — 다음으로 |
+| `ghost` | transparent | `muted` | 취소, 세션 종료 |
+| `accent` | `accent` | white | 강조 CTA — 기억 추가 |
+| `danger` | `danger` | white | 위험 동작 (확인 후 노출) |
 
 - 모서리 반경: `full` (9999px)
 - 대형 버튼 (`btn-lg`): `border-radius: xl` (24px) — 터치 타겟 전용
@@ -167,33 +189,33 @@ P2 정합성 수정의 크기가 아니라 별도 작업이라 TODOS의 `design-
 ### 카드
 ```tsx
 // 기본 카드
-<div className="bg-white border border-[#E8E4DC] rounded-2xl p-5 shadow-sm">
+<div className="bg-white border border-line rounded-2xl p-5 shadow-sm">
 
 // 점수 카드 (검사 결과)
-<div className="bg-white border border-[#E8E4DC] rounded-3xl p-6 shadow-md text-center">
+<div className="bg-white border border-line rounded-3xl p-6 shadow-md text-center">
 ```
 
 ### 터치 버튼 (LOC 검사)
 ```tsx
-<button className="w-full min-h-[200px] bg-[#EBF4F0] border-4 border-[#2D6A56] rounded-3xl
+<button className="w-full min-h-[200px] bg-primary-light border-4 border-primary rounded-3xl
   flex flex-col items-center justify-center gap-3
-  hover:bg-[#daeee7] active:scale-[0.98] transition-all duration-180">
+  hover:bg-[#d5e9e1] active:scale-[0.98] transition-all duration-180">
 ```
 
 ### 배지
 ```tsx
 // 상태별
 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold
-  bg-[#EBF4F0] text-[#2D6A56]">진행 중</span>
+  bg-primary-light text-primary">진행 중</span>
 ```
 
 ### 알림 (Alert)
 ```tsx
 // 성공
-<div className="bg-[#EBF4F0] border border-[#2D6A56]/25 rounded-xl px-4 py-3 text-sm text-[#1b5442]">
+<div className="bg-primary-light border border-primary/25 rounded-xl px-4 py-3 text-sm text-primary-dark">
 
 // 오류
-<div className="bg-[#FEF0F0] border border-[#C94040]/25 rounded-xl px-4 py-3 text-sm text-[#8b2020]">
+<div className="bg-danger-soft border border-danger/25 rounded-xl px-4 py-3 text-sm text-danger-ink">
 ```
 
 ---
@@ -204,13 +226,13 @@ P2 정합성 수정의 크기가 아니라 별도 작업이라 TODOS의 `design-
 
 | 토큰 | 다크 값 |
 |------|---------|
-| `--bg` | `#141410` |
-| `--surface` | `#1E1C18` |
-| `--primary` | `#4A9E7E` |
-| `--primary-light` | `#1A2E27` |
-| `--text` | `#F0EDE8` |
-| `--muted` | `#9A948F` |
-| `--border` | `#2C2A26` |
+| `canvas` | `#141410` |
+| `surface` | `#1E1C18` |
+| `primary` | `#4A9E7E` |
+| `primary-light` | `#1A2E27` |
+| `ink` | `#F0EDE8` |
+| `muted` | `#9A948F` |
+| `line` | `#2C2A26` |
 
 ---
 

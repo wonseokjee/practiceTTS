@@ -120,7 +120,7 @@ export function AccountLinkScreen({
         <button
           type="button"
           onClick={onBack}
-          className="mb-4 flex items-center gap-1 text-sm text-[#5C6661] transition-colors hover:text-[#2D6A56]"
+          className="mb-4 flex items-center gap-1 text-sm text-muted-sage transition-colors hover:text-primary"
           aria-label={`${backLabel}(으)로 돌아가기`}
         >
           ← {backLabel}
@@ -128,8 +128,8 @@ export function AccountLinkScreen({
       )}
 
       <header className="mb-6">
-        <h2 className="text-2xl font-bold text-[#2D6A56]">연결된 계정</h2>
-        <p className="mt-2 text-sm text-[#5C6661]">
+        <h2 className="text-2xl font-bold text-primary">연결된 계정</h2>
+        <p className="mt-2 text-sm text-muted-sage">
           카카오·구글을 연결해 두면 어느 걸로 로그인해도 같은 계정으로 들어와요.
           연결이 갈라지면 등록한 기억·기록이 나뉘어 보일 수 있어요.
         </p>
@@ -140,8 +140,8 @@ export function AccountLinkScreen({
           role={banner.kind === 'error' ? 'alert' : 'status'}
           className={
             banner.kind === 'error'
-              ? 'mb-4 rounded-xl border border-[#C94040]/25 bg-[#FEF0F0] px-4 py-3 text-sm text-[#8b2020]'
-              : 'mb-4 rounded-xl border border-[#2D6A56]/25 bg-[#EBF4F0] px-4 py-3 text-sm text-[#1F5240]'
+              ? 'mb-4 rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm text-danger-ink'
+              : 'mb-4 rounded-xl border border-primary/25 bg-primary-light px-4 py-3 text-sm text-primary-dark'
           }
         >
           {banner.text}
@@ -160,7 +160,7 @@ export function AccountLinkScreen({
           return (
             <li
               key={provider}
-              className="flex items-center justify-between rounded-2xl border border-[#E8E4DC] bg-white p-4"
+              className="flex items-center justify-between rounded-2xl border border-line bg-white p-4"
             >
               <div className="flex items-center gap-3">
                 <span
@@ -174,10 +174,10 @@ export function AccountLinkScreen({
                   )}
                 </span>
                 <div>
-                  <p className="text-sm font-medium text-[#1F2A26]">
+                  <p className="text-sm font-medium text-ink-sage">
                     {meta.label}
                   </p>
-                  <p className="text-xs text-[#6B6560]">
+                  <p className="text-xs text-muted">
                     {isLinked ? '연결됨' : '연결 안 됨'}
                   </p>
                 </div>
@@ -191,7 +191,7 @@ export function AccountLinkScreen({
                   title={
                     isOnlyLink ? '마지막 로그인 수단은 해제할 수 없어요.' : undefined
                   }
-                  className="min-h-[40px] rounded-full border border-[#D4D8D4] px-4 text-sm font-medium text-[#5C6661] transition-colors hover:bg-[#F7F6F3] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="min-h-[40px] rounded-full border border-line-strong px-4 text-sm font-medium text-muted-sage transition-colors hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isBusy ? '처리 중…' : '연결 해제'}
                 </button>
@@ -200,7 +200,7 @@ export function AccountLinkScreen({
                   type="button"
                   onClick={() => void handleConnect(provider)}
                   disabled={isBusy}
-                  className="min-h-[40px] rounded-full bg-[#2D6A56] px-4 text-sm font-medium text-white transition-colors hover:bg-[#1F5240] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="min-h-[40px] rounded-full bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isBusy ? '이동 중…' : '연결하기'}
                 </button>

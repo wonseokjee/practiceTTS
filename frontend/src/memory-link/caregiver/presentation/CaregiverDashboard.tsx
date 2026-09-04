@@ -118,20 +118,20 @@ export function CaregiverDashboard() {
   // patientId 미연결 안내
   if (!patientId) {
     return (
-      <div className="min-h-screen bg-[#F7F6F3] flex flex-col items-center justify-center px-4">
+      <div className="min-h-screen bg-canvas flex flex-col items-center justify-center px-4">
         <div className="w-full max-w-lg bg-white rounded-3xl shadow-[0_10px_30px_rgba(0,0,0,0.08)] p-8 text-center">
-          <h1 className="text-2xl font-bold text-[#1A1916] mb-2">보호자 대시보드</h1>
-          <p className="text-[#6B6560] mb-4">
+          <h1 className="text-2xl font-bold text-ink mb-2">보호자 대시보드</h1>
+          <p className="text-muted mb-4">
             안녕하세요,{' '}
-            <span className="font-medium text-[#1A1916]">{user?.displayName}</span>님
+            <span className="font-medium text-ink">{user?.displayName}</span>님
           </p>
-          <p className="text-sm text-[#8a5a1a] bg-[#E8A23C]/12 border border-[#E8A23C]/35 rounded-2xl p-3 mb-6">
+          <p className="text-sm text-[#8a5a1a] bg-warning/12 border border-warning/35 rounded-2xl p-3 mb-6">
             연결된 환자가 없습니다. 관리자에게 환자 연결을 요청해주세요.
           </p>
           <button
             type="button"
             onClick={logout}
-            className="min-h-[44px] px-6 py-2 bg-[#EBF4F0] text-[#2D6A56] rounded-full hover:bg-[#dcebe4] transition-colors text-sm font-medium"
+            className="min-h-[44px] px-6 py-2 bg-primary-light text-primary rounded-full hover:bg-[#dcebe4] transition-colors text-sm font-medium"
           >
             로그아웃
           </button>
@@ -141,10 +141,10 @@ export function CaregiverDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F7F6F3]">
+    <div className="min-h-screen bg-canvas">
       {/* 헤더 */}
-      <header className="border-b border-[#E8E4DC]/60 px-4 py-3 flex justify-between items-center">
-        <h1 className="text-lg font-bold text-[#1A1916]">Memory Link</h1>
+      <header className="border-b border-line/60 px-4 py-3 flex justify-between items-center">
+        <h1 className="text-lg font-bold text-ink">Memory Link</h1>
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -152,7 +152,7 @@ export function CaregiverDashboard() {
               setAccountNotice(null);
               setView('settings');
             }}
-            className="min-h-[44px] rounded-full border border-[#2D6A56] px-4 py-2 text-sm font-medium text-[#2D6A56] transition-colors duration-[180ms] ease-out hover:bg-[#EBF4F0]"
+            className="min-h-[44px] rounded-full border border-primary px-4 py-2 text-sm font-medium text-primary transition-colors duration-[180ms] ease-out hover:bg-primary-light"
             aria-label="설정 (환자 정보·계정)"
           >
             설정
@@ -160,12 +160,12 @@ export function CaregiverDashboard() {
           <button
             type="button"
             onClick={enterPatientMode}
-            className="min-h-[44px] rounded-full bg-[#2D6A56] px-4 py-2 text-sm font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240]"
+            className="min-h-[44px] rounded-full bg-primary px-4 py-2 text-sm font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark"
             aria-label="환자에게 기기 건네기 (환자 모드로 전환)"
           >
             환자에게 건네기
           </button>
-          <span className="hidden text-sm text-[#6B6560] sm:inline">
+          <span className="hidden text-sm text-muted sm:inline">
             {user?.displayName}
           </span>
         </div>
@@ -178,10 +178,10 @@ export function CaregiverDashboard() {
           <>
             {/* 환자 인사 */}
             <div className="mb-5">
-              <h2 className="text-2xl font-bold text-[#1A1916]">
+              <h2 className="text-2xl font-bold text-ink">
                 {withHonorific(user?.patientDisplayName, '어르신')}
               </h2>
-              <p className="mt-1 text-sm text-[#6B6560]">오늘도 함께해요</p>
+              <p className="mt-1 text-sm text-muted">오늘도 함께해요</p>
             </div>
 
             {/* 요약 통계 카드 */}
@@ -201,13 +201,13 @@ export function CaregiverDashboard() {
                 말하지 않으면 양쪽이 서로를 기다리는 교착이 된다. */}
             {needsSetupCount > 0 && (
               <div
-                className="mb-4 rounded-2xl border border-[#E07B54]/30 bg-[#E07B54]/8 p-3"
+                className="mb-4 rounded-2xl border border-accent/30 bg-accent/8 p-3"
                 role="status"
               >
-                <p className="text-sm font-medium text-[#7A2E15]">
+                <p className="text-sm font-medium text-accent-ink">
                   대화를 시작하려면 준비가 조금 더 필요해요
                 </p>
-                <p className="mt-1 text-xs text-[#6B6560]">
+                <p className="mt-1 text-xs text-muted">
                   기억 {needsSetupCount}개가 목표 단어 등록과 시나리오 생성을
                   기다리고 있어요. 아래 목록에서 기억을 눌러 이어서 준비해
                   주세요.
@@ -219,7 +219,7 @@ export function CaregiverDashboard() {
             <button
               type="button"
               onClick={handleAddNew}
-              className="mb-6 flex w-full min-h-[56px] items-center justify-center gap-2 rounded-full bg-[#B85C36] text-lg font-bold text-white shadow-[0_8px_20px_rgba(184,92,54,0.35)] transition hover:bg-[#A04F2D] active:scale-[0.99]"
+              className="mb-6 flex w-full min-h-[56px] items-center justify-center gap-2 rounded-full bg-accent-strong text-lg font-bold text-white shadow-[0_8px_20px_rgba(184,92,54,0.35)] transition hover:bg-accent-hover active:scale-[0.99]"
               aria-label="오늘의 기억 추가"
             >
               ＋ 오늘의 기억 추가
@@ -248,7 +248,7 @@ export function CaregiverDashboard() {
         {/* 생성 플로우 화면 */}
         {view === 'capture' && (
           <div>
-            <h2 className="text-lg font-bold text-[#1A1916] mb-4">새 기억 추가</h2>
+            <h2 className="text-lg font-bold text-ink mb-4">새 기억 추가</h2>
             <CaptureScreen
               patientId={patientId}
               flow={captureFlow}
@@ -296,12 +296,12 @@ interface StatCardProps {
 /** 환자 상태 요약용 작은 통계 카드 (등록한 기억 / 훈련 준비 등) */
 function StatCard({ label, value, unit }: StatCardProps) {
   return (
-    <div className="flex-1 rounded-2xl border border-[#E8E4DC] bg-white p-3">
-      <p className="text-xs text-[#6B6560]">{label}</p>
-      <p className="mt-1 text-2xl font-extrabold tabular-nums text-[#2D6A56]">
+    <div className="flex-1 rounded-2xl border border-line bg-white p-3">
+      <p className="text-xs text-muted">{label}</p>
+      <p className="mt-1 text-2xl font-extrabold tabular-nums text-primary">
         {value}
         {unit !== undefined && (
-          <span className="ml-0.5 text-sm font-semibold text-[#6B6560]">
+          <span className="ml-0.5 text-sm font-semibold text-muted">
             {unit}
           </span>
         )}

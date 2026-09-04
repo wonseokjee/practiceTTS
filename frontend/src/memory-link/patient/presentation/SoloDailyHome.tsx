@@ -42,17 +42,17 @@ export function SoloDailyHome({
   return (
     <div className="mx-auto flex w-full max-w-md flex-col px-6 pt-8">
       {/* 인사 (위계 최하) */}
-      <h1 className="text-2xl font-bold leading-snug text-[#1A1916]">
+      <h1 className="text-2xl font-bold leading-snug text-ink">
         {greetingName ? (
           <>
             {greetingName},<br />
-            <span className="text-[#2D6A56]">오늘도 반가워요.</span>
+            <span className="text-primary">오늘도 반가워요.</span>
           </>
         ) : (
-          <span className="text-[#2D6A56]">오늘도 반가워요.</span>
+          <span className="text-primary">오늘도 반가워요.</span>
         )}
       </h1>
-      <p className="mt-2 text-base text-[#6B6560]">
+      <p className="mt-2 text-base text-muted">
         오늘 연습, 3~5분이면 충분해요.
       </p>
 
@@ -65,7 +65,7 @@ export function SoloDailyHome({
       <button
         type="button"
         onClick={onStart}
-        className="mt-8 flex min-h-[180px] w-full flex-col items-center justify-center gap-2 rounded-3xl bg-[#2D6A56] px-6 text-2xl font-bold text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240] active:scale-[0.98]"
+        className="mt-8 flex min-h-[180px] w-full flex-col items-center justify-center gap-2 rounded-3xl bg-primary px-6 text-2xl font-bold text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark active:scale-[0.98]"
         aria-label="오늘 연습 시작하기"
       >
         <span aria-hidden="true" className="text-4xl">
@@ -84,7 +84,7 @@ export function SoloDailyHome({
             <button
               type="button"
               onClick={onPractice}
-              className="inline-flex min-h-[44px] items-center justify-center px-4 py-2 text-base text-[#6B6560] underline underline-offset-4 transition-colors duration-[180ms] ease-out hover:text-[#1A1916]"
+              className="inline-flex min-h-[44px] items-center justify-center px-4 py-2 text-base text-muted underline underline-offset-4 transition-colors duration-[180ms] ease-out hover:text-ink"
             >
               가볍게 연습하기
             </button>
@@ -93,7 +93,7 @@ export function SoloDailyHome({
             <button
               type="button"
               onClick={onReview}
-              className="inline-flex min-h-[44px] items-center justify-center px-4 py-2 text-base text-[#6B6560] underline underline-offset-4 transition-colors duration-[180ms] ease-out hover:text-[#1A1916]"
+              className="inline-flex min-h-[44px] items-center justify-center px-4 py-2 text-base text-muted underline underline-offset-4 transition-colors duration-[180ms] ease-out hover:text-ink"
             >
               이번 주 돌아보기
             </button>

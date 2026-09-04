@@ -59,15 +59,15 @@ describe('WordChoiceItem', () => {
     const { container } = renderItem({ selectedChoiceId: 'c1' });
 
     // 고른 표시(테두리)는 있어도 정답 배경은 없어야 한다.
-    expect(container.innerHTML).not.toContain('#EBF4F0');
+    expect(container.innerHTML).not.toContain('primary-light');
   });
 
   it('공개 단계에서 정답만 강조하고 오답에는 표시가 없다', () => {
     renderItem({ showAnswer: true, selectedChoiceId: 'c1' });
 
-    expect(screen.getByLabelText('사과 선택').className).toContain('#2D6A56');
-    // 내가 고른 오답을 빨강(#E07B54)으로 칠하지 않는다 — 성적표가 아니다.
-    expect(screen.getByLabelText('배 선택').className).not.toContain('#E07B54');
+    expect(screen.getByLabelText('사과 선택').className).toContain('primary');
+    // 내가 고른 오답을 테라코타로 칠하지 않는다 — 성적표가 아니다.
+    expect(screen.getByLabelText('배 선택').className).not.toContain('accent');
   });
 
   it('선택 불가일 때는 눌러도 올라가지 않는다', () => {

@@ -28,7 +28,7 @@ export function EntryListScreen({
         aria-label="로딩 중"
         aria-live="polite"
       >
-        <div className="text-[#6B6560] text-sm">불러오는 중...</div>
+        <div className="text-muted text-sm">불러오는 중...</div>
       </div>
     );
   }
@@ -37,14 +37,14 @@ export function EntryListScreen({
     return (
       <div
         role="alert"
-        className="p-4 bg-[#C94040]/10 border border-[#C94040]/30 rounded-2xl text-[#7A2E15] text-sm"
+        className="p-4 bg-danger/10 border border-danger/30 rounded-2xl text-accent-ink text-sm"
       >
         <p className="font-medium mb-2">목록을 불러오는 데 실패했습니다</p>
-        <p className="text-[#C94040] mb-3">{error}</p>
+        <p className="text-danger mb-3">{error}</p>
         <button
           type="button"
           onClick={() => void refresh()}
-          className="text-sm text-[#C94040] underline hover:text-[#7A2E15]"
+          className="text-sm text-danger underline hover:text-accent-ink"
         >
           다시 시도
         </button>
@@ -55,16 +55,16 @@ export function EntryListScreen({
   return (
     <div className="w-full">
       {/* 헤더 영역 */}
-      <h2 className="text-lg font-bold text-[#1A1916] mb-4">기억 목록</h2>
+      <h2 className="text-lg font-bold text-ink mb-4">기억 목록</h2>
 
       {/* 빈 상태 */}
       {entries.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="text-5xl text-[#D4D8D4] mb-4" aria-hidden="true">
+          <div className="text-5xl text-line-strong mb-4" aria-hidden="true">
             📷
           </div>
-          <p className="text-[#6B6560] mb-2">등록된 기억이 없습니다</p>
-          <p className="text-sm text-[#6B6560]">
+          <p className="text-muted mb-2">등록된 기억이 없습니다</p>
+          <p className="text-sm text-muted">
             사진과 함께 소중한 기억을 추가해보세요
           </p>
         </div>
@@ -109,7 +109,7 @@ function MemoryEntryCard({ entry, onClick }: MemoryEntryCardProps) {
     <button
       type="button"
       onClick={onClick}
-      className="w-full text-left bg-white rounded-2xl border border-[#E8E4DC] overflow-hidden hover:border-[#2D6A56] hover:shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#2D6A56]"
+      className="w-full text-left bg-white rounded-2xl border border-line overflow-hidden hover:border-primary hover:shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary"
       aria-label={`${dateLabel} 메모리 엔트리 상세 보기`}
     >
       {/* 사진 영역 — **없으면 아무것도 그리지 않는다.**
@@ -129,7 +129,7 @@ function MemoryEntryCard({ entry, onClick }: MemoryEntryCardProps) {
       {/* 정보 영역 */}
       <div className="p-3">
         {/* 날짜 */}
-        <p className="text-xs text-[#6B6560] mb-2">{dateLabel}</p>
+        <p className="text-xs text-muted mb-2">{dateLabel}</p>
 
         {/* 그날의 기억 — 카드의 본문.
             `moment`가 실제 기억이고 `activity`·`context`는 한두 낱말짜리
@@ -137,7 +137,7 @@ function MemoryEntryCard({ entry, onClick }: MemoryEntryCardProps) {
             없는 카드가 날짜만 남으므로, 이미 응답에 들어 있던 글을 여기 쓴다.
             2열 그리드라 좁아서 두 줄로 자른다. */}
         {moment && (
-          <p className="mb-2 line-clamp-2 text-sm leading-relaxed text-[#1A1916]">
+          <p className="mb-2 line-clamp-2 text-sm leading-relaxed text-ink">
             {moment}
           </p>
         )}
@@ -145,12 +145,12 @@ function MemoryEntryCard({ entry, onClick }: MemoryEntryCardProps) {
         {/* 장소 — 본문이 생겼으니 굵기를 뺀다. 남겨 두면 한두 낱말짜리 태그가
             기억 본문보다 크게 읽힌다. */}
         {entry.locationTag && (
-          <p className="mb-1 text-sm text-[#6B6560]">{entry.locationTag}</p>
+          <p className="mb-1 text-sm text-muted">{entry.locationTag}</p>
         )}
 
         {/* 감정 태그 */}
         {entry.emotionTag && (
-          <span className="inline-block px-2 py-0.5 bg-[#EBF4F0] text-[#2D6A56] rounded-full text-xs font-medium">
+          <span className="inline-block px-2 py-0.5 bg-primary-light text-primary rounded-full text-xs font-medium">
             {EMOTION_TAG_LABELS[entry.emotionTag]}
           </span>
         )}
@@ -161,7 +161,7 @@ function MemoryEntryCard({ entry, onClick }: MemoryEntryCardProps) {
             {entry.targetWords.map((word) => (
               <span
                 key={word}
-                className="px-2 py-0.5 bg-[#F2F1EC] text-[#6B6560] rounded-full text-xs"
+                className="px-2 py-0.5 bg-surface-dim text-muted rounded-full text-xs"
               >
                 {word}
               </span>
@@ -204,7 +204,7 @@ function TrainingReadiness({ entry }: { entry: MemoryEntry }) {
   // 준비 완료 — 환자가 지금 바로 대화를 시작할 수 있다.
   if (entry.hasScenario) {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#EBF4F0] text-[#2D6A56] rounded-full text-xs font-medium">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary-light text-primary rounded-full text-xs font-medium">
         대화 준비 완료
       </span>
     );
@@ -213,7 +213,7 @@ function TrainingReadiness({ entry }: { entry: MemoryEntry }) {
   // 사진·기록 분석이 아직이면 보호자가 할 수 있는 일이 없다. 기다리면 된다.
   if (!entry.hasMaskedContext) {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#F2F1EC] text-[#6B6560] rounded-full text-xs">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-surface-dim text-muted rounded-full text-xs">
         분석 중
       </span>
     );
@@ -226,7 +226,7 @@ function TrainingReadiness({ entry }: { entry: MemoryEntry }) {
       : '시나리오를 생성해 주세요';
 
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#E07B54]/15 text-[#b5602f] rounded-full text-xs font-medium">
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-accent/15 text-[#b5602f] rounded-full text-xs font-medium">
       대화하려면 {nextStep}
     </span>
   );

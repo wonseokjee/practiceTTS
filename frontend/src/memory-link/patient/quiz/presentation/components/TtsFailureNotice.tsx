@@ -30,7 +30,7 @@ export function TtsFailureNotice() {
   return (
     // role="alert" — 같은 화면의 다른 상태 문구(SpeechInput·SpeechCaptureItem)와
     // 같은 방식이다. 스크린리더가 즉시 읽는다.
-    <p className="text-base text-[#7A2E15]" role="alert">
+    <p className="text-base text-accent-ink" role="alert">
       {TTS_FAILURE_MESSAGE}
     </p>
   );

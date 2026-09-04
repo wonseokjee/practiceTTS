@@ -94,9 +94,9 @@ export function SoundCheckScreen({
         (Windows·iOS·Android가 서로 다르게 그린다) 어떤 조합에서는 흑백 폰트
         글립으로 떨어진다. 주된 시각 요소를 그렇게 둘 수 없다.
       */}
-        <SpeakerIcon className="h-16 w-16 text-[#2D6A56]" />
-        <h2 className="text-2xl font-bold text-[#1F2A26]">소리를 확인할게요</h2>
-        <p className="text-center text-lg leading-relaxed text-[#5C6661]">
+        <SpeakerIcon className="h-16 w-16 text-primary" />
+        <h2 className="text-2xl font-bold text-ink-sage">소리를 확인할게요</h2>
+        <p className="text-center text-lg leading-relaxed text-muted-sage">
           {destination}에는 듣고 답하는 문제가 있어요.
           <br />
           소리가 잘 나오는지 먼저 확인해요.
@@ -106,7 +106,7 @@ export function SoundCheckScreen({
           type="button"
           onClick={() => void play()}
           disabled={isPlaying}
-          className="min-h-[64px] w-full rounded-full bg-[#2D6A56] px-6 py-3 text-xl font-semibold text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240] disabled:opacity-60"
+          className="min-h-[64px] w-full rounded-full bg-primary px-6 py-3 text-xl font-semibold text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark disabled:opacity-60"
         >
           {isPlaying ? (
             "소리 나는 중…"
@@ -120,7 +120,7 @@ export function SoundCheckScreen({
 
         {showHelp ? (
           <div className="w-full" role="alert">
-            <p className="mb-4 text-center text-lg font-medium text-[#7A2E15]">
+            <p className="mb-4 text-center text-lg font-medium text-accent-ink">
               {ttsError !== null
                 ? "이 기기에서 소리를 낼 수 없었어요."
                 : "소리가 안 들리시는군요."}
@@ -129,18 +129,18 @@ export function SoundCheckScreen({
             "볼륨" "설정" 같은 말은 쓰지 않는다. 손으로 할 수 있는 동작으로만
             적는다 — 옆에 도와줄 사람이 없을 수도 있다.
           */}
-            <ol className="mb-4 flex list-decimal flex-col gap-2 rounded-2xl bg-[#FBE9E2] px-8 py-4 text-left text-lg leading-relaxed text-[#5C6661]">
+            <ol className="mb-4 flex list-decimal flex-col gap-2 rounded-2xl bg-accent-soft px-8 py-4 text-left text-lg leading-relaxed text-muted-sage">
               <li>기기 옆의 소리 버튼을 눌러 소리를 키워 주세요.</li>
               <li>무음(진동) 상태라면 소리가 나게 바꿔 주세요.</li>
               <li>이어폰을 쓰신다면 잘 꽂혔는지 봐 주세요.</li>
             </ol>
-            <p className="mb-3 text-center text-base text-[#5C6661]">
+            <p className="mb-3 text-center text-base text-muted-sage">
               그런 다음 위의 <strong>소리 듣기</strong>를 한 번 더 눌러 주세요.
             </p>
             <button
               type="button"
               onClick={onSkip}
-              className="min-h-[48px] w-full text-base text-[#6B6560] underline underline-offset-4"
+              className="min-h-[48px] w-full text-base text-muted underline underline-offset-4"
             >
               소리 없이 시작하기
             </button>
@@ -149,7 +149,7 @@ export function SoundCheckScreen({
           hasPlayed && (
             <div className="w-full">
               <p
-                className="mb-4 text-center text-xl font-medium text-[#1F2A26]"
+                className="mb-4 text-center text-xl font-medium text-ink-sage"
                 role="status"
                 aria-live="polite"
               >
@@ -169,14 +169,14 @@ export function SoundCheckScreen({
                 <button
                   type="button"
                   onClick={onPass}
-                  className="min-h-[64px] flex-1 rounded-full border-2 border-[#2D6A56] bg-white px-4 py-3 text-xl font-semibold text-[#2D6A56] transition-colors duration-[180ms] ease-out hover:bg-[#EBF4F0]"
+                  className="min-h-[64px] flex-1 rounded-full border-2 border-primary bg-white px-4 py-3 text-xl font-semibold text-primary transition-colors duration-[180ms] ease-out hover:bg-primary-light"
                 >
                   잘 들려요
                 </button>
                 <button
                   type="button"
                   onClick={() => setDeclined(true)}
-                  className="min-h-[64px] flex-1 rounded-full border-2 border-[#B85C36] bg-white px-4 py-3 text-xl font-semibold text-[#7A2E15] transition-colors duration-[180ms] ease-out hover:bg-[#FBE9E2]"
+                  className="min-h-[64px] flex-1 rounded-full border-2 border-accent-strong bg-white px-4 py-3 text-xl font-semibold text-accent-ink transition-colors duration-[180ms] ease-out hover:bg-accent-soft"
                 >
                   안 들려요
                 </button>
@@ -193,7 +193,7 @@ export function SoundCheckScreen({
       <button
         type="button"
         onClick={onCancel}
-        className="mt-8 min-h-[48px] w-full text-base text-[#6B6560] underline underline-offset-4"
+        className="mt-8 min-h-[48px] w-full text-base text-muted underline underline-offset-4"
       >
         돌아가기
       </button>

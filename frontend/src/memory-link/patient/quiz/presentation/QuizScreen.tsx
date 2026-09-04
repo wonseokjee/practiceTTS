@@ -87,7 +87,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
         className="font-pretendard flex min-h-[60vh] items-center justify-center"
         role="status"
       >
-        <p className="text-xl text-[#5C6661]">퀴즈를 준비하고 있어요...</p>
+        <p className="text-xl text-muted-sage">퀴즈를 준비하고 있어요...</p>
       </div>
     );
   }
@@ -97,24 +97,24 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
     return (
       <div className="font-pretendard mx-auto mt-10 w-full max-w-md px-4">
         <div
-          className="rounded-3xl border border-[#E07B54] bg-[#FBE9E2] p-6 text-center"
+          className="rounded-3xl border border-accent bg-accent-soft p-6 text-center"
           role="alert"
         >
-          <p className="mb-5 text-lg text-[#7A2E15]">
+          <p className="mb-5 text-lg text-accent-ink">
             {error ?? '문제가 생겼어요.'}
           </p>
           <div className="flex flex-col gap-3">
             <button
               type="button"
               onClick={() => void actions.retry()}
-              className="min-h-[56px] rounded-full bg-[#2D6A56] px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240]"
+              className="min-h-[56px] rounded-full bg-primary px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark"
             >
               {isSessionExpired ? '다시 시작' : '다시 시도'}
             </button>
             <button
               type="button"
               onClick={onExit}
-              className="min-h-[48px] rounded-full bg-white px-6 py-3 text-base font-medium text-[#5C6661] transition-colors duration-[180ms] ease-out hover:bg-[#EBEAE6]"
+              className="min-h-[48px] rounded-full bg-white px-6 py-3 text-base font-medium text-muted-sage transition-colors duration-[180ms] ease-out hover:bg-canvas-hover"
             >
               목록으로
             </button>
@@ -197,7 +197,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
       {/* 데일리 항목은 prompt를 제목으로 노출 (QAB는 컴포넌트 내부 안내 사용) */}
       {currentItem.kind === 'daily' && (
         <h2
-          className="mb-6 text-2xl font-bold leading-snug text-[#1F2A26]"
+          className="mb-6 text-2xl font-bold leading-snug text-ink-sage"
           aria-live="polite"
         >
           {currentItem.question.prompt}
@@ -286,7 +286,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
 
       {/* 채점 중 표시 */}
       {isSubmitting && (
-        <p className="mt-6 text-center text-base text-[#5C6661]" role="status">
+        <p className="mt-6 text-center text-base text-muted-sage" role="status">
           채점 중...
         </p>
       )}
@@ -299,10 +299,10 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
           <p
             className={`mb-4 text-center text-lg font-bold ${
               lastResult.isCorrect === true
-                ? 'text-[#1F5240]'
+                ? 'text-primary-dark'
                 : lastResult.isCorrect === false
-                  ? 'text-[#7A2E15]'
-                  : 'text-[#5C6661]'
+                  ? 'text-accent-ink'
+                  : 'text-muted-sage'
             }`}
             role="status"
             aria-live="polite"
@@ -321,7 +321,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
               <button
                 type="button"
                 onClick={actions.answerAgain}
-                className="mb-3 flex min-h-[56px] w-full items-center justify-center gap-2 rounded-full border-2 border-[#2D6A56] bg-white px-6 py-3 text-lg font-medium text-[#2D6A56] transition-colors duration-[180ms] ease-out hover:bg-[#EBF4F0]"
+                className="mb-3 flex min-h-[56px] w-full items-center justify-center gap-2 rounded-full border-2 border-primary bg-white px-6 py-3 text-lg font-medium text-primary transition-colors duration-[180ms] ease-out hover:bg-primary-light"
                 aria-label="다시 말하기"
               >
                 <span aria-hidden="true" className="text-2xl">🎤</span>
@@ -331,7 +331,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
           <button
             type="button"
             onClick={actions.next}
-            className="min-h-[56px] w-full rounded-full bg-[#2D6A56] px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240]"
+            className="min-h-[56px] w-full rounded-full bg-primary px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark"
             aria-label={isLastQuestion ? '결과 보기' : '다음 문제'}
           >
             {isLastQuestion ? '결과 보기' : '다음 문제'}
@@ -345,7 +345,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
           <button
             type="button"
             onClick={onExit}
-            className="text-sm text-[#6B6560] transition-colors duration-[180ms] hover:text-[#3F4A44]"
+            className="text-sm text-muted transition-colors duration-[180ms] hover:text-[#3F4A44]"
             aria-label="퀴즈 그만두기"
           >
             {/* 세션을 끝내면 홈으로 돌아간다(DR1b). 예전엔 목록으로 갔다. */}

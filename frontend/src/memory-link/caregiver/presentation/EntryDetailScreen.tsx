@@ -107,7 +107,7 @@ export function EntryDetailScreen({
         aria-live="polite"
         aria-label="로딩 중"
       >
-        <div className="text-[#6B6560] text-sm">불러오는 중...</div>
+        <div className="text-muted text-sm">불러오는 중...</div>
       </div>
     );
   }
@@ -118,14 +118,14 @@ export function EntryDetailScreen({
         <button
           type="button"
           onClick={onBack}
-          className="mb-4 text-sm text-[#6B6560] hover:text-[#1A1916] flex items-center gap-1"
+          className="mb-4 text-sm text-muted hover:text-ink flex items-center gap-1"
           aria-label="목록으로 돌아가기"
         >
           ← 돌아가기
         </button>
         <div
           role="alert"
-          className="p-4 bg-[#C94040]/10 border border-[#C94040]/30 rounded-2xl text-[#7A2E15] text-sm"
+          className="p-4 bg-danger/10 border border-danger/30 rounded-2xl text-accent-ink text-sm"
         >
           {error ?? '메모리 엔트리를 찾을 수 없습니다.'}
         </div>
@@ -153,7 +153,7 @@ export function EntryDetailScreen({
       <button
         type="button"
         onClick={onBack}
-        className="mb-4 text-sm text-[#6B6560] hover:text-[#1A1916] flex items-center gap-1 transition-colors"
+        className="mb-4 text-sm text-muted hover:text-ink flex items-center gap-1 transition-colors"
         aria-label="목록으로 돌아가기"
       >
         ← 목록으로
@@ -167,32 +167,32 @@ export function EntryDetailScreen({
           className="w-full rounded-2xl mb-4 max-h-80 object-cover"
         />
       ) : (
-        <div className="w-full h-48 bg-[#EBF4F0]/50 rounded-2xl flex items-center justify-center mb-4">
-          <span className="text-4xl text-[#9AA09B]" aria-hidden="true">📷</span>
+        <div className="w-full h-48 bg-primary-light/50 rounded-2xl flex items-center justify-center mb-4">
+          <span className="text-4xl text-muted-disabled" aria-hidden="true">📷</span>
         </div>
       )}
 
       {/* 기본 정보 */}
-      <div className="bg-white rounded-2xl border border-[#E8E4DC] p-4 mb-4">
-        <p className="text-xs text-[#6B6560] mb-3">{dateLabel}</p>
+      <div className="bg-white rounded-2xl border border-line p-4 mb-4">
+        <p className="text-xs text-muted mb-3">{dateLabel}</p>
 
         {/* 장소 태그 */}
         {entry.locationTag && (
           <div className="mb-3">
-            <dt className="text-xs text-[#6B6560] font-medium mb-1">장소</dt>
-            <dd className="text-sm text-[#1A1916]">{entry.locationTag}</dd>
+            <dt className="text-xs text-muted font-medium mb-1">장소</dt>
+            <dd className="text-sm text-ink">{entry.locationTag}</dd>
           </div>
         )}
 
         {/* 사물 태그 */}
         {entry.objectTags && entry.objectTags.length > 0 && (
           <div className="mb-3">
-            <dt className="text-xs text-[#6B6560] font-medium mb-1">사물</dt>
+            <dt className="text-xs text-muted font-medium mb-1">사물</dt>
             <dd className="flex flex-wrap gap-1">
               {entry.objectTags.map((tag) => (
                 <span
                   key={tag}
-                  className="px-2 py-0.5 bg-[#F2F1EC] text-[#6B6560] rounded-full text-xs"
+                  className="px-2 py-0.5 bg-surface-dim text-muted rounded-full text-xs"
                 >
                   {tag}
                 </span>
@@ -204,9 +204,9 @@ export function EntryDetailScreen({
         {/* 감정 태그 */}
         {entry.emotionTag && (
           <div className="mb-3">
-            <dt className="text-xs text-[#6B6560] font-medium mb-1">감정</dt>
+            <dt className="text-xs text-muted font-medium mb-1">감정</dt>
             <dd>
-              <span className="px-2 py-0.5 bg-[#EBF4F0] text-[#2D6A56] rounded-full text-sm font-medium">
+              <span className="px-2 py-0.5 bg-primary-light text-primary rounded-full text-sm font-medium">
                 {EMOTION_TAG_LABELS[entry.emotionTag]}
               </span>
             </dd>
@@ -216,11 +216,11 @@ export function EntryDetailScreen({
       </div>
 
       {/* 훈련 목표 단어 편집 — 시나리오 생성의 필수 입력 (1~3개) */}
-      <div className="bg-white rounded-2xl border border-[#E8E4DC] p-4 mb-4">
-        <h3 className="text-sm font-medium text-[#1A1916] mb-1">
+      <div className="bg-white rounded-2xl border border-line p-4 mb-4">
+        <h3 className="text-sm font-medium text-ink mb-1">
           훈련 목표 단어
         </h3>
-        <p className="text-xs text-[#6B6560] mb-3">
+        <p className="text-xs text-muted mb-3">
           환자분이 스스로 떠올릴 단어예요. 퀴즈 문항을 만들 때 함께 쓰입니다.
           {isConversationModeEnabled()
             ? ' 1~3개를 등록해야 시나리오를 생성할 수 있어요.'
@@ -232,13 +232,13 @@ export function EntryDetailScreen({
             {localWords.map((word) => (
               <span
                 key={word}
-                className="inline-flex items-center gap-1 px-3 py-1 bg-[#EBF4F0] text-[#2D6A56] rounded-full text-sm font-medium"
+                className="inline-flex items-center gap-1 px-3 py-1 bg-primary-light text-primary rounded-full text-sm font-medium"
               >
                 {word}
                 <button
                   type="button"
                   onClick={() => removeWord(word)}
-                  className="text-[#9fd0bc] hover:text-[#C94040]"
+                  className="text-[#9fd0bc] hover:text-danger"
                   aria-label={`${word} 삭제`}
                 >
                   ×
@@ -266,12 +266,12 @@ export function EntryDetailScreen({
               // 알 방법이 없다. 실제로 접근성 트리에 "예: 바다 (입력 후 추가)"로
               // 노출되고 있었다.
               aria-label="훈련 목표 단어"
-              className="flex-1 rounded-full border border-[#E8E4DC] bg-[#F7F6F3] px-4 py-2 text-sm focus:border-[#2D6A56] focus:outline-none focus:ring-1 focus:ring-[#2D6A56]"
+              className="flex-1 rounded-full border border-line bg-canvas px-4 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             />
             <button
               type="button"
               onClick={addWord}
-              className="rounded-full bg-[#EBF4F0] px-4 text-sm font-medium text-[#2D6A56] hover:bg-[#dcebe4]"
+              className="rounded-full bg-primary-light px-4 text-sm font-medium text-primary hover:bg-[#dcebe4]"
             >
               추가
             </button>
@@ -279,7 +279,7 @@ export function EntryDetailScreen({
         )}
 
         {wordsError && (
-          <p role="alert" className="mt-2 text-xs text-[#C94040]">
+          <p role="alert" className="mt-2 text-xs text-danger">
             {wordsError}
           </p>
         )}
@@ -289,7 +289,7 @@ export function EntryDetailScreen({
             type="button"
             onClick={() => void saveWords()}
             disabled={isSavingWords}
-            className="mt-3 w-full min-h-[44px] py-2 bg-[#2D6A56] text-white rounded-full text-sm font-medium hover:bg-[#1F5240] disabled:bg-[#E8E4DC] disabled:text-[#9AA09B] transition-colors"
+            className="mt-3 w-full min-h-[44px] py-2 bg-primary text-white rounded-full text-sm font-medium hover:bg-primary-dark disabled:bg-line disabled:text-muted-disabled transition-colors"
           >
             {isSavingWords ? '저장 중...' : '목표 단어 저장'}
           </button>
@@ -297,8 +297,8 @@ export function EntryDetailScreen({
       </div>
 
       {/* AI 처리 상태 */}
-      <div className="bg-white rounded-2xl border border-[#E8E4DC] p-4 mb-4">
-        <h3 className="text-sm font-medium text-[#1A1916] mb-3">AI 처리 상태</h3>
+      <div className="bg-white rounded-2xl border border-line p-4 mb-4">
+        <h3 className="text-sm font-medium text-ink mb-3">AI 처리 상태</h3>
         <div className="flex flex-col gap-2">
           <StatusBadge
             label="기억 분석"
@@ -322,7 +322,7 @@ export function EntryDetailScreen({
       {isConversationModeEnabled() && scenarioStatus === 'error' && (
         <div
           role="alert"
-          className="mb-3 p-3 bg-[#C94040]/10 border border-[#C94040]/30 rounded-2xl text-[#7A2E15] text-sm"
+          className="mb-3 p-3 bg-danger/10 border border-danger/30 rounded-2xl text-accent-ink text-sm"
         >
           시나리오 생성에 실패했습니다. 다시 시도해주세요.
         </div>
@@ -333,7 +333,7 @@ export function EntryDetailScreen({
           type="button"
           onClick={() => void onTriggerScenario(entry.id)}
           disabled={!canTriggerScenario || isScenarioPending}
-          className="w-full min-h-[52px] py-3 bg-[#B85C36] text-white rounded-full font-medium hover:bg-[#A04F2D] disabled:bg-[#E8E4DC] disabled:text-[#9AA09B] transition-colors"
+          className="w-full min-h-[52px] py-3 bg-accent-strong text-white rounded-full font-medium hover:bg-accent-hover disabled:bg-line disabled:text-muted-disabled transition-colors"
           aria-label={
             isScenarioPending ? '시나리오 생성 중' : '시나리오 생성하기'
           }
@@ -344,14 +344,14 @@ export function EntryDetailScreen({
       )}
 
       {isConversationModeEnabled() && entry.hasScenario && (
-        <div className="w-full py-3 bg-[#EBF4F0] text-[#2D6A56] rounded-full font-medium text-center border border-[#2D6A56]/25">
+        <div className="w-full py-3 bg-primary-light text-primary rounded-full font-medium text-center border border-primary/25">
           훈련 시나리오 준비 완료
         </div>
       )}
 
       {/* 컨텍스트 분석 미완료 안내 (사진 또는 기록 분석 후 시나리오 가능) */}
       {isConversationModeEnabled() && !entry.hasMaskedContext && (
-        <p className="mt-2 text-xs text-[#6B6560] text-center">
+        <p className="mt-2 text-xs text-muted text-center">
           AI가 기록하신 내용{entry.photoUrl ? '과 사진' : ''}을 분석하면 시나리오를
           생성할 수 있습니다
         </p>
@@ -361,7 +361,7 @@ export function EntryDetailScreen({
       {entry.hasMaskedContext &&
         !entry.hasScenario &&
         entry.targetWords.length === 0 && (
-          <p className="mt-2 text-xs text-[#6B6560] text-center">
+          <p className="mt-2 text-xs text-muted text-center">
             목표 단어를 1개 이상 등록·저장하면 시나리오를 생성할 수 있어요
           </p>
         )}
@@ -380,12 +380,12 @@ interface StatusBadgeProps {
 function StatusBadge({ label, isDone, pendingText }: StatusBadgeProps) {
   return (
     <div className="flex justify-between items-center">
-      <span className="text-sm text-[#6B6560]">{label}</span>
+      <span className="text-sm text-muted">{label}</span>
       <span
         className={`text-xs px-2 py-0.5 rounded-full ${
           isDone
-            ? 'bg-[#EBF4F0] text-[#2D6A56]'
-            : 'bg-[#F2F1EC] text-[#6B6560]'
+            ? 'bg-primary-light text-primary'
+            : 'bg-surface-dim text-muted'
         }`}
       >
         {isDone ? '완료' : pendingText}

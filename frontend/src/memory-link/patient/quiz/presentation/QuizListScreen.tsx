@@ -38,26 +38,26 @@ export function QuizListScreen({ onSelectQuiz, deps }: QuizListScreenProps) {
         홈에서 세트가 하나면 바로 시작하므로(DR1b), 이 화면은 이제 **여럿 중
         고를 때** 나온다. 제목이 그 상황을 말해야 한다.
       */}
-      <h2 className="mb-5 text-2xl font-bold text-[#1F2A26]">
+      <h2 className="mb-5 text-2xl font-bold text-ink-sage">
         풀 수 있는 퀴즈
       </h2>
 
       {isLoading && (
         <div className="flex items-center justify-center py-16" role="status">
-          <p className="text-xl text-[#5C6661]">불러오는 중...</p>
+          <p className="text-xl text-muted-sage">불러오는 중...</p>
         </div>
       )}
 
       {!isLoading && error !== null && (
         <div
-          className="rounded-3xl border border-[#E07B54] bg-[#FBE9E2] p-6 text-center"
+          className="rounded-3xl border border-accent bg-accent-soft p-6 text-center"
           role="alert"
         >
-          <p className="mb-4 text-lg text-[#7A2E15]">{error}</p>
+          <p className="mb-4 text-lg text-accent-ink">{error}</p>
           <button
             type="button"
             onClick={() => void reload()}
-            className="min-h-[48px] rounded-full bg-[#2D6A56] px-6 py-3 text-base font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240]"
+            className="min-h-[48px] rounded-full bg-primary px-6 py-3 text-base font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark"
           >
             다시 시도
           </button>
@@ -66,11 +66,11 @@ export function QuizListScreen({ onSelectQuiz, deps }: QuizListScreenProps) {
 
       {!isLoading && error === null && items.length === 0 && (
         <div className="py-16 text-center">
-          <p className="text-xl text-[#5C6661]">
+          <p className="text-xl text-muted-sage">
             아직 풀 수 있는 퀴즈가 없어요.
           </p>
-          {/* #9AA09B는 크림 배경에서 2.47:1이라 WCAG AA 미달이다(--muted는 5.11:1). */}
-          <p className="mt-2 text-base text-[#6B6560]">
+          {/* muted-disabled는 크림 배경에서 2.47:1이라 AA 미달이다(muted는 5.11:1). */}
+          <p className="mt-2 text-base text-muted">
             보호자가 일기를 등록하면 퀴즈가 도착해요.
           </p>
         </div>
@@ -109,7 +109,7 @@ function QuizSetCard({ item, onSelect }: QuizSetCardProps) {
         type="button"
         onClick={() => onSelect(item.quizSetId)}
         aria-label={`${formatDate(item.createdAt)} 퀴즈 풀기`}
-        className="flex w-full items-center gap-4 rounded-3xl border border-[#E8E4DC] bg-white p-4 text-left shadow-[0_6px_18px_rgba(0,0,0,0.05)] transition-colors duration-[180ms] ease-out hover:border-[#2D6A56]"
+        className="flex w-full items-center gap-4 rounded-3xl border border-line bg-white p-4 text-left shadow-[0_6px_18px_rgba(0,0,0,0.05)] transition-colors duration-[180ms] ease-out hover:border-primary"
       >
         {item.photoUrl !== null && (
           <AuthedImage
@@ -120,17 +120,17 @@ function QuizSetCard({ item, onSelect }: QuizSetCardProps) {
         )}
 
         <div className="flex flex-1 flex-col gap-1">
-          <p className="text-lg font-medium text-[#1F2A26]">
+          <p className="text-lg font-medium text-ink-sage">
             {formatDate(item.createdAt)} 기억 퀴즈
           </p>
           {item.bestScore !== null && (
-            <span className="text-sm tabular-nums text-[#2D6A56]">
+            <span className="text-sm tabular-nums text-primary">
               최고점 {formatScore(item.bestScore)}
             </span>
           )}
         </div>
 
-        <span className="text-2xl text-[#2D6A56]" aria-hidden="true">
+        <span className="text-2xl text-primary" aria-hidden="true">
           ›
         </span>
       </button>

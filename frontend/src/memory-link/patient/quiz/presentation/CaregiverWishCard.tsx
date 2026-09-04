@@ -86,7 +86,7 @@ export function CaregiverWishCard({
     <section
       // `mb-6`을 뺐다. 이 카드는 QuizScreen의 early return에서 화면의 유일한
       // 자식이라, 아래 여백이 세로 가운데 정렬을 24px 위로 밀기만 했다.
-      className="font-pretendard rounded-xl border border-[#E0A984] bg-[#FCF3EC] p-6"
+      className="font-pretendard rounded-xl border border-accent-line bg-accent-faint p-6"
       aria-labelledby="wish-card-heading"
     >
       <div className="mb-3 flex items-center gap-2">
@@ -101,7 +101,7 @@ export function CaregiverWishCard({
         </h2>
       </div>
 
-      <p className="mb-5 text-xl font-bold leading-relaxed text-[#1F2A26]">
+      <p className="mb-5 text-xl font-bold leading-relaxed text-ink-sage">
         {wishMessage}
       </p>
 
@@ -140,8 +140,8 @@ export function CaregiverWishCard({
       >
         {tab === 'echo' ? (
           <div>
-            <p className="mb-1 text-xs text-[#5C6661]">소리 내어 따라 말해보세요</p>
-            <p className="text-lg font-medium text-[#1F2A26]">{wishMessage}</p>
+            <p className="mb-1 text-xs text-muted-sage">소리 내어 따라 말해보세요</p>
+            <p className="text-lg font-medium text-ink-sage">{wishMessage}</p>
           </div>
         ) : (
           <BlankPanel
@@ -158,7 +158,7 @@ export function CaregiverWishCard({
       <button
         type="button"
         onClick={onProceed}
-        className="mt-6 min-h-[56px] w-full rounded-md bg-[#2D6A56] px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240]"
+        className="mt-6 min-h-[56px] w-full rounded-md bg-primary px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark"
         aria-label="퀴즈 풀이로 이동"
       >
         퀴즈 풀러 가기
@@ -192,8 +192,8 @@ const TabButton = forwardRef<
       onClick={onClick}
       className={`rounded-md px-4 py-2 text-sm font-medium transition-colors duration-[180ms] ease-out ${
         active
-          ? 'bg-[#2D6A56] text-white'
-          : 'bg-white text-[#5C6661] hover:bg-[#EBF4F0]'
+          ? 'bg-primary text-white'
+          : 'bg-white text-muted-sage hover:bg-primary-light'
       }`}
     >
       {label}
@@ -220,7 +220,7 @@ function BlankPanel({
 }: BlankPanelProps) {
   if (isLoading) {
     return (
-      <p className="text-base text-[#5C6661]" role="status">
+      <p className="text-base text-muted-sage" role="status">
         연습 문장을 만들고 있어요...
       </p>
     );
@@ -228,11 +228,11 @@ function BlankPanel({
   if (error !== null) {
     return (
       <div role="alert">
-        <p className="mb-3 text-sm text-[#7A2E15]">{error}</p>
+        <p className="mb-3 text-sm text-accent-ink">{error}</p>
         <button
           type="button"
           onClick={onRetry}
-          className="rounded-md bg-[#2D6A56] px-4 py-2 text-sm font-medium text-white hover:bg-[#1F5240]"
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark"
         >
           다시 시도
         </button>
@@ -245,27 +245,27 @@ function BlankPanel({
 
   return (
     <div>
-      <p className="mb-1 text-xs text-[#5C6661]">
+      <p className="mb-1 text-xs text-muted-sage">
         빈칸에 들어갈 말을 떠올려 말해보세요
       </p>
-      <p className="mb-3 text-lg font-medium text-[#1F2A26]">
+      <p className="mb-3 text-lg font-medium text-ink-sage">
         {practice.fillBlank.prompt}
       </p>
-      <p className="mb-3 text-sm text-[#5C6661]">
+      <p className="mb-3 text-sm text-muted-sage">
         힌트: 첫 글자는{' '}
-        <span className="font-bold text-[#2D6A56]">
+        <span className="font-bold text-primary">
           {practice.fillBlank.hintFirstChar}
         </span>
       </p>
       {revealAnswer ? (
-        <p className="text-base font-bold text-[#1F5240]">
+        <p className="text-base font-bold text-primary-dark">
           정답: {practice.fillBlank.answer}
         </p>
       ) : (
         <button
           type="button"
           onClick={onReveal}
-          className="text-sm text-[#2D6A56] underline transition-colors hover:text-[#1F5240]"
+          className="text-sm text-primary underline transition-colors hover:text-primary-dark"
         >
           정답 보기
         </button>

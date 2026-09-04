@@ -6,7 +6,7 @@
  *
  * 디자인(Warm Clinical):
  * - surface #FFFFFF, radius xl(24px) 단일 패널, 장식 그림자/블롭 없음
- * - 세이지 그린(#2D6A56) 포커스, 에러는 색·테두리로만(bounce/shake 금지)
+ * - 세이지 그린(`primary`) 포커스, 에러는 색·테두리로만(bounce/shake 금지)
  * 접근성: role="dialog" + aria-modal, 첫 입력 자동 포커스, Esc=취소,
  *         숫자 키패드(inputMode), 44px+ 터치 타깃, 에러 aria-live
  */
@@ -89,11 +89,11 @@ export function ReturnToCaregiverPinModal({
       >
         <h2
           id="pin-modal-title"
-          className="text-xl font-bold text-[#1F2A26]"
+          className="text-xl font-bold text-ink-sage"
         >
           기기를 돌려주셨네요
         </h2>
-        <p className="mt-2 text-sm text-[#5C6661]">
+        <p className="mt-2 text-sm text-muted-sage">
           보호자 PIN을 입력해주세요.
         </p>
 
@@ -113,8 +113,8 @@ export function ReturnToCaregiverPinModal({
             aria-label="보호자 PIN 4자리"
             className={`w-full min-h-[56px] rounded-xl border-2 px-4 text-center text-2xl tracking-[0.6em] tabular-nums focus:outline-none ${
               error
-                ? 'border-[#E07B54] bg-[#FBE9E2]'
-                : 'border-[#E5E5E0] focus:border-[#2D6A56]'
+                ? 'border-accent bg-accent-soft'
+                : 'border-line-soft focus:border-primary'
             }`}
             placeholder="••••"
           />
@@ -123,7 +123,7 @@ export function ReturnToCaregiverPinModal({
             <p
               role="alert"
               aria-live="assertive"
-              className="mt-3 text-sm text-[#7A2E15]"
+              className="mt-3 text-sm text-accent-ink"
             >
               {error}
             </p>
@@ -134,14 +134,14 @@ export function ReturnToCaregiverPinModal({
               type="button"
               onClick={onCancel}
               disabled={isSubmitting}
-              className="min-h-[48px] flex-1 rounded-xl bg-[#F7F6F3] px-4 text-sm font-medium text-[#5C6661] transition-colors hover:bg-[#EFEEE9] disabled:opacity-50"
+              className="min-h-[48px] flex-1 rounded-xl bg-canvas px-4 text-sm font-medium text-muted-sage transition-colors hover:bg-[#EFEEE9] disabled:opacity-50"
             >
               취소
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="min-h-[48px] flex-1 rounded-xl bg-[#2D6A56] px-4 text-sm font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240] disabled:opacity-50"
+              className="min-h-[48px] flex-1 rounded-xl bg-primary px-4 text-sm font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark disabled:opacity-50"
             >
               {isSubmitting ? '확인 중...' : '확인'}
             </button>
