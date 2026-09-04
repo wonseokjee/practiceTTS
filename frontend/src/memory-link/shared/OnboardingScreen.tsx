@@ -94,10 +94,10 @@ export function OnboardingScreen() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F7F6F3] p-6">
-      <div className="w-full max-w-sm rounded-2xl border border-[#E8E4DC] bg-white p-6">
-        <h1 className="text-xl font-bold text-[#1A1916]">환영해요{user?.displayName ? `, ${user.displayName}님` : ''}</h1>
-        <p className="mt-1 mb-5 text-sm text-[#5C6661]">
+    <div className="min-h-screen flex items-center justify-center bg-canvas p-6">
+      <div className="w-full max-w-sm rounded-2xl border border-line bg-white p-6">
+        <h1 className="text-xl font-bold text-ink">환영해요{user?.displayName ? `, ${user.displayName}님` : ''}</h1>
+        <p className="mt-1 mb-5 text-sm text-muted-sage">
           시작하기 전에 돌보시는 어르신 정보를 알려주세요.
         </p>
 
@@ -105,7 +105,7 @@ export function OnboardingScreen() {
           <div>
             <label
               htmlFor="ob-patient-name"
-              className="block text-sm font-medium text-[#1A1916] mb-1"
+              className="block text-sm font-medium text-ink mb-1"
             >
               어르신 성함
             </label>
@@ -114,7 +114,7 @@ export function OnboardingScreen() {
               type="text"
               value={patientDisplayName}
               onChange={(e) => setPatientDisplayName(e.target.value)}
-              className="w-full min-h-[48px] px-3 py-2 border border-[#E8E4DC] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D6A56] focus:border-transparent"
+              className="w-full min-h-[48px] px-3 py-2 border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               placeholder="돌보시는 어르신의 성함"
             />
           </div>
@@ -122,7 +122,7 @@ export function OnboardingScreen() {
           <div>
             <label
               htmlFor="ob-pin"
-              className="block text-sm font-medium text-[#1A1916] mb-1"
+              className="block text-sm font-medium text-ink mb-1"
             >
               환자 모드 PIN (4자리 숫자)
             </label>
@@ -136,10 +136,10 @@ export function OnboardingScreen() {
               onChange={(e) =>
                 setPatientModePin(e.target.value.replace(/\D/g, '').slice(0, 4))
               }
-              className="w-full min-h-[48px] px-3 py-2 border border-[#E8E4DC] rounded-lg tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-[#2D6A56] focus:border-transparent"
+              className="w-full min-h-[48px] px-3 py-2 border border-line rounded-lg tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               placeholder="••••"
             />
-            <p className="mt-1 text-xs text-[#6B6560]">
+            <p className="mt-1 text-xs text-muted">
               어르신께 기기를 건넸다가 돌아올 때 쓰는 4자리 숫자예요.
             </p>
           </div>
@@ -147,7 +147,7 @@ export function OnboardingScreen() {
           {error !== null && (
             <p
               role="alert"
-              className="rounded-xl border border-[#C94040]/25 bg-[#FEF0F0] px-4 py-3 text-sm text-[#8b2020]"
+              className="rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm text-danger-ink"
             >
               {error}
             </p>
@@ -156,18 +156,18 @@ export function OnboardingScreen() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full min-h-[48px] py-2 px-4 bg-[#2D6A56] text-white font-medium rounded-full hover:bg-[#1F5240] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full min-h-[48px] py-2 px-4 bg-primary text-white font-medium rounded-full hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isSubmitting ? '저장 중...' : '시작하기'}
           </button>
         </form>
 
         {/* 이미 다른 방법으로 가입한 계정이 있으면, 새로 만들지 말고 그 계정에 흡수 */}
-        <div className="mt-6 border-t border-[#E8E4DC] pt-5">
-          <p className="text-sm font-medium text-[#1A1916]">
+        <div className="mt-6 border-t border-line pt-5">
+          <p className="text-sm font-medium text-ink">
             이미 다른 방법으로 가입하셨나요?
           </p>
-          <p className="mt-1 mb-3 text-xs text-[#6B6560]">
+          <p className="mt-1 mb-3 text-xs text-muted">
             기존에 쓰던 로그인으로 연결하면, 이 계정 대신 그 계정으로 들어가요.
             (등록해 둔 정보가 그대로 있어요.)
           </p>
@@ -175,7 +175,7 @@ export function OnboardingScreen() {
           {mergeNotice !== null && (
             <p
               role="alert"
-              className="mb-3 rounded-xl border border-[#C94040]/25 bg-[#FEF0F0] px-4 py-3 text-sm text-[#8b2020]"
+              className="mb-3 rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm text-danger-ink"
             >
               {mergeNotice}
             </p>
@@ -195,7 +195,7 @@ export function OnboardingScreen() {
               type="button"
               onClick={() => void startMerge('google')}
               disabled={mergeBusy !== null}
-              className="flex w-full min-h-[48px] items-center justify-center gap-2 rounded-full border border-[#DADCE0] bg-white text-sm font-medium text-[#3C4043] transition-colors hover:bg-[#F7F6F3] disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex w-full min-h-[48px] items-center justify-center gap-2 rounded-full border border-[#DADCE0] bg-white text-sm font-medium text-[#3C4043] transition-colors hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-50"
             >
               <GoogleIcon className="h-4 w-4" />
               {mergeBusy === 'google' ? '이동 중…' : '구글로 기존 계정에 연결'}

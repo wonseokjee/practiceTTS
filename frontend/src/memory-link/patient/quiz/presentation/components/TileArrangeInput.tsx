@@ -65,20 +65,20 @@ export function TileArrangeInput({
   };
 
   // 조합 결과 박스 색상 (피드백 단계).
-  let answerBoxClass = 'border-[#D4D8D4] bg-white text-[#1F2A26]';
+  let answerBoxClass = 'border-line-strong bg-white text-ink-sage';
   if (showFeedback) {
     answerBoxClass =
       isCorrect === true
-        ? 'border-[#2D6A56] bg-[#EBF4F0] text-[#1F5240]'
-        : 'border-[#E07B54] bg-[#FBE9E2] text-[#7A2E15]';
+        ? 'border-primary bg-primary-light text-primary-dark'
+        : 'border-accent bg-accent-soft text-accent-ink';
   }
 
   return (
     <div className="flex flex-col gap-4">
       {hintFirstChar !== null && hintFirstChar.length > 0 && (
-        <p className="text-base text-[#5C6661]">
+        <p className="text-base text-muted-sage">
           힌트: 첫 글자는{' '}
-          <span className="font-bold text-[#2D6A56]">{hintFirstChar}</span>
+          <span className="font-bold text-primary">{hintFirstChar}</span>
           {copulaSuffix(hintFirstChar)}
         </p>
       )}
@@ -93,7 +93,7 @@ export function TileArrangeInput({
           {assembled.length > 0 ? (
             assembled
           ) : (
-            <span className="text-[#6B6560]">글자를 눌러 단어를 만들어요</span>
+            <span className="text-muted">글자를 눌러 단어를 만들어요</span>
           )}
         </span>
         {showFeedback && (
@@ -104,9 +104,9 @@ export function TileArrangeInput({
       </div>
 
       {showFeedback && isCorrect === false && correctAnswer !== null && (
-        <p className="text-base text-[#5C6661]">
+        <p className="text-base text-muted-sage">
           정답:{' '}
-          <span className="font-bold text-[#2D6A56]">{correctAnswer}</span>
+          <span className="font-bold text-primary">{correctAnswer}</span>
         </p>
       )}
 
@@ -130,8 +130,8 @@ export function TileArrangeInput({
                   aria-label={`${tile} 글자 넣기`}
                   className={`min-h-[64px] min-w-[64px] rounded-md border-2 px-5 py-4 text-2xl font-bold transition-colors duration-[180ms] ease-out ${
                     used
-                      ? 'border-[#E5E5E0] bg-[#F2F1ED] text-[#C5C8C5]'
-                      : 'border-[#E5E5E0] bg-white text-[#1F2A26] hover:border-[#A8AFA9]'
+                      ? 'border-line-soft bg-surface-dim text-disabled-surface'
+                      : 'border-line-soft bg-white text-ink-sage hover:border-muted-faint'
                   }`}
                 >
                   {tile}
@@ -145,7 +145,7 @@ export function TileArrangeInput({
               type="button"
               onClick={handleRemoveLast}
               disabled={!isSelectable || picked.length === 0}
-              className="min-h-[48px] flex-1 rounded-md bg-white px-4 py-3 text-base font-medium text-[#5C6661] ring-1 ring-inset ring-[#D4D8D4] transition-colors duration-[180ms] ease-out hover:bg-[#EBEAE6] disabled:cursor-not-allowed disabled:text-[#C5C8C5]"
+              className="min-h-[48px] flex-1 rounded-md bg-white px-4 py-3 text-base font-medium text-muted-sage ring-1 ring-inset ring-line-strong transition-colors duration-[180ms] ease-out hover:bg-canvas-hover disabled:cursor-not-allowed disabled:text-disabled-surface"
               aria-label="한 글자 지우기"
             >
               ← 한 글자 지우기
@@ -154,7 +154,7 @@ export function TileArrangeInput({
               type="button"
               onClick={handleClear}
               disabled={!isSelectable || picked.length === 0}
-              className="min-h-[48px] rounded-md bg-white px-4 py-3 text-base font-medium text-[#5C6661] ring-1 ring-inset ring-[#D4D8D4] transition-colors duration-[180ms] ease-out hover:bg-[#EBEAE6] disabled:cursor-not-allowed disabled:text-[#C5C8C5]"
+              className="min-h-[48px] rounded-md bg-white px-4 py-3 text-base font-medium text-muted-sage ring-1 ring-inset ring-line-strong transition-colors duration-[180ms] ease-out hover:bg-canvas-hover disabled:cursor-not-allowed disabled:text-disabled-surface"
               aria-label="모두 지우기"
             >
               모두 지우기
@@ -165,7 +165,7 @@ export function TileArrangeInput({
             type="button"
             onClick={handleSubmit}
             disabled={!isSelectable || assembled.length === 0}
-            className="min-h-[56px] rounded-md bg-[#2D6A56] px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240] disabled:cursor-not-allowed disabled:bg-[#C5C8C5] disabled:text-[#7A7E7A]"
+            className="min-h-[56px] rounded-md bg-primary px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-disabled-surface disabled:text-disabled-ink"
             aria-label="답 제출"
           >
             제출

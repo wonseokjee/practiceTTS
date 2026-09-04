@@ -42,20 +42,20 @@ export function SocialCallbackScreen() {
   }, [loginWithCode, navigate]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F7F6F3] p-6">
+    <div className="min-h-screen flex items-center justify-center bg-canvas p-6">
       {failed ? (
         <div className="text-center">
-          <p className="text-[#C94040]">로그인에 실패했어요. 다시 시도해 주세요.</p>
+          <p className="text-danger">로그인에 실패했어요. 다시 시도해 주세요.</p>
           <button
             type="button"
             onClick={() => navigate('/login', { replace: true })}
-            className="mt-4 min-h-[44px] rounded-md bg-[#2D6A56] px-6 py-2 text-white"
+            className="mt-4 min-h-[44px] rounded-md bg-primary px-6 py-2 text-white"
           >
             로그인 화면으로
           </button>
         </div>
       ) : (
-        <p className="text-[#6B6560]">로그인 중이에요...</p>
+        <p className="text-muted">로그인 중이에요...</p>
       )}
     </div>
   );

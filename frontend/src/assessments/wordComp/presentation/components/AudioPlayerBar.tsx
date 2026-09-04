@@ -24,28 +24,28 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
   onReplay,
 }) => {
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-[#E8E4DC] px-6 py-4 flex items-center justify-between gap-4">
+    <div className="bg-white rounded-2xl shadow-sm border border-line px-6 py-4 flex items-center justify-between gap-4">
       {/* 단어 표시 영역 */}
       <div className="flex items-center gap-3 flex-1">
         {/* 오디오 재생 인디케이터 */}
         <div
           className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
             isPlaying
-              ? 'bg-[#2D6A56] animate-pulse'
-              : 'bg-[#F2F1EC]'
+              ? 'bg-primary animate-pulse'
+              : 'bg-surface-dim'
           }`}
           aria-hidden="true"
         >
           <SpeakerIcon
-            className={`w-5 h-5 ${isPlaying ? 'text-white' : 'text-[#6B6560]'}`}
+            className={`w-5 h-5 ${isPlaying ? 'text-white' : 'text-muted'}`}
           />
         </div>
 
         <div>
-          <p className="text-xs text-[#6B6560] mb-0.5">
+          <p className="text-xs text-muted mb-0.5">
             {isPlaying ? '음성 재생 중...' : '음성 재생 완료'}
           </p>
-          <p className="text-base font-semibold text-[#1A1916]">
+          <p className="text-base font-semibold text-ink">
             단어를 듣고 그림을 선택하세요
           </p>
         </div>
@@ -58,8 +58,8 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
           flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all
           ${
             isReplayEnabled
-              ? 'bg-[#F7F6F3] text-[#6B6560] hover:bg-[#EBF4F0] hover:text-[#2D6A56] border border-[#E8E4DC]'
-              : 'bg-[#F7F6F3] text-[#9AA09B] cursor-not-allowed border border-[#E8E4DC]'
+              ? 'bg-canvas text-muted hover:bg-primary-light hover:text-primary border border-line'
+              : 'bg-canvas text-muted-disabled cursor-not-allowed border border-line'
           }
         `}
         disabled={!isReplayEnabled}

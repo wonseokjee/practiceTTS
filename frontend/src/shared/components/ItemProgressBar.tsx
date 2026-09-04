@@ -39,7 +39,7 @@ export function ItemProgressBar({ current, total }: ItemProgressBarProps) {
   return (
     <div className="flex items-center gap-3">
       <div
-        className="h-2 w-full overflow-hidden rounded-full bg-[#D4D8D4]"
+        className="h-2 w-full overflow-hidden rounded-full bg-line-strong"
         role="progressbar"
         aria-valuenow={safeCurrent}
         aria-valuemin={1}
@@ -47,11 +47,11 @@ export function ItemProgressBar({ current, total }: ItemProgressBarProps) {
         aria-label={`진행 ${safeCurrent} / ${safeTotal}`}
       >
         <div
-          className="h-full rounded-full bg-[#2D6A56] transition-[width] duration-[250ms] ease-in-out"
+          className="h-full rounded-full bg-primary transition-[width] duration-[250ms] ease-in-out"
           style={{ width: `${percent}%` }}
         />
       </div>
-      <span className="shrink-0 text-sm tabular-nums text-[#5C6661]">
+      <span className="shrink-0 text-sm tabular-nums text-muted-sage">
         {safeCurrent} / {safeTotal}
       </span>
     </div>

@@ -106,8 +106,8 @@ describe('FillBlankInput', () => {
     it('정답이면 sage 색상과 ✓를 보인다', () => {
       renderInput({ showFeedback: true, isCorrect: true });
       const input = screen.getByRole('textbox', { name: '답 입력' });
-      expect(input.className).toContain('border-[#2D6A56]');
-      expect(input.className).toContain('bg-[#EBF4F0]');
+      expect(input.className).toContain('border-primary');
+      expect(input.className).toContain('bg-primary-light');
       expect(screen.getByText('✓')).toBeInTheDocument();
     });
 
@@ -118,8 +118,8 @@ describe('FillBlankInput', () => {
         correctAnswer: '공원',
       });
       const input = screen.getByRole('textbox', { name: '답 입력' });
-      expect(input.className).toContain('border-[#E07B54]');
-      expect(input.className).toContain('bg-[#FBE9E2]');
+      expect(input.className).toContain('border-accent');
+      expect(input.className).toContain('bg-accent-soft');
       expect(screen.getByText('✗')).toBeInTheDocument();
       expect(screen.getByText('공원')).toBeInTheDocument();
     });

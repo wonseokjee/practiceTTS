@@ -27,14 +27,14 @@ export function WordChoiceItem({
 }: WordChoiceItemProps) {
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-base text-[#5C6661]">{item.instruction}</p>
+      <p className="text-base text-muted-sage">{item.instruction}</p>
 
       {/*
         그림은 정사각 카드 하나. 그림고르기의 2×2 격자와 높이를 비슷하게 두면
         문항이 바뀔 때 화면이 크게 출렁이지 않는다.
       */}
       <div className="mx-auto w-full max-w-[280px]">
-        <div className="relative aspect-square w-full overflow-hidden rounded-2xl border-4 border-[#E5E5E0] bg-[#F2F1ED]">
+        <div className="relative aspect-square w-full overflow-hidden rounded-2xl border-4 border-line-soft bg-surface-dim">
           <img
             src={item.imageUrl}
             alt=""
@@ -49,13 +49,13 @@ export function WordChoiceItem({
           const isChosen = selectedChoiceId === choice.choiceId;
 
           // 연습 규칙: 정답만 초록. 내가 고른 오답에는 아무 표시도 하지 않는다.
-          let style = 'border-[#E5E5E0] bg-white text-[#1F2A26]';
+          let style = 'border-line-soft bg-white text-ink-sage';
           if (showAnswer) {
             style = choice.isCorrect
-              ? 'border-[#2D6A56] bg-[#EBF4F0] text-[#1F5240]'
-              : 'border-[#E5E5E0] bg-white text-[#1F2A26] opacity-50';
+              ? 'border-primary bg-primary-light text-primary-dark'
+              : 'border-line-soft bg-white text-ink-sage opacity-50';
           } else if (isChosen) {
-            style = 'border-[#2D6A56] bg-white text-[#1F2A26]';
+            style = 'border-primary bg-white text-ink-sage';
           }
 
           return (
@@ -68,7 +68,7 @@ export function WordChoiceItem({
               }}
               aria-label={`${choice.label} 선택`}
               className={`min-h-[56px] w-full rounded-2xl border-4 px-5 py-3 text-xl font-medium transition-all duration-150 disabled:cursor-default ${style} ${
-                isSelectable ? 'hover:border-[#A8AFA9] active:scale-[0.99]' : ''
+                isSelectable ? 'hover:border-muted-faint active:scale-[0.99]' : ''
               }`}
             >
               {choice.label}

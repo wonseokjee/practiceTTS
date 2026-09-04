@@ -94,29 +94,29 @@ export function DdkItem({
     onSubmit(item.targetCount);
   };
 
-  let resultBoxClass = 'border-[#D4D8D4] bg-white text-[#1F2A26]';
+  let resultBoxClass = 'border-line-strong bg-white text-ink-sage';
   if (showFeedback) {
     resultBoxClass =
       isCorrect === true
-        ? 'border-[#2D6A56] bg-[#EBF4F0] text-[#1F5240]'
-        : 'border-[#E07B54] bg-[#FBE9E2] text-[#7A2E15]';
+        ? 'border-primary bg-primary-light text-primary-dark'
+        : 'border-accent bg-accent-soft text-accent-ink';
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-base text-[#5C6661]">{item.instruction}</p>
+      <p className="text-base text-muted-sage">{item.instruction}</p>
 
       {/* 반복할 음절 (크게) */}
       <div
-        className="flex min-h-[112px] items-center justify-center rounded-md border-2 border-[#D4D8D4] bg-white px-5 py-6"
+        className="flex min-h-[112px] items-center justify-center rounded-md border-2 border-line-strong bg-white px-5 py-6"
         aria-label={`반복할 소리: ${item.label}`}
       >
-        <span className="text-5xl font-bold tracking-widest text-[#1F2A26]">
+        <span className="text-5xl font-bold tracking-widest text-ink-sage">
           {item.label}
         </span>
       </div>
 
-      <p className="text-center text-sm text-[#5C6661]">
+      <p className="text-center text-sm text-muted-sage">
         {item.targetCount}회 이상 반복하면 통과예요.
       </p>
 
@@ -137,12 +137,12 @@ export function DdkItem({
       )}
 
       {!showFeedback && status === 'recording' && (
-        <p className="text-base text-[#2D6A56]" role="status">
+        <p className="text-base text-primary" role="status">
           녹음 중이에요… 끝나면 멈추기를 눌러주세요.
         </p>
       )}
       {!showFeedback && status === 'error' && errorMessage.length > 0 && (
-        <p className="text-base text-[#7A2E15]" role="alert">
+        <p className="text-base text-accent-ink" role="alert">
           {errorMessage}
         </p>
       )}
@@ -154,7 +154,7 @@ export function DdkItem({
             <button
               type="button"
               onClick={() => void handleStop()}
-              className="flex min-h-[64px] items-center justify-center gap-2 rounded-md border-2 border-[#B85C36] bg-white px-6 py-4 text-xl font-medium text-[#7A2E15] transition-colors duration-[180ms] ease-out hover:bg-[#FBE9E2]"
+              className="flex min-h-[64px] items-center justify-center gap-2 rounded-md border-2 border-accent-strong bg-white px-6 py-4 text-xl font-medium text-accent-ink transition-colors duration-[180ms] ease-out hover:bg-accent-soft"
               aria-label="멈추기"
             >
               <span aria-hidden="true" className="text-2xl">⏹️</span>
@@ -165,7 +165,7 @@ export function DdkItem({
               type="button"
               onClick={() => void handleStart()}
               disabled={!isSelectable || status === 'analyzing'}
-              className="flex min-h-[64px] items-center justify-center gap-2 rounded-md border-2 border-[#2D6A56] bg-white px-6 py-4 text-xl font-medium text-[#2D6A56] transition-colors duration-[180ms] ease-out hover:bg-[#EBF4F0] disabled:cursor-not-allowed disabled:border-[#C5C8C5] disabled:text-[#A8AFA9]"
+              className="flex min-h-[64px] items-center justify-center gap-2 rounded-md border-2 border-primary bg-white px-6 py-4 text-xl font-medium text-primary transition-colors duration-[180ms] ease-out hover:bg-primary-light disabled:cursor-not-allowed disabled:border-disabled-surface disabled:text-muted-faint"
               aria-label={status === 'recorded' ? '다시 녹음' : '시작'}
             >
               <span aria-hidden="true" className="text-2xl">🎙️</span>
@@ -182,7 +182,7 @@ export function DdkItem({
               type="button"
               onClick={handleSubmit}
               disabled={!isSelectable}
-              className="min-h-[56px] rounded-md bg-[#2D6A56] px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240] disabled:cursor-not-allowed disabled:bg-[#C5C8C5] disabled:text-[#7A7E7A]"
+              className="min-h-[56px] rounded-md bg-primary px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-disabled-surface disabled:text-disabled-ink"
               aria-label="제출"
             >
               제출
@@ -193,7 +193,7 @@ export function DdkItem({
             type="button"
             onClick={handleSkip}
             disabled={!isSelectable}
-            className="min-h-[48px] rounded-md bg-white px-5 py-3 text-base font-medium text-[#5C6661] ring-1 ring-inset ring-[#D4D8D4] transition-colors duration-[180ms] ease-out hover:bg-[#EBEAE6] disabled:cursor-not-allowed disabled:text-[#C5C8C5]"
+            className="min-h-[48px] rounded-md bg-white px-5 py-3 text-base font-medium text-muted-sage ring-1 ring-inset ring-line-strong transition-colors duration-[180ms] ease-out hover:bg-canvas-hover disabled:cursor-not-allowed disabled:text-disabled-surface"
             aria-label="넘어가기"
           >
             넘어가기

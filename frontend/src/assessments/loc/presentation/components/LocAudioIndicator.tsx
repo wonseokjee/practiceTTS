@@ -22,7 +22,7 @@ export function LocAudioIndicator({ isTtsPlaying }: LocAudioIndicatorProps) {
         {[1, 2, 3, 4, 5].map((bar) => (
           <div
             key={bar}
-            className="w-2 bg-[#2D6A56] rounded-full animate-pulse"
+            className="w-2 bg-primary rounded-full animate-pulse"
             style={{
               height: `${20 + (bar % 3) * 12}px`,
               animationDelay: `${bar * 0.1}s`,
@@ -32,7 +32,7 @@ export function LocAudioIndicator({ isTtsPlaying }: LocAudioIndicatorProps) {
         ))}
       </div>
 
-      <p className="text-[#2D6A56] font-semibold text-lg">
+      <p className="text-primary font-semibold text-lg">
         음성 안내 재생 중...
       </p>
     </div>

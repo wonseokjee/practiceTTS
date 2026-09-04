@@ -24,12 +24,12 @@ export function PatientSetupScreen() {
   };
 
   return (
-    <div className="h-full bg-[#F7F6F3] flex items-center justify-center p-6">
+    <div className="h-full bg-canvas flex items-center justify-center p-6">
       <div className="bg-white rounded-3xl shadow-[0_10px_30px_rgba(0,0,0,0.08)] w-full max-w-sm p-8">
-        <h1 className="text-2xl font-bold text-[#1A1916] mb-2 text-center">
+        <h1 className="text-2xl font-bold text-ink mb-2 text-center">
           practiveTTS
         </h1>
-        <p className="text-sm text-[#6B6560] text-center mb-8">
+        <p className="text-sm text-muted text-center mb-8">
           검사를 시작하기 전에 환자 정보를 입력해주세요.
         </p>
 
@@ -37,7 +37,7 @@ export function PatientSetupScreen() {
           <div>
             <label
               htmlFor="patientId"
-              className="block text-sm font-medium text-[#1A1916] mb-1"
+              className="block text-sm font-medium text-ink mb-1"
             >
               환자 ID
             </label>
@@ -50,18 +50,18 @@ export function PatientSetupScreen() {
                 setError(null);
               }}
               placeholder="예: P-2026-001"
-              className="w-full border border-[#E8E4DC] rounded-xl px-4 py-3 text-[#1A1916] placeholder-[#6B6560] focus:outline-none focus:ring-2 focus:ring-[#2D6A56] focus:border-transparent"
+              className="w-full border border-line rounded-xl px-4 py-3 text-ink placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               autoComplete="off"
               autoFocus
             />
             {error !== null && (
-              <p className="text-[#C94040] text-sm mt-1">{error}</p>
+              <p className="text-danger text-sm mt-1">{error}</p>
             )}
           </div>
 
           <button
             type="submit"
-            className="w-full min-h-[48px] bg-[#2D6A56] hover:bg-[#1F5240] text-white font-semibold py-3 rounded-full text-base transition-colors mt-2"
+            className="w-full min-h-[48px] bg-primary hover:bg-primary-dark text-white font-semibold py-3 rounded-full text-base transition-colors mt-2"
           >
             검사 시작
           </button>

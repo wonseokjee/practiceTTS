@@ -40,13 +40,13 @@ export function LocTouchButton({
         'transition-all duration-300',
         isSelectable
           ? [
-              'bg-[#EBF4F0] hover:bg-[#d5e9e1] active:bg-[#c4ddd3]',
-              'border-4 border-[#2D6A56]',
-              'text-[#2D6A56]',
+              'bg-primary-light hover:bg-[#d5e9e1] active:bg-[#c4ddd3]',
+              'border-4 border-primary',
+              'text-primary',
               'cursor-pointer',
             ].join(' ')
           : [
-              'bg-[#E8E4DC] text-[#9AA09B]',
+              'bg-line text-muted-disabled',
               'cursor-not-allowed',
             ].join(' '),
       ].join(' ')}

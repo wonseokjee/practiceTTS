@@ -33,7 +33,7 @@ function StarRow({ score }: { score: number }) {
       aria-hidden="true"
     >
       {stars.map((isFilled, i) => (
-        <span key={i} className={isFilled ? 'text-[#B85C36]' : 'text-[#D4D8D4]'}>
+        <span key={i} className={isFilled ? 'text-accent-strong' : 'text-line-strong'}>
           ★
         </span>
       ))}
@@ -59,23 +59,23 @@ export function QuizResultScreen({
       {showScore ? (
         <>
           {isNewBest && (
-            <div className="mb-4 inline-block rounded-full bg-[#EBF4F0] px-4 py-1 text-sm font-bold text-[#1F5240]">
+            <div className="mb-4 inline-block rounded-full bg-primary-light px-4 py-1 text-sm font-bold text-primary-dark">
               새 최고 기록이에요!
             </div>
           )}
 
-          <h2 className="text-xl font-bold text-[#1F2A26]">
+          <h2 className="text-xl font-bold text-ink-sage">
             {scoreLabel(sessionScore)}
           </h2>
 
           <StarRow score={sessionScore} />
 
-          <p className="mt-4 text-5xl font-bold tabular-nums text-[#2D6A56]">
+          <p className="mt-4 text-5xl font-bold tabular-nums text-primary">
             {formatScore(sessionScore)}
           </p>
 
           {bestScore !== null && (
-            <p className="mt-3 text-base tabular-nums text-[#5C6661]">
+            <p className="mt-3 text-base tabular-nums text-muted-sage">
               최고점 {formatScore(bestScore)}
             </p>
           )}
@@ -83,10 +83,10 @@ export function QuizResultScreen({
       ) : (
         <>
           <div className="mb-2 text-5xl" aria-hidden="true">🎉</div>
-          <h2 className="text-2xl font-bold text-[#1F2A26]">
+          <h2 className="text-2xl font-bold text-ink-sage">
             오늘도 끝까지 잘 하셨어요!
           </h2>
-          <p className="mt-3 text-base text-[#5C6661]">
+          <p className="mt-3 text-base text-muted-sage">
             모든 문제를 다 마쳤어요.
           </p>
         </>
@@ -96,7 +96,7 @@ export function QuizResultScreen({
         <button
           type="button"
           onClick={onRetry}
-          className="min-h-[56px] rounded-full bg-[#2D6A56] px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240]"
+          className="min-h-[56px] rounded-full bg-primary px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark"
           aria-label="다시 풀기"
         >
           다시 풀기
@@ -104,7 +104,7 @@ export function QuizResultScreen({
         <button
           type="button"
           onClick={onBackToList}
-          className="min-h-[48px] rounded-full bg-white px-6 py-3 text-base font-medium text-[#5C6661] transition-colors duration-[180ms] ease-out hover:bg-[#EBEAE6]"
+          className="min-h-[48px] rounded-full bg-white px-6 py-3 text-base font-medium text-muted-sage transition-colors duration-[180ms] ease-out hover:bg-canvas-hover"
           aria-label="퀴즈 목록으로"
         >
           목록으로

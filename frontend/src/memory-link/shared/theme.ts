@@ -6,11 +6,14 @@
 
 /**
  * 시안 A "따뜻한 회상" 배경 — 그린 절반 그라데이션.
- * 위 절반은 세이지 그린(#EBF4F0), 50% 지점부터 피치(#FBEAE0)로 전환된다.
+ * 위 절반은 세이지 그린(`primary-light`), 50% 지점부터 피치로 전환된다.
  * 인라인 style의 `background` 값으로 사용한다.
+ *
+ * 중간 두 정거장(`#F4F1EC`·`#FBEAE0`)은 이 그라데이션에서만 쓰는 색이라
+ * 이름이 없다 — 팔레트가 아니라 이 전환의 일부다.
  */
 export const WARM_SCREEN_BG =
-  'linear-gradient(180deg,#EBF4F0 0%,#EBF4F0 28%,#F4F1EC 50%,#FBEAE0 100%)';
+  'linear-gradient(180deg,var(--color-primary-light) 0%,var(--color-primary-light) 28%,#F4F1EC 50%,#FBEAE0 100%)';
 
 /** 반투명 흰 카드 — 배경 그라데이션이 은은하게 비치는 기본 카드 스타일 */
 export const WARM_CARD =

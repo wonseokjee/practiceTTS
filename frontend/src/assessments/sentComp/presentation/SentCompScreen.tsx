@@ -55,21 +55,21 @@ export function SentCompScreen({ onComplete }: SentCompScreenProps) {
     phase.type === 'FEEDBACK' ? phase.isCorrect : null;
 
   return (
-    <div className="h-full bg-[#F7F6F3] flex flex-col">
+    <div className="h-full bg-canvas flex flex-col">
       {/* 헤더 */}
       <header className="bg-white shadow-sm px-6 py-4 flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-bold text-[#1A1916]">
+          <h1 className="text-xl font-bold text-ink">
             문장 이해 (SentComp) 검사
           </h1>
-          <p className="text-sm text-[#6B6560] mt-1">
+          <p className="text-sm text-muted mt-1">
             환자:{' '}
-            <span className="font-medium text-[#1A1916]">{patientLabel}</span>
+            <span className="font-medium text-ink">{patientLabel}</span>
           </p>
         </div>
         <button
           type="button"
-          className="text-xs text-[#6B6560] hover:text-[#C94040] transition-colors mt-1"
+          className="text-xs text-muted hover:text-danger transition-colors mt-1"
           onClick={endSession}
         >
           세션 종료
@@ -97,7 +97,7 @@ export function SentCompScreen({ onComplete }: SentCompScreenProps) {
         {phase.type === 'ERROR' && (
           <div className="flex flex-col items-center gap-4 py-8">
             <div
-              className="bg-[#C94040]/10 border border-[#C94040]/30 rounded-xl px-6 py-4 text-[#C94040] text-center w-full"
+              className="bg-danger/10 border border-danger/30 rounded-xl px-6 py-4 text-danger text-center w-full"
               role="alert"
             >
               <p className="font-medium mb-1">오류 발생</p>
@@ -105,7 +105,7 @@ export function SentCompScreen({ onComplete }: SentCompScreenProps) {
             </div>
             <button
               type="button"
-              className="px-8 py-3 bg-[#2D6A56] hover:bg-[#1F5240] text-white font-medium rounded-xl transition-colors"
+              className="px-8 py-3 bg-primary hover:bg-primary-dark text-white font-medium rounded-xl transition-colors"
               onClick={actions.handleRetry}
             >
               다시 시도
@@ -141,8 +141,8 @@ export function SentCompScreen({ onComplete }: SentCompScreenProps) {
                 <div
                   className={`rounded-xl px-6 py-3 text-center font-semibold text-lg ${
                     feedbackIsCorrect
-                      ? 'bg-[#EBF4F0] text-[#2D6A56] border border-[#2D6A56]/25'
-                      : 'bg-[#C94040]/10 text-[#C94040] border border-[#C94040]/30'
+                      ? 'bg-primary-light text-primary border border-primary/25'
+                      : 'bg-danger/10 text-danger border border-danger/30'
                   }`}
                   role="status"
                   aria-live="assertive"
@@ -170,7 +170,7 @@ export function SentCompScreen({ onComplete }: SentCompScreenProps) {
               {/* SUBMITTING 처리 중 표시 */}
               {phase.type === 'SUBMITTING' && (
                 <div
-                  className="text-center text-sm text-[#6B6560] py-2"
+                  className="text-center text-sm text-muted py-2"
                   aria-live="polite"
                 >
                   처리 중...

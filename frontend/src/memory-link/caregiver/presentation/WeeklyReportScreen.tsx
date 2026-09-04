@@ -137,49 +137,49 @@ export function WeeklyReportScreen({ onBack }: WeeklyReportScreenProps) {
         <button
           type="button"
           onClick={onBack}
-          className="min-h-[44px] text-sm text-[#2D6A56] hover:underline"
+          className="min-h-[44px] text-sm text-primary hover:underline"
         >
           ← 목록으로
         </button>
       </div>
 
-      <article className="rounded-2xl border border-[#E8E4DC] bg-white p-6">
-        <header className="mb-5 border-b border-[#E8E4DC] pb-4">
-          <h1 className="text-xl font-bold text-[#1A1916]">
+      <article className="rounded-2xl border border-line bg-white p-6">
+        <header className="mb-5 border-b border-line pb-4">
+          <h1 className="text-xl font-bold text-ink">
             언어·인지 검사 기록
           </h1>
-          <dl className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 text-sm text-[#5C6661] sm:grid-cols-3">
+          <dl className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 text-sm text-muted-sage sm:grid-cols-3">
             <div className="flex gap-2">
               <dt>대상</dt>
-              <dd className="font-medium text-[#1A1916]">
+              <dd className="font-medium text-ink">
                 {withHonorific(user?.patientDisplayName, '어르신')}
               </dd>
             </div>
             <div className="flex gap-2">
               <dt>기간</dt>
-              <dd className="font-medium text-[#1A1916]">{periodLabel}</dd>
+              <dd className="font-medium text-ink">{periodLabel}</dd>
             </div>
             <div className="flex gap-2">
               <dt>조회일</dt>
-              <dd className="font-medium text-[#1A1916]">{viewedAt}</dd>
+              <dd className="font-medium text-ink">{viewedAt}</dd>
             </div>
           </dl>
         </header>
 
         {failed && (
-          <p role="alert" className="py-8 text-center text-sm text-[#C94040]">
+          <p role="alert" className="py-8 text-center text-sm text-danger">
             기록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
           </p>
         )}
 
         {!failed && series === null && (
-          <p className="py-8 text-center text-sm text-[#6B6560]">
+          <p className="py-8 text-center text-sm text-muted">
             불러오는 중...
           </p>
         )}
 
         {!failed && series !== null && sorted.length === 0 && (
-          <p className="py-8 text-center text-sm text-[#6B6560]">
+          <p className="py-8 text-center text-sm text-muted">
             아직 검사 기록이 없습니다. 환자 모드의 &lsquo;기본 검사&rsquo;를
             진행하면 이곳에 쌓입니다.
           </p>
@@ -187,7 +187,7 @@ export function WeeklyReportScreen({ onBack }: WeeklyReportScreenProps) {
 
         {sorted.length > 0 && (
           <>
-            <p className="mb-4 text-sm text-[#5C6661]">
+            <p className="mb-4 text-sm text-muted-sage">
               총 {totalItems}문항 · {allWeeks.length}주 기록
             </p>
 
@@ -197,7 +197,7 @@ export function WeeklyReportScreen({ onBack }: WeeklyReportScreenProps) {
                 const extra = extraCol(kind);
                 return (
                   <section key={s.subtest} className="break-inside-avoid">
-                    <h2 className="mb-2 text-base font-semibold text-[#1A1916]">
+                    <h2 className="mb-2 text-base font-semibold text-ink">
                       {subtestLabel(s.subtest)}
                     </h2>
                     <table className="w-full border-collapse text-sm">
@@ -205,7 +205,7 @@ export function WeeklyReportScreen({ onBack }: WeeklyReportScreenProps) {
                         {subtestLabel(s.subtest)} 주차별 기록
                       </caption>
                       <thead>
-                        <tr className="border-b border-[#E8E4DC] text-left text-[#5C6661]">
+                        <tr className="border-b border-line text-left text-muted-sage">
                           <th scope="col" className="py-1.5 font-medium">
                             주 시작
                           </th>
@@ -235,7 +235,7 @@ export function WeeklyReportScreen({ onBack }: WeeklyReportScreenProps) {
                         {s.points.map((p) => (
                           <tr
                             key={p.weekStart}
-                            className="border-b border-[#F2F1EC]"
+                            className="border-b border-surface-dim"
                           >
                             <td className="py-1.5 tabular-nums">
                               {formatWeek(p.weekStart)}
@@ -260,11 +260,11 @@ export function WeeklyReportScreen({ onBack }: WeeklyReportScreenProps) {
             </div>
 
             {/* 한계 고지 — 이게 없으면 의료진이 오독한다 */}
-            <section className="mt-6 rounded-xl bg-[#F7F6F3] p-4">
-              <h2 className="mb-1.5 text-sm font-semibold text-[#1A1916]">
+            <section className="mt-6 rounded-xl bg-canvas p-4">
+              <h2 className="mb-1.5 text-sm font-semibold text-ink">
                 이 기록을 읽으실 때
               </h2>
-              <ul className="flex list-disc flex-col gap-1 pl-4 text-xs leading-relaxed text-[#5C6661]">
+              <ul className="flex list-disc flex-col gap-1 pl-4 text-xs leading-relaxed text-muted-sage">
                 <li>
                   가정에서 보호자와 함께 진행한 자가 측정 기록입니다. 의료
                   진단이나 표준화 검사 결과가 아닙니다.

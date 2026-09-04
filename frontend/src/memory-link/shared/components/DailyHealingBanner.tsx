@@ -37,7 +37,7 @@ export function DailyHealingBanner({ api }: DailyHealingBannerProps) {
 
   return (
     <section
-      className="font-pretendard mb-6 flex items-start gap-3 rounded-xl bg-[#EBF4F0] p-5"
+      className="font-pretendard mb-6 flex items-start gap-3 rounded-xl bg-primary-light p-5"
       role="note"
       aria-label="오늘의 메시지"
     >
@@ -45,10 +45,10 @@ export function DailyHealingBanner({ api }: DailyHealingBannerProps) {
         🌿
       </span>
       <div>
-        <p className="text-xs font-semibold tracking-wide text-[#2D6A56]">
+        <p className="text-xs font-semibold tracking-wide text-primary">
           오늘의 메시지
         </p>
-        <p className="mt-1 text-lg font-medium leading-relaxed text-[#1F2A26]">
+        <p className="mt-1 text-lg font-medium leading-relaxed text-ink-sage">
           {text}
         </p>
       </div>

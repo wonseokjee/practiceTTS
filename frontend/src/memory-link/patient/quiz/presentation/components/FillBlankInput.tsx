@@ -37,20 +37,20 @@ export function FillBlankInput({
   };
 
   // 피드백 단계 입력 박스 색상.
-  let fieldClass = 'border-[#D4D8D4] bg-white text-[#1F2A26]';
+  let fieldClass = 'border-line-strong bg-white text-ink-sage';
   if (showFeedback) {
     fieldClass =
       isCorrect === true
-        ? 'border-[#2D6A56] bg-[#EBF4F0] text-[#1F5240]'
-        : 'border-[#E07B54] bg-[#FBE9E2] text-[#7A2E15]';
+        ? 'border-primary bg-primary-light text-primary-dark'
+        : 'border-accent bg-accent-soft text-accent-ink';
   }
 
   return (
     <div className="flex flex-col gap-4">
       {hintFirstChar !== null && hintFirstChar.length > 0 && (
-        <p className="text-base text-[#5C6661]">
+        <p className="text-base text-muted-sage">
           힌트: 첫 글자는{' '}
-          <span className="font-bold text-[#2D6A56]">{hintFirstChar}</span>
+          <span className="font-bold text-primary">{hintFirstChar}</span>
           {copulaSuffix(hintFirstChar)}
         </p>
       )}
@@ -70,7 +70,7 @@ export function FillBlankInput({
           }}
           aria-label="답 입력"
           placeholder="답을 입력하세요"
-          className={`min-h-[64px] w-full rounded-md border-2 px-5 py-4 text-xl font-medium transition-colors duration-[180ms] ease-out outline-none focus:border-[#2D6A56] disabled:cursor-default ${fieldClass}`}
+          className={`min-h-[64px] w-full rounded-md border-2 px-5 py-4 text-xl font-medium transition-colors duration-[180ms] ease-out outline-none focus:border-primary disabled:cursor-default ${fieldClass}`}
         />
         {showFeedback && (
           <span
@@ -83,9 +83,9 @@ export function FillBlankInput({
       </div>
 
       {showFeedback && isCorrect === false && correctAnswer !== null && (
-        <p className="text-base text-[#5C6661]">
+        <p className="text-base text-muted-sage">
           정답:{' '}
-          <span className="font-bold text-[#2D6A56]">{correctAnswer}</span>
+          <span className="font-bold text-primary">{correctAnswer}</span>
         </p>
       )}
 
@@ -94,7 +94,7 @@ export function FillBlankInput({
           type="button"
           onClick={handleSubmit}
           disabled={!isSelectable || text.trim().length === 0}
-          className="min-h-[56px] rounded-md bg-[#2D6A56] px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-[#1F5240] disabled:cursor-not-allowed disabled:bg-[#C5C8C5] disabled:text-[#7A7E7A]"
+          className="min-h-[56px] rounded-md bg-primary px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-disabled-surface disabled:text-disabled-ink"
           aria-label="답 제출"
         >
           제출

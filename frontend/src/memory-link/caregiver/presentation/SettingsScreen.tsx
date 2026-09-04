@@ -52,14 +52,14 @@ export function SettingsScreen({ onBack, accountNotice }: SettingsScreenProps) {
       <button
         type="button"
         onClick={onBack}
-        className="mb-4 flex items-center gap-1 text-sm text-[#5C6661] transition-colors hover:text-[#2D6A56]"
+        className="mb-4 flex items-center gap-1 text-sm text-muted-sage transition-colors hover:text-primary"
         aria-label="목록으로 돌아가기"
       >
         ← 목록으로
       </button>
 
       <header className="mb-6">
-        <h2 className="text-2xl font-bold text-[#2D6A56]">설정</h2>
+        <h2 className="text-2xl font-bold text-primary">설정</h2>
       </header>
 
       <div className="flex flex-col gap-3">
@@ -84,13 +84,13 @@ export function SettingsScreen({ onBack, accountNotice }: SettingsScreenProps) {
       {/* 오픈소스 그림 출처 — 단어이해 픽토그램에 Microsoft Fluent Emoji(MIT) 사용.
           MIT는 앱 내 표기 의무가 없으나(라이선스 고지는 저장소 NOTICE로 충족),
           출처를 밝히는 것은 예의라 가볍게 노출한다. */}
-      <footer className="mt-8 border-t border-[#E8E4DC] pt-4 text-center text-xs text-[#6B6560]">
+      <footer className="mt-8 border-t border-line pt-4 text-center text-xs text-muted">
         일부 그림:{' '}
         <a
           href="https://github.com/microsoft/fluentui-emoji"
           target="_blank"
           rel="noreferrer"
-          className="underline transition-colors hover:text-[#2D6A56]"
+          className="underline transition-colors hover:text-primary"
         >
           Fluent Emoji
         </a>
@@ -117,27 +117,27 @@ function SettingCard({ title, description, onClick, danger }: SettingCardProps) 
       onClick={onClick}
       className={`flex min-h-[64px] w-full items-center justify-between rounded-2xl border bg-white px-5 py-4 text-left transition-colors duration-[180ms] ease-out ${
         danger
-          ? 'border-[#C94040]/25 hover:bg-[#FEF0F0]'
-          : 'border-[#E8E4DC] hover:bg-[#F7F6F3]'
+          ? 'border-danger/25 hover:bg-danger-soft'
+          : 'border-line hover:bg-canvas'
       }`}
     >
       <span>
         <span
           className={`block text-base font-medium ${
-            danger ? 'text-[#8b2020]' : 'text-[#1F2A26]'
+            danger ? 'text-danger-ink' : 'text-ink-sage'
           }`}
         >
           {title}
         </span>
         {description && (
-          <span className="mt-0.5 block text-xs text-[#6B6560]">
+          <span className="mt-0.5 block text-xs text-muted">
             {description}
           </span>
         )}
       </span>
       <span
         aria-hidden="true"
-        className={`text-lg ${danger ? 'text-[#C94040]/50' : 'text-[#B7BDB8]'}`}
+        className={`text-lg ${danger ? 'text-danger/50' : 'text-[#B7BDB8]'}`}
       >
         ›
       </span>

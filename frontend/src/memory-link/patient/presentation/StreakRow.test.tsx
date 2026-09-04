@@ -17,12 +17,13 @@ describe('StreakRow', () => {
     expect(getAllByRole('listitem')).toHaveLength(7);
   });
 
-  it('어디에도 danger 색(#C94040)·✗·"실패"를 쓰지 않는다', () => {
+  it('어디에도 danger 색·✗·"실패"를 쓰지 않는다', () => {
     // 지난 날 대부분 놓친 최악의 케이스에서도 부정 신호가 없어야 한다.
     const days = buildWeekStreak(new Set(), new Date(2026, 7, 16)); // 일요일 → 월~토 놓침
     const { container } = render(<StreakRow days={days} />);
     const html = container.innerHTML;
-    expect(html).not.toContain('C94040'); // danger 토큰
+    // `danger`·`danger-ink`·`danger-soft`를 한 번에 막는다.
+    expect(html).not.toContain('danger');
     expect(html).not.toContain('✗');
     expect(html).not.toContain('실패');
   });

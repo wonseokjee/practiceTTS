@@ -112,8 +112,8 @@ function AssessmentContent() {
     // 비로그인 등으로 환자 ID가 없을 때만 수동 입력 폴백을 보여준다.
     if (effectivePatientId) {
       return (
-        <div className="h-full bg-[#F7F6F3] flex items-center justify-center p-6">
-          <p className="text-[#6B6560]">검사를 준비하고 있어요...</p>
+        <div className="h-full bg-canvas flex items-center justify-center p-6">
+          <p className="text-muted">검사를 준비하고 있어요...</p>
         </div>
       );
     }
@@ -156,7 +156,7 @@ function CaregiverRoute({ children }: { children: ReactNode }) {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <span className="text-[#6B6560]">로딩 중...</span>
+        <span className="text-muted">로딩 중...</span>
       </div>
     );
   }
@@ -168,7 +168,7 @@ function CaregiverRoute({ children }: { children: ReactNode }) {
   if (user.role !== 'caregiver') {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-[#C94040]">보호자 계정으로만 접근할 수 있습니다.</p>
+        <p className="text-danger">보호자 계정으로만 접근할 수 있습니다.</p>
       </div>
     );
   }
@@ -196,7 +196,7 @@ function OnboardingRoute({ children }: { children: ReactNode }) {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <span className="text-[#6B6560]">로딩 중...</span>
+        <span className="text-muted">로딩 중...</span>
       </div>
     );
   }
@@ -219,7 +219,7 @@ function PatientRoute({ children }: { children: ReactNode }) {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <span className="text-[#6B6560]">로딩 중...</span>
+        <span className="text-muted">로딩 중...</span>
       </div>
     );
   }
@@ -255,7 +255,7 @@ function RootRedirect() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <span className="text-[#6B6560]">로딩 중...</span>
+        <span className="text-muted">로딩 중...</span>
       </div>
     );
   }
@@ -292,7 +292,7 @@ function LoginRoute() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <span className="text-[#6B6560]">로딩 중...</span>
+        <span className="text-muted">로딩 중...</span>
       </div>
     );
   }

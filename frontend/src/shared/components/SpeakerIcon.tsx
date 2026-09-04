@@ -13,7 +13,7 @@
 // `currentColor`를 쓰므로 색은 부모가 정한다.
 
 interface SpeakerIconProps {
-  /** Tailwind 크기·색 클래스. 예: `h-16 w-16 text-[#2D6A56]` */
+  /** Tailwind 크기·색 클래스. 예: `h-16 w-16 text-primary` */
   className?: string;
 }
 

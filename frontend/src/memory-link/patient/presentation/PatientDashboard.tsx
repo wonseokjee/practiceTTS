@@ -289,7 +289,7 @@ export function PatientDashboard() {
   // 돌아보기 — 최근에 함께 본 기억. 소리를 쓰지 않으므로 소리 확인을 거치지 않는다.
   if (phase === 'WEEK_REVIEW') {
     return (
-      <div className="min-h-screen bg-[#F7F6F3]">
+      <div className="min-h-screen bg-canvas">
         <WeekReviewScreen onBack={() => setPhase('QUIZ_HOME')} />
       </div>
     );
@@ -316,14 +316,14 @@ export function PatientDashboard() {
   // 인사·설정은 SoloDailyHome이 자체 렌더하므로, 대시보드 크롬 대신 최소 상단바만.
   if (phase === 'QUIZ_HOME') {
     return (
-      <div className="min-h-screen bg-[#F7F6F3]">
+      <div className="min-h-screen bg-canvas">
         <header className="flex items-center justify-end px-6 py-4">
           <button
             type="button"
             onClick={
               isCaregiverInPatientMode ? () => setIsPinModalOpen(true) : logout
             }
-            className="min-h-[44px] rounded-full bg-white/70 px-4 py-2 text-base font-medium text-[#6B6560]"
+            className="min-h-[44px] rounded-full bg-white/70 px-4 py-2 text-base font-medium text-muted"
             aria-label={isCaregiverInPatientMode ? '보호자로 돌아가기' : '로그아웃'}
           >
             {isCaregiverInPatientMode ? '보호자로' : '로그아웃'}
@@ -350,12 +350,12 @@ export function PatientDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F7F6F3]">
+    <div className="min-h-screen bg-canvas">
       {/* 헤더 */}
       <header className="px-6 py-5 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-[#1A1916]">안녕하세요</h1>
-          <p className="text-xl text-[#6B6560] mt-1">
+          <h1 className="text-3xl font-bold text-ink">안녕하세요</h1>
+          <p className="text-xl text-muted mt-1">
             {withHonorific(
               user?.patientDisplayName ?? user?.displayName,
               '님',
@@ -368,7 +368,7 @@ export function PatientDashboard() {
           <button
             type="button"
             onClick={() => setIsPinModalOpen(true)}
-            className="min-h-[48px] px-5 py-2 bg-white/70 text-[#6B6560] text-lg font-medium rounded-full"
+            className="min-h-[48px] px-5 py-2 bg-white/70 text-muted text-lg font-medium rounded-full"
             aria-label="보호자로 돌아가기"
           >
             보호자로 돌아가기
@@ -377,7 +377,7 @@ export function PatientDashboard() {
           <button
             type="button"
             onClick={logout}
-            className="min-h-[48px] px-5 py-2 bg-white/70 text-[#6B6560] text-lg font-medium rounded-full"
+            className="min-h-[48px] px-5 py-2 bg-white/70 text-muted text-lg font-medium rounded-full"
             aria-label="로그아웃"
           >
             로그아웃
@@ -466,8 +466,8 @@ function ModeToggle({ mode, onSelectMode, onOpenAssessment }: ModeToggleProps) {
             onClick={() => onSelectMode(opt.value)}
             className={`min-h-[48px] flex-1 rounded-full text-base font-semibold transition-colors duration-[180ms] ease-out ${
               isActive
-                ? 'bg-white text-[#2D6A56] shadow-sm'
-                : 'bg-transparent text-[#6B6560] hover:text-[#1A1916]'
+                ? 'bg-white text-primary shadow-sm'
+                : 'bg-transparent text-muted hover:text-ink'
             }`}
           >
             {opt.label}
@@ -480,7 +480,7 @@ function ModeToggle({ mode, onSelectMode, onOpenAssessment }: ModeToggleProps) {
         type="button"
         onClick={onOpenAssessment}
         aria-label="표준 언어·인지 검사 (사진·일기 없이 기본 문항으로 점검)"
-        className="min-h-[48px] flex-1 rounded-full text-base font-semibold bg-transparent text-[#6B6560] transition-colors duration-[180ms] ease-out hover:text-[#1A1916]"
+        className="min-h-[48px] flex-1 rounded-full text-base font-semibold bg-transparent text-muted transition-colors duration-[180ms] ease-out hover:text-ink"
       >
         기본 검사
       </button>
@@ -508,25 +508,25 @@ function ConversationList({
 }: ConversationListProps) {
   return (
     <>
-      <h2 className="text-2xl font-semibold text-[#1A1916] mb-4">
+      <h2 className="text-2xl font-semibold text-ink mb-4">
         훈련 목록
       </h2>
 
       {/* 로딩 상태 */}
       {isLoading && (
           <div className="flex items-center justify-center py-16" role="status">
-            <p className="text-2xl text-[#6B6560]">불러오는 중...</p>
+            <p className="text-2xl text-muted">불러오는 중...</p>
           </div>
         )}
 
         {/* 에러 상태 */}
         {!isLoading && error !== null && (
           <div className="py-8 text-center" role="alert">
-            <p className="text-xl text-[#C94040] mb-4">{error}</p>
+            <p className="text-xl text-danger mb-4">{error}</p>
             <button
               type="button"
               onClick={onReload}
-              className="min-h-[48px] px-8 py-3 bg-[#2D6A56] text-white text-xl font-semibold rounded-full"
+              className="min-h-[48px] px-8 py-3 bg-primary text-white text-xl font-semibold rounded-full"
             >
               다시 시도
             </button>
@@ -536,10 +536,10 @@ function ConversationList({
         {/* 엔트리 없음 */}
         {!isLoading && error === null && entries.length === 0 && (
           <div className="py-16 text-center">
-            <p className="text-2xl text-[#6B6560]">
+            <p className="text-2xl text-muted">
               아직 등록된 훈련이 없습니다.
             </p>
-            <p className="text-xl text-[#6B6560] mt-2">
+            <p className="text-xl text-muted mt-2">
               보호자가 기억 카드를 등록하면 훈련을 시작할 수 있어요.
             </p>
           </div>
@@ -574,7 +574,7 @@ function EntryCard({ entry, onStartTraining }: EntryCardProps) {
   );
 
   return (
-    <li className="bg-white border border-[#E8E4DC] rounded-3xl overflow-hidden shadow-[0_6px_18px_rgba(0,0,0,0.05)]">
+    <li className="bg-white border border-line rounded-3xl overflow-hidden shadow-[0_6px_18px_rgba(0,0,0,0.05)]">
       <div className="flex gap-4 p-4">
         {/* 사진 썸네일 */}
         {entry.photoUrl !== null && (
@@ -589,20 +589,20 @@ function EntryCard({ entry, onStartTraining }: EntryCardProps) {
         <div className="flex-1 flex flex-col gap-2">
           {/* 장소 태그 */}
           {entry.locationTag !== null && (
-            <p className="text-xl text-[#1A1916]">
+            <p className="text-xl text-ink">
               장소: <span className="font-semibold">{entry.locationTag}</span>
             </p>
           )}
 
           {/* 감정 태그 */}
           {entry.emotionTag !== null && (
-            <p className="text-lg text-[#6B6560]">{entry.emotionTag}</p>
+            <p className="text-lg text-muted">{entry.emotionTag}</p>
           )}
 
           {/* 목표 단어 선택 (여러 개인 경우) */}
           {entry.targetWords.length > 1 && (
             <div className="flex flex-col gap-1">
-              <p className="text-lg text-[#6B6560]">연습할 단어 선택:</p>
+              <p className="text-lg text-muted">연습할 단어 선택:</p>
               <div className="flex gap-2 flex-wrap">
                 {entry.targetWords.map((word) => (
                   <button
@@ -611,8 +611,8 @@ function EntryCard({ entry, onStartTraining }: EntryCardProps) {
                     onClick={() => setSelectedWord(word)}
                     className={`min-h-[40px] px-4 py-2 rounded-full text-lg font-medium transition-colors ${
                       selectedWord === word
-                        ? 'bg-[#2D6A56] text-white'
-                        : 'bg-[#EBF4F0] text-[#2D6A56]'
+                        ? 'bg-primary text-white'
+                        : 'bg-primary-light text-primary'
                     }`}
                   >
                     {word}
@@ -624,8 +624,8 @@ function EntryCard({ entry, onStartTraining }: EntryCardProps) {
 
           {/* 단어가 1개인 경우 표시만 */}
           {entry.targetWords.length === 1 && (
-            <p className="text-xl text-[#1A1916]">
-              연습 단어: <span className="font-bold text-[#2D6A56]">{entry.targetWords[0]}</span>
+            <p className="text-xl text-ink">
+              연습 단어: <span className="font-bold text-primary">{entry.targetWords[0]}</span>
             </p>
           )}
         </div>
@@ -638,14 +638,14 @@ function EntryCard({ entry, onStartTraining }: EntryCardProps) {
             type="button"
             onClick={() => onStartTraining(entry, selectedWord)}
             disabled={selectedWord === ''}
-            className="w-full min-h-[56px] bg-[#2D6A56] text-white text-2xl font-bold rounded-full disabled:opacity-50 active:scale-[0.98] transition-transform"
+            className="w-full min-h-[56px] bg-primary text-white text-2xl font-bold rounded-full disabled:opacity-50 active:scale-[0.98] transition-transform"
             aria-label={`${entry.locationTag ?? '기억'} 훈련 시작`}
           >
             훈련 시작
           </button>
         ) : (
-          <div className="w-full min-h-[56px] flex items-center justify-center bg-[#EBF4F0]/60 rounded-full">
-            <p className="text-xl text-[#6B6560]">보호자가 준비 중이에요</p>
+          <div className="w-full min-h-[56px] flex items-center justify-center bg-primary-light/60 rounded-full">
+            <p className="text-xl text-muted">보호자가 준비 중이에요</p>
           </div>
         )}
       </div>

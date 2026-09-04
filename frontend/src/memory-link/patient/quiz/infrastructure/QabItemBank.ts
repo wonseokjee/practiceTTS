@@ -159,11 +159,16 @@ const NAMING_INSTRUCTION = '그림을 보고 이름을 말해주세요';
  * 풍선·돌이라 범주가 이름만 범주였다. 쪼갠 뒤에는 숟가락의 오답이 칼·주전자가
  * 되어 정말로 그 낱말을 알아야 맞는다.
  *
- * **레벨 4~5는 이 낱말들에서 조금 쉬워진다.** 오답 3개를 전부 같은 범주로 채우려면
- * 범주에 넷 이상이 필요한데, 주방·욕실·연장·가구·악기·가전은 셋뿐이라 모자란
- * 자리를 무관 낱말로 채운다. 쪼개기 전에는 `object`가 34개라 셋이 늘 찼지만 그
- * 셋이 서로 무관했으니, 이름만 어려웠던 것을 진짜 쉬운 것으로 바꾼 셈이다.
- * 넷을 채우려면 낱말을 더 넣어야 한다(docs/ASSETS-NEEDED.md).
+ * **레벨 4~5는 얇은 범주에서 조금 쉬워진다.** 오답 3개를 전부 같은 범주로 채우려면
+ * 범주에 넷 이상이 필요한데, 모자라면 그 자리를 무관 낱말로 채운다. 쪼개기 전에는
+ * `object`가 34개라 셋이 늘 찼지만 그 셋이 서로 무관했으니, 이름만 어려웠던 것을
+ * 진짜 쉬운 것으로 바꾼 셈이다.
+ *
+ * 2026-09-03에 글자조합 밴드를 채우면서(3~4음절 27 → 39) 그 낱말들을 **얇은
+ * 범주에 몰아 넣었다.** 악기·가전이 3 → 5, 욕실·연장이 3 → 4가 됐다. 한 번의
+ * 콘텐츠 작업으로 글자조합의 겹침과 레벨 4~5의 오답 품질을 같이 고친 셈이다.
+ * **아직 셋인 곳은 주방(주전자·칼·숟가락)과 가구(침대·의자·소파)다** —
+ * 넷을 채우려면 Fluent에 있는 낱말을 더 넣어야 한다(docs/ASSETS-NEEDED.md).
  *
  * 그림 고르기용 아이콘이 없는 낱말의 태그는 두지 않는다. 2026-08-22에 Fluent
  * 교체로 아이콘이 사라진 16개를 지웠다.
@@ -174,21 +179,25 @@ const NAMING_INSTRUCTION = '그림을 보고 이름을 말해주세요';
  * 아직 어디에도 없다.
  */
 export const WORD_CATEGORY: Record<string, string | null> = {
-  // 동물 12
+  // 동물 14
   bear: 'animal', butterfly: 'animal', cat: 'animal', chick: 'animal',
   dog: 'animal', elephant: 'animal', lion: 'animal', pig: 'animal',
   rabbit: 'animal', tiger: 'animal', turtle: 'animal', whale: 'animal',
-  // 음식 16
+  chipmunk: 'animal', monkey: 'animal',
+  // 음식 17
   apple: 'food', banana: 'food', bread: 'food', cake: 'food', candy: 'food',
   carrot: 'food', corn: 'food', grape: 'food', juice: 'food', melon: 'food',
   milk: 'food', orange: 'food', strawberry: 'food', sweet_potato: 'food',
   tomato: 'food',
   watermelon: 'food',
-  // 탈것 7
+  hamburger: 'food',
+  // 탈것 9
   airplane: 'vehicle', bicycle: 'vehicle', bus: 'vehicle', car: 'vehicle',
   ship: 'vehicle', train: 'vehicle', truck: 'vehicle',
-  // 식물 4
+  motorcycle: 'vehicle', helicopter: 'vehicle',
+  // 식물 5
   cactus: 'plant', flower: 'plant', mushroom: 'plant', tree: 'plant',
+  sunflower: 'plant',
   // 장소 6 — 여섯 다 **어떤 건물인지**가 그림에 보인다. 기둥과 화폐(은행), 시계탑과
   // 깃발(학교), 지붕과 문(집), 종탑 십자가(교회), 굴뚝(공장), 탑과 성벽(성).
   // 전부 Fluent 원본이다.
@@ -220,16 +229,20 @@ export const WORD_CATEGORY: Record<string, string | null> = {
   scissors: 'stationery',
   // 가구 3
   bed: 'furniture', chair: 'furniture', couch: 'furniture',
-  // 악기 3
+  // 악기 5
   guitar: 'instrument', piano: 'instrument', trumpet: 'instrument',
-  // 가전 3
+  violin: 'instrument', saxophone: 'instrument',
+  // 가전 5
   computer: 'appliance', phone: 'appliance', television: 'appliance',
+  camera: 'appliance', headphone: 'appliance',
   // 주방 3
   kettle: 'kitchen', knife: 'kitchen', spoon: 'kitchen',
-  // 욕실 3
+  // 욕실 4
   mirror: 'bathroom', soap: 'bathroom', toothbrush: 'bathroom',
-  // 연장 3
+  shower: 'bathroom',
+  // 연장 4
   hammer: 'tool', ladder: 'tool', screwdriver: 'tool',
+  flashlight: 'tool',
   // ── 범주 없음 9 ───────────────────────────────────────────────
   //
   // 서로 한 무리가 아니다. 예전에는 이 아홉을 `'object'`라는 이름의 범주로 묶어

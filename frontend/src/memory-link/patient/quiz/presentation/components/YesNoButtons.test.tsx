@@ -56,8 +56,8 @@ describe('YesNoButtons', () => {
       selectedAnswer: 'yes',
     });
     const yesBtn = screen.getByRole('button', { name: '예' });
-    expect(yesBtn.className).toContain('border-[#2D6A56]');
-    expect(yesBtn.className).toContain('bg-[#EBF4F0]');
+    expect(yesBtn.className).toContain('border-primary');
+    expect(yesBtn.className).toContain('bg-primary-light');
     expect(screen.getByText('✓')).toBeInTheDocument();
   });
 
@@ -69,8 +69,8 @@ describe('YesNoButtons', () => {
       selectedAnswer: 'no',
     });
     const noBtn = screen.getByRole('button', { name: '아니오' });
-    expect(noBtn.className).toContain('border-[#E07B54]');
-    expect(noBtn.className).toContain('bg-[#FBE9E2]');
+    expect(noBtn.className).toContain('border-accent');
+    expect(noBtn.className).toContain('bg-accent-soft');
     expect(screen.getByText('✗')).toBeInTheDocument();
   });
 });

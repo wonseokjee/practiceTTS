@@ -90,15 +90,15 @@ export function SpeechConsentScreen({
       <button
         type="button"
         onClick={onBack}
-        className="mb-4 flex items-center gap-1 text-sm text-[#5C6661] transition-colors hover:text-[#2D6A56]"
+        className="mb-4 flex items-center gap-1 text-sm text-muted-sage transition-colors hover:text-primary"
         aria-label={`${backLabel}(으)로 돌아가기`}
       >
         ← {backLabel}
       </button>
 
       <header className="mb-6">
-        <h2 className="text-2xl font-bold text-[#2D6A56]">음성 데이터 제공</h2>
-        <p className="mt-2 text-sm leading-relaxed text-[#6B6560]">
+        <h2 className="text-2xl font-bold text-primary">음성 데이터 제공</h2>
+        <p className="mt-2 text-sm leading-relaxed text-muted">
           어르신의 발음·받아쓰기 발화를 저장해, 어르신 목소리에 더 잘 맞는 음성
           인식 기능을 만드는 데 사용합니다. 동의하지 않으면 발화는 채점 직후
           바로 삭제되어 남지 않습니다.
@@ -106,18 +106,18 @@ export function SpeechConsentScreen({
       </header>
 
       {loading ? (
-        <div className="rounded-2xl border border-[#E8E4DC] bg-white px-5 py-8 text-center text-sm text-[#6B6560]">
+        <div className="rounded-2xl border border-line bg-white px-5 py-8 text-center text-sm text-muted">
           불러오는 중…
         </div>
       ) : (
         <div className="flex flex-col gap-3">
           {/* 동의 토글 */}
-          <div className="flex items-center justify-between rounded-2xl border border-[#E8E4DC] bg-white px-5 py-4">
+          <div className="flex items-center justify-between rounded-2xl border border-line bg-white px-5 py-4">
             <span>
-              <span className="block text-base font-medium text-[#1F2A26]">
+              <span className="block text-base font-medium text-ink-sage">
                 음성 데이터 저장에 동의
               </span>
-              <span className="mt-0.5 block text-xs text-[#6B6560]">
+              <span className="mt-0.5 block text-xs text-muted">
                 {consent
                   ? state?.consentAt
                     ? `${new Date(state.consentAt).toLocaleDateString('ko-KR')}부터 저장 중`
@@ -133,13 +133,13 @@ export function SpeechConsentScreen({
           </div>
 
           {/* 저장 건수 + 삭제 */}
-          <div className="rounded-2xl border border-[#E8E4DC] bg-white px-5 py-4">
+          <div className="rounded-2xl border border-line bg-white px-5 py-4">
             <div className="flex items-center justify-between">
               <span>
-                <span className="block text-base font-medium text-[#1F2A26]">
+                <span className="block text-base font-medium text-ink-sage">
                   저장된 음성
                 </span>
-                <span className="mt-0.5 block text-xs text-[#6B6560] tabular-nums">
+                <span className="mt-0.5 block text-xs text-muted tabular-nums">
                   {count}건 보관 중
                 </span>
               </span>
@@ -148,7 +148,7 @@ export function SpeechConsentScreen({
                   type="button"
                   onClick={() => setConfirmDelete(true)}
                   disabled={busy}
-                  className="rounded-lg border border-[#C94040]/25 px-3 py-1.5 text-sm text-[#8b2020] transition-colors hover:bg-[#FEF0F0] disabled:opacity-50"
+                  className="rounded-lg border border-danger/25 px-3 py-1.5 text-sm text-danger-ink transition-colors hover:bg-danger-soft disabled:opacity-50"
                 >
                   전부 삭제
                 </button>
@@ -156,8 +156,8 @@ export function SpeechConsentScreen({
             </div>
 
             {confirmDelete && (
-              <div className="mt-4 rounded-xl bg-[#FEF0F0] px-4 py-3">
-                <p className="text-sm text-[#8b2020]">
+              <div className="mt-4 rounded-xl bg-danger-soft px-4 py-3">
+                <p className="text-sm text-danger-ink">
                   보관된 음성 {count}건을 모두 삭제할까요? 되돌릴 수 없습니다.
                 </p>
                 <div className="mt-3 flex gap-2">
@@ -165,7 +165,7 @@ export function SpeechConsentScreen({
                     type="button"
                     onClick={() => void deleteAll()}
                     disabled={busy}
-                    className="rounded-lg bg-[#C94040] px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-[#b23636] disabled:opacity-50"
+                    className="rounded-lg bg-danger px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-[#b23636] disabled:opacity-50"
                   >
                     삭제
                   </button>
@@ -173,7 +173,7 @@ export function SpeechConsentScreen({
                     type="button"
                     onClick={() => setConfirmDelete(false)}
                     disabled={busy}
-                    className="rounded-lg border border-[#E8E4DC] px-4 py-1.5 text-sm text-[#6B6560] transition-colors hover:bg-[#F7F6F3] disabled:opacity-50"
+                    className="rounded-lg border border-line px-4 py-1.5 text-sm text-muted transition-colors hover:bg-canvas disabled:opacity-50"
                   >
                     취소
                   </button>
@@ -183,7 +183,7 @@ export function SpeechConsentScreen({
           </div>
 
           {error && (
-            <p className="px-1 text-sm text-[#C94040]" role="alert">
+            <p className="px-1 text-sm text-danger" role="alert">
               {error}
             </p>
           )}
@@ -211,7 +211,7 @@ function ConsentToggle({ on, disabled, onChange }: ConsentToggleProps) {
       disabled={disabled}
       onClick={() => onChange(!on)}
       className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors duration-[180ms] ease-out disabled:opacity-50 ${
-        on ? 'bg-[#2D6A56]' : 'bg-[#D5D1C8]'
+        on ? 'bg-primary' : 'bg-[#D5D1C8]'
       }`}
     >
       <span

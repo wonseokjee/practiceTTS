@@ -12,13 +12,13 @@ interface QuizPhotoHintProps {
 /** 문제 풀이 시 참고할 수 있는 기억 사진 썸네일 카드 */
 export function QuizPhotoHint({ photoUrl }: QuizPhotoHintProps) {
   return (
-    <figure className="font-pretendard mb-5 overflow-hidden rounded-xl bg-[#F7F6F3]">
+    <figure className="font-pretendard mb-5 overflow-hidden rounded-xl bg-canvas">
       <AuthedImage
         src={photoUrl}
         alt="기억 사진 힌트"
         className="max-h-56 w-full object-cover"
       />
-      <figcaption className="px-4 py-2 text-center text-sm text-[#5C6661]">
+      <figcaption className="px-4 py-2 text-center text-sm text-muted-sage">
         사진을 보며 떠올려보세요
       </figcaption>
     </figure>

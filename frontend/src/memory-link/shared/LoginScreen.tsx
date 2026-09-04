@@ -40,10 +40,10 @@ function SocialLoginButtons() {
 
   return (
     <div className="mt-6">
-      <div className="flex items-center gap-3 text-xs text-[#6B6560]">
-        <span className="h-px flex-1 bg-[#E8E4DC]" />
+      <div className="flex items-center gap-3 text-xs text-muted">
+        <span className="h-px flex-1 bg-line" />
         간편 로그인
-        <span className="h-px flex-1 bg-[#E8E4DC]" />
+        <span className="h-px flex-1 bg-line" />
       </div>
       <button
         type="button"
@@ -108,7 +108,7 @@ function LoginForm() {
   return (
     <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4" noValidate>
       <div>
-        <label htmlFor="login-email" className="block text-sm font-medium text-[#1A1916] mb-1">
+        <label htmlFor="login-email" className="block text-sm font-medium text-ink mb-1">
           이메일
         </label>
         <input
@@ -117,13 +117,13 @@ function LoginForm() {
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full px-3 py-2 border border-[#E8E4DC] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D6A56] focus:border-transparent"
+          className="w-full px-3 py-2 border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
           placeholder="example@email.com"
         />
       </div>
 
       <div>
-        <label htmlFor="login-password" className="block text-sm font-medium text-[#1A1916] mb-1">
+        <label htmlFor="login-password" className="block text-sm font-medium text-ink mb-1">
           비밀번호
         </label>
         <input
@@ -132,7 +132,7 @@ function LoginForm() {
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full px-3 py-2 border border-[#E8E4DC] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D6A56] focus:border-transparent"
+          className="w-full px-3 py-2 border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
           placeholder="비밀번호를 입력하세요"
         />
       </div>
@@ -140,7 +140,7 @@ function LoginForm() {
       {error !== null && (
         <p
           role="alert"
-          className="rounded-xl border border-[#C94040]/25 bg-[#FEF0F0] px-4 py-3 text-sm text-[#8b2020]"
+          className="rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm text-danger-ink"
         >
           {error}
         </p>
@@ -149,7 +149,7 @@ function LoginForm() {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full min-h-[48px] py-2 px-4 bg-[#2D6A56] text-white font-medium rounded-full hover:bg-[#1F5240] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="w-full min-h-[48px] py-2 px-4 bg-primary text-white font-medium rounded-full hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {isSubmitting ? '로그인 중...' : '로그인'}
       </button>
@@ -216,7 +216,7 @@ function RegisterForm() {
   return (
     <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4" noValidate>
       <div>
-        <label htmlFor="reg-email" className="block text-sm font-medium text-[#1A1916] mb-1">
+        <label htmlFor="reg-email" className="block text-sm font-medium text-ink mb-1">
           이메일
         </label>
         <input
@@ -225,13 +225,13 @@ function RegisterForm() {
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full px-3 py-2 border border-[#E8E4DC] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D6A56] focus:border-transparent"
+          className="w-full px-3 py-2 border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
           placeholder="example@email.com"
         />
       </div>
 
       <div>
-        <label htmlFor="reg-password" className="block text-sm font-medium text-[#1A1916] mb-1">
+        <label htmlFor="reg-password" className="block text-sm font-medium text-ink mb-1">
           비밀번호
         </label>
         <input
@@ -240,13 +240,13 @@ function RegisterForm() {
           autoComplete="new-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full px-3 py-2 border border-[#E8E4DC] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D6A56] focus:border-transparent"
+          className="w-full px-3 py-2 border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
           placeholder="비밀번호를 입력하세요"
         />
       </div>
 
       <div>
-        <label htmlFor="reg-display-name" className="block text-sm font-medium text-[#1A1916] mb-1">
+        <label htmlFor="reg-display-name" className="block text-sm font-medium text-ink mb-1">
           내 이름 (보호자)
         </label>
         <input
@@ -255,13 +255,13 @@ function RegisterForm() {
           autoComplete="name"
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
-          className="w-full min-h-[48px] px-3 py-2 border border-[#E8E4DC] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D6A56] focus:border-transparent"
+          className="w-full min-h-[48px] px-3 py-2 border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
           placeholder="내 이름을 입력하세요"
         />
       </div>
 
       <div>
-        <label htmlFor="reg-patient-name" className="block text-sm font-medium text-[#1A1916] mb-1">
+        <label htmlFor="reg-patient-name" className="block text-sm font-medium text-ink mb-1">
           어르신 성함
         </label>
         <input
@@ -269,13 +269,13 @@ function RegisterForm() {
           type="text"
           value={patientDisplayName}
           onChange={(e) => setPatientDisplayName(e.target.value)}
-          className="w-full min-h-[48px] px-3 py-2 border border-[#E8E4DC] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D6A56] focus:border-transparent"
+          className="w-full min-h-[48px] px-3 py-2 border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
           placeholder="돌보시는 어르신의 성함"
         />
       </div>
 
       <div>
-        <label htmlFor="reg-pin" className="block text-sm font-medium text-[#1A1916] mb-1">
+        <label htmlFor="reg-pin" className="block text-sm font-medium text-ink mb-1">
           환자 모드 PIN (4자리 숫자)
         </label>
         <input
@@ -288,10 +288,10 @@ function RegisterForm() {
           onChange={(e) =>
             setPatientModePin(e.target.value.replace(/\D/g, '').slice(0, 4))
           }
-          className="w-full min-h-[48px] px-3 py-2 border border-[#E8E4DC] rounded-lg tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-[#2D6A56] focus:border-transparent"
+          className="w-full min-h-[48px] px-3 py-2 border border-line rounded-lg tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
           placeholder="••••"
         />
-        <p className="mt-1 text-xs text-[#6B6560]">
+        <p className="mt-1 text-xs text-muted">
           어르신께 기기를 건넸다가 돌아올 때 사용하는 4자리 숫자예요.
         </p>
       </div>
@@ -299,7 +299,7 @@ function RegisterForm() {
       {error !== null && (
         <p
           role="alert"
-          className="rounded-xl border border-[#C94040]/25 bg-[#FEF0F0] px-4 py-3 text-sm text-[#8b2020]"
+          className="rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm text-danger-ink"
         >
           {error}
         </p>
@@ -308,7 +308,7 @@ function RegisterForm() {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full min-h-[48px] py-2 px-4 bg-[#2D6A56] text-white font-medium rounded-full hover:bg-[#1F5240] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="w-full min-h-[48px] py-2 px-4 bg-primary text-white font-medium rounded-full hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {isSubmitting ? '가입 중...' : '회원가입'}
       </button>
@@ -326,19 +326,19 @@ export function LoginScreen() {
     new URLSearchParams(window.location.search).get('error') === 'social';
 
   return (
-    <div className="min-h-screen bg-[#F7F6F3] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-canvas flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-white rounded-3xl shadow-[0_10px_30px_rgba(0,0,0,0.08)] overflow-hidden">
         {/* 헤더 */}
         <div className="px-6 pt-8 pb-4 text-center">
-          <h1 className="text-2xl font-bold text-[#1A1916]">Memory Link</h1>
-          <p className="mt-1 text-sm text-[#6B6560]">인지 훈련 및 기억 연결 플랫폼</p>
+          <h1 className="text-2xl font-bold text-ink">Memory Link</h1>
+          <p className="mt-1 text-sm text-muted">인지 훈련 및 기억 연결 플랫폼</p>
         </div>
 
         {socialFailed && (
           <div className="mx-6 mb-2">
             <p
               role="alert"
-              className="rounded-xl border border-[#C94040]/25 bg-[#FEF0F0] px-4 py-3 text-sm text-[#8b2020]"
+              className="rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm text-danger-ink"
             >
               소셜 로그인에 실패했어요. 다시 시도해 주세요.
             </p>
@@ -346,14 +346,14 @@ export function LoginScreen() {
         )}
 
         {/* 탭 */}
-        <div className="flex border-b border-[#E8E4DC] mx-6">
+        <div className="flex border-b border-line mx-6">
           <button
             type="button"
             onClick={() => setActiveTab('login')}
             className={`flex-1 py-3 text-sm font-medium transition-colors ${
               activeTab === 'login'
-                ? 'text-[#2D6A56] border-b-2 border-[#2D6A56]'
-                : 'text-[#6B6560] hover:text-[#1A1916]'
+                ? 'text-primary border-b-2 border-primary'
+                : 'text-muted hover:text-ink'
             }`}
           >
             로그인
@@ -363,8 +363,8 @@ export function LoginScreen() {
             onClick={() => setActiveTab('register')}
             className={`flex-1 py-3 text-sm font-medium transition-colors ${
               activeTab === 'register'
-                ? 'text-[#2D6A56] border-b-2 border-[#2D6A56]'
-                : 'text-[#6B6560] hover:text-[#1A1916]'
+                ? 'text-primary border-b-2 border-primary'
+                : 'text-muted hover:text-ink'
             }`}
           >
             회원가입

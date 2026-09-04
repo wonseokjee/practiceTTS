@@ -25,7 +25,7 @@ export function OddOneOutItem({
 }: OddOneOutItemProps) {
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-base text-[#5C6661]">{item.instruction}</p>
+      <p className="text-base text-muted-sage">{item.instruction}</p>
 
       {/*
         격자 폭을 묶는다. 화면 폭(max-w-2xl = 672px)을 다 쓰면 정사각 카드가
@@ -48,13 +48,13 @@ export function OddOneOutItem({
           const isChosen = selectedChoiceId === choice.choiceId;
 
           // 연습 규칙: 정답만 초록. 내가 고른 오답은 칠하지 않는다.
-          let ring = 'border-[#E5E5E0]';
+          let ring = 'border-line-soft';
           if (showAnswer) {
             ring = choice.isCorrect
-              ? 'border-[#2D6A56]'
-              : 'border-[#E5E5E0] opacity-50';
+              ? 'border-primary'
+              : 'border-line-soft opacity-50';
           } else if (isChosen) {
-            ring = 'border-[#2D6A56]';
+            ring = 'border-primary';
           }
 
           return (
@@ -66,8 +66,8 @@ export function OddOneOutItem({
                 if (isSelectable) onSelect(choice.choiceId);
               }}
               aria-label={`${choice.label} 선택`}
-              className={`relative aspect-square w-full overflow-hidden rounded-2xl border-4 bg-[#F2F1ED] transition-all duration-150 disabled:cursor-default ${ring} ${
-                isSelectable ? 'hover:border-[#A8AFA9] active:scale-[0.97]' : ''
+              className={`relative aspect-square w-full overflow-hidden rounded-2xl border-4 bg-surface-dim transition-all duration-150 disabled:cursor-default ${ring} ${
+                isSelectable ? 'hover:border-muted-faint active:scale-[0.97]' : ''
               }`}
             >
               <img
