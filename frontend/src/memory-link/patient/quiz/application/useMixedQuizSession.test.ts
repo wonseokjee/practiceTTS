@@ -425,6 +425,52 @@ describe('useMixedQuizSession', () => {
       });
     });
 
+    /**
+     * 소리가 안 난 채 고른 답은 **채점에서 뺀다**(TODO-110 후속 결정).
+     *
+     * 듣고 그림을 고르는 과제라, 못 들은 상태의 정오답은 이해력이 아니라 찍기다.
+     * `assisted`가 아니라 `unscored`인 이유는 보호자가 아무것도 안 했기
+     * 때문이다 — "도움 N회"가 거짓이 되면 그 값으로 정답률을 거르는 곳이 같이
+     * 오염된다.
+     */
+    it('못 들은 채 고르면 채점하지 않는다', async () => {
+      const submitQabResults = vi.fn().mockResolvedValue({ saved: 1 });
+      const { result } = renderWordOnly(submitQabResults);
+      await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+      // 정답을 골랐지만 소리가 안 났다.
+      act(() =>
+        result.current[1].submitQabChoice('c_ok', { unheard: true }),
+      );
+      await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+
+      // 정오답을 말하지 않는다 — 발화 채점 불가와 같은 대우다.
+      expect(result.current[0].lastResult?.isCorrect).toBeNull();
+
+      act(() => result.current[1].next());
+      await waitFor(() => expect(result.current[0].phase).toBe('result'));
+
+      const row = submitQabResults.mock.calls[0][1][0];
+      expect(row).toMatchObject({ unscored: true, isCorrect: false });
+      // 못 들은 찍기에는 헷갈릴 대상이 없다.
+      expect(row).not.toHaveProperty('foilKind');
+    });
+
+    it('못 들었어도 행은 남긴다 — 채점 실패율을 볼 수 있어야 한다', async () => {
+      const submitQabResults = vi.fn().mockResolvedValue({ saved: 1 });
+      const { result } = renderWordOnly(submitQabResults);
+      await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+      act(() =>
+        result.current[1].submitQabChoice('c_phon', { unheard: true }),
+      );
+      await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+      act(() => result.current[1].next());
+      await waitFor(() => expect(result.current[0].phase).toBe('result'));
+
+      expect(submitQabResults.mock.calls[0][1]).toHaveLength(1);
+    });
+
     it('맞히면 갈래를 보내지 않는다', async () => {
       // 정답에는 갈래가 없다. 맞힌 행에 갈래가 붙으면 갈래별 집계가 틀어진다.
       const submitQabResults = vi.fn().mockResolvedValue({ saved: 1 });

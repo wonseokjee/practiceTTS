@@ -236,7 +236,9 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
           isSelectable={canAnswer}
           showFeedback={showFeedback}
           isCorrect={showFeedback ? (lastResult?.isCorrect ?? null) : null}
-          onSubmit={(transcript, azure) => actions.submitSpeech(transcript, azure)}
+          onSubmit={(transcript, azure, ctx) =>
+            actions.submitSpeech(transcript, azure, ctx)
+          }
           onSkip={actions.skipCurrent}
           onOverride={actions.overrideSpeechVerdict}
         />
@@ -249,7 +251,9 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
           isSelectable={canAnswer}
           showFeedback={showFeedback}
           isCorrect={showFeedback ? (lastResult?.isCorrect ?? null) : null}
-          onSubmit={(transcript, azure) => actions.submitSpeech(transcript, azure)}
+          onSubmit={(transcript, azure, ctx) =>
+            actions.submitSpeech(transcript, azure, ctx)
+          }
           onSkip={actions.skipCurrent}
           onOverride={actions.overrideSpeechVerdict}
         />
@@ -280,7 +284,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
           isSelectable={canAnswer}
           showFeedback={showFeedback}
           selectedChoiceId={selectedChoiceId}
-          onSelect={(choiceId) => actions.submitQabChoice(choiceId)}
+          onSelect={(choiceId, ctx) => actions.submitQabChoice(choiceId, ctx)}
         />
       )}
 

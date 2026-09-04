@@ -67,7 +67,14 @@ interface ImageChoiceQuizItemProps {
   answerOnly?: boolean;
   /** 사용자가 고른 선택지 id (피드백 단계 강조용) */
   selectedChoiceId: string | null;
-  onSelect: (choiceId: string) => void;
+  /**
+   * 선택지를 골랐다.
+   *
+   * `unheard`는 **소리가 안 난 상태로 골랐다**는 뜻이다. 듣기가 이 문항의
+   * 전부라, 그때의 정오답은 이해력이 아니라 찍기다. 검사 쪽은 이 값으로
+   * 문항을 채점에서 뺀다(`unscored`). 연습은 안 써도 된다.
+   */
+  onSelect: (choiceId: string, ctx: { unheard: boolean }) => void;
 }
 
 /** 단어/문장 이해(듣고 그림 고르기) 문항 */
@@ -146,7 +153,12 @@ export function ImageChoiceQuizItem({
               type="button"
               disabled={!isSelectable}
               onClick={() => {
-                if (isSelectable) onSelect(choice.choiceId);
+                // `speak()`가 재생을 시작할 때 error를 비운다. 그래서 이 값이
+                // 남아 있다는 건 **마지막 재생이 실패했다**는 뜻이다 — 다시
+                // 듣기를 눌러 성공하면 저절로 풀린다.
+                if (isSelectable) {
+                  onSelect(choice.choiceId, { unheard: ttsError !== null });
+                }
               }}
               aria-label={`${choice.label} 선택`}
               className={`relative aspect-square w-full overflow-hidden rounded-2xl border-4 transition-all duration-150 disabled:cursor-default ${ring} ${

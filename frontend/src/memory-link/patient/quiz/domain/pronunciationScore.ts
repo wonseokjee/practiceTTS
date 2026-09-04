@@ -100,7 +100,14 @@ export interface UnscoredEvaluation {
 /** 채점됐거나, 못 쟀거나. 셋째 경우는 없다. */
 export type SpeechAssessment = ScoredEvaluation | UnscoredEvaluation;
 
-const UNSCORED: UnscoredEvaluation = {
+/**
+ * 잴 수 없었다.
+ *
+ * 발음 평가에 닿지 못했을 때만 쓰던 값인데, 세션도 쓴다 — **자극을 못 들려준**
+ * 따라말하기가 같은 처지다. 잘 말했는지와 무관하게 "들은 것을 붙드는 능력"을
+ * 안 잰 것이라, 채점 경로가 죽은 것과 구분할 이유가 없다.
+ */
+export const UNSCORED: UnscoredEvaluation = {
   scored: false,
   encouragement: UNSCORED_ENCOURAGEMENT,
 };
