@@ -808,6 +808,33 @@ describe('의미 범주 태그 (D5·E10)', () => {
     return [...out];
   }
 
+  /**
+   * 밴드 크기 — 겹침 방지가 실제로 작동하려면 얼마나 필요한가.
+   *
+   * 읽기·따라말하기와 같은 기준이다(QabSpeechBank.test.ts에 근거를 적어 뒀다).
+   * exclude의 조회 창이 30일이고 검사당 주 9문항이 나가므로 30÷7×9 ≈ 39가
+   * "조회 창 안에서 한 번도 안 겹치는" 최소 밴드 크기다.
+   *
+   * 글자조합은 **낱말 풀을 같이 쓴다** — `pickSpellItems`가 음절수로 거르고
+   * `toSpellItem`이 그 낱말의 아이콘을 그대로 보여준다. 그래서 낱말 풀을
+   * 키우면 낱말 고르기와 글자조합이 함께 자란다.
+   */
+  it('글자조합 두 밴드가 39개 이상이다', () => {
+    // 자료에서 직접 센다. `pickSpellItems(999, lv)`로는 못 잰다 — 요청이
+    // 밴드보다 크면 되돌리기가 걸려 전체 풀이 온다(읽기에서 같은 함정을 밟았다).
+    const 음절 = (s: string): number =>
+      Array.from(s.replace(/\s+/g, '')).length;
+    const 모든낱말 = masterWords().map((w) => w.label);
+    const 밴드 = {
+      'lv1 (2음절)': 모든낱말.filter((l) => 음절(l) === 2).length,
+      'lv2+ (3~4음절)': 모든낱말.filter((l) => 음절(l) >= 3 && 음절(l) <= 4)
+        .length,
+    };
+    for (const [이름, n] of Object.entries(밴드)) {
+      expect(n, 이름).toBeGreaterThanOrEqual(39);
+    }
+  });
+
   it('풀의 모든 낱말이 WORD_CATEGORY에 등록돼 있다', () => {
     // 예전엔 `WORD_CATEGORY[slug] ?? 'object'`라, 태그를 빠뜨린 낱말이 조용히
     // 잡동사니 범주에 섞였다. 폴백을 없앤 대신 여기서 지킨다 — 새 낱말을 넣고
