@@ -470,6 +470,258 @@
           "isCorrect": false
         }
       ]
+    },
+    {
+      "itemId": "sg_05_rc_s",
+      "sentence": "여자의 머리를 자르는 남자가 서 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "relative-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sg_05_correct.png",
+          "altText": "남자가 여자의 머리를 자르는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sg_05_distractor.png",
+          "altText": "여자가 남자의 머리를 자르는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "sg_05_rc_o",
+      "sentence": "여자가 머리를 자르는 남자가 서 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "relative-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sg_05_distractor.png",
+          "altText": "여자가 남자의 머리를 자르는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sg_05_correct.png",
+          "altText": "남자가 여자의 머리를 자르는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "sg_07_rc_s",
+      "sentence": "소년을 가리키는 할머니가 서 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "relative-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sg_07_correct.png",
+          "altText": "할머니가 소년을 가리키는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sg_07_distractor.png",
+          "altText": "소년이 할머니를 가리키는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "sg_07_rc_o",
+      "sentence": "소년이 가리키는 할머니가 서 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "relative-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sg_07_distractor.png",
+          "altText": "소년이 할머니를 가리키는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sg_07_correct.png",
+          "altText": "할머니가 소년을 가리키는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "sg_08_rc_s",
+      "sentence": "여자를 찍는 남자가 웃고 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "relative-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sg_08_correct.png",
+          "altText": "남자가 여자를 사진 찍는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sg_08_distractor.png",
+          "altText": "여자가 남자를 사진 찍는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "sg_08_rc_o",
+      "sentence": "여자가 찍는 남자가 웃고 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "relative-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sg_08_distractor.png",
+          "altText": "여자가 남자를 사진 찍는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sg_08_correct.png",
+          "altText": "남자가 여자를 사진 찍는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "sg_09_rc_s",
+      "sentence": "아이를 업고 가는 엄마가 웃고 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "relative-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sg_09_correct.png",
+          "altText": "엄마가 아이를 업은 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sg_09_distractor.png",
+          "altText": "아이가 엄마를 업은 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "sg_09_rc_o",
+      "sentence": "아이가 업고 가는 엄마가 웃고 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "relative-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sg_09_distractor.png",
+          "altText": "아이가 엄마를 업은 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sg_09_correct.png",
+          "altText": "엄마가 아이를 업은 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "sg_10_rc_s",
+      "sentence": "소년을 당기는 소녀가 웃고 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "relative-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sg_10_correct.png",
+          "altText": "소녀가 소년을 당기는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sg_10_distractor.png",
+          "altText": "소년이 소녀를 당기는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "sg_10_rc_o",
+      "sentence": "소년이 당기는 소녀가 웃고 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "relative-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sg_10_distractor.png",
+          "altText": "소년이 소녀를 당기는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sg_10_correct.png",
+          "altText": "소녀가 소년을 당기는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "sg_11_rc_s",
+      "sentence": "아이에게 모자를 씌우는 아빠가 서 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "relative-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sg_11_correct.png",
+          "altText": "아빠가 아이에게 모자를 씌우는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sg_11_distractor.png",
+          "altText": "아이가 아빠에게 모자를 씌우는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "sg_11_rc_o",
+      "sentence": "아이가 모자를 씌우는 아빠가 서 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "relative-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sg_11_distractor.png",
+          "altText": "아이가 아빠에게 모자를 씌우는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sg_11_correct.png",
+          "altText": "아빠가 아이에게 모자를 씌우는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "sg_12_rc_s",
+      "sentence": "소녀에게 책을 읽어주는 할아버지가 앉아 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "relative-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sg_12_correct.png",
+          "altText": "할아버지가 소녀에게 책을 읽어주는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sg_12_distractor.png",
+          "altText": "소녀가 할아버지에게 책을 읽어주는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "sg_12_rc_o",
+      "sentence": "소녀가 책을 읽어주는 할아버지가 앉아 있어요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "relative-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/sg_12_distractor.png",
+          "altText": "소녀가 할아버지에게 책을 읽어주는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/sg_12_correct.png",
+          "altText": "할아버지가 소녀에게 책을 읽어주는 장면",
+          "isCorrect": false
+        }
+      ]
     }
   ]
 }
