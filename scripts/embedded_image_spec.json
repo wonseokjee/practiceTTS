@@ -1,0 +1,156 @@
+{
+  "version": 1,
+  "note": "내포절 장면 스펙. 두 그림은 **생각 풍선 속만** 다르다 — 사람·자세·풍선 모양은 같아야 한다. 풍선 속 둘은 실루엣부터 달라야 한다: se_09(공/뼈)는 대비가 좁아 202px 카드에서 «흰 무엇»으로만 보였다.",
+  "items": [
+    {
+      "itemId": "se_10",
+      "sentenceType": "embedded-clause",
+      "thinker": "a mother with tied-back brown hair in a green blouse",
+      "correct": {
+        "sentence": "엄마는 아빠가 청소를 하고 있다고 생각해요",
+        "altText": "엄마가 아빠는 청소를 하고 있다고 떠올리는 장면",
+        "bubble": "a father in a blue shirt sweeping the floor with a broom"
+      },
+      "distractor": {
+        "sentence": "엄마는 아빠가 잠을 자고 있다고 생각해요",
+        "altText": "엄마가 아빠는 잠을 자고 있다고 떠올리는 장면",
+        "bubble": "a father in a blue shirt lying asleep in bed with his eyes closed and a blanket pulled up. Do NOT draw any 'Z' letters or any other letters or symbols"
+      }
+    },
+    {
+      "itemId": "se_11",
+      "sentenceType": "embedded-clause",
+      "thinker": "a boy with short black hair in a yellow t-shirt",
+      "correct": {
+        "sentence": "소년은 고양이가 생선을 먹고 있다고 생각해요",
+        "altText": "소년가 고양이는 생선을 먹고 있다고 떠올리는 장면",
+        "bubble": "an orange cat eating a fish from a bowl on the floor"
+      },
+      "distractor": {
+        "sentence": "소년은 고양이가 창밖을 보고 있다고 생각해요",
+        "altText": "소년가 고양이는 창밖을 보고 있다고 떠올리는 장면",
+        "bubble": "an orange cat sitting on a windowsill looking out of a window"
+      }
+    },
+    {
+      "itemId": "se_12",
+      "sentenceType": "embedded-clause",
+      "thinker": "an elderly woman with grey hair in a purple cardigan",
+      "correct": {
+        "sentence": "할머니는 손자가 우유를 마시고 있다고 생각해요",
+        "altText": "할머니가 손자는 우유를 마시고 있다고 떠올리는 장면",
+        "bubble": "a small boy drinking a glass of milk with both hands"
+      },
+      "distractor": {
+        "sentence": "할머니는 손자가 축구를 하고 있다고 생각해요",
+        "altText": "할머니가 손자는 축구를 하고 있다고 떠올리는 장면",
+        "bubble": "a small boy kicking a soccer ball on grass"
+      }
+    },
+    {
+      "itemId": "se_13",
+      "sentenceType": "embedded-clause",
+      "thinker": "a father with short black hair in a grey jacket",
+      "correct": {
+        "sentence": "아빠는 딸이 피아노를 치고 있다고 생각해요",
+        "altText": "아빠가 딸는 피아노를 치고 있다고 떠올리는 장면",
+        "bubble": "a girl sitting at an upright piano playing it with both hands"
+      },
+      "distractor": {
+        "sentence": "아빠는 딸이 자전거를 타고 있다고 생각해요",
+        "altText": "아빠가 딸는 자전거를 타고 있다고 떠올리는 장면",
+        "bubble": "a girl riding a bicycle outdoors"
+      }
+    },
+    {
+      "itemId": "se_14",
+      "sentenceType": "embedded-clause",
+      "thinker": "a teacher with tied-back hair in a beige cardigan",
+      "correct": {
+        "sentence": "선생님은 학생이 책을 읽고 있다고 생각해요",
+        "altText": "선생님가 학생는 책을 읽고 있다고 떠올리는 장면",
+        "bubble": "a child sitting at a desk reading an open book"
+      },
+      "distractor": {
+        "sentence": "선생님은 학생이 운동장에서 뛰고 있다고 생각해요",
+        "altText": "선생님가 학생는 운동장에서 뛰고 있다고 떠올리는 장면",
+        "bubble": "a child running outdoors on a playground track"
+      }
+    },
+    {
+      "itemId": "se_15",
+      "sentenceType": "embedded-clause",
+      "thinker": "a small child with short black hair in an orange t-shirt",
+      "correct": {
+        "sentence": "아이는 엄마가 시장에 가고 있다고 생각해요",
+        "altText": "아이가 엄마는 시장에 가고 있다고 떠올리는 장면",
+        "bubble": "a mother walking outdoors carrying a shopping basket full of vegetables"
+      },
+      "distractor": {
+        "sentence": "아이는 엄마가 빨래를 개고 있다고 생각해요",
+        "altText": "아이가 엄마는 빨래를 개고 있다고 떠올리는 장면",
+        "bubble": "a mother sitting on the floor folding laundry into a neat pile"
+      }
+    },
+    {
+      "itemId": "se_16",
+      "sentenceType": "embedded-clause",
+      "thinker": "an elderly man with white hair in a brown vest",
+      "correct": {
+        "sentence": "할아버지는 소년이 나무에 오르고 있다고 생각해요",
+        "altText": "할아버지가 소년는 나무에 오르고 있다고 떠올리는 장면",
+        "bubble": "a boy climbing up the trunk of a tall green tree"
+      },
+      "distractor": {
+        "sentence": "할아버지는 소년이 낚시를 하고 있다고 생각해요",
+        "altText": "할아버지가 소년는 낚시를 하고 있다고 떠올리는 장면",
+        "bubble": "a boy sitting on a riverbank holding a fishing rod over the water"
+      }
+    },
+    {
+      "itemId": "se_17",
+      "sentenceType": "embedded-clause",
+      "thinker": "a woman with long brown hair in a red dress",
+      "correct": {
+        "sentence": "여자는 남자가 커피를 마시고 있다고 생각해요",
+        "altText": "여자가 남자는 커피를 마시고 있다고 떠올리는 장면",
+        "bubble": "a man sitting at a table drinking from a coffee cup"
+      },
+      "distractor": {
+        "sentence": "여자는 남자가 기타를 치고 있다고 생각해요",
+        "altText": "여자가 남자는 기타를 치고 있다고 떠올리는 장면",
+        "bubble": "a man standing and playing an acoustic guitar, holding it across his body with both hands"
+      }
+    },
+    {
+      "itemId": "se_18",
+      "sentenceType": "embedded-clause",
+      "thinker": "a girl with two braids in a pink dress",
+      "correct": {
+        "sentence": "소녀는 토끼가 당근을 먹고 있다고 생각해요",
+        "altText": "소녀가 토끼는 당근을 먹고 있다고 떠올리는 장면",
+        "bubble": "a white rabbit nibbling a large orange carrot"
+      },
+      "distractor": {
+        "sentence": "소녀는 토끼가 잠을 자고 있다고 생각해요",
+        "altText": "소녀가 토끼는 잠을 자고 있다고 떠올리는 장면",
+        "bubble": "a white rabbit curled up asleep with its eyes closed"
+      }
+    },
+    {
+      "itemId": "se_19",
+      "sentenceType": "embedded-clause",
+      "thinker": "an elderly woman with grey hair in a blue cardigan",
+      "correct": {
+        "sentence": "할머니는 손녀가 숙제를 하고 있다고 생각해요",
+        "altText": "할머니가 손녀는 숙제를 하고 있다고 떠올리는 장면",
+        "bubble": "a girl sitting at a desk writing in a notebook"
+      },
+      "distractor": {
+        "sentence": "할머니는 손녀가 그네를 타고 있다고 생각해요",
+        "altText": "할머니가 손녀는 그네를 타고 있다고 떠올리는 장면",
+        "bubble": "a girl swinging high on a playground swing"
+      }
+    }
+  ]
+}
