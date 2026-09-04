@@ -3,6 +3,21 @@
   "note": "내포절 장면 스펙. 두 그림은 **생각 풍선 속만** 다르다 — 사람·자세·풍선 모양은 같아야 한다. 풍선 속 둘은 실루엣부터 달라야 한다: se_09(공/뼈)는 대비가 좁아 202px 카드에서 «흰 무엇»으로만 보였다.",
   "items": [
     {
+      "itemId": "se_09",
+      "sentenceType": "embedded-clause",
+      "thinker": "a young boy with short black hair in a red shirt",
+      "correct": {
+        "sentence": "아이는 강아지가 공을 물고 있다고 생각해요",
+        "altText": "아이가 강아지는 공을 물고 있다고 떠올리는 장면",
+        "bubble": "a brown puppy standing and holding a ball in its mouth"
+      },
+      "distractor": {
+        "sentence": "아이는 강아지가 물을 마시고 있다고 생각해요",
+        "altText": "아이가 강아지는 물을 마시고 있다고 떠올리는 장면",
+        "bubble": "a brown puppy with its head lowered down into a water bowl on the ground, drinking. Its head is clearly bent downward and nothing is in its mouth"
+      }
+    },
+    {
       "itemId": "se_10",
       "sentenceType": "embedded-clause",
       "thinker": "a mother with tied-back brown hair in a green blouse",

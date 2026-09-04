@@ -304,20 +304,20 @@
         },
         {
           "imageUrl": "/assets/images/sentComp/se_09_distractor.png",
-          "altText": "아이가 강아지는 뼈를 물고 있다고 떠올리는 장면",
+          "altText": "아이가 강아지는 물을 마시고 있다고 떠올리는 장면",
           "isCorrect": false
         }
       ]
     },
     {
       "itemId": "se_09_b",
-      "sentence": "아이는 강아지가 뼈를 물고 있다고 생각해요",
+      "sentence": "아이는 강아지가 물을 마시고 있다고 생각해요",
       "sentenceAudioUrl": "",
       "sentenceType": "embedded-clause",
       "choices": [
         {
           "imageUrl": "/assets/images/sentComp/se_09_distractor.png",
-          "altText": "아이가 강아지는 뼈를 물고 있다고 떠올리는 장면",
+          "altText": "아이가 강아지는 물을 마시고 있다고 떠올리는 장면",
           "isCorrect": true
         },
         {
