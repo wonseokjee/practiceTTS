@@ -1260,25 +1260,20 @@ describe('문장이해 — 밴드 크기', () => {
     return raws.flat().filter((it) => !제외.has(it.itemId));
   };
 
-  it('가역문과 관계절이 39개 이상이다', () => {
+  it('세 밴드 모두 39개 이상이다', () => {
+    // 내포절은 마지막까지 남아 있었다. 앞선 PR에서는 여기 "아직 모자란다"를
+    // 일부러 단언해 남은 작업을 숫자로 붙들어 뒀고, 장면 10쌍을 채우자
+    // `expected 40 to be less than 39`로 깨지며 제 할 일을 알렸다.
     for (const [레벨, 유형] of [
       [1, 'reversible'],
       [3, 'relative-clause'],
+      [5, 'embedded-clause'],
     ] as const) {
       const band = 살아있는문장().filter((it) => it.sentenceType === 유형);
       expect(band.length, 유형).toBeGreaterThanOrEqual(최소밴드);
+      // 그 유형이 실제로 그 레벨이 내는 것이어야 밴드 수가 뜻을 갖는다.
       expect(sentTypeForLevel(레벨)).toBe(유형);
     }
-  });
-
-  it('내포절은 아직 모자란다 — 남은 작업을 숫자로 붙들어 둔다', () => {
-    // 이 테스트는 "아직 안 됐다"를 적어 두는 자리다. 내포절이 39에 닿으면
-    // 여기서 깨지고, 그때 위 테스트에 유형을 옮겨 적으면 된다.
-    const band = 살아있는문장().filter(
-      (it) => it.sentenceType === 'embedded-clause',
-    );
-    expect(band.length).toBeLessThan(최소밴드);
-    expect(sentTypeForLevel(5)).toBe('embedded-clause');
   });
 
   it('모든 문항에 정답이 정확히 하나다', () => {

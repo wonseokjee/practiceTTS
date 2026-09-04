@@ -304,25 +304,385 @@
         },
         {
           "imageUrl": "/assets/images/sentComp/se_09_distractor.png",
-          "altText": "아이가 강아지는 뼈를 물고 있다고 떠올리는 장면",
+          "altText": "아이가 강아지는 물을 마시고 있다고 떠올리는 장면",
           "isCorrect": false
         }
       ]
     },
     {
       "itemId": "se_09_b",
-      "sentence": "아이는 강아지가 뼈를 물고 있다고 생각해요",
+      "sentence": "아이는 강아지가 물을 마시고 있다고 생각해요",
       "sentenceAudioUrl": "",
       "sentenceType": "embedded-clause",
       "choices": [
         {
           "imageUrl": "/assets/images/sentComp/se_09_distractor.png",
-          "altText": "아이가 강아지는 뼈를 물고 있다고 떠올리는 장면",
+          "altText": "아이가 강아지는 물을 마시고 있다고 떠올리는 장면",
           "isCorrect": true
         },
         {
           "imageUrl": "/assets/images/sentComp/se_09_correct.png",
           "altText": "아이가 강아지는 공을 물고 있다고 떠올리는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "se_10_a",
+      "sentence": "엄마는 아빠가 청소를 하고 있다고 생각해요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "embedded-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/se_10_correct.png",
+          "altText": "엄마가 아빠는 청소를 하고 있다고 떠올리는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/se_10_distractor.png",
+          "altText": "엄마가 아빠는 잠을 자고 있다고 떠올리는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "se_10_b",
+      "sentence": "엄마는 아빠가 잠을 자고 있다고 생각해요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "embedded-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/se_10_distractor.png",
+          "altText": "엄마가 아빠는 잠을 자고 있다고 떠올리는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/se_10_correct.png",
+          "altText": "엄마가 아빠는 청소를 하고 있다고 떠올리는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "se_11_a",
+      "sentence": "소년은 고양이가 생선을 먹고 있다고 생각해요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "embedded-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/se_11_correct.png",
+          "altText": "소년가 고양이는 생선을 먹고 있다고 떠올리는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/se_11_distractor.png",
+          "altText": "소년가 고양이는 창밖을 보고 있다고 떠올리는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "se_11_b",
+      "sentence": "소년은 고양이가 창밖을 보고 있다고 생각해요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "embedded-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/se_11_distractor.png",
+          "altText": "소년가 고양이는 창밖을 보고 있다고 떠올리는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/se_11_correct.png",
+          "altText": "소년가 고양이는 생선을 먹고 있다고 떠올리는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "se_12_a",
+      "sentence": "할머니는 손자가 우유를 마시고 있다고 생각해요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "embedded-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/se_12_correct.png",
+          "altText": "할머니가 손자는 우유를 마시고 있다고 떠올리는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/se_12_distractor.png",
+          "altText": "할머니가 손자는 축구를 하고 있다고 떠올리는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "se_12_b",
+      "sentence": "할머니는 손자가 축구를 하고 있다고 생각해요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "embedded-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/se_12_distractor.png",
+          "altText": "할머니가 손자는 축구를 하고 있다고 떠올리는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/se_12_correct.png",
+          "altText": "할머니가 손자는 우유를 마시고 있다고 떠올리는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "se_13_a",
+      "sentence": "아빠는 딸이 피아노를 치고 있다고 생각해요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "embedded-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/se_13_correct.png",
+          "altText": "아빠가 딸는 피아노를 치고 있다고 떠올리는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/se_13_distractor.png",
+          "altText": "아빠가 딸는 자전거를 타고 있다고 떠올리는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "se_13_b",
+      "sentence": "아빠는 딸이 자전거를 타고 있다고 생각해요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "embedded-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/se_13_distractor.png",
+          "altText": "아빠가 딸는 자전거를 타고 있다고 떠올리는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/se_13_correct.png",
+          "altText": "아빠가 딸는 피아노를 치고 있다고 떠올리는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "se_14_a",
+      "sentence": "선생님은 학생이 책을 읽고 있다고 생각해요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "embedded-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/se_14_correct.png",
+          "altText": "선생님가 학생는 책을 읽고 있다고 떠올리는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/se_14_distractor.png",
+          "altText": "선생님가 학생는 운동장에서 뛰고 있다고 떠올리는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "se_14_b",
+      "sentence": "선생님은 학생이 운동장에서 뛰고 있다고 생각해요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "embedded-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/se_14_distractor.png",
+          "altText": "선생님가 학생는 운동장에서 뛰고 있다고 떠올리는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/se_14_correct.png",
+          "altText": "선생님가 학생는 책을 읽고 있다고 떠올리는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "se_15_a",
+      "sentence": "아이는 엄마가 시장에 가고 있다고 생각해요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "embedded-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/se_15_correct.png",
+          "altText": "아이가 엄마는 시장에 가고 있다고 떠올리는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/se_15_distractor.png",
+          "altText": "아이가 엄마는 빨래를 개고 있다고 떠올리는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "se_15_b",
+      "sentence": "아이는 엄마가 빨래를 개고 있다고 생각해요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "embedded-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/se_15_distractor.png",
+          "altText": "아이가 엄마는 빨래를 개고 있다고 떠올리는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/se_15_correct.png",
+          "altText": "아이가 엄마는 시장에 가고 있다고 떠올리는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "se_16_a",
+      "sentence": "할아버지는 소년이 나무에 오르고 있다고 생각해요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "embedded-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/se_16_correct.png",
+          "altText": "할아버지가 소년는 나무에 오르고 있다고 떠올리는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/se_16_distractor.png",
+          "altText": "할아버지가 소년는 낚시를 하고 있다고 떠올리는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "se_16_b",
+      "sentence": "할아버지는 소년이 낚시를 하고 있다고 생각해요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "embedded-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/se_16_distractor.png",
+          "altText": "할아버지가 소년는 낚시를 하고 있다고 떠올리는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/se_16_correct.png",
+          "altText": "할아버지가 소년는 나무에 오르고 있다고 떠올리는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "se_17_a",
+      "sentence": "여자는 남자가 커피를 마시고 있다고 생각해요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "embedded-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/se_17_correct.png",
+          "altText": "여자가 남자는 커피를 마시고 있다고 떠올리는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/se_17_distractor.png",
+          "altText": "여자가 남자는 기타를 치고 있다고 떠올리는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "se_17_b",
+      "sentence": "여자는 남자가 기타를 치고 있다고 생각해요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "embedded-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/se_17_distractor.png",
+          "altText": "여자가 남자는 기타를 치고 있다고 떠올리는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/se_17_correct.png",
+          "altText": "여자가 남자는 커피를 마시고 있다고 떠올리는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "se_18_a",
+      "sentence": "소녀는 토끼가 당근을 먹고 있다고 생각해요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "embedded-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/se_18_correct.png",
+          "altText": "소녀가 토끼는 당근을 먹고 있다고 떠올리는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/se_18_distractor.png",
+          "altText": "소녀가 토끼는 잠을 자고 있다고 떠올리는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "se_18_b",
+      "sentence": "소녀는 토끼가 잠을 자고 있다고 생각해요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "embedded-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/se_18_distractor.png",
+          "altText": "소녀가 토끼는 잠을 자고 있다고 떠올리는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/se_18_correct.png",
+          "altText": "소녀가 토끼는 당근을 먹고 있다고 떠올리는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "se_19_a",
+      "sentence": "할머니는 손녀가 숙제를 하고 있다고 생각해요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "embedded-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/se_19_correct.png",
+          "altText": "할머니가 손녀는 숙제를 하고 있다고 떠올리는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/se_19_distractor.png",
+          "altText": "할머니가 손녀는 그네를 타고 있다고 떠올리는 장면",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "itemId": "se_19_b",
+      "sentence": "할머니는 손녀가 그네를 타고 있다고 생각해요",
+      "sentenceAudioUrl": "",
+      "sentenceType": "embedded-clause",
+      "choices": [
+        {
+          "imageUrl": "/assets/images/sentComp/se_19_distractor.png",
+          "altText": "할머니가 손녀는 그네를 타고 있다고 떠올리는 장면",
+          "isCorrect": true
+        },
+        {
+          "imageUrl": "/assets/images/sentComp/se_19_correct.png",
+          "altText": "할머니가 손녀는 숙제를 하고 있다고 떠올리는 장면",
           "isCorrect": false
         }
       ]
