@@ -501,24 +501,10 @@ describe('useLocViewModel FSM 상태 전환 테스트', () => {
     expect(result.current.viewState.trialResults).toHaveLength(0);
   });
 
-  it('13. TODO-118(현재 동작 고정): 2번째 제출이 실패한 뒤 재시작하면 1번째 시도 결과가 사라진다', async () => {
-    // ⚠️ 이 테스트는 **올바른 동작이 아니라 현재(버그) 동작을 기록**한다.
-    //
-    // TRIAL_SUBMIT_FAILED가 IDLE로 가고, IDLE에서 startAssessment를 부르면
-    // accumulatedTrialsRef가 비워진다. 그래서 2·3번째 시도에서 제출이 실패하면
-    // 이미 채점된 앞선 시도가 조용히 사라진다. 임상 점수 손실이다(TODO-118).
-    //
-    // **재는 대상은 `viewState.trialResults`가 아니라 `accumulatedTrialsRef`다.**
-    // 화면용 `trialResults`는 재시작 때 `setTrialResults([])`로 비우는 게 설계라
-    // 그걸 보면 버그가 있든 없든 항상 0이다(12번 테스트가 걸렸던 함정).
-    // 누적 시도는 `execute(params, accumulatedTrials)`의 **두 번째 인자**로
-    // 흘러나오므로 그걸 관찰한다.
-    //
-    // **TODO-118을 고치면 이 테스트가 빨간불이 된다 — 그게 정상이다.**
-    // 그때 마지막 expect를 toHaveLength(1)로 바꾸고 이 주석을 지운다.
-    //
-    // 형제 경로인 TTS_FAILED는 hasTrials를 보고 TRIAL_INTERRUPTED로 보내
-    // 이미 시도를 지키고 있다(11번 테스트). 그 비대칭이 이 버그의 핵심이다.
+  it('13. TODO-118 수정 확인: 2번째 제출이 실패해도 1번째 시도 결과를 잃지 않는다', async () => {
+    // 형제 경로인 TTS_FAILED(11번 테스트)와 대칭을 맞췄다 — 이미 끝낸 시도가
+    // 있으면(hasTrials) IDLE 대신 TRIAL_INTERRUPTED로 가서 누적 시도를 지킨다.
+    // "다시 듣기"로 실패한 시도만 다시 하면 앞선 시도는 그대로 남는다.
     vi.useFakeTimers({ shouldAdvanceTime: true });
 
     try {
@@ -542,22 +528,27 @@ describe('useLocViewModel FSM 상태 전환 테스트', () => {
       await waitFor(() => expect(result.current.viewState.assessmentState).toBe('TRIAL_COMPLETE'), { timeout: 3000 });
       expect(result.current.viewState.trialResults).toHaveLength(1);
 
-      // 700ms 뒤 2번째 시도 → 터치 → 제출 실패 → IDLE
+      // 700ms 뒤 2번째 시도 → 터치 → 제출 실패 → IDLE이 아니라 TRIAL_INTERRUPTED로 가야 한다.
       await act(async () => { vi.advanceTimersByTime(700); await Promise.resolve(); });
       await waitFor(() => expect(result.current.viewState.assessmentState).toBe('AWAITING_TOUCH'), { timeout: 3000 });
       await act(async () => { result.current.actions.handleAreaPointerDown(makePointerEvent()); });
-      await waitFor(() => expect(result.current.viewState.assessmentState).toBe('IDLE'), { timeout: 3000 });
+      await waitFor(() => expect(result.current.viewState.assessmentState).toBe('TRIAL_INTERRUPTED'), { timeout: 3000 });
 
-      // IDLE 화면은 "검사를 시작할까요?"다. 검사자가 안내대로 시작을 누르면...
-      await act(async () => { await result.current.actions.startAssessment(); });
+      // 1번째 시도 결과가 화면에서도, 누적 상태에서도 그대로 남아 있다.
+      expect(result.current.viewState.trialResults).toHaveLength(1);
+      expect(result.current.viewState.errorMessage).not.toBeNull();
+
+      // "다시 듣기" → 실패했던 2번째 시도를 처음부터 다시 한다.
+      await act(async () => { result.current.actions.resumeInterruptedTrial(); });
       await waitFor(() => expect(result.current.viewState.assessmentState).toBe('AWAITING_TOUCH'), { timeout: 3000 });
       await act(async () => { result.current.actions.handleAreaPointerDown(makePointerEvent()); });
-      await waitFor(() => expect(mockExecute).toHaveBeenCalledTimes(3), { timeout: 3000 });
+      await waitFor(() => expect(result.current.viewState.assessmentState).toBe('TRIAL_COMPLETE'), { timeout: 3000 });
 
-      // 재시작 뒤 첫 execute에 넘어간 누적 시도가 비어 있다 = 1번 시도가 사라졌다.
-      // TODO-118을 고치면 이 길이가 1이 되어 이 테스트가 빨간불이 된다.
-      const accumulatedOnRestart = mockExecute.mock.calls[2][1];
-      expect(accumulatedOnRestart).toHaveLength(0);
+      // 이번엔 제출이 성공해 2번째 시도까지 쌓인다 — 1번째가 사라지지 않았다.
+      expect(result.current.viewState.trialResults).toHaveLength(2);
+      expect(mockExecute).toHaveBeenCalledTimes(3);
+      const accumulatedOnRetry = mockExecute.mock.calls[2]?.[1];
+      expect(accumulatedOnRetry).toHaveLength(1);
     } finally {
       vi.useRealTimers();
     }

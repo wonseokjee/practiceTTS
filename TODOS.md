@@ -73,49 +73,35 @@
 추정("작음")도 틀렸다 — 실제로는 601줄 훅 + 823줄 테스트짜리 임상 검사(LOC,
 각성 수준 측정)였다. 상세는 아래 TODO-001 절 참고.
 
-### TODO-118: TRIAL_SUBMIT_FAILED가 IDLE로 가면 이미 끝낸 시도가 조용히 지워진다
+### ~~TODO-118: TRIAL_SUBMIT_FAILED가 IDLE로 가면 이미 끝낸 시도가 조용히 지워진다~~ — 해결 (2026-09-05)
 
 **What:** LOC 검사에서 시도 제출(`ConductLocTrialUseCase.execute()`)이 실패하면
-`useLocViewModel.ts`가 `TRIAL_SUBMIT_FAILED`를 dispatch해 `IDLE`로 돌아간다.
-그런데 `startAssessment`(같은 파일, `IDLE` 가드 뒤)는 `IDLE`에서 호출되면
-`accumulatedTrialsRef.current = []`로 누적 시도를 통째로 비운다.
+`useLocViewModel.ts`가 `TRIAL_SUBMIT_FAILED`를 dispatch해 `IDLE`로 돌아갔다.
+`startAssessment`는 `IDLE`에서 호출되면 `accumulatedTrialsRef.current = []`로
+누적 시도를 통째로 비운다 — 2·3번째 시도 제출이 실패하면 이미 채점된 앞선
+시도가 검사자가 "검사 시작"을 다시 누르는 순간 조용히 사라졌다.
 
-**Why:** 2번째나 3번째 시도에서 이 실패가 나면, 이미 끝내고 채점된 앞선
-시도(들)가 검사자가 "검사 시작"을 다시 누르는 순간 조용히 사라진다.
-재검사는 학습효과로 반응시간이 짧아져 점수를 실제보다 좋게 만든다 —
-`useLocViewModel.ts`의 검사 완료 실패 처리(`finishAssessmentUseCase` catch 블록)
-주석이 똑같은 이유로 `IDLE`을 피하는 것과 정확히 같은 문제인데, 시도 단위
-실패 경로에는 그 처리가 없다. 게다가 `mapErrorToMessage`의 `STORAGE_FAILED`
-분기("저장 실패. 계속 진행합니다.")가 실제로는 리셋되는데 "계속 진행"이라고
-말해 사용자에게 거짓 정보를 준다.
+**어떻게 고쳤나:** 형제 경로인 `TTS_PLAYING + TTS_FAILED`가 이미 쓰던
+패턴을 그대로 옮겼다 — `TRIAL_SUBMIT_FAILED`에 `hasTrials: boolean` 페이로드를
+추가하고, 이미 끝낸 시도가 있으면(`accumulatedTrialsRef.current.length > 0`)
+`IDLE` 대신 `TRIAL_INTERRUPTED`로 보낸다. `resumeInterruptedTrial`은 손대지
+않았다 — "실패한 시도를 처음부터 다시 듣는다"가 이미 정확히 맞는 복구라
+(터치까지는 됐지만 제출만 실패했으므로 같은 시도를 재시도하는 것이 옳다),
+Cons에서 걱정했던 재설계가 필요 없었다. `TRIAL_INTERRUPTED` 화면 문구도
+"화면을 벗어나서"를 빼서 세 가지 원인(화면 이탈·TTS 실패·제출 실패) 전부에
+맞게 고쳤다.
 
-**대칭이 깨진 곳:** `TTS_PLAYING + TTS_FAILED`는 `hasTrials`를 보고
-`TRIAL_INTERRUPTED`로 보내 누적 시도를 지키는데(`locSessionReducer.ts`),
-`TOUCH_DETECTED + TRIAL_SUBMIT_FAILED`에는 그 가드가 없다. 고칠 때 이
-비대칭을 기준으로 삼으면 된다.
+**검증:** 13번 테스트를 "현재 버그 동작 고정"에서 "수정된 동작 확인"으로
+바꿔 썼다 — 1번째 시도 성공 → 2번째 제출 실패 → `TRIAL_INTERRUPTED`(IDLE
+아님, 1번째 결과 유지) → "다시 듣기" → 2번째 재시도 성공 → 둘 다 남아 있음을
+확인한다. 리듀서 분기를 일부러 `IDLE`로 부러뜨려 정확히 이 테스트만 빨간불이
+되는 것도 확인했다. `tsc`·`eslint` 깨끗, LOC 도메인 전체 87개 테스트 통과.
 
 **어떻게 발견했나:** `/plan-eng-review`로 PR #145(TODO-001 useReducer
 리팩토링)를 리뷰하던 중 outside voice(Claude 서브에이전트, Codex는 사용
-한도 초과로 대체)가 찾았다. 원래부터 있던 버그이고 이 PR이 만든 게
-아니다 — 예전 `useState` 코드도 같은 자리에서 똑같이 `setAssessmentState('IDLE')`을
-불렀다.
-
-**Pros:** 임상 데이터 무결성. 검사자가 재시작 버튼 하나로 완료된 시도를
-날리는 사고를 막는다.
-**Cons:** `TRIAL_SUBMIT_FAILED`를 `IDLE` 대신 `TRIAL_INTERRUPTED`로 보내려면
-— (a) 실패한 시도 자체를 재시도할지, 건너뛸지 결정해야 하고 (b)
-`resumeInterruptedTrial`이 지금은 "같은 시도를 처음부터 다시 듣는다"만
-가정하는데, 이 경로는 이미 터치까지 끝난 뒤(제출만 실패)라 "다시 듣기"가
-맞는 복구인지부터 설계가 필요하다. 기계적 치환이 아니라 실제 동작
-변경이다.
-**Context:** 재현: `mockExecute`가 **2번째** 시도에서만 reject하게 하고,
-`IDLE`로 떨어진 뒤 `startAssessment()`를 다시 부르면 1번째 시도 결과가
-사라지는 것을 확인할 수 있다. **`useLocViewModel.test.ts`의 12번 테스트는
-이걸 재현하지 못한다** — 첫 시도에서만 실패시키므로 `trialResults`가 0인
-것이 버그와 무관하게 참이다(리듀서 가지만 덮는다). 다중 시도 회귀
-테스트는 TODO-118을 고칠 때 같이 써야 한다. 관련 상태:
-`TOUCH_DETECTED + TRIAL_SUBMIT_FAILED → IDLE`(`locSessionReducer.ts`).
-**Depends on / blocked by:** 없음. TODO-001과 별개로 독립적으로 처리 가능.
+한도 초과로 대체)가 찾았다. 원래부터 있던 버그이고 그 PR이 만든 게
+아니었다 — 예전 `useState` 코드도 같은 자리에서 똑같이
+`setAssessmentState('IDLE')`을 불렀다.
 
 ### 이 문서를 믿을 때 주의할 것
 

@@ -18,7 +18,8 @@
  * - AWAITING_TOUCH + RESPONSE_REGISTERED → TOUCH_DETECTED (터치·키보드·타임아웃 공통)
  * - AWAITING_TOUCH + INTERRUPTED → TRIAL_INTERRUPTED
  * - TOUCH_DETECTED + TRIAL_SUBMITTED → TRIAL_COMPLETE
- * - TOUCH_DETECTED + TRIAL_SUBMIT_FAILED → IDLE
+ * - TOUCH_DETECTED + TRIAL_SUBMIT_FAILED(hasTrials) → TRIAL_INTERRUPTED
+ * - TOUCH_DETECTED + TRIAL_SUBMIT_FAILED(!hasTrials) → IDLE
  * - TRIAL_COMPLETE + NEXT_TRIAL → TTS_PLAYING
  * - TRIAL_COMPLETE + ASSESSMENT_FINISHED → ASSESSMENT_COMPLETE
  * - TRIAL_COMPLETE + INTERRUPTED → TRIAL_INTERRUPTED
@@ -36,7 +37,7 @@ export type LocSessionAction =
   | { type: 'TTS_FAILED'; hasTrials: boolean }
   | { type: 'RESPONSE_REGISTERED' }
   | { type: 'TRIAL_SUBMITTED' }
-  | { type: 'TRIAL_SUBMIT_FAILED' }
+  | { type: 'TRIAL_SUBMIT_FAILED'; hasTrials: boolean }
   | { type: 'NEXT_TRIAL' }
   | { type: 'ASSESSMENT_FINISHED' }
   | { type: 'INTERRUPTED' }
@@ -70,7 +71,9 @@ export function locSessionReducer(
 
     case 'TOUCH_DETECTED': {
       if (action.type === 'TRIAL_SUBMITTED') return 'TRIAL_COMPLETE';
-      if (action.type === 'TRIAL_SUBMIT_FAILED') return 'IDLE';
+      if (action.type === 'TRIAL_SUBMIT_FAILED') {
+        return action.hasTrials ? 'TRIAL_INTERRUPTED' : 'IDLE';
+      }
       return state;
     }
 

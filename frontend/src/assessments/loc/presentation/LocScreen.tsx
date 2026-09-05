@@ -306,7 +306,7 @@ export function LocScreen({ onComplete, onProceed }: LocScreenProps) {
                     잠시 멈췄어요
                   </h2>
                   <p className="text-lg text-muted-sage">
-                    화면을 벗어나서 이번 문제는 다시 들려드릴게요.
+                    이번 문제는 다시 들려드릴게요.
                     <br />
                     앞서 하신 것은 그대로 남아 있어요.
                   </p>
