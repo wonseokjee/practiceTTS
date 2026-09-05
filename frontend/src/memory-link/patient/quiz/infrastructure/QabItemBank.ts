@@ -179,25 +179,28 @@ const NAMING_INSTRUCTION = '그림을 보고 이름을 말해주세요';
  * 아직 어디에도 없다.
  */
 export const WORD_CATEGORY: Record<string, string | null> = {
-  // 동물 14
+  // 동물 16
   bear: 'animal', butterfly: 'animal', cat: 'animal', chick: 'animal',
   dog: 'animal', elephant: 'animal', lion: 'animal', pig: 'animal',
   rabbit: 'animal', tiger: 'animal', turtle: 'animal', whale: 'animal',
   chipmunk: 'animal', monkey: 'animal',
-  // 음식 17
+  duck: 'animal', snail: 'animal',
+  // 음식 20
   apple: 'food', banana: 'food', bread: 'food', cake: 'food', candy: 'food',
   carrot: 'food', corn: 'food', grape: 'food', juice: 'food', melon: 'food',
   milk: 'food', orange: 'food', strawberry: 'food', sweet_potato: 'food',
   tomato: 'food',
   watermelon: 'food',
   hamburger: 'food',
+  pizza: 'food', doughnut: 'food', cheese_wedge: 'food',
   // 탈것 9
   airplane: 'vehicle', bicycle: 'vehicle', bus: 'vehicle', car: 'vehicle',
   ship: 'vehicle', train: 'vehicle', truck: 'vehicle',
   motorcycle: 'vehicle', helicopter: 'vehicle',
-  // 식물 5
+  // 식물 6
   cactus: 'plant', flower: 'plant', mushroom: 'plant', tree: 'plant',
   sunflower: 'plant',
+  palm_tree: 'plant',
   // 장소 6 — 여섯 다 **어떤 건물인지**가 그림에 보인다. 기둥과 화폐(은행), 시계탑과
   // 깃발(학교), 지붕과 문(집), 종탑 십자가(교회), 굴뚝(공장), 탑과 성벽(성).
   // 전부 Fluent 원본이다.
@@ -219,31 +222,36 @@ export const WORD_CATEGORY: Record<string, string | null> = {
   // 신체 6
   ear: 'body', eye: 'body', foot: 'body', hand: 'body', mouth: 'body',
   nose: 'body',
-  // 사람 4
+  // 사람 5
   baby: 'person', doctor: 'person', firefighter: 'person', student: 'person',
+  police_officer: 'person',
   // 옷·착용 5
   glasses: 'clothing', gloves: 'clothing', hat: 'clothing', shoes: 'clothing',
   socks: 'clothing',
-  // 문구 4
+  // 문구 6
   book: 'stationery', notebook: 'stationery', pencil: 'stationery',
   scissors: 'stationery',
+  crayon: 'stationery', paintbrush: 'stationery',
   // 가구 3
   bed: 'furniture', chair: 'furniture', couch: 'furniture',
-  // 악기 5
+  // 악기 6
   guitar: 'instrument', piano: 'instrument', trumpet: 'instrument',
   violin: 'instrument', saxophone: 'instrument',
-  // 가전 5
+  drum: 'instrument',
+  // 가전 6
   computer: 'appliance', phone: 'appliance', television: 'appliance',
   camera: 'appliance', headphone: 'appliance',
+  light_bulb: 'appliance',
   // 주방 3
   kettle: 'kitchen', knife: 'kitchen', spoon: 'kitchen',
-  // 욕실 4
+  // 욕실 5
   mirror: 'bathroom', soap: 'bathroom', toothbrush: 'bathroom',
   shower: 'bathroom',
+  bathtub: 'bathroom',
   // 연장 4
   hammer: 'tool', ladder: 'tool', screwdriver: 'tool',
   flashlight: 'tool',
-  // ── 범주 없음 9 ───────────────────────────────────────────────
+  // ── 범주 없음 10 ──────────────────────────────────────────────
   //
   // 서로 한 무리가 아니다. 예전에는 이 아홉을 `'object'`라는 이름의 범주로 묶어
   // 뒀는데, 그러면 `buildControlledChoices`가 가방의 "같은 범주 오답"으로 풍선·돌을
@@ -256,7 +264,7 @@ export const WORD_CATEGORY: Record<string, string | null> = {
   // 음운 오답으로 넘어간다(아래 buildControlledChoices).
   //
   // "다른 하나"(연습)로는 얼마든지 쓴다 — 동물 셋 사이의 열쇠는 명확하다.
-  bag: null, balloon: null, basket: null, candle: null,
+  bag: null, balloon: null, basket: null, candle: null, kite: null,
   clock: null, key: null, mailbox: null, rock: null,
   umbrella: null,
 };
