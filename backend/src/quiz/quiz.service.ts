@@ -1215,6 +1215,10 @@ export class QuizService {
         cueLevel: r.subtest === 'naming' ? (r.cueLevel ?? null) : null,
         metric: r.metric ?? null,
         score: unscored ? null : (r.score ?? null),
+        // score와 같은 규약 — 채점 불가면 세부 점수도 없다(M24).
+        accuracyScore: unscored ? null : (r.accuracyScore ?? null),
+        completenessScore: unscored ? null : (r.completenessScore ?? null),
+        fluencyScore: unscored ? null : (r.fluencyScore ?? null),
         presentedLevel: serverLevel,
         // 갈래는 **틀린 문항에만** 남는다. 맞힌 행에 갈래가 붙으면 "오답이
         // 아닌데 오답 갈래가 있는 행"이 생겨 집계가 조용히 틀린다. 프론트가

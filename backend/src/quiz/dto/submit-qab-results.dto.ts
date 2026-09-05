@@ -97,6 +97,26 @@ export class QabResultItemDto {
   @Max(100)
   score?: number;
 
+  // 발음 세부 점수(0~100, M24). score를 만드는 데 쓰인 원값이다 — 채점에
+  // 다시 쓰지 않는다(관측용). 채점 불가(unscored)면 서버가 지운다.
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  accuracyScore?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  completenessScore?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  fluencyScore?: number;
+
   // 이 항목이 제시된 난이도 레벨(1~5). 참고용/관측용일 뿐 신뢰하지 않는다 —
   // **이 값이 저장된다.** 세션 내 적응(D7-C) 이후로는 프론트가 무엇을 냈는지
   // 아는 유일한 쪽이다 — 같은 세션 안에서 눈높이가 내려가면 서버가 가진 레벨과

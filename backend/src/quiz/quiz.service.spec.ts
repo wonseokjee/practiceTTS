@@ -1733,6 +1733,94 @@ describe('QuizService', () => {
       });
     });
 
+    // ── 발음 세부 점수 (M24) ──────────────────────────────────
+    it('발음 세부 점수를 저장한다', async () => {
+      // score를 만드는 데 쓰인 원값이다. 채점에는 다시 안 쓰지만, 저장은
+      // 돼야 나중에 종합점수 가중치를 조정할 근거가 쌓인다.
+      skillLevelRepo.find.mockResolvedValue([]);
+      qabResultRepo.save.mockResolvedValue([]);
+      const dto: SubmitQabResultsDto = {
+        sessionToken: SESSION_TOKEN,
+        results: [
+          {
+            subtest: 'repeat',
+            itemRef: 'repeat_s0',
+            isCorrect: true,
+            score: 69,
+            accuracyScore: 95,
+            completenessScore: 30,
+            fluencyScore: 88,
+          },
+        ],
+      };
+
+      await service.saveQabResults(PATIENT_ID, dto);
+
+      expect(qabResultRepo.create.mock.calls[0][0]).toMatchObject({
+        score: 69,
+        accuracyScore: 95,
+        completenessScore: 30,
+        fluencyScore: 88,
+      });
+    });
+
+    it('채점 불가(unscored)면 세부 점수도 지운다 — score와 같은 규약이다', async () => {
+      // "못 쟀다"인데 세부 점수가 남으면, 그 숫자가 채점 불가 행에 실려
+      // 나중에 가중치를 재는 사람이 있지도 않은 값을 근거로 쓰게 된다.
+      skillLevelRepo.find.mockResolvedValue([]);
+      qabResultRepo.save.mockResolvedValue([]);
+      const dto: SubmitQabResultsDto = {
+        sessionToken: SESSION_TOKEN,
+        results: [
+          {
+            subtest: 'reading',
+            itemRef: 'reading_0',
+            isCorrect: false,
+            unscored: true,
+            // 클라이언트가 실수로 보내도 서버가 지워야 한다.
+            score: 0,
+            accuracyScore: 0,
+            completenessScore: 0,
+            fluencyScore: 0,
+          },
+        ],
+      };
+
+      await service.saveQabResults(PATIENT_ID, dto);
+
+      expect(qabResultRepo.create.mock.calls[0][0]).toMatchObject({
+        score: null,
+        accuracyScore: null,
+        completenessScore: null,
+        fluencyScore: null,
+      });
+    });
+
+    it('세부 점수를 안 보내던 클라이언트도 그대로 동작한다', async () => {
+      skillLevelRepo.find.mockResolvedValue([]);
+      qabResultRepo.save.mockResolvedValue([]);
+      const dto: SubmitQabResultsDto = {
+        sessionToken: SESSION_TOKEN,
+        results: [
+          {
+            subtest: 'repeat',
+            itemRef: 'repeat_w0',
+            isCorrect: true,
+            score: 100,
+          },
+        ],
+      };
+
+      await service.saveQabResults(PATIENT_ID, dto);
+
+      expect(qabResultRepo.create.mock.calls[0][0]).toMatchObject({
+        score: 100,
+        accuracyScore: null,
+        completenessScore: null,
+        fluencyScore: null,
+      });
+    });
+
     it('재제출 멱등을 ON CONFLICT DO NOTHING으로 얻는다 — 예외를 내지 않는다', async () => {
       // 예전에는 UNIQUE 위반을 try/catch로 삼켰는데, PostgreSQL에서 그건 멱등이
       // 아니다. 트랜잭션 안에서 에러가 나는 순간 abort 상태가 되어, 바로 뒤의

@@ -145,6 +145,26 @@ export class QabResult {
   @Column({ name: 'score', type: 'int', nullable: true })
   score: number | null;
 
+  /**
+   * 발음 세부 점수(0~100, M24) — `score`(종합점수)를 만드는 데 쓰인 원값들이다.
+   *
+   * **채점에 쓰지 않는다.** `score`·`isCorrect`는 이미 확정된 결과이고, 이
+   * 컬럼들은 그 결과가 어떻게 나왔는지 보려는 관측용이다. unscored 행은 셋 다
+   * NULL이다(score와 같은 규약) — 서비스가 채점 불가면 지운다.
+   *
+   * accuracy는 word·sentence 둘 다 있다. completeness·fluency는 지금 채점에
+   * 안 쓰이는 검사(word)에서도 Azure가 값을 주므로 그대로 남긴다 — 나중에
+   * 가중치를 조정하려면 검사 종류와 무관하게 분포가 필요하다.
+   */
+  @Column({ name: 'accuracy_score', type: 'smallint', nullable: true })
+  accuracyScore: number | null;
+
+  @Column({ name: 'completeness_score', type: 'smallint', nullable: true })
+  completenessScore: number | null;
+
+  @Column({ name: 'fluency_score', type: 'smallint', nullable: true })
+  fluencyScore: number | null;
+
   // 이 항목이 제시된 난이도 레벨(1~5). 적응형 레벨링의 윈도우를 "현재 레벨에서
   // 제시된 항목"으로 한정해 능력과 제시 난이도의 교란을 막는다. 컬럼 추가 이전
   // 구데이터는 null(레벨링 윈도우에서 제외).

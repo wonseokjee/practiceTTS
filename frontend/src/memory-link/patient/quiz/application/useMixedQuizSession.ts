@@ -809,6 +809,10 @@ export function useMixedQuizSession(
         itemRef: opts.itemRef,
         isCorrect: assessment.isCorrect,
         score: assessment.score,
+        // 관측용 — 채점에는 안 쓴다(위 score가 이미 확정된 채점 결과다).
+        accuracyScore: assessment.accuracyScore,
+        completenessScore: assessment.completenessScore,
+        fluencyScore: assessment.fluencyScore,
       });
       applyResult(
         {
