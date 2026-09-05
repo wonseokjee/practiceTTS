@@ -69,7 +69,18 @@ export function caregiverGradeLabel(grade: PronunciationGrade): string {
   return CAREGIVER_LABEL[grade];
 }
 
-/** 채점된 발화 평가 결과. */
+/**
+ * 채점된 발화 평가 결과.
+ *
+ * `accuracyScore`·`completenessScore`·`fluencyScore`는 **채점에 안 쓴다** —
+ * `score`(종합점수)가 이미 정해진 가중치로 계산돼 있고 `grade`·`isCorrect`는
+ * 그 값에서 나온다. 세 값을 여기 실어 두는 건 관측용이다.
+ *
+ * 문장 종합점수가 `accuracy*0.6 + completeness*0.4`인데, 그 가중치를 바꿀
+ * 근거가 지금 없다 — 이 값들이 계산 직후 버려져서 "누락이 실제로 얼마나
+ * 자주 정답을 가르는지" 아무도 몰랐다. 결정: 채점은 그대로 두고 먼저 잰다
+ * (TODOS "다음 할 일" 2번, 2026-09-03).
+ */
 export interface ScoredEvaluation {
   scored: true;
   /** 5단계 등급 */
@@ -82,6 +93,12 @@ export interface ScoredEvaluation {
   encouragement: string;
   /** 보호자용 등급 라벨 */
   caregiverLabel: string;
+  /** 음소 정확도(0~100). word·sentence 둘 다 있다. */
+  accuracyScore: number;
+  /** 완성도 — 빠뜨림 없이 말한 비율(0~100). 종합점수는 sentence에서만 이 값을 쓰지만, Azure는 word에도 값을 준다. */
+  completenessScore: number;
+  /** 유창성(0~100). 종합점수 계산에는 아직 안 쓴다. */
+  fluencyScore: number;
 }
 
 /**
@@ -200,5 +217,8 @@ export function evaluateFromAzure(
     isCorrect: isGradePass(grade),
     encouragement: patientEncouragement(grade),
     caregiverLabel: caregiverGradeLabel(grade),
+    accuracyScore: azure.accuracyScore,
+    completenessScore: azure.completenessScore,
+    fluencyScore: azure.fluencyScore,
   };
 }

@@ -53,6 +53,16 @@ export interface QabResultInput {
    */
   score?: number;
   /**
+   * 발음 세부 점수(0~100) — repeat/reading에서만, 채점됐을 때만 보낸다.
+   *
+   * `score`(종합점수)를 만드는 데 실제로 쓰이는 값이지만 계산 후 버려지고
+   * 있었다. **채점에 다시 쓰지 않는다** — 관측용이고, 종합점수 가중치를
+   * 나중에 조정하려면 먼저 이 값들이 쌓여야 한다.
+   */
+  accuracyScore?: number;
+  completenessScore?: number;
+  fluencyScore?: number;
+  /**
    * 이 항목이 제시된 난이도 레벨(1~5). 세션 내 적응(D7-C) 이후로는 프론트가
    * **실제로 낸 값**이다. 서버는 저장된 레벨 ±1로 접어 받는다.
    */

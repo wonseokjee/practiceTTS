@@ -561,13 +561,16 @@ describe('useMixedQuizSession', () => {
       // cueLevel 0 = 힌트를 한 번도 안 눌렀다. '미보조'라는 이 테스트의
       // 취지를 숫자로도 못 박는다(E18).
       [
-        {
+        expect.objectContaining({
           subtest: 'naming',
           itemRef: 'naming_n1',
           isCorrect: true,
           score: 20,
           cueLevel: 0,
-        },
+          // MISS(accuracy 20)로 채점됐으니 부분점수도 같이 실려 나간다 —
+          // 관측용이라 결과 판정에는 안 쓰지만 행에는 남아야 한다.
+          accuracyScore: 20,
+        }),
       ],
       1,
       true, // 마지막 문항 → 세션 자연 종료 → 완료 마커
@@ -869,12 +872,103 @@ describe('useMixedQuizSession', () => {
     expect(result.current[0].sessionScore).toBe(100);
     expect(submitQabResults).toHaveBeenCalledWith(
       'tok-1',
-      [{ subtest: 'repeat', itemRef: 'rp1', isCorrect: true, score: expect.any(Number) }],
+      [
+        expect.objectContaining({
+          subtest: 'repeat',
+          itemRef: 'rp1',
+          isCorrect: true,
+          score: expect.any(Number),
+          // 정정 전 채점(MISS)에서 나온 부분점수다. overrideSpeechVerdict는
+          // 판정만 뒤집고 부분점수는 실제로 관측된 값 그대로 둔다.
+          accuracyScore: 20,
+        }),
+      ],
       1,
       true, // 마지막 문항 → 세션 자연 종료 → 완료 마커
       // 1문항 정답으로는 승급 임계(3연속)에 못 미쳐 시작 레벨 그대로 보고한다.
       { repeat: 2 },
     );
+  });
+
+  /**
+   * 부분점수(accuracy·completeness·fluency)가 QabResult 행까지 실려 나간다.
+   *
+   * 종합점수(score)를 만드는 데 쓰인 원값인데 예전엔 계산 후 버려졌다 —
+   * "누락이 얼마나 자주 정답을 가르는지" 아무도 볼 수 없었다. 결정(TODOS
+   * "다음 할 일" 2번, 2026-09-03): 채점 로직은 그대로 두고 먼저 잰다.
+   */
+  it('문장 채점 시 세 부분점수를 그대로 서버 제출에 싣는다', async () => {
+    const submitQabResults = vi.fn().mockResolvedValue({ saved: 1 });
+    const azure: AzurePronunciationScores = {
+      accuracyScore: 95,
+      completenessScore: 30,
+      fluencyScore: 88,
+      pronunciationScore: 69,
+      prosodyScore: null,
+    };
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi({ submitQabResults }),
+        pickWordItems: () => [],
+        generateSessionToken: () => 'tok-1',
+        dailyCount: 0,
+        wordCount: 0,
+        ...ISOLATED,
+        pickReadingItems: () => [
+          { itemId: 'rd1', text: '산 위에 해가 떠올라요', instruction: '읽어주세요' },
+        ],
+        readingCount: 1,
+      }),
+    );
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    act(() => result.current[1].submitSpeech('산 위에 해가 떠올', azure));
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    act(() => result.current[1].next());
+    await waitFor(() => expect(result.current[0].phase).toBe('result'));
+
+    expect(submitQabResults.mock.calls[0][1][0]).toMatchObject({
+      accuracyScore: 95,
+      completenessScore: 30,
+      fluencyScore: 88,
+    });
+  });
+
+  /**
+   * 채점 불가면 부분점수도 안 실린다 — score와 같은 규약이다.
+   *
+   * assessment 자체가 `scored: false`인 UnscoredEvaluation이라 accuracyScore
+   * 등의 필드가 아예 없다. 값이 없다는 것과 undefined로 명시하는 것을
+   * 구분할 이유가 없어, 여기서는 "필드가 없다"만 확인한다.
+   */
+  it('음향 점수가 없으면 부분점수도 안 실린다', async () => {
+    const submitQabResults = vi.fn().mockResolvedValue({ saved: 1 });
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi({ submitQabResults }),
+        pickWordItems: () => [],
+        generateSessionToken: () => 'tok-1',
+        dailyCount: 0,
+        wordCount: 0,
+        ...ISOLATED,
+        pickReadingItems: () => [
+          { itemId: 'rd1', text: '산 위에 해가 떠올라요', instruction: '읽어주세요' },
+        ],
+        readingCount: 1,
+      }),
+    );
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    act(() => result.current[1].submitSpeech('산 위에 해가 떠올라요', null));
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    act(() => result.current[1].next());
+    await waitFor(() => expect(result.current[0].phase).toBe('result'));
+
+    const row = submitQabResults.mock.calls[0][1][0];
+    expect(row).toMatchObject({ unscored: true });
+    expect(row).not.toHaveProperty('accuracyScore');
+    expect(row).not.toHaveProperty('completenessScore');
+    expect(row).not.toHaveProperty('fluencyScore');
   });
 
   it('소리 내어 읽기(reading)도 음향 점수로 채점한다', async () => {

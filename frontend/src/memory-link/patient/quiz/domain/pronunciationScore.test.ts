@@ -103,3 +103,60 @@ describe('evaluateFromAzure — 음소 단위 채점 정책', () => {
     expect(UNSCORED_ENCOURAGEMENT).toContain('더 해볼까요');
   });
 });
+
+/**
+ * 부분점수는 관측용이다 — score와 grade를 계산한 뒤 Azure 원값을 그대로
+ * 실어 둔다. 채점에는 안 쓴다. TODOS "다음 할 일" 2번(2026-09-03) 결정:
+ * 종합점수 가중치를 바꾸기 전에 먼저 재야 하고, 그러려면 이 값들이 버려지지
+ * 않고 QabResult까지 나가야 한다.
+ */
+describe('evaluateFromAzure — 부분점수는 관측용이다', () => {
+  const scores = (o: Partial<AzurePronunciationScores>): AzurePronunciationScores => ({
+    accuracyScore: 0,
+    fluencyScore: 0,
+    completenessScore: 0,
+    pronunciationScore: 0,
+    prosodyScore: null,
+    ...o,
+  });
+
+  it('Azure 원값을 그대로 싣는다', () => {
+    const r = evaluateFromAzure(
+      scores({ accuracyScore: 95, completenessScore: 30, fluencyScore: 88 }),
+      '오늘 날씨가 좋아요',
+      'sentence',
+    );
+    if (!r.scored) throw new Error('채점됐어야 한다');
+    expect(r.accuracyScore).toBe(95);
+    expect(r.completenessScore).toBe(30);
+    expect(r.fluencyScore).toBe(88);
+  });
+
+  it('열 어절 중 셋만 또렷해도(완성도 30) 종합점수는 그대로 합격이다', () => {
+    // 가중 평균이 상호보상한다는 사실 자체를 단언해 둔다 — 이게 바로
+    // "가중치를 바꾸기 전에 먼저 잰다"는 결정이 필요했던 이유다. 이 테스트가
+    // 실패하면 채점 로직이 바뀐 것이니 TODOS 2번 결정을 다시 봐야 한다.
+    const r = evaluateFromAzure(
+      scores({ accuracyScore: 95, completenessScore: 30 }),
+      '오늘 날씨가 좋아요 어제도 날씨가 좋아요 그래서 산책을 했어요',
+      'sentence',
+    );
+    if (!r.scored) throw new Error('채점됐어야 한다');
+    expect(r.score).toBe(69);
+    expect(r.isCorrect).toBe(true);
+    // 완성도 30이라는 사실은 부분점수에만 남는다.
+    expect(r.completenessScore).toBe(30);
+  });
+
+  it('word 모드에서도 completeness·fluency를 싣는다 — 종합점수는 accuracy뿐이지만 관측은 남는다', () => {
+    const r = evaluateFromAzure(
+      scores({ accuracyScore: 90, completenessScore: 40, fluencyScore: 70 }),
+      '바다',
+      'word',
+    );
+    if (!r.scored) throw new Error('채점됐어야 한다');
+    expect(r.score).toBe(90); // 종합점수는 accuracy뿐
+    expect(r.completenessScore).toBe(40); // 그래도 관측값은 남는다
+    expect(r.fluencyScore).toBe(70);
+  });
+});
