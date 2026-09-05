@@ -435,6 +435,68 @@ describe('useLocViewModel FSM 상태 전환 테스트', () => {
     expect(result.current.viewState.finalScore).toBeNull();
     expect(result.current.viewState.errorMessage).toBeNull();
   });
+
+  it('11. 이미 끝낸 시도가 있을 때 TTS가 실패하면 IDLE이 아니라 TRIAL_INTERRUPTED로 가고 그 시도를 보존한다', async () => {
+    // eng-review에서 지적된 미테스트 가지: TTS_FAILED(hasTrials:true) → TRIAL_INTERRUPTED.
+    // 1번째 시도는 끝냈는데(누적 1건) 2번째 시도의 TTS가 실패하는 경우다.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    try {
+      mockPlayInstruction
+        .mockResolvedValueOnce(1000) // 1번째 시도 TTS
+        .mockRejectedValueOnce(
+          new LocAssessmentError(
+            LocAssessmentErrorCode.TTS_PLAYBACK_FAILED,
+            'TTS 재생 실패',
+          ),
+        ); // 2번째 시도 TTS 실패
+      mockExecute.mockResolvedValueOnce({
+        trial: makeMockTrial({ trialNumber: 1, score: 1 }),
+        responseDTO: makeMockResponseDTO({ trialNumber: 1, score: 1, isComplete: false }),
+      });
+
+      const { result } = renderLocViewModel();
+
+      await act(async () => { await result.current.actions.startAssessment(); });
+      await waitFor(() => expect(result.current.viewState.assessmentState).toBe('AWAITING_TOUCH'), { timeout: 3000 });
+      await act(async () => { result.current.actions.handleAreaPointerDown(makePointerEvent()); });
+      await waitFor(() => expect(result.current.viewState.assessmentState).toBe('TRIAL_COMPLETE'), { timeout: 3000 });
+
+      // 700ms 딜레이 후 2번째 시도 TTS 재생 시도 → 실패
+      await act(async () => { vi.advanceTimersByTime(700); await Promise.resolve(); });
+      await waitFor(() => {
+        expect(result.current.viewState.assessmentState).toBe('TRIAL_INTERRUPTED');
+      }, { timeout: 3000 });
+
+      // 1번째 시도 점수가 지워지지 않고 남아 있어야 한다.
+      expect(result.current.viewState.trialResults).toHaveLength(1);
+      expect(result.current.viewState.trialResults[0]?.score).toBe(1);
+      expect(result.current.viewState.errorMessage).toBe(
+        '음성 안내 재생 실패. 기기 음량을 확인해주세요.',
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  }, 15000);
+
+  it('12. 시도 제출(execute) 자체가 실패하면 IDLE로 복귀하고 errorMessage가 설정된다', async () => {
+    // eng-review에서 지적된 미테스트 가지: TOUCH_DETECTED + TRIAL_SUBMIT_FAILED → IDLE.
+    mockExecute.mockRejectedValueOnce(new Error('저장소 연결 실패'));
+
+    const { result } = renderLocViewModel();
+
+    await reachAwaitingTouch(result);
+    await act(async () => { result.current.actions.handleAreaPointerDown(makePointerEvent()); });
+
+    await waitFor(() => {
+      expect(result.current.viewState.assessmentState).toBe('IDLE');
+    }, { timeout: 3000 });
+
+    expect(result.current.viewState.errorMessage).toBe(
+      '오류 발생. 다시 시도해주세요.',
+    );
+    expect(result.current.viewState.trialResults).toHaveLength(0);
+  });
 });
 
 /**
