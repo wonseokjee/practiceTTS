@@ -93,7 +93,7 @@ export function TileArrangeInput({
           {assembled.length > 0 ? (
             assembled
           ) : (
-            <span className="text-muted">글자를 눌러 단어를 만들어요</span>
+            <span className="text-muted-sage">글자를 눌러 단어를 만들어요</span>
           )}
         </span>
         {showFeedback && (

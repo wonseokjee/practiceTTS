@@ -70,7 +70,7 @@ export function QuizListScreen({ onSelectQuiz, deps }: QuizListScreenProps) {
             아직 풀 수 있는 퀴즈가 없어요.
           </p>
           {/* muted-disabled는 크림 배경에서 2.47:1이라 AA 미달이다(muted는 5.11:1). */}
-          <p className="mt-2 text-base text-muted">
+          <p className="mt-2 text-base text-muted-sage">
             보호자가 일기를 등록하면 퀴즈가 도착해요.
           </p>
         </div>

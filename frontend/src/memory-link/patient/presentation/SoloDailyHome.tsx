@@ -52,7 +52,7 @@ export function SoloDailyHome({
           <span className="text-primary">오늘도 반가워요.</span>
         )}
       </h1>
-      <p className="mt-2 text-base text-muted">
+      <p className="mt-2 text-base text-muted-sage">
         오늘 연습, 3~5분이면 충분해요.
       </p>
 
@@ -84,7 +84,7 @@ export function SoloDailyHome({
             <button
               type="button"
               onClick={onPractice}
-              className="inline-flex min-h-[44px] items-center justify-center px-4 py-2 text-base text-muted underline underline-offset-4 transition-colors duration-[180ms] ease-out hover:text-ink"
+              className="inline-flex min-h-[44px] items-center justify-center px-4 py-2 text-base text-muted-sage underline underline-offset-4 transition-colors duration-[180ms] ease-out hover:text-ink"
             >
               가볍게 연습하기
             </button>
@@ -93,7 +93,7 @@ export function SoloDailyHome({
             <button
               type="button"
               onClick={onReview}
-              className="inline-flex min-h-[44px] items-center justify-center px-4 py-2 text-base text-muted underline underline-offset-4 transition-colors duration-[180ms] ease-out hover:text-ink"
+              className="inline-flex min-h-[44px] items-center justify-center px-4 py-2 text-base text-muted-sage underline underline-offset-4 transition-colors duration-[180ms] ease-out hover:text-ink"
             >
               이번 주 돌아보기
             </button>

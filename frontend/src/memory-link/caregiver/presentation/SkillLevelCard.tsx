@@ -95,7 +95,7 @@ export function SkillLevelCard({ fetchLevels }: SkillLevelCardProps) {
         받침이 그때그때 달라져 `은/는`이 틀어진다.
       */}
       {NON_LEVELED_SUBTESTS.length > 0 && (
-        <p className="mb-4 text-sm text-muted">
+        <p className="mb-4 text-sm text-muted-sage">
           난이도를 단계로 나눌 수 있는 검사만 여기 나와요. (
           {NON_LEVELED_SUBTESTS.map(subtestLabel).join(' · ')} 제외)
         </p>

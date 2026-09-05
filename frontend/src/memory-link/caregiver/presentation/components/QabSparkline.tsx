@@ -5,14 +5,14 @@
  * 답해야 할 질문은 "나아지고 있나?" 하나이고, 이 카드는 대시보드 안의 작은
  * 조각이라 축·격자를 갖춘 차트는 과하다.
  *
- * 색: 단일 계열이라 카테고리 팔레트가 아니다. 지난 주는 de-emphasis(`muted`),
+ * 색: 단일 계열이라 카테고리 팔레트가 아니다. 지난 주는 de-emphasis(`muted-sage`),
  * 이번 주만 강조색(`primary`)으로 띄운다.
  * `muted-disabled`(#9AA09B)를 쓰고 싶었지만 흰 배경 대비 2.67:1로 그래픽 객체
- * 기준(3:1)에 미달해 실측 후 `muted`(#6B6560, 5.74:1)로 바꿨다.
+ * 기준(3:1)에 미달해 실측 후 `muted-sage`(#5C6661, 5.95:1)로 바꿨다.
  *
  * 색을 `stroke`/`fill` **속성**이 아니라 클래스로 주는 이유: SVG 표현 속성은
- * CSS 값이 아니라 `var(--color-muted)`를 못 읽는다. Tailwind의 `stroke-*`·
- * `fill-*` 유틸은 진짜 CSS 선언이라 토큰이 그대로 통한다.
+ * CSS 값이 아니라 `var(--color-muted-sage)`를 못 읽는다. Tailwind의
+ * `stroke-*`·`fill-*` 유틸은 진짜 CSS 선언이라 토큰이 그대로 통한다.
  */
 
 interface QabSparklineProps {
@@ -61,7 +61,7 @@ export function QabSparkline({ values, label }: QabSparklineProps) {
       <path
         d={path}
         fill="none"
-        className="stroke-muted"
+        className="stroke-muted-sage"
         strokeWidth={2}
         strokeLinecap="round"
         strokeLinejoin="round"

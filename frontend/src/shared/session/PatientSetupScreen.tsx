@@ -29,7 +29,7 @@ export function PatientSetupScreen() {
         <h1 className="text-2xl font-bold text-ink mb-2 text-center">
           practiveTTS
         </h1>
-        <p className="text-sm text-muted text-center mb-8">
+        <p className="text-sm text-muted-sage text-center mb-8">
           검사를 시작하기 전에 환자 정보를 입력해주세요.
         </p>
 
@@ -50,7 +50,7 @@ export function PatientSetupScreen() {
                 setError(null);
               }}
               placeholder="예: P-2026-001"
-              className="w-full border border-line rounded-xl px-4 py-3 text-ink placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="w-full border border-line rounded-xl px-4 py-3 text-ink placeholder-muted-sage focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               autoComplete="off"
               autoFocus
             />

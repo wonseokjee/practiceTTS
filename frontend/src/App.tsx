@@ -113,7 +113,7 @@ function AssessmentContent() {
     if (effectivePatientId) {
       return (
         <div className="h-full bg-canvas flex items-center justify-center p-6">
-          <p className="text-muted">검사를 준비하고 있어요...</p>
+          <p className="text-muted-sage">검사를 준비하고 있어요...</p>
         </div>
       );
     }
@@ -156,7 +156,7 @@ function CaregiverRoute({ children }: { children: ReactNode }) {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <span className="text-muted">로딩 중...</span>
+        <span className="text-muted-sage">로딩 중...</span>
       </div>
     );
   }
@@ -196,7 +196,7 @@ function OnboardingRoute({ children }: { children: ReactNode }) {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <span className="text-muted">로딩 중...</span>
+        <span className="text-muted-sage">로딩 중...</span>
       </div>
     );
   }
@@ -219,7 +219,7 @@ function PatientRoute({ children }: { children: ReactNode }) {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <span className="text-muted">로딩 중...</span>
+        <span className="text-muted-sage">로딩 중...</span>
       </div>
     );
   }
@@ -255,7 +255,7 @@ function RootRedirect() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <span className="text-muted">로딩 중...</span>
+        <span className="text-muted-sage">로딩 중...</span>
       </div>
     );
   }
@@ -292,7 +292,7 @@ function LoginRoute() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <span className="text-muted">로딩 중...</span>
+        <span className="text-muted-sage">로딩 중...</span>
       </div>
     );
   }

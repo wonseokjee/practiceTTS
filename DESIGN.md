@@ -26,10 +26,9 @@
 | `accent-soft` | `#FBE9E2` | 피드백 카드 채움 |
 | `accent-faint` | `#FCF3EC` | 가장 옅은 테라코타 면 |
 | `accent-line` | `#E0A984` | 테라코타 테두리·링 |
-| `ink` | `#1A1916` | 기본 텍스트 |
-| `ink-sage` | `#1F2A26` | 기본 텍스트(초록기) |
-| `muted` | `#6B6560` | 보조 텍스트, 플레이스홀더 |
-| `muted-sage` | `#5C6661` | 보조 텍스트(초록기) |
+| `ink` | `#1A1916` | 기본 텍스트 — 대시보드류·표준검사 |
+| `ink-sage` | `#1F2A26` | 기본 텍스트(초록기) — QAB 퀴즈 흐름 |
+| `muted-sage` | `#5C6661` | 보조 텍스트, 플레이스홀더 |
 | `muted-faint` | `#A8AFA9` | 흐린 보조·hover 테두리 |
 | `muted-disabled` | `#9AA09B` | 비활성 글자 — **AA 미달, 의도된 예외**(DR9) |
 | `disabled-ink` | `#7A7E7A` | 비활성 글자 중 진한 쪽 |
@@ -44,11 +43,21 @@
 
 흰색(`#FFFFFF`)은 토큰이 아니다 — Tailwind의 `bg-white`를 그대로 쓴다.
 
+**`ink`↔`ink-sage`, `muted`↔`muted-sage`가 왜 넷이 아니라 셋인가(2026-09-04).**
+색은 다른데 역할이 겹치는 두 쌍을 실제 화면(대시보드/QAB 퀴즈)에서 눈으로 비교해
+정했다.
+
+- **`ink`/`ink-sage`는 유지했다.** 파일 분포가 우연이라기엔 너무 깨끗하게
+  갈렸다 — `ink`는 대시보드류·표준검사에서만, `ink-sage`는 QAB 퀴즈 흐름에서만
+  쓰였고 같은 파일에서 섞인 적이 한 번도 없었다. 두 맥락을 가르는 신호로 읽었다.
+- **`muted`는 `muted-sage`로 합쳤다.** 반대로 14개 파일이 한 파일 안에서 두
+  톤을 같이 썼다 — 의도가 아니라 드리프트였다. `muted` 토큰은 지워졌다.
+
 ### 이 색들은 코드에서 어떻게 쓰이나
 
 ```tsx
 <button className="bg-primary text-white">
-<p className="text-muted">
+<p className="text-muted-sage">
 <div className="bg-accent/8 border-accent-line">   {/* 투명도도 그대로 */}
 ```
 
@@ -153,7 +162,7 @@
 |------|------|--------|------|
 | `primary` | `primary` | white | 주요 동작 — 검사 시작, 로그인 |
 | `secondary` | `primary-light` | `primary` | 보조 동작 — 다음으로 |
-| `ghost` | transparent | `muted` | 취소, 세션 종료 |
+| `ghost` | transparent | `muted-sage` | 취소, 세션 종료 |
 | `accent` | `accent` | white | 강조 CTA — 기억 추가 |
 | `danger` | `danger` | white | 위험 동작 (확인 후 노출) |
 
@@ -231,7 +240,7 @@
 | `primary` | `#4A9E7E` |
 | `primary-light` | `#1A2E27` |
 | `ink` | `#F0EDE8` |
-| `muted` | `#9A948F` |
+| `muted-sage` | `#9A948F` |
 | `line` | `#2C2A26` |
 
 ---

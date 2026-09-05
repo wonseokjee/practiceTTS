@@ -349,7 +349,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
           <button
             type="button"
             onClick={onExit}
-            className="text-sm text-muted transition-colors duration-[180ms] hover:text-[#3F4A44]"
+            className="text-sm text-muted-sage transition-colors duration-[180ms] hover:text-[#3F4A44]"
             aria-label="퀴즈 그만두기"
           >
             {/* 세션을 끝내면 홈으로 돌아간다(DR1b). 예전엔 목록으로 갔다. */}

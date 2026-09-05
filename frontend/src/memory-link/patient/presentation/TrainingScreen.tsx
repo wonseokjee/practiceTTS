@@ -159,7 +159,7 @@ export function TrainingScreen({
         className="min-h-screen flex items-center justify-center"
         style={{ background: SCREEN_BG }}
       >
-        <p className="text-2xl text-muted">훈련을 준비하고 있습니다...</p>
+        <p className="text-2xl text-muted-sage">훈련을 준비하고 있습니다...</p>
       </div>
     );
   }
@@ -174,7 +174,7 @@ export function TrainingScreen({
         <p className="text-2xl text-danger text-center font-semibold" role="alert">
           훈련을 시작할 수 없습니다.
         </p>
-        <p className="text-xl text-muted text-center">{error}</p>
+        <p className="text-xl text-muted-sage text-center">{error}</p>
         <button
           type="button"
           onClick={onComplete}
@@ -197,7 +197,7 @@ export function TrainingScreen({
         <h1 className="text-2xl font-bold text-ink">기억 훈련</h1>
         {/* 힌트 단계 표시 */}
         <div className="flex items-center gap-2" aria-label={`힌트 단계 ${hintLevel}/2`}>
-          <span className="text-base text-muted mr-1">힌트</span>
+          <span className="text-base text-muted-sage mr-1">힌트</span>
           {[0, 1, 2].map((level) => (
             <div
               key={level}
@@ -237,7 +237,7 @@ export function TrainingScreen({
             </div>
           )}
           {locationTag !== null && (
-            <p className="mt-2 text-center text-lg text-muted">{locationTag}</p>
+            <p className="mt-2 text-center text-lg text-muted-sage">{locationTag}</p>
           )}
         </div>
 
@@ -254,14 +254,14 @@ export function TrainingScreen({
                   <span className="h-2.5 w-2.5 rounded-full bg-[#9fd0bc] animate-pulse [animation-delay:200ms]" />
                   <span className="h-2.5 w-2.5 rounded-full bg-[#9fd0bc] animate-pulse [animation-delay:400ms]" />
                 </span>
-                <span className="text-xl text-muted">질문을 준비하고 있어요</span>
+                <span className="text-xl text-muted-sage">질문을 준비하고 있어요</span>
               </div>
             ) : latestAiMessage !== null ? (
               <p className="mt-3 text-2xl leading-relaxed font-semibold text-ink">
                 {latestAiMessage.content}
               </p>
             ) : (
-              <p className="mt-3 text-2xl leading-relaxed text-muted">
+              <p className="mt-3 text-2xl leading-relaxed text-muted-sage">
                 잠시만 기다려 주세요.
               </p>
             )}
@@ -280,7 +280,7 @@ export function TrainingScreen({
 
           {/* 환자의 마지막 답변 (맥락 유지용, 작게) */}
           {latestPatientMessage !== null && !isRecording && (
-            <p className="mt-3 px-2 text-center text-lg text-muted">
+            <p className="mt-3 px-2 text-center text-lg text-muted-sage">
               방금 이렇게 답하셨어요 · “{latestPatientMessage.content}”
             </p>
           )}
@@ -351,7 +351,7 @@ export function TrainingScreen({
               <button
                 type="button"
                 onClick={handleSuccess}
-                className="min-h-[52px] px-5 py-3 bg-white/70 text-muted text-xl font-bold rounded-full active:scale-95 transition-transform"
+                className="min-h-[52px] px-5 py-3 bg-white/70 text-muted-sage text-xl font-bold rounded-full active:scale-95 transition-transform"
                 aria-label="훈련 성공으로 완료"
               >
                 완료
@@ -361,7 +361,7 @@ export function TrainingScreen({
 
           {/* 안내 문구 */}
           {!isRecording && canRecord && (
-            <span className="text-base text-muted">버튼을 누르고 말씀해 주세요</span>
+            <span className="text-base text-muted-sage">버튼을 누르고 말씀해 주세요</span>
           )}
 
           {/* 포기 버튼 */}
@@ -369,7 +369,7 @@ export function TrainingScreen({
             <button
               type="button"
               onClick={handleGiveUp}
-              className="min-h-[44px] px-6 py-2 text-muted text-lg underline active:scale-95 transition-transform"
+              className="min-h-[44px] px-6 py-2 text-muted-sage text-lg underline active:scale-95 transition-transform"
               aria-label="훈련 중단"
             >
               훈련 중단하기

@@ -38,15 +38,15 @@ export function AssessmentCard({
               </span>
             )}
           </div>
-          <p className="text-xs text-muted">{subtitle}</p>
+          <p className="text-xs text-muted-sage">{subtitle}</p>
         </div>
       </div>
-      <p className="text-sm text-muted mb-4">{description}</p>
+      <p className="text-sm text-muted-sage mb-4">{description}</p>
       <button
         type="button"
         className={`w-full py-3 rounded-xl text-sm font-semibold transition-colors ${
           isCompleted
-            ? 'bg-line text-muted cursor-default'
+            ? 'bg-line text-muted-sage cursor-default'
             : 'bg-primary hover:bg-primary-dark text-white'
         }`}
         onClick={isCompleted ? undefined : onStart}

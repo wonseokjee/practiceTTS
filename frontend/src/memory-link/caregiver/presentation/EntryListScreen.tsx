@@ -28,7 +28,7 @@ export function EntryListScreen({
         aria-label="로딩 중"
         aria-live="polite"
       >
-        <div className="text-muted text-sm">불러오는 중...</div>
+        <div className="text-muted-sage text-sm">불러오는 중...</div>
       </div>
     );
   }
@@ -63,8 +63,8 @@ export function EntryListScreen({
           <div className="text-5xl text-line-strong mb-4" aria-hidden="true">
             📷
           </div>
-          <p className="text-muted mb-2">등록된 기억이 없습니다</p>
-          <p className="text-sm text-muted">
+          <p className="text-muted-sage mb-2">등록된 기억이 없습니다</p>
+          <p className="text-sm text-muted-sage">
             사진과 함께 소중한 기억을 추가해보세요
           </p>
         </div>
@@ -129,7 +129,7 @@ function MemoryEntryCard({ entry, onClick }: MemoryEntryCardProps) {
       {/* 정보 영역 */}
       <div className="p-3">
         {/* 날짜 */}
-        <p className="text-xs text-muted mb-2">{dateLabel}</p>
+        <p className="text-xs text-muted-sage mb-2">{dateLabel}</p>
 
         {/* 그날의 기억 — 카드의 본문.
             `moment`가 실제 기억이고 `activity`·`context`는 한두 낱말짜리
@@ -145,7 +145,7 @@ function MemoryEntryCard({ entry, onClick }: MemoryEntryCardProps) {
         {/* 장소 — 본문이 생겼으니 굵기를 뺀다. 남겨 두면 한두 낱말짜리 태그가
             기억 본문보다 크게 읽힌다. */}
         {entry.locationTag && (
-          <p className="mb-1 text-sm text-muted">{entry.locationTag}</p>
+          <p className="mb-1 text-sm text-muted-sage">{entry.locationTag}</p>
         )}
 
         {/* 감정 태그 */}
@@ -161,7 +161,7 @@ function MemoryEntryCard({ entry, onClick }: MemoryEntryCardProps) {
             {entry.targetWords.map((word) => (
               <span
                 key={word}
-                className="px-2 py-0.5 bg-surface-dim text-muted rounded-full text-xs"
+                className="px-2 py-0.5 bg-surface-dim text-muted-sage rounded-full text-xs"
               >
                 {word}
               </span>
@@ -213,7 +213,7 @@ function TrainingReadiness({ entry }: { entry: MemoryEntry }) {
   // 사진·기록 분석이 아직이면 보호자가 할 수 있는 일이 없다. 기다리면 된다.
   if (!entry.hasMaskedContext) {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-surface-dim text-muted rounded-full text-xs">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-surface-dim text-muted-sage rounded-full text-xs">
         분석 중
       </span>
     );

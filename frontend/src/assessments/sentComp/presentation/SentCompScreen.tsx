@@ -62,14 +62,14 @@ export function SentCompScreen({ onComplete }: SentCompScreenProps) {
           <h1 className="text-xl font-bold text-ink">
             문장 이해 (SentComp) 검사
           </h1>
-          <p className="text-sm text-muted mt-1">
+          <p className="text-sm text-muted-sage mt-1">
             환자:{' '}
             <span className="font-medium text-ink">{patientLabel}</span>
           </p>
         </div>
         <button
           type="button"
-          className="text-xs text-muted hover:text-danger transition-colors mt-1"
+          className="text-xs text-muted-sage hover:text-danger transition-colors mt-1"
           onClick={endSession}
         >
           세션 종료
@@ -170,7 +170,7 @@ export function SentCompScreen({ onComplete }: SentCompScreenProps) {
               {/* SUBMITTING 처리 중 표시 */}
               {phase.type === 'SUBMITTING' && (
                 <div
-                  className="text-center text-sm text-muted py-2"
+                  className="text-center text-sm text-muted-sage py-2"
                   aria-live="polite"
                 >
                   처리 중...

@@ -139,7 +139,7 @@ export function OnboardingScreen() {
               className="w-full min-h-[48px] px-3 py-2 border border-line rounded-lg tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               placeholder="••••"
             />
-            <p className="mt-1 text-xs text-muted">
+            <p className="mt-1 text-xs text-muted-sage">
               어르신께 기기를 건넸다가 돌아올 때 쓰는 4자리 숫자예요.
             </p>
           </div>
@@ -167,7 +167,7 @@ export function OnboardingScreen() {
           <p className="text-sm font-medium text-ink">
             이미 다른 방법으로 가입하셨나요?
           </p>
-          <p className="mt-1 mb-3 text-xs text-muted">
+          <p className="mt-1 mb-3 text-xs text-muted-sage">
             기존에 쓰던 로그인으로 연결하면, 이 계정 대신 그 계정으로 들어가요.
             (등록해 둔 정보가 그대로 있어요.)
           </p>
