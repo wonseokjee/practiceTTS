@@ -185,14 +185,14 @@ export const WORD_CATEGORY: Record<string, string | null> = {
   rabbit: 'animal', tiger: 'animal', turtle: 'animal', whale: 'animal',
   chipmunk: 'animal', monkey: 'animal',
   duck: 'animal', snail: 'animal',
-  // 음식 19
+  // 음식 20
   apple: 'food', banana: 'food', bread: 'food', cake: 'food', candy: 'food',
   carrot: 'food', corn: 'food', grape: 'food', juice: 'food', melon: 'food',
   milk: 'food', orange: 'food', strawberry: 'food', sweet_potato: 'food',
   tomato: 'food',
   watermelon: 'food',
   hamburger: 'food',
-  pizza: 'food', doughnut: 'food',
+  pizza: 'food', doughnut: 'food', cheese_wedge: 'food',
   // 탈것 9
   airplane: 'vehicle', bicycle: 'vehicle', bus: 'vehicle', car: 'vehicle',
   ship: 'vehicle', train: 'vehicle', truck: 'vehicle',
@@ -242,9 +242,8 @@ export const WORD_CATEGORY: Record<string, string | null> = {
   computer: 'appliance', phone: 'appliance', television: 'appliance',
   camera: 'appliance', headphone: 'appliance',
   light_bulb: 'appliance',
-  // 주방 4
+  // 주방 3
   kettle: 'kitchen', knife: 'kitchen', spoon: 'kitchen',
-  pot: 'kitchen',
   // 욕실 5
   mirror: 'bathroom', soap: 'bathroom', toothbrush: 'bathroom',
   shower: 'bathroom',

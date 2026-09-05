@@ -3094,12 +3094,12 @@
   },
   {
    "itemId": "qw_120",
-   "targetWord": "냄비",
+   "targetWord": "치즈",
    "choices": [
     {
      "choiceId": "qw_120_c1",
-     "label": "냄비",
-     "imageUrl": "/assets/images/wordComp/pot.svg",
+     "label": "치즈",
+     "imageUrl": "/assets/images/wordComp/cheese_wedge.svg",
      "isCorrect": true
     },
     {
