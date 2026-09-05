@@ -37,12 +37,12 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
           aria-hidden="true"
         >
           <SpeakerIcon
-            className={`w-5 h-5 ${isPlaying ? 'text-white' : 'text-muted'}`}
+            className={`w-5 h-5 ${isPlaying ? 'text-white' : 'text-muted-sage'}`}
           />
         </div>
 
         <div>
-          <p className="text-xs text-muted mb-0.5">
+          <p className="text-xs text-muted-sage mb-0.5">
             {isPlaying ? '음성 재생 중...' : '음성 재생 완료'}
           </p>
           <p className="text-base font-semibold text-ink">
@@ -58,7 +58,7 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
           flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all
           ${
             isReplayEnabled
-              ? 'bg-canvas text-muted hover:bg-primary-light hover:text-primary border border-line'
+              ? 'bg-canvas text-muted-sage hover:bg-primary-light hover:text-primary border border-line'
               : 'bg-canvas text-muted-disabled cursor-not-allowed border border-line'
           }
         `}

@@ -323,7 +323,7 @@ export function PatientDashboard() {
             onClick={
               isCaregiverInPatientMode ? () => setIsPinModalOpen(true) : logout
             }
-            className="min-h-[44px] rounded-full bg-white/70 px-4 py-2 text-base font-medium text-muted"
+            className="min-h-[44px] rounded-full bg-white/70 px-4 py-2 text-base font-medium text-muted-sage"
             aria-label={isCaregiverInPatientMode ? '보호자로 돌아가기' : '로그아웃'}
           >
             {isCaregiverInPatientMode ? '보호자로' : '로그아웃'}
@@ -355,7 +355,7 @@ export function PatientDashboard() {
       <header className="px-6 py-5 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-ink">안녕하세요</h1>
-          <p className="text-xl text-muted mt-1">
+          <p className="text-xl text-muted-sage mt-1">
             {withHonorific(
               user?.patientDisplayName ?? user?.displayName,
               '님',
@@ -368,7 +368,7 @@ export function PatientDashboard() {
           <button
             type="button"
             onClick={() => setIsPinModalOpen(true)}
-            className="min-h-[48px] px-5 py-2 bg-white/70 text-muted text-lg font-medium rounded-full"
+            className="min-h-[48px] px-5 py-2 bg-white/70 text-muted-sage text-lg font-medium rounded-full"
             aria-label="보호자로 돌아가기"
           >
             보호자로 돌아가기
@@ -377,7 +377,7 @@ export function PatientDashboard() {
           <button
             type="button"
             onClick={logout}
-            className="min-h-[48px] px-5 py-2 bg-white/70 text-muted text-lg font-medium rounded-full"
+            className="min-h-[48px] px-5 py-2 bg-white/70 text-muted-sage text-lg font-medium rounded-full"
             aria-label="로그아웃"
           >
             로그아웃
@@ -467,7 +467,7 @@ function ModeToggle({ mode, onSelectMode, onOpenAssessment }: ModeToggleProps) {
             className={`min-h-[48px] flex-1 rounded-full text-base font-semibold transition-colors duration-[180ms] ease-out ${
               isActive
                 ? 'bg-white text-primary shadow-sm'
-                : 'bg-transparent text-muted hover:text-ink'
+                : 'bg-transparent text-muted-sage hover:text-ink'
             }`}
           >
             {opt.label}
@@ -480,7 +480,7 @@ function ModeToggle({ mode, onSelectMode, onOpenAssessment }: ModeToggleProps) {
         type="button"
         onClick={onOpenAssessment}
         aria-label="표준 언어·인지 검사 (사진·일기 없이 기본 문항으로 점검)"
-        className="min-h-[48px] flex-1 rounded-full text-base font-semibold bg-transparent text-muted transition-colors duration-[180ms] ease-out hover:text-ink"
+        className="min-h-[48px] flex-1 rounded-full text-base font-semibold bg-transparent text-muted-sage transition-colors duration-[180ms] ease-out hover:text-ink"
       >
         기본 검사
       </button>
@@ -515,7 +515,7 @@ function ConversationList({
       {/* 로딩 상태 */}
       {isLoading && (
           <div className="flex items-center justify-center py-16" role="status">
-            <p className="text-2xl text-muted">불러오는 중...</p>
+            <p className="text-2xl text-muted-sage">불러오는 중...</p>
           </div>
         )}
 
@@ -536,10 +536,10 @@ function ConversationList({
         {/* 엔트리 없음 */}
         {!isLoading && error === null && entries.length === 0 && (
           <div className="py-16 text-center">
-            <p className="text-2xl text-muted">
+            <p className="text-2xl text-muted-sage">
               아직 등록된 훈련이 없습니다.
             </p>
-            <p className="text-xl text-muted mt-2">
+            <p className="text-xl text-muted-sage mt-2">
               보호자가 기억 카드를 등록하면 훈련을 시작할 수 있어요.
             </p>
           </div>
@@ -596,13 +596,13 @@ function EntryCard({ entry, onStartTraining }: EntryCardProps) {
 
           {/* 감정 태그 */}
           {entry.emotionTag !== null && (
-            <p className="text-lg text-muted">{entry.emotionTag}</p>
+            <p className="text-lg text-muted-sage">{entry.emotionTag}</p>
           )}
 
           {/* 목표 단어 선택 (여러 개인 경우) */}
           {entry.targetWords.length > 1 && (
             <div className="flex flex-col gap-1">
-              <p className="text-lg text-muted">연습할 단어 선택:</p>
+              <p className="text-lg text-muted-sage">연습할 단어 선택:</p>
               <div className="flex gap-2 flex-wrap">
                 {entry.targetWords.map((word) => (
                   <button
@@ -645,7 +645,7 @@ function EntryCard({ entry, onStartTraining }: EntryCardProps) {
           </button>
         ) : (
           <div className="w-full min-h-[56px] flex items-center justify-center bg-primary-light/60 rounded-full">
-            <p className="text-xl text-muted">보호자가 준비 중이에요</p>
+            <p className="text-xl text-muted-sage">보호자가 준비 중이에요</p>
           </div>
         )}
       </div>

@@ -84,7 +84,7 @@ export function SettingsScreen({ onBack, accountNotice }: SettingsScreenProps) {
       {/* 오픈소스 그림 출처 — 단어이해 픽토그램에 Microsoft Fluent Emoji(MIT) 사용.
           MIT는 앱 내 표기 의무가 없으나(라이선스 고지는 저장소 NOTICE로 충족),
           출처를 밝히는 것은 예의라 가볍게 노출한다. */}
-      <footer className="mt-8 border-t border-line pt-4 text-center text-xs text-muted">
+      <footer className="mt-8 border-t border-line pt-4 text-center text-xs text-muted-sage">
         일부 그림:{' '}
         <a
           href="https://github.com/microsoft/fluentui-emoji"
@@ -130,7 +130,7 @@ function SettingCard({ title, description, onClick, danger }: SettingCardProps) 
           {title}
         </span>
         {description && (
-          <span className="mt-0.5 block text-xs text-muted">
+          <span className="mt-0.5 block text-xs text-muted-sage">
             {description}
           </span>
         )}

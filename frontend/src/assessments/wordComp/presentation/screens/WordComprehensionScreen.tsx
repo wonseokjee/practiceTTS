@@ -116,9 +116,9 @@ const WordComprehensionScreenInner: React.FC<InnerProps> = ({
             <h1 className="text-base font-semibold text-ink">
               단어 이해 검사
             </h1>
-            <p className="text-xs text-muted">검사 완료</p>
+            <p className="text-xs text-muted-sage">검사 완료</p>
           </div>
-          <span className="text-xs text-muted">환자: {patientLabel}</span>
+          <span className="text-xs text-muted-sage">환자: {patientLabel}</span>
         </header>
         <main className="flex-1 px-4 py-4 max-w-xl mx-auto w-full overflow-y-auto">
           {summary !== null ? (
@@ -155,7 +155,7 @@ const WordComprehensionScreenInner: React.FC<InnerProps> = ({
             </svg>
           </div>
           <p className="text-ink font-medium mb-2">오류가 발생했습니다</p>
-          <p className="text-muted text-sm mb-6">
+          <p className="text-muted-sage text-sm mb-6">
             {errorMessage ?? phase.message}
           </p>
           <button
@@ -268,17 +268,17 @@ const AssessmentHeader: React.FC<AssessmentHeaderProps> = ({
           <h1 className="text-base font-semibold text-ink">
             단어 이해 검사
           </h1>
-          <p className="text-xs text-muted">
+          <p className="text-xs text-muted-sage">
             QAB 하위검사 3번 &nbsp;·&nbsp; 환자: {patientLabel}
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-muted hidden sm:inline">
+          <span className="text-xs text-muted-sage hidden sm:inline">
             {currentItemIndex + 1} / {totalItems}
           </span>
           <button
             type="button"
-            className="px-3 py-1.5 text-xs text-muted border border-line rounded-lg hover:bg-primary-light transition-colors"
+            className="px-3 py-1.5 text-xs text-muted-sage border border-line rounded-lg hover:bg-primary-light transition-colors"
             onClick={onEndSession}
             aria-label="검사 세션 종료"
           >

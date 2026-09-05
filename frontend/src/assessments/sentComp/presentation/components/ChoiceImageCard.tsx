@@ -65,7 +65,7 @@ export const ChoiceImageCard: React.FC<ChoiceImageCardProps> = ({
 
       {/* 이미지 로드 실패 폴백: alt 텍스트 표시 */}
       <div
-        className="absolute inset-0 flex items-center justify-center p-4 text-center text-sm text-muted bg-surface-dim"
+        className="absolute inset-0 flex items-center justify-center p-4 text-center text-sm text-muted-sage bg-surface-dim"
         aria-hidden="true"
         style={{ display: 'none' }}
       >

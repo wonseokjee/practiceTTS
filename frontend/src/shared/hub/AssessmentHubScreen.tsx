@@ -56,12 +56,12 @@ export function AssessmentHubScreen({
         {/* 헤더 */}
         <div className="flex items-center justify-between mb-6 pt-2">
           <div>
-            <p className="text-xs text-muted mb-0.5">환자 ID</p>
+            <p className="text-xs text-muted-sage mb-0.5">환자 ID</p>
             <p className="text-sm font-semibold text-ink">{session?.patientId ?? '-'}</p>
           </div>
           <button
             type="button"
-            className="px-4 py-2 text-sm font-medium text-muted bg-white border border-line rounded-xl hover:bg-primary-light transition-colors"
+            className="px-4 py-2 text-sm font-medium text-muted-sage bg-white border border-line rounded-xl hover:bg-primary-light transition-colors"
             onClick={endSession}
           >
             세션 종료
@@ -70,15 +70,15 @@ export function AssessmentHubScreen({
 
         {/* 타이틀 */}
         <h1 className="text-xl font-bold text-ink mb-1">검사 선택</h1>
-        <p className="text-sm text-muted mb-6">수행할 검사를 선택하세요</p>
+        <p className="text-sm text-muted-sage mb-6">수행할 검사를 선택하세요</p>
 
         {/* LOC 완료 배너 */}
         <div className="bg-surface-dim rounded-2xl p-4 mb-3 flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-muted">의식 수준 (LOC)</p>
-            <p className="text-xs text-muted">QAB 하위검사 1번</p>
+            <p className="text-sm font-medium text-muted-sage">의식 수준 (LOC)</p>
+            <p className="text-xs text-muted-sage">QAB 하위검사 1번</p>
           </div>
-          <span className="text-xs font-medium text-muted bg-line px-2 py-0.5 rounded-full">
+          <span className="text-xs font-medium text-muted-sage bg-line px-2 py-0.5 rounded-full">
             완료
           </span>
         </div>

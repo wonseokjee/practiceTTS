@@ -55,7 +55,7 @@ export function SocialCallbackScreen() {
           </button>
         </div>
       ) : (
-        <p className="text-muted">로그인 중이에요...</p>
+        <p className="text-muted-sage">로그인 중이에요...</p>
       )}
     </div>
   );

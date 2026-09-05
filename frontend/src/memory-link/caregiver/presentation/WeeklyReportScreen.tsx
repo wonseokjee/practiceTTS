@@ -173,13 +173,13 @@ export function WeeklyReportScreen({ onBack }: WeeklyReportScreenProps) {
         )}
 
         {!failed && series === null && (
-          <p className="py-8 text-center text-sm text-muted">
+          <p className="py-8 text-center text-sm text-muted-sage">
             불러오는 중...
           </p>
         )}
 
         {!failed && series !== null && sorted.length === 0 && (
-          <p className="py-8 text-center text-sm text-muted">
+          <p className="py-8 text-center text-sm text-muted-sage">
             아직 검사 기록이 없습니다. 환자 모드의 &lsquo;기본 검사&rsquo;를
             진행하면 이곳에 쌓입니다.
           </p>

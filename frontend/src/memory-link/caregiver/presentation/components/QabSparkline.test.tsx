@@ -67,11 +67,11 @@ describe('QabSparkline', () => {
     );
 
     const cls = container.querySelector('path')?.getAttribute('class') ?? '';
-    expect(cls).toContain('stroke-muted');
+    expect(cls).toContain('stroke-muted-sage');
 
     const css = readFileSync(join(process.cwd(), 'src', 'index.css'), 'utf8');
-    const hex = /--color-muted:\s*(#[0-9a-fA-F]{6})/.exec(css)?.[1];
-    expect(hex, 'index.css에 --color-muted가 있어야 한다').toBeTruthy();
+    const hex = /--color-muted-sage:\s*(#[0-9a-fA-F]{6})/.exec(css)?.[1];
+    expect(hex, 'index.css에 --color-muted-sage가 있어야 한다').toBeTruthy();
 
     const luminance = (value: string): number => {
       const channels = [1, 3, 5]

@@ -107,7 +107,7 @@ export function EntryDetailScreen({
         aria-live="polite"
         aria-label="로딩 중"
       >
-        <div className="text-muted text-sm">불러오는 중...</div>
+        <div className="text-muted-sage text-sm">불러오는 중...</div>
       </div>
     );
   }
@@ -118,7 +118,7 @@ export function EntryDetailScreen({
         <button
           type="button"
           onClick={onBack}
-          className="mb-4 text-sm text-muted hover:text-ink flex items-center gap-1"
+          className="mb-4 text-sm text-muted-sage hover:text-ink flex items-center gap-1"
           aria-label="목록으로 돌아가기"
         >
           ← 돌아가기
@@ -153,7 +153,7 @@ export function EntryDetailScreen({
       <button
         type="button"
         onClick={onBack}
-        className="mb-4 text-sm text-muted hover:text-ink flex items-center gap-1 transition-colors"
+        className="mb-4 text-sm text-muted-sage hover:text-ink flex items-center gap-1 transition-colors"
         aria-label="목록으로 돌아가기"
       >
         ← 목록으로
@@ -174,12 +174,12 @@ export function EntryDetailScreen({
 
       {/* 기본 정보 */}
       <div className="bg-white rounded-2xl border border-line p-4 mb-4">
-        <p className="text-xs text-muted mb-3">{dateLabel}</p>
+        <p className="text-xs text-muted-sage mb-3">{dateLabel}</p>
 
         {/* 장소 태그 */}
         {entry.locationTag && (
           <div className="mb-3">
-            <dt className="text-xs text-muted font-medium mb-1">장소</dt>
+            <dt className="text-xs text-muted-sage font-medium mb-1">장소</dt>
             <dd className="text-sm text-ink">{entry.locationTag}</dd>
           </div>
         )}
@@ -187,12 +187,12 @@ export function EntryDetailScreen({
         {/* 사물 태그 */}
         {entry.objectTags && entry.objectTags.length > 0 && (
           <div className="mb-3">
-            <dt className="text-xs text-muted font-medium mb-1">사물</dt>
+            <dt className="text-xs text-muted-sage font-medium mb-1">사물</dt>
             <dd className="flex flex-wrap gap-1">
               {entry.objectTags.map((tag) => (
                 <span
                   key={tag}
-                  className="px-2 py-0.5 bg-surface-dim text-muted rounded-full text-xs"
+                  className="px-2 py-0.5 bg-surface-dim text-muted-sage rounded-full text-xs"
                 >
                   {tag}
                 </span>
@@ -204,7 +204,7 @@ export function EntryDetailScreen({
         {/* 감정 태그 */}
         {entry.emotionTag && (
           <div className="mb-3">
-            <dt className="text-xs text-muted font-medium mb-1">감정</dt>
+            <dt className="text-xs text-muted-sage font-medium mb-1">감정</dt>
             <dd>
               <span className="px-2 py-0.5 bg-primary-light text-primary rounded-full text-sm font-medium">
                 {EMOTION_TAG_LABELS[entry.emotionTag]}
@@ -220,7 +220,7 @@ export function EntryDetailScreen({
         <h3 className="text-sm font-medium text-ink mb-1">
           훈련 목표 단어
         </h3>
-        <p className="text-xs text-muted mb-3">
+        <p className="text-xs text-muted-sage mb-3">
           환자분이 스스로 떠올릴 단어예요. 퀴즈 문항을 만들 때 함께 쓰입니다.
           {isConversationModeEnabled()
             ? ' 1~3개를 등록해야 시나리오를 생성할 수 있어요.'
@@ -351,7 +351,7 @@ export function EntryDetailScreen({
 
       {/* 컨텍스트 분석 미완료 안내 (사진 또는 기록 분석 후 시나리오 가능) */}
       {isConversationModeEnabled() && !entry.hasMaskedContext && (
-        <p className="mt-2 text-xs text-muted text-center">
+        <p className="mt-2 text-xs text-muted-sage text-center">
           AI가 기록하신 내용{entry.photoUrl ? '과 사진' : ''}을 분석하면 시나리오를
           생성할 수 있습니다
         </p>
@@ -361,7 +361,7 @@ export function EntryDetailScreen({
       {entry.hasMaskedContext &&
         !entry.hasScenario &&
         entry.targetWords.length === 0 && (
-          <p className="mt-2 text-xs text-muted text-center">
+          <p className="mt-2 text-xs text-muted-sage text-center">
             목표 단어를 1개 이상 등록·저장하면 시나리오를 생성할 수 있어요
           </p>
         )}
@@ -380,12 +380,12 @@ interface StatusBadgeProps {
 function StatusBadge({ label, isDone, pendingText }: StatusBadgeProps) {
   return (
     <div className="flex justify-between items-center">
-      <span className="text-sm text-muted">{label}</span>
+      <span className="text-sm text-muted-sage">{label}</span>
       <span
         className={`text-xs px-2 py-0.5 rounded-full ${
           isDone
             ? 'bg-primary-light text-primary'
-            : 'bg-surface-dim text-muted'
+            : 'bg-surface-dim text-muted-sage'
         }`}
       >
         {isDone ? '완료' : pendingText}

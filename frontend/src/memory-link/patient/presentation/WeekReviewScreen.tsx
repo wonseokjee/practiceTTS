@@ -55,7 +55,7 @@ export function WeekReviewScreen({ onBack, loadItems }: WeekReviewScreenProps) {
       <h1 className="mb-2 text-3xl font-bold text-ink">
         함께 본 기억
       </h1>
-      <p className="mb-8 text-lg text-muted">
+      <p className="mb-8 text-lg text-muted-sage">
         요즘 연습에서 만난 기억이에요.
       </p>
 
@@ -69,7 +69,7 @@ export function WeekReviewScreen({ onBack, loadItems }: WeekReviewScreenProps) {
       )}
 
       {error === null && items === null && (
-        <p className="py-16 text-center text-lg text-muted" role="status">
+        <p className="py-16 text-center text-lg text-muted-sage" role="status">
           불러오는 중...
         </p>
       )}
@@ -80,10 +80,10 @@ export function WeekReviewScreen({ onBack, loadItems }: WeekReviewScreenProps) {
       */}
       {error === null && items !== null && items.length === 0 && (
         <div className="py-16 text-center">
-          <p className="text-lg text-muted">
+          <p className="text-lg text-muted-sage">
             요즘 연습한 기억이 아직 없어요.
           </p>
-          <p className="mt-2 text-base text-muted">
+          <p className="mt-2 text-base text-muted-sage">
             오늘 연습을 하면 여기에 모여요.
           </p>
         </div>
@@ -103,7 +103,7 @@ export function WeekReviewScreen({ onBack, loadItems }: WeekReviewScreenProps) {
               />
             ) : null}
             <div className="px-5 py-4">
-              <p className="text-sm text-muted">
+              <p className="text-sm text-muted-sage">
                 {formatDay(item.lastPlayedAt)}
               </p>
               {/*

@@ -50,11 +50,11 @@ function TrialResultRow({ result }: { result: LocTrialResponseDTO }) {
 
   return (
     <div className="flex items-center justify-between py-2 border-b border-line">
-      <span className="text-muted">시도 {result.trialNumber}</span>
+      <span className="text-muted-sage">시도 {result.trialNumber}</span>
       <span className={`font-semibold ${scoreColorClass}`}>
         {result.scoreLabel}
         {result.latencyMs !== null && (
-          <span className="text-muted font-normal text-sm ml-2">
+          <span className="text-muted-sage font-normal text-sm ml-2">
             ({Math.round(result.latencyMs)}ms)
           </span>
         )}
@@ -70,7 +70,7 @@ function TrialResultRow({ result }: { result: LocTrialResponseDTO }) {
 function TrialDots({ current }: { current: number }) {
   return (
     <div className="flex items-center gap-2" aria-label={`시도 ${current} / 3`}>
-      <span className="text-muted font-medium">시도 {current} / 3</span>
+      <span className="text-muted-sage font-medium">시도 {current} / 3</span>
       <div className="flex gap-1.5">
         {[1, 2, 3].map((n) => (
           <div
@@ -166,14 +166,14 @@ export function LocScreen({ onComplete, onProceed }: LocScreenProps) {
           <h1 className="text-xl font-bold text-ink">
             의식 수준(LOC) 검사
           </h1>
-          <p className="text-sm text-muted mt-1">
+          <p className="text-sm text-muted-sage mt-1">
             QAB 하위검사 1번 &nbsp;·&nbsp; 환자:{' '}
             <span className="font-medium text-ink">{patientLabel}</span>
           </p>
         </div>
         <button
           type="button"
-          className="text-xs text-muted hover:text-danger transition-colors mt-1"
+          className="text-xs text-muted-sage hover:text-danger transition-colors mt-1"
           onClick={endSession}
         >
           세션 종료
@@ -190,10 +190,10 @@ export function LocScreen({ onComplete, onProceed }: LocScreenProps) {
 
             {/* 최종 점수 */}
             <div className="bg-white rounded-2xl shadow-md p-6 w-full">
-              <p className="text-muted text-sm text-center mb-2">최종 점수</p>
+              <p className="text-muted-sage text-sm text-center mb-2">최종 점수</p>
               <p className="text-5xl font-bold text-center text-primary">
                 {finalScore}
-                <span className="text-xl text-muted font-normal"> / 3</span>
+                <span className="text-xl text-muted-sage font-normal"> / 3</span>
               </p>
             </div>
 
@@ -242,7 +242,7 @@ export function LocScreen({ onComplete, onProceed }: LocScreenProps) {
                     <h2 className="text-2xl font-bold text-ink">
                       검사를 시작할까요?
                     </h2>
-                    <p className="mt-3 text-lg leading-relaxed text-muted">
+                    <p className="mt-3 text-lg leading-relaxed text-muted-sage">
                       시작을 누르면 소리가 나와요.
                       <br />
                       소리를 들은 뒤 화면을 터치해 주세요.
@@ -267,7 +267,7 @@ export function LocScreen({ onComplete, onProceed }: LocScreenProps) {
                     <h2 className="text-2xl font-bold text-primary">
                       잘 들어보세요
                     </h2>
-                    <p className="mt-2 text-lg text-muted">
+                    <p className="mt-2 text-lg text-muted-sage">
                       소리가 끝나면 화면을 터치할 수 있어요.
                     </p>
                   </div>
@@ -305,7 +305,7 @@ export function LocScreen({ onComplete, onProceed }: LocScreenProps) {
                   <h2 className="text-2xl font-bold text-primary">
                     잠시 멈췄어요
                   </h2>
-                  <p className="text-lg text-muted">
+                  <p className="text-lg text-muted-sage">
                     화면을 벗어나서 이번 문제는 다시 들려드릴게요.
                     <br />
                     앞서 하신 것은 그대로 남아 있어요.
@@ -324,7 +324,7 @@ export function LocScreen({ onComplete, onProceed }: LocScreenProps) {
                 <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center">
                   <div className="text-6xl" aria-hidden="true">✓</div>
                   <h2 className="text-2xl font-bold text-primary">확인했어요</h2>
-                  <p className="text-lg text-muted">잠시만 기다려 주세요…</p>
+                  <p className="text-lg text-muted-sage">잠시만 기다려 주세요…</p>
                 </div>
               )}
             </div>

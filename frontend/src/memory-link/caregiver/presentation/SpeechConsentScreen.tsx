@@ -98,7 +98,7 @@ export function SpeechConsentScreen({
 
       <header className="mb-6">
         <h2 className="text-2xl font-bold text-primary">음성 데이터 제공</h2>
-        <p className="mt-2 text-sm leading-relaxed text-muted">
+        <p className="mt-2 text-sm leading-relaxed text-muted-sage">
           어르신의 발음·받아쓰기 발화를 저장해, 어르신 목소리에 더 잘 맞는 음성
           인식 기능을 만드는 데 사용합니다. 동의하지 않으면 발화는 채점 직후
           바로 삭제되어 남지 않습니다.
@@ -106,7 +106,7 @@ export function SpeechConsentScreen({
       </header>
 
       {loading ? (
-        <div className="rounded-2xl border border-line bg-white px-5 py-8 text-center text-sm text-muted">
+        <div className="rounded-2xl border border-line bg-white px-5 py-8 text-center text-sm text-muted-sage">
           불러오는 중…
         </div>
       ) : (
@@ -117,7 +117,7 @@ export function SpeechConsentScreen({
               <span className="block text-base font-medium text-ink-sage">
                 음성 데이터 저장에 동의
               </span>
-              <span className="mt-0.5 block text-xs text-muted">
+              <span className="mt-0.5 block text-xs text-muted-sage">
                 {consent
                   ? state?.consentAt
                     ? `${new Date(state.consentAt).toLocaleDateString('ko-KR')}부터 저장 중`
@@ -139,7 +139,7 @@ export function SpeechConsentScreen({
                 <span className="block text-base font-medium text-ink-sage">
                   저장된 음성
                 </span>
-                <span className="mt-0.5 block text-xs text-muted tabular-nums">
+                <span className="mt-0.5 block text-xs text-muted-sage tabular-nums">
                   {count}건 보관 중
                 </span>
               </span>
@@ -173,7 +173,7 @@ export function SpeechConsentScreen({
                     type="button"
                     onClick={() => setConfirmDelete(false)}
                     disabled={busy}
-                    className="rounded-lg border border-line px-4 py-1.5 text-sm text-muted transition-colors hover:bg-canvas disabled:opacity-50"
+                    className="rounded-lg border border-line px-4 py-1.5 text-sm text-muted-sage transition-colors hover:bg-canvas disabled:opacity-50"
                   >
                     취소
                   </button>

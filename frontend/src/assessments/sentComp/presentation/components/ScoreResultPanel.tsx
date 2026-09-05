@@ -24,7 +24,7 @@ const SENTENCE_TYPE_LABELS: Record<string, string> = {
 
 /** 정답률에 따른 색상 클래스 */
 function getRateColorClass(rate: number | null): string {
-  if (rate === null) return 'text-muted';
+  if (rate === null) return 'text-muted-sage';
   if (rate >= 0.8) return 'text-primary';
   if (rate >= 0.5) return 'text-[#8a5a1a]';
   return 'text-danger';
@@ -51,12 +51,12 @@ export const ScoreResultPanel: React.FC<ScoreResultPanelProps> = ({
         className="bg-white rounded-2xl shadow-md p-6 text-center"
         aria-label={`총점: ${score.totalScore}점`}
       >
-        <p className="text-sm text-muted mb-2">총점</p>
+        <p className="text-sm text-muted-sage mb-2">총점</p>
         <p className="text-6xl font-bold text-primary">
           {score.totalScore}
-          <span className="text-2xl text-muted font-normal">점</span>
+          <span className="text-2xl text-muted-sage font-normal">점</span>
         </p>
-        <p className="text-sm text-muted mt-2">
+        <p className="text-sm text-muted-sage mt-2">
           {score.correctCount} / {score.totalItems} 정답
         </p>
       </div>
@@ -66,7 +66,7 @@ export const ScoreResultPanel: React.FC<ScoreResultPanelProps> = ({
         <h3 className="font-semibold text-ink mb-4">유형별 정답률</h3>
         <table className="w-full" aria-label="문장 유형별 정답률 표">
           <thead>
-            <tr className="text-left text-sm text-muted border-b border-line">
+            <tr className="text-left text-sm text-muted-sage border-b border-line">
               <th className="pb-2 font-medium">유형</th>
               <th className="pb-2 font-medium text-right">정답 / 전체</th>
               <th className="pb-2 font-medium text-right">정답률</th>
@@ -84,8 +84,8 @@ export const ScoreResultPanel: React.FC<ScoreResultPanelProps> = ({
                     className="border-b border-line/60 last:border-0"
                   >
                     <td className="py-3 text-ink">{label}</td>
-                    <td className="py-3 text-right text-muted">-</td>
-                    <td className="py-3 text-right text-muted">-</td>
+                    <td className="py-3 text-right text-muted-sage">-</td>
+                    <td className="py-3 text-right text-muted-sage">-</td>
                   </tr>
                 );
               }
@@ -102,7 +102,7 @@ export const ScoreResultPanel: React.FC<ScoreResultPanelProps> = ({
                   className="border-b border-line/60 last:border-0"
                 >
                   <td className="py-3 text-ink">{label}</td>
-                  <td className="py-3 text-right text-muted">
+                  <td className="py-3 text-right text-muted-sage">
                     {stats.correct} / {stats.total}
                   </td>
                   <td className={`py-3 text-right font-semibold ${colorClass}`}>
@@ -120,14 +120,14 @@ export const ScoreResultPanel: React.FC<ScoreResultPanelProps> = ({
         <h3 className="font-semibold text-ink mb-1">세부 통계</h3>
 
         <div className="flex justify-between items-center py-2 border-b border-line/60">
-          <span className="text-muted text-sm">평균 반응 시간</span>
+          <span className="text-muted-sage text-sm">평균 반응 시간</span>
           <span className="font-medium text-ink">
             {Math.round(score.averageReactionTimeMs)} ms
           </span>
         </div>
 
         <div className="flex justify-between items-center py-2">
-          <span className="text-muted text-sm">평균 재청취 횟수</span>
+          <span className="text-muted-sage text-sm">평균 재청취 횟수</span>
           <span className="font-medium text-ink">
             {score.averageReplayCount.toFixed(1)} 회
           </span>

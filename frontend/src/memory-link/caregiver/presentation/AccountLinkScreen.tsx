@@ -177,7 +177,7 @@ export function AccountLinkScreen({
                   <p className="text-sm font-medium text-ink-sage">
                     {meta.label}
                   </p>
-                  <p className="text-xs text-muted">
+                  <p className="text-xs text-muted-sage">
                     {isLinked ? '연결됨' : '연결 안 됨'}
                   </p>
                 </div>

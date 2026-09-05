@@ -49,7 +49,7 @@ export function StreakRow({ days }: StreakRowProps) {
       className="rounded-3xl border border-line bg-white p-6"
       aria-label="이번 주 연습"
     >
-      <p className="mb-4 text-sm font-semibold text-muted">이번 주</p>
+      <p className="mb-4 text-sm font-semibold text-muted-sage">이번 주</p>
       <ol className="flex items-start justify-between" role="list">
         {days.map((day, i) => {
           const s = dotStyle(day.status);
@@ -67,7 +67,7 @@ export function StreakRow({ days }: StreakRowProps) {
                 {s.content}
               </span>
               <span
-                className={`text-xs ${isToday ? 'font-bold text-primary' : 'text-muted'}`}
+                className={`text-xs ${isToday ? 'font-bold text-primary' : 'text-muted-sage'}`}
                 aria-hidden="true"
               >
                 {day.label}

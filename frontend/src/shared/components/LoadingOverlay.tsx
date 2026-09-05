@@ -29,7 +29,7 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
       />
 
       {/* 로딩 텍스트 */}
-      <p className="text-muted text-base">{message}</p>
+      <p className="text-muted-sage text-base">{message}</p>
     </div>
   );
 };

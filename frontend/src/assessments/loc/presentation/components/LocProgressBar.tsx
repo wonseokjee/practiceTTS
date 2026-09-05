@@ -36,7 +36,7 @@ export function LocProgressBar({
       {/* 남은 시간 텍스트 */}
       <p className="text-2xl font-bold text-ink">
         {remainingSeconds}
-        <span className="text-base font-normal text-muted ml-1">초</span>
+        <span className="text-base font-normal text-muted-sage ml-1">초</span>
       </p>
 
       {/* 진행 바 */}

@@ -143,7 +143,7 @@ export function CaptureScreen({
         <button
           type="button"
           onClick={onCancel}
-          className="text-xs text-muted transition-colors hover:text-[#3F4A44]"
+          className="text-xs text-muted-sage transition-colors hover:text-[#3F4A44]"
           aria-label="캡처 취소"
         >
           취소하고 목록으로

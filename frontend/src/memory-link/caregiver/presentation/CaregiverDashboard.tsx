@@ -121,7 +121,7 @@ export function CaregiverDashboard() {
       <div className="min-h-screen bg-canvas flex flex-col items-center justify-center px-4">
         <div className="w-full max-w-lg bg-white rounded-3xl shadow-[0_10px_30px_rgba(0,0,0,0.08)] p-8 text-center">
           <h1 className="text-2xl font-bold text-ink mb-2">보호자 대시보드</h1>
-          <p className="text-muted mb-4">
+          <p className="text-muted-sage mb-4">
             안녕하세요,{' '}
             <span className="font-medium text-ink">{user?.displayName}</span>님
           </p>
@@ -165,7 +165,7 @@ export function CaregiverDashboard() {
           >
             환자에게 건네기
           </button>
-          <span className="hidden text-sm text-muted sm:inline">
+          <span className="hidden text-sm text-muted-sage sm:inline">
             {user?.displayName}
           </span>
         </div>
@@ -181,7 +181,7 @@ export function CaregiverDashboard() {
               <h2 className="text-2xl font-bold text-ink">
                 {withHonorific(user?.patientDisplayName, '어르신')}
               </h2>
-              <p className="mt-1 text-sm text-muted">오늘도 함께해요</p>
+              <p className="mt-1 text-sm text-muted-sage">오늘도 함께해요</p>
             </div>
 
             {/* 요약 통계 카드 */}
@@ -207,7 +207,7 @@ export function CaregiverDashboard() {
                 <p className="text-sm font-medium text-accent-ink">
                   대화를 시작하려면 준비가 조금 더 필요해요
                 </p>
-                <p className="mt-1 text-xs text-muted">
+                <p className="mt-1 text-xs text-muted-sage">
                   기억 {needsSetupCount}개가 목표 단어 등록과 시나리오 생성을
                   기다리고 있어요. 아래 목록에서 기억을 눌러 이어서 준비해
                   주세요.
@@ -297,11 +297,11 @@ interface StatCardProps {
 function StatCard({ label, value, unit }: StatCardProps) {
   return (
     <div className="flex-1 rounded-2xl border border-line bg-white p-3">
-      <p className="text-xs text-muted">{label}</p>
+      <p className="text-xs text-muted-sage">{label}</p>
       <p className="mt-1 text-2xl font-extrabold tabular-nums text-primary">
         {value}
         {unit !== undefined && (
-          <span className="ml-0.5 text-sm font-semibold text-muted">
+          <span className="ml-0.5 text-sm font-semibold text-muted-sage">
             {unit}
           </span>
         )}

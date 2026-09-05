@@ -40,7 +40,7 @@ function SocialLoginButtons() {
 
   return (
     <div className="mt-6">
-      <div className="flex items-center gap-3 text-xs text-muted">
+      <div className="flex items-center gap-3 text-xs text-muted-sage">
         <span className="h-px flex-1 bg-line" />
         간편 로그인
         <span className="h-px flex-1 bg-line" />
@@ -291,7 +291,7 @@ function RegisterForm() {
           className="w-full min-h-[48px] px-3 py-2 border border-line rounded-lg tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
           placeholder="••••"
         />
-        <p className="mt-1 text-xs text-muted">
+        <p className="mt-1 text-xs text-muted-sage">
           어르신께 기기를 건넸다가 돌아올 때 사용하는 4자리 숫자예요.
         </p>
       </div>
@@ -331,7 +331,7 @@ export function LoginScreen() {
         {/* 헤더 */}
         <div className="px-6 pt-8 pb-4 text-center">
           <h1 className="text-2xl font-bold text-ink">Memory Link</h1>
-          <p className="mt-1 text-sm text-muted">인지 훈련 및 기억 연결 플랫폼</p>
+          <p className="mt-1 text-sm text-muted-sage">인지 훈련 및 기억 연결 플랫폼</p>
         </div>
 
         {socialFailed && (
@@ -353,7 +353,7 @@ export function LoginScreen() {
             className={`flex-1 py-3 text-sm font-medium transition-colors ${
               activeTab === 'login'
                 ? 'text-primary border-b-2 border-primary'
-                : 'text-muted hover:text-ink'
+                : 'text-muted-sage hover:text-ink'
             }`}
           >
             로그인
@@ -364,7 +364,7 @@ export function LoginScreen() {
             className={`flex-1 py-3 text-sm font-medium transition-colors ${
               activeTab === 'register'
                 ? 'text-primary border-b-2 border-primary'
-                : 'text-muted hover:text-ink'
+                : 'text-muted-sage hover:text-ink'
             }`}
           >
             회원가입

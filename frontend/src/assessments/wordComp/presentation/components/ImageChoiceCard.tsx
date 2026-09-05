@@ -43,7 +43,7 @@ export const ImageChoiceCard: React.FC<ImageChoiceCardProps> = ({
     >
       {/* 이미지 로드 실패 폴백 (z-index 0, img 아래) */}
       <div
-        className="absolute inset-0 flex flex-col items-center justify-center bg-surface-dim text-muted text-sm font-medium"
+        className="absolute inset-0 flex flex-col items-center justify-center bg-surface-dim text-muted-sage text-sm font-medium"
         aria-hidden="true"
         style={{ zIndex: 0 }}
       >
