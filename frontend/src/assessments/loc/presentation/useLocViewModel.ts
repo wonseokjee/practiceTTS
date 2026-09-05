@@ -10,7 +10,7 @@
  *   IDLE → TTS_PLAYING → AWAITING_TOUCH → TOUCH_DETECTED → TRIAL_COMPLETE
  *   TRIAL_COMPLETE → TTS_PLAYING (다음 시도) | ASSESSMENT_COMPLETE (완료)
  *   (TTS_PLAYING | AWAITING_TOUCH | TRIAL_COMPLETE) → TRIAL_INTERRUPTED (화면 이탈)
- *   TTS_PLAYING → TRIAL_INTERRUPTED (TTS 실패 + 이미 끝낸 시도가 있을 때)
+ *   (TTS_PLAYING | TOUCH_DETECTED) → TRIAL_INTERRUPTED (TTS·제출 실패 + 이미 끝낸 시도가 있을 때)
  *   TRIAL_INTERRUPTED → TTS_PLAYING (다시 듣기)
  *   전이 전체 표는 locSessionReducer.ts 주석에 있다.
  *
@@ -249,7 +249,13 @@ export function useLocViewModel(
         dispatch({ type: 'TRIAL_SUBMITTED' });
       } catch (err) {
         setErrorMessage(mapErrorToMessage(err));
-        dispatch({ type: 'TRIAL_SUBMIT_FAILED' });
+        // 이미 끝낸 시도가 있으면 IDLE로 돌리지 않는다 — TTS 실패 경로(위)와
+        // 같은 이유다. IDLE에서 다시 시작하면 accumulatedTrialsRef가
+        // 비워져 이미 채점된 시도가 사라진다(TODO-118).
+        dispatch({
+          type: 'TRIAL_SUBMIT_FAILED',
+          hasTrials: accumulatedTrialsRef.current.length > 0,
+        });
       }
     },
     [],
