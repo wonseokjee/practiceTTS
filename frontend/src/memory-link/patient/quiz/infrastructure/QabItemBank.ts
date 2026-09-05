@@ -237,13 +237,12 @@ export const WORD_CATEGORY: Record<string, string | null> = {
   camera: 'appliance', headphone: 'appliance',
   // 주방 3
   kettle: 'kitchen', knife: 'kitchen', spoon: 'kitchen',
-  // 욕실 4
+  // 욕실 3
   mirror: 'bathroom', soap: 'bathroom', toothbrush: 'bathroom',
-  shower: 'bathroom',
-  // 연장 4
+    // 연장 4
   hammer: 'tool', ladder: 'tool', screwdriver: 'tool',
   flashlight: 'tool',
-  // ── 범주 없음 9 ───────────────────────────────────────────────
+  // ── 범주 없음 10 ──────────────────────────────────────────────
   //
   // 서로 한 무리가 아니다. 예전에는 이 아홉을 `'object'`라는 이름의 범주로 묶어
   // 뒀는데, 그러면 `buildControlledChoices`가 가방의 "같은 범주 오답"으로 풍선·돌을
@@ -256,7 +255,7 @@ export const WORD_CATEGORY: Record<string, string | null> = {
   // 음운 오답으로 넘어간다(아래 buildControlledChoices).
   //
   // "다른 하나"(연습)로는 얼마든지 쓴다 — 동물 셋 사이의 열쇠는 명확하다.
-  bag: null, balloon: null, basket: null, candle: null,
+  bag: null, balloon: null, basket: null, candle: null, rainbow: null,
   clock: null, key: null, mailbox: null, rock: null,
   umbrella: null,
 };

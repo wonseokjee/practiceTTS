@@ -581,36 +581,36 @@
     },
     {
       "itemId": "sg_09_rc_s",
-      "sentence": "아이를 업고 가는 엄마가 웃고 있어요",
+      "sentence": "아이에게 인사하는 엄마가 웃고 있어요",
       "sentenceAudioUrl": "",
       "sentenceType": "relative-clause",
       "choices": [
         {
           "imageUrl": "/assets/images/sentComp/sg_09_correct.png",
-          "altText": "엄마가 아이를 업은 장면",
+          "altText": "엄마가 아이에게 인사하는 장면",
           "isCorrect": true
         },
         {
           "imageUrl": "/assets/images/sentComp/sg_09_distractor.png",
-          "altText": "아이가 엄마를 업은 장면",
+          "altText": "아이가 엄마에게 인사하는 장면",
           "isCorrect": false
         }
       ]
     },
     {
       "itemId": "sg_09_rc_o",
-      "sentence": "아이가 업고 가는 엄마가 웃고 있어요",
+      "sentence": "아이가 인사하는 엄마가 웃고 있어요",
       "sentenceAudioUrl": "",
       "sentenceType": "relative-clause",
       "choices": [
         {
           "imageUrl": "/assets/images/sentComp/sg_09_distractor.png",
-          "altText": "아이가 엄마를 업은 장면",
+          "altText": "아이가 엄마에게 인사하는 장면",
           "isCorrect": true
         },
         {
           "imageUrl": "/assets/images/sentComp/sg_09_correct.png",
-          "altText": "엄마가 아이를 업은 장면",
+          "altText": "엄마가 아이에게 인사하는 장면",
           "isCorrect": false
         }
       ]

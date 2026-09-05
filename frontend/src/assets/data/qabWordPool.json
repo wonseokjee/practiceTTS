@@ -2884,12 +2884,12 @@
   },
   {
    "itemId": "qw_113",
-   "targetWord": "샤워기",
+   "targetWord": "무지개",
    "choices": [
     {
      "choiceId": "qw_113_c1",
-     "label": "샤워기",
-     "imageUrl": "/assets/images/wordComp/shower.svg",
+     "label": "무지개",
+     "imageUrl": "/assets/images/wordComp/rainbow.svg",
      "isCorrect": true
     },
     {
