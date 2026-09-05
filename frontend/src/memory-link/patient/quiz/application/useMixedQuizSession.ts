@@ -24,6 +24,7 @@ import type {
 } from '../domain/MixedQuiz.js';
 import {
   evaluateFromAzure,
+  UNSCORED,
   type SpeechAssessment,
   type AzurePronunciationScores,
 } from '../domain/pronunciationScore.js';
@@ -94,7 +95,7 @@ export interface UseMixedQuizActions {
   /** 데일리 문항 답안 제출 (백엔드 채점) */
   submitDaily: (userAnswer: string) => Promise<void>;
   /** QAB 단어이해 선택 (로컬 채점) */
-  submitQabChoice: (choiceId: string) => void;
+  submitQabChoice: (choiceId: string, ctx?: { unheard?: boolean }) => void;
   /** QAB 그림 이름대기 음성 제출 (로컬 STT 채점) */
   submitNaming: (
     transcript: string,
@@ -106,6 +107,7 @@ export interface UseMixedQuizActions {
   submitSpeech: (
     transcript: string,
     azure?: AzurePronunciationScores | null,
+    ctx?: { unheard?: boolean },
   ) => void;
   /** QAB 글자 조합 제출 (타일로 만든 문자열, 로컬 비교 채점) */
   submitSpell: (assembled: string) => void;
@@ -725,7 +727,7 @@ export function useMixedQuizSession(
   );
 
   const submitQabChoice = useCallback(
-    (choiceId: string): void => {
+    (choiceId: string, ctx?: { unheard?: boolean }): void => {
       if (phaseRef.current !== 'answering') return;
       const item = itemsRef.current[indexRef.current];
       if (!item || item.kind !== 'qab') return;
@@ -733,20 +735,33 @@ export function useMixedQuizSession(
       const chosen = item.item.choices.find((c) => c.choiceId === choiceId);
       const correct = item.item.choices.find((c) => c.isCorrect);
       const isCorrect = chosen?.isCorrect ?? false;
+      // **소리가 안 났으면 잰 것이 없다.** 듣고 그림을 고르는 과제라, 못 들은
+      // 채 고른 답은 이해력이 아니라 찍기다. `assisted`가 아니라 `unscored`인
+      // 이유는 보호자가 아무것도 안 했기 때문이다 — 보호자 화면의 "도움 N회"가
+      // 거짓이 되면 그 통계로 정답률을 거르는 곳이 같이 오염된다.
+      // unscored 규약대로 isCorrect는 false로 보낸다(값에 뜻이 없다).
+      const unheard = ctx?.unheard === true;
       qabResultsRef.current.push({
         subtest: item.item.category,
         itemRef: item.item.itemId,
-        isCorrect,
+        isCorrect: unheard ? false : isCorrect,
+        ...(unheard ? { unscored: true } : {}),
         ...observed(item.item),
         // 틀렸을 때만, 그리고 갈래를 아는 선택지일 때만 보낸다. 단어이해
         // 선택지는 뱅크가 뽑으면서 갈래를 붙여 두고(QabFoilKind), 문장이해는
         // 선택지가 JSON 고정 쌍이라 갈래가 없다.
-        ...(!isCorrect && chosen?.foilKind !== undefined
+        // 채점 불가면 갈래도 안 보낸다 — 오답 갈래는 "무엇을 헷갈렸나"인데
+        // 못 들은 찍기에는 헷갈릴 대상이 없다.
+        ...(!unheard && !isCorrect && chosen?.foilKind !== undefined
           ? { foilKind: chosen.foilKind }
           : {}),
       });
       applyResult(
-        { isCorrect, correctLabel: correct?.label ?? null },
+        {
+          // 못 들었으면 정오답을 말하지 않는다 — 발화 채점 불가와 같은 대우다.
+          isCorrect: unheard ? null : isCorrect,
+          correctLabel: correct?.label ?? null,
+        },
         choiceId,
       );
     },
@@ -840,14 +855,26 @@ export function useMixedQuizSession(
   );
 
   const submitSpeech = useCallback(
-    (transcript: string, azure: AzurePronunciationScores | null = null): void => {
+    (
+      transcript: string,
+      azure: AzurePronunciationScores | null = null,
+      ctx?: { unheard?: boolean },
+    ): void => {
       if (phaseRef.current !== 'answering') return;
       const item = itemsRef.current[indexRef.current];
       if (!item) return;
 
+      // 모범을 못 들었으면 채점하지 않는다. 따라말하기는 **들은 것을 붙드는**
+      // 과제라, 못 들은 채 낸 발화는 잘 말했든 아니든 그 능력을 안 잰다.
+      // 읽기는 자극이 글이라 여기 안 걸린다(컴포넌트가 늘 false를 보낸다).
+      const unheard = ctx?.unheard === true;
+
       if (item.kind === 'repeat') {
         const mode = item.item.category === 'sentence' ? 'sentence' : 'word';
-        applySpeechAssessment(evaluateFromAzure(azure, transcript, mode), {
+        const assessment = unheard
+          ? UNSCORED
+          : evaluateFromAzure(azure, transcript, mode);
+        applySpeechAssessment(assessment, {
           subtest: 'repeat',
           itemRef: item.item.itemId,
           correctLabel: item.item.text,

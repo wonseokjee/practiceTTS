@@ -35,16 +35,18 @@ const item = (): QabImageItem => ({
   ],
 });
 
-const renderItem = () =>
+const renderItem = (onSelect = vi.fn()) => {
   render(
     <ImageChoiceQuizItem
       item={item()}
       isSelectable
       showFeedback={false}
       selectedChoiceId={null}
-      onSelect={vi.fn()}
+      onSelect={onSelect}
     />,
   );
+  return onSelect;
+};
 
 beforeEach(() => {
   ttsSpeak.mockReset();
@@ -78,8 +80,8 @@ describe('ImageChoiceQuizItem — 소리 실패 안내', () => {
   });
 
   it('소리가 안 나도 선택지는 계속 고를 수 있다', async () => {
-    // 못 들었다고 화면을 막으면 환자가 갇힌다. 채점을 어떻게 볼지는
-    // 따로 정할 문제고(TODO-110 후속), 여기서 하는 일은 알리는 것까지다.
+    // 못 들었다고 화면을 막으면 환자가 갇힌다. 대신 **고른 답을 채점에서
+    // 뺀다** — 아래 `unheard` 절이 그 신호를 지킨다.
     ttsSpeak.mockRejectedValueOnce(new Error('TTS 502'));
 
     renderItem();
@@ -101,5 +103,51 @@ describe('ImageChoiceQuizItem — 소리 실패 안내', () => {
     await waitFor(() =>
       expect(screen.queryByText(TTS_FAILURE_MESSAGE)).toBeNull(),
     );
+  });
+});
+
+/**
+ * 못 들은 채 고른 답은 **채점에서 뺀다.**
+ *
+ * 듣기가 이 문항의 전부라, 소리가 안 난 상태의 정오답은 이해력이 아니라 찍기다.
+ * 컴포넌트가 하는 일은 그 사실을 함께 올리는 것까지고, `unscored`로 바꾸는 것은
+ * 세션이 한다(useMixedQuizSession).
+ *
+ * `speak()`가 재생을 시작할 때 error를 비우므로, 이 값은 "마지막 재생이
+ * 실패했다"는 뜻이다 — 다시 듣기로 성공하면 저절로 풀린다.
+ */
+describe('ImageChoiceQuizItem — 못 들은 채 고른 답', () => {
+  it('소리가 났으면 unheard=false로 올린다', async () => {
+    const onSelect = renderItem();
+    await waitFor(() => expect(ttsSpeak).toHaveBeenCalledWith('사과'));
+
+    fireEvent.click(screen.getByLabelText('사과 선택'));
+
+    expect(onSelect).toHaveBeenCalledWith('c2', { unheard: false });
+  });
+
+  it('소리가 안 난 채 고르면 unheard=true로 올린다', async () => {
+    ttsSpeak.mockRejectedValueOnce(new Error('TTS 502'));
+    const onSelect = renderItem();
+    await screen.findByText(TTS_FAILURE_MESSAGE);
+
+    fireEvent.click(screen.getByLabelText('사과 선택'));
+
+    expect(onSelect).toHaveBeenCalledWith('c2', { unheard: true });
+  });
+
+  it('다시 들어 성공한 뒤 고르면 unheard=false다', async () => {
+    // 실패가 한 번 있었다는 사실이 아니라 **답할 때 들렸는가**가 기준이다.
+    ttsSpeak.mockRejectedValueOnce(new Error('TTS 502'));
+    const onSelect = renderItem();
+    await screen.findByText(TTS_FAILURE_MESSAGE);
+
+    fireEvent.click(screen.getByLabelText('단어 듣기 다시 듣기'));
+    await waitFor(() =>
+      expect(screen.queryByText(TTS_FAILURE_MESSAGE)).toBeNull(),
+    );
+    fireEvent.click(screen.getByLabelText('사과 선택'));
+
+    expect(onSelect).toHaveBeenCalledWith('c2', { unheard: false });
   });
 });

@@ -110,13 +110,17 @@ describe('SpeechCaptureItem', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: '제출' }));
     // WebSpeech 폴백 경로라 음소 점수는 없다(azure=null).
-    expect(onSubmit).toHaveBeenCalledWith('오늘 날씨가 좋아요', null);
+    expect(onSubmit).toHaveBeenCalledWith('오늘 날씨가 좋아요', null, {
+      unheard: false,
+    });
   });
 
   it('넘어가기를 누르면 목표 텍스트로 통과 처리한다', () => {
     const { onSubmit } = renderItem({ text: '오늘 날씨가 좋아요' });
     fireEvent.click(screen.getByRole('button', { name: '넘어가기' }));
-    expect(onSubmit).toHaveBeenCalledWith('오늘 날씨가 좋아요', null);
+    expect(onSubmit).toHaveBeenCalledWith('오늘 날씨가 좋아요', null, {
+      unheard: false,
+    });
   });
 
   it('피드백 단계: 오답이면 ✗와 정답을 노출하고 컨트롤을 숨긴다', () => {

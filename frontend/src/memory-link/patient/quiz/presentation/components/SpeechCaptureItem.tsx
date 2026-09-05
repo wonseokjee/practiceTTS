@@ -25,7 +25,18 @@ interface SpeechCaptureItemProps {
   /** 채점 결과 — 피드백 단계에서만 의미 */
   isCorrect: boolean | null;
   /** 채점 제출. azure는 음소 점수(가능할 때), 없으면 null(문자열 채점 폴백). */
-  onSubmit: (transcript: string, azure: AzurePronunciationScores | null) => void;
+  /**
+   * 발화를 제출한다.
+   *
+   * `unheard`는 **모범을 못 들은 채로 말했다**는 뜻이다. 따라말하기는 들은 것을
+   * 붙드는 과제라 못 들었으면 잰 값이 없다. 읽기는 자극이 글이므로 늘 false다
+   * (`showModel`이 false다).
+   */
+  onSubmit: (
+    transcript: string,
+    azure: AzurePronunciationScores | null,
+    ctx: { unheard: boolean },
+  ) => void;
   /** 보호자 통과 처리(도움받음). 없으면 목표 텍스트 제출로 폴백. */
   onSkip?: () => void;
   /** 보호자가 자동 채점을 정정(피드백 단계). 발음 평가 불가 시 문자열 채점(불신뢰
@@ -57,6 +68,8 @@ export function SpeechCaptureItem({
   const stt = useMemo(() => createSpeechCaptureService(), []);
   const ttsService = useMemo(() => createTtsService(), []);
   const { isPlaying, error: ttsError, speak } = useTTS(ttsService);
+  // 모범을 들려주는 문항에서만 뜻이 있다. 읽기(showModel=false)는 늘 false다.
+  const unheardRef = (): boolean => showModel && ttsError !== null;
 
   // 캡처 콜백 프로퍼티 할당(TrainingScreen 등과 동일한 코드베이스 공통 패턴).
   /* eslint-disable react-hooks/immutability */
@@ -103,7 +116,7 @@ export function SpeechCaptureItem({
 
   const handleSubmitTranscript = (): void => {
     if (transcript.trim().length === 0) return;
-    onSubmit(transcript.trim(), azure);
+    onSubmit(transcript.trim(), azure, { unheard: unheardRef() });
   };
 
   // "넘어가기": 보호자가 했다고 보고 통과 처리(도움받음).
@@ -116,7 +129,7 @@ export function SpeechCaptureItem({
     // onSkip이 없는 경우(테스트 등)의 최소 동작. 음소 점수가 없으므로 상위는
     // 이것을 **채점 불가**로 받는다 — 예전처럼 문자열 채점으로 정답 처리되지
     // 않는다. 앱에서는 QuizScreen이 항상 onSkip을 넘기므로 이 줄은 안 탄다.
-    onSubmit(text, null);
+    onSubmit(text, null, { unheard: unheardRef() });
   };
 
   // 피드백 단계의 isCorrect === null은 **채점 불가**다(미응답이 아니다 —
