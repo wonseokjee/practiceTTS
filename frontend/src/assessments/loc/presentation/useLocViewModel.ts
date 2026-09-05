@@ -1,6 +1,11 @@
 /**
  * LOC 검사 ViewModel 훅 (FSM 상태 관리)
  *
+ * FSM 전이 자체는 `locSessionReducer`(SentComp/WordComp와 같은 useReducer
+ * 패턴)가 진다. 이 파일은 그 리듀서를 시도별 데이터(오디오 종료 시각, 터치
+ * 좌표, 누적 시도, 타이머)와 엮어 실제 부수효과(TTS 재생, 서버 호출, 화면
+ * 이탈 감지)를 실행한다.
+ *
  * FSM 상태 전이:
  *   IDLE → TTS_PLAYING → AWAITING_TOUCH → TOUCH_DETECTED → TRIAL_COMPLETE
  *   TRIAL_COMPLETE → TTS_PLAYING (다음 시도) | ASSESSMENT_COMPLETE (완료)
@@ -16,11 +21,12 @@
  */
 
 import {
-  useState,
+  useReducer,
   useRef,
   useCallback,
   useEffect,
   useMemo,
+  useState,
 } from 'react';
 import type React from 'react';
 import type { ConductLocTrialUseCase } from '../application/ConductLocTrialUseCase.js';
@@ -33,6 +39,7 @@ import type { LocTrialResponseDTO } from '../application/dto/LocTrialDTO.js';
 import type { LocTrial } from '../domain/LocTrial.js';
 import { useTimer } from '../../../shared/hooks/useTimer.js';
 import { calculateFinalLocScore } from '../domain/LocScorer.js';
+import { locSessionReducer } from './locSessionReducer.js';
 
 /** FSM 상태 */
 export type LocAssessmentState =
@@ -125,8 +132,10 @@ export function useLocViewModel(
   /** 터치 버튼 엘리먼트. 영역 판정을 위해 화면 쪽에서 연결한다. */
   touchButtonRef: React.RefObject<HTMLButtonElement | null>;
 } {
-  const [assessmentState, setAssessmentState] =
-    useState<LocAssessmentState>('IDLE');
+  const [assessmentState, dispatch] = useReducer(
+    locSessionReducer,
+    'IDLE' as LocAssessmentState,
+  );
   const [currentTrialNumber, setCurrentTrialNumber] = useState<1 | 2 | 3>(1);
   const [trialResults, setTrialResults] = useState<LocTrialResponseDTO[]>([]);
   const [finalScore, setFinalScore] = useState<number | null>(null);
@@ -233,10 +242,10 @@ export function useLocViewModel(
 
         accumulatedTrialsRef.current = [...accumulatedTrialsRef.current, trial];
         setTrialResults((prev) => [...prev, responseDTO]);
-        setAssessmentState('TRIAL_COMPLETE');
+        dispatch({ type: 'TRIAL_SUBMITTED' });
       } catch (err) {
         setErrorMessage(mapErrorToMessage(err));
-        setAssessmentState('IDLE');
+        dispatch({ type: 'TRIAL_SUBMIT_FAILED' });
       }
     },
     [],
@@ -250,7 +259,7 @@ export function useLocViewModel(
 
     touchHandledRef.current = true;
     stopTimer();
-    setAssessmentState('TOUCH_DETECTED');
+    dispatch({ type: 'RESPONSE_REGISTERED' });
 
     await processTrial(null, 0, 0, { x: 0, y: 0, width: 0, height: 0 });
   }, [processTrial, stopTimer]);
@@ -306,7 +315,7 @@ export function useLocViewModel(
       stopTimer();
       conductTrialUseCaseRef.current.cancelInstruction();
 
-      setAssessmentState('TRIAL_INTERRUPTED');
+      dispatch({ type: 'INTERRUPTED' });
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -335,7 +344,7 @@ export function useLocViewModel(
             startTime: assessmentStartTimeRef.current,
           });
           setFinalScore(resultDTO.finalScore);
-          setAssessmentState('ASSESSMENT_COMPLETE');
+          dispatch({ type: 'ASSESSMENT_FINISHED' });
           console.info('[LOC] 검사 완료', { finalScore: resultDTO.finalScore });
           onCompleteRef.current(resultDTO.id);
         } catch (err) {
@@ -351,7 +360,7 @@ export function useLocViewModel(
           setErrorMessage(
             '결과를 저장하지 못했습니다. 아래 점수를 기록해 주세요.',
           );
-          setAssessmentState('ASSESSMENT_COMPLETE');
+          dispatch({ type: 'ASSESSMENT_FINISHED' });
         }
       })();
     } else {
@@ -360,7 +369,7 @@ export function useLocViewModel(
       setCurrentTrialNumber(nextTrialNumber);
 
       interTrialTimeoutIdRef.current = setTimeout(() => {
-        setAssessmentState('TTS_PLAYING');
+        dispatch({ type: 'NEXT_TRIAL' });
       }, INTER_TRIAL_DELAY_MS);
     }
 
@@ -394,18 +403,17 @@ export function useLocViewModel(
           await conductTrialUseCaseRef.current.playInstruction(trialNumber);
         if (isStale()) return;
         audioEndTimeRef.current = audioEndTime;
-        setAssessmentState('AWAITING_TOUCH');
+        dispatch({ type: 'TTS_READY' });
       } catch (err) {
         if (isStale()) return;
         console.error('[LOC] TTS 재생 실패', { trialNumber, error: err });
         setErrorMessage(mapErrorToMessage(err));
         // 이미 끝낸 시도가 있으면 IDLE로 돌리지 않는다 — IDLE에서 다시
         // 시작하면 누적 시도가 초기화된다. 중단 화면에서 이어 듣게 한다.
-        setAssessmentState(
-          accumulatedTrialsRef.current.length > 0
-            ? 'TRIAL_INTERRUPTED'
-            : 'IDLE',
-        );
+        dispatch({
+          type: 'TTS_FAILED',
+          hasTrials: accumulatedTrialsRef.current.length > 0,
+        });
       }
     })();
 
@@ -439,7 +447,7 @@ export function useLocViewModel(
     setTrialResults([]);
     setFinalScore(null);
     setErrorMessage(null);
-    setAssessmentState('TTS_PLAYING');
+    dispatch({ type: 'START' });
   }, []);
 
   /**
@@ -454,7 +462,7 @@ export function useLocViewModel(
     touchHandledRef.current = false;
     audioEndTimeRef.current = 0;
     setErrorMessage(null);
-    setAssessmentState('TTS_PLAYING');
+    dispatch({ type: 'RESUME' });
   }, []);
 
   /**
@@ -475,7 +483,7 @@ export function useLocViewModel(
       touchHandledRef.current = true;
       clearTouchTimeout();
       stopTimer();
-      setAssessmentState('TOUCH_DETECTED');
+      dispatch({ type: 'RESPONSE_REGISTERED' });
 
       // 측정 불가 시 판정을 통과시키는 사각형을 넘긴다.
       const effectiveBounds = bounds ?? {
@@ -540,7 +548,7 @@ export function useLocViewModel(
   /** 다음 검사로 진행 (ASSESSMENT_COMPLETE 상태에서 호출) */
   const proceedToNextAssessment = useCallback(() => {
     // onComplete 콜백은 ASSESSMENT_COMPLETE 진입 시 이미 호출됨
-    setAssessmentState('IDLE');
+    dispatch({ type: 'RESET' });
     setCurrentTrialNumber(1);
     currentTrialNumberRef.current = 1;
     setTrialResults([]);
