@@ -479,8 +479,11 @@ describe('useLocViewModel FSM 상태 전환 테스트', () => {
     }
   }, 15000);
 
-  it('12. 시도 제출(execute) 자체가 실패하면 IDLE로 복귀하고 errorMessage가 설정된다', async () => {
+  it('12. 첫 시도 제출(execute)이 실패하면 IDLE로 복귀하고 errorMessage가 설정된다', async () => {
     // eng-review에서 지적된 미테스트 가지: TOUCH_DETECTED + TRIAL_SUBMIT_FAILED → IDLE.
+    //
+    // **끝낸 시도가 없을 때만** 다룬다. 누적 시도가 있을 때 같은 실패가 나면
+    // 그 결과가 조용히 사라지는 문제가 따로 있다(TODO-118) — 아래 13번 테스트.
     mockExecute.mockRejectedValueOnce(new Error('저장소 연결 실패'));
 
     const { result } = renderLocViewModel();
@@ -497,6 +500,68 @@ describe('useLocViewModel FSM 상태 전환 테스트', () => {
     );
     expect(result.current.viewState.trialResults).toHaveLength(0);
   });
+
+  it('13. TODO-118(현재 동작 고정): 2번째 제출이 실패한 뒤 재시작하면 1번째 시도 결과가 사라진다', async () => {
+    // ⚠️ 이 테스트는 **올바른 동작이 아니라 현재(버그) 동작을 기록**한다.
+    //
+    // TRIAL_SUBMIT_FAILED가 IDLE로 가고, IDLE에서 startAssessment를 부르면
+    // accumulatedTrialsRef가 비워진다. 그래서 2·3번째 시도에서 제출이 실패하면
+    // 이미 채점된 앞선 시도가 조용히 사라진다. 임상 점수 손실이다(TODO-118).
+    //
+    // **재는 대상은 `viewState.trialResults`가 아니라 `accumulatedTrialsRef`다.**
+    // 화면용 `trialResults`는 재시작 때 `setTrialResults([])`로 비우는 게 설계라
+    // 그걸 보면 버그가 있든 없든 항상 0이다(12번 테스트가 걸렸던 함정).
+    // 누적 시도는 `execute(params, accumulatedTrials)`의 **두 번째 인자**로
+    // 흘러나오므로 그걸 관찰한다.
+    //
+    // **TODO-118을 고치면 이 테스트가 빨간불이 된다 — 그게 정상이다.**
+    // 그때 마지막 expect를 toHaveLength(1)로 바꾸고 이 주석을 지운다.
+    //
+    // 형제 경로인 TTS_FAILED는 hasTrials를 보고 TRIAL_INTERRUPTED로 보내
+    // 이미 시도를 지키고 있다(11번 테스트). 그 비대칭이 이 버그의 핵심이다.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    try {
+      mockExecute
+        .mockResolvedValueOnce({
+          trial: makeMockTrial({ trialNumber: 1, score: 1 }),
+          responseDTO: makeMockResponseDTO({ trialNumber: 1, score: 1, isComplete: false }),
+        })
+        .mockRejectedValueOnce(new Error('저장소 연결 실패'))
+        .mockResolvedValue({
+          trial: makeMockTrial({ trialNumber: 2, score: 1 }),
+          responseDTO: makeMockResponseDTO({ trialNumber: 2, score: 1, isComplete: false }),
+        });
+
+      const { result } = renderLocViewModel();
+
+      // 1번째 시도 완료 — 여기서 채점된 결과가 하나 쌓인다.
+      await act(async () => { await result.current.actions.startAssessment(); });
+      await waitFor(() => expect(result.current.viewState.assessmentState).toBe('AWAITING_TOUCH'), { timeout: 3000 });
+      await act(async () => { result.current.actions.handleAreaPointerDown(makePointerEvent()); });
+      await waitFor(() => expect(result.current.viewState.assessmentState).toBe('TRIAL_COMPLETE'), { timeout: 3000 });
+      expect(result.current.viewState.trialResults).toHaveLength(1);
+
+      // 700ms 뒤 2번째 시도 → 터치 → 제출 실패 → IDLE
+      await act(async () => { vi.advanceTimersByTime(700); await Promise.resolve(); });
+      await waitFor(() => expect(result.current.viewState.assessmentState).toBe('AWAITING_TOUCH'), { timeout: 3000 });
+      await act(async () => { result.current.actions.handleAreaPointerDown(makePointerEvent()); });
+      await waitFor(() => expect(result.current.viewState.assessmentState).toBe('IDLE'), { timeout: 3000 });
+
+      // IDLE 화면은 "검사를 시작할까요?"다. 검사자가 안내대로 시작을 누르면...
+      await act(async () => { await result.current.actions.startAssessment(); });
+      await waitFor(() => expect(result.current.viewState.assessmentState).toBe('AWAITING_TOUCH'), { timeout: 3000 });
+      await act(async () => { result.current.actions.handleAreaPointerDown(makePointerEvent()); });
+      await waitFor(() => expect(mockExecute).toHaveBeenCalledTimes(3), { timeout: 3000 });
+
+      // 재시작 뒤 첫 execute에 넘어간 누적 시도가 비어 있다 = 1번 시도가 사라졌다.
+      // TODO-118을 고치면 이 길이가 1이 되어 이 테스트가 빨간불이 된다.
+      const accumulatedOnRestart = mockExecute.mock.calls[2][1];
+      expect(accumulatedOnRestart).toHaveLength(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  }, 15000);
 });
 
 /**

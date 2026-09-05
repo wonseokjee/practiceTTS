@@ -77,17 +77,22 @@
 
 **What:** LOC 검사에서 시도 제출(`ConductLocTrialUseCase.execute()`)이 실패하면
 `useLocViewModel.ts`가 `TRIAL_SUBMIT_FAILED`를 dispatch해 `IDLE`로 돌아간다.
-그런데 `startAssessment`(같은 파일 431~451줄)는 `IDLE`에서 호출되면
+그런데 `startAssessment`(같은 파일, `IDLE` 가드 뒤)는 `IDLE`에서 호출되면
 `accumulatedTrialsRef.current = []`로 누적 시도를 통째로 비운다.
 
 **Why:** 2번째나 3번째 시도에서 이 실패가 나면, 이미 끝내고 채점된 앞선
 시도(들)가 검사자가 "검사 시작"을 다시 누르는 순간 조용히 사라진다.
 재검사는 학습효과로 반응시간이 짧아져 점수를 실제보다 좋게 만든다 —
-`useLocViewModel.ts` 352~361줄의 주석이 검사 완료 단계에서 똑같은 이유로
-`IDLE`을 피하는 것과 정확히 같은 문제인데, 시도 단위 실패 경로에는 그
-처리가 없다. 게다가 `mapErrorToMessage`(108~109줄, `STORAGE_FAILED` →
-"저장 실패. 계속 진행합니다.")가 실제로는 리셋되는데 "계속 진행"이라고
+`useLocViewModel.ts`의 검사 완료 실패 처리(`finishAssessmentUseCase` catch 블록)
+주석이 똑같은 이유로 `IDLE`을 피하는 것과 정확히 같은 문제인데, 시도 단위
+실패 경로에는 그 처리가 없다. 게다가 `mapErrorToMessage`의 `STORAGE_FAILED`
+분기("저장 실패. 계속 진행합니다.")가 실제로는 리셋되는데 "계속 진행"이라고
 말해 사용자에게 거짓 정보를 준다.
+
+**대칭이 깨진 곳:** `TTS_PLAYING + TTS_FAILED`는 `hasTrials`를 보고
+`TRIAL_INTERRUPTED`로 보내 누적 시도를 지키는데(`locSessionReducer.ts`),
+`TOUCH_DETECTED + TRIAL_SUBMIT_FAILED`에는 그 가드가 없다. 고칠 때 이
+비대칭을 기준으로 삼으면 된다.
 
 **어떻게 발견했나:** `/plan-eng-review`로 PR #145(TODO-001 useReducer
 리팩토링)를 리뷰하던 중 outside voice(Claude 서브에이전트, Codex는 사용
@@ -103,10 +108,13 @@
 가정하는데, 이 경로는 이미 터치까지 끝난 뒤(제출만 실패)라 "다시 듣기"가
 맞는 복구인지부터 설계가 필요하다. 기계적 치환이 아니라 실제 동작
 변경이다.
-**Context:** 재현: `mockExecute`가 2번째 시도에서만 reject하게 설정한 뒤
-`useLocViewModel.test.ts` 12번 테스트(TODO-118 처리 시 추가/수정 예정)로
-확인 가능. 관련 상태: `TOUCH_DETECTED + TRIAL_SUBMIT_FAILED → IDLE`
-(`locSessionReducer.ts`).
+**Context:** 재현: `mockExecute`가 **2번째** 시도에서만 reject하게 하고,
+`IDLE`로 떨어진 뒤 `startAssessment()`를 다시 부르면 1번째 시도 결과가
+사라지는 것을 확인할 수 있다. **`useLocViewModel.test.ts`의 12번 테스트는
+이걸 재현하지 못한다** — 첫 시도에서만 실패시키므로 `trialResults`가 0인
+것이 버그와 무관하게 참이다(리듀서 가지만 덮는다). 다중 시도 회귀
+테스트는 TODO-118을 고칠 때 같이 써야 한다. 관련 상태:
+`TOUCH_DETECTED + TRIAL_SUBMIT_FAILED → IDLE`(`locSessionReducer.ts`).
 **Depends on / blocked by:** 없음. TODO-001과 별개로 독립적으로 처리 가능.
 
 ### 이 문서를 믿을 때 주의할 것
