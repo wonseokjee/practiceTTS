@@ -67,9 +67,11 @@
 
 ### 그 다음 후보
 
-| | 내용 | 크기 |
-|---|---|---|
-| TODO-001 `useLocViewModel` | useReducer 리팩토링. 동작은 그대로 | 작음 |
+~~TODO-001 `useLocViewModel` — useReducer 리팩토링~~ — **완료(이 PR).** 예전
+"완료" 표시는 거짓이었다 — `locSessionReducer.ts` 자체가 없었고 훅은 여전히
+`useState`+7개 ref로 된 옛 FSM이었다(TODO-102와 같은 문서 드리프트). 크기
+추정("작음")도 틀렸다 — 실제로는 601줄 훅 + 823줄 테스트짜리 임상 검사(LOC,
+각성 수준 측정)였다. 상세는 아래 TODO-001 절 참고.
 
 ### 이 문서를 믿을 때 주의할 것
 
@@ -489,14 +491,37 @@ practice에는 없다). 약국·소방서·경찰서의 SVG·사진은 파일째
 
 ## LOC_feature_plan 브랜치 리뷰 (2026-03-28)
 
-### TODO-001: useLocViewModel → useReducer 기반 Reducer로 리팩토링
+### ~~TODO-001: useLocViewModel → useReducer 기반 Reducer로 리팩토링~~ — 진짜로 완료 (2026-09-05)
 
 **What:** `useLocViewModel.ts`의 FSM을 SentComp/WordComp와 동일한 `useReducer` Reducer 패턴으로 교체
 **Why:** SentComp는 `sentCompSessionReducer.ts`, WordComp는 `wordCompSessionReducer.ts`를 사용하지만 LOC만 `useState` + 7개 ref로 FSM을 직접 구현. 코드베이스 협업 시 두 가지 FSM 패턴 파악 부담.
-**Pros:** 코드베이스 전체 일관성 확보. 다음 검사 구현 시 Reducer 패턴을 표준으로 적용 가능.
-**Cons:** 현재 FSM은 완전 동작 중 + 테스트 65/65 통과. 리팩토링 후 회귀 테스트 통과 여부 확인 필요.
-**Context:** SentComp/WordComp의 Reducer 패턴을 먼저 분석하여 공통 Reducer 구조 설계 후 LOC에 적용. `useLocViewModel.test.ts` 10개 테스트가 리팩토링 안전망 역할.
-**Depends on:** ✅ 완료 — 이번 PR(LOC_feature_plan)에서 `locSessionReducer.ts` 신규 생성 + `useLocViewModel.ts` 전면 재작성으로 구현 완료. 88/88 테스트 통과.
+
+**여기 있던 "✅ 완료" 표시는 거짓이었다.** 코드를 열어 보니 `locSessionReducer.ts`
+파일 자체가 없었고, `useLocViewModel.ts`는 여전히 `useState`+7개 ref로 FSM을
+직접 구현하고 있었다(TODO-102와 같은 종류의 문서 드리프트 — 다른 PR 작업
+중에 이 항목을 손대지 않은 채 "완료"만 남았다). 크기 추정("작음")도 틀렸다 —
+실제로는 601줄 훅을 823줄 테스트(24개)로 지키는, 각성 수준을 재는 임상 검사
+(LOC)였다.
+
+**실제로 한 일:** SentComp/WordComp는 상태마다 페이로드(`audioEndTimestamp`,
+`replayCount`)를 날라야 해서 판별 유니온(`{ type, ...payload }`)을 쓰지만,
+LOC는 시도별 데이터(오디오 종료 시각, 터치 좌표, 누적 시도)를 전부 ref가
+따로 들고 있어 상태 자체엔 실을 페이로드가 없다. 그래서 `LocAssessmentState`
+문자열 유니온은 그대로 두고(`LocScreen.tsx`가 이미 문자열로 비교하므로 화면
+쪽을 안 건드려도 된다), `locSessionReducer.ts`에 순수 `(state, action) =>
+state` 전이 함수만 새로 만들어 13곳의 `setAssessmentState(...)` 호출을
+`dispatch({ type: ... })`로 바꿨다. 다른 상태(trialResults, finalScore,
+currentTrialNumber, errorMessage)와 ref는 전혀 안 건드렸다 — SentComp가
+`submittedResults`/`score`를 리듀서 밖에 남겨 두는 것과 같은 원칙이다.
+
+**검증:** 기존 `useLocViewModel.test.ts` 24개를 한 줄도 안 고치고 그대로
+통과시켰다(이게 안전망 역할을 했다는 뜻). 리듀서 한 분기(`TTS_READY` →
+`AWAITING_TOUCH`)를 일부러 `IDLE`로 부러뜨려 24개 중 20개가 즉시 실패하는
+것도 확인한 뒤 되돌렸다 — 테스트가 실제로 이 전이를 재고 있다는 증거.
+`tsc`·`eslint` 둘 다 깨끗.
+
+**Depends on:** 완료(2026-09-05, 이 PR). `locSessionReducer.ts` 신규 +
+`useLocViewModel.ts`의 FSM 전이 부분만 교체. 24/24 테스트 통과(고치지 않음).
 
 ---
 
