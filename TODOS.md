@@ -67,11 +67,55 @@
 
 ### 그 다음 후보
 
-~~TODO-001 `useLocViewModel` — useReducer 리팩토링~~ — **완료(이 PR).** 예전
+~~TODO-001 `useLocViewModel` — useReducer 리팩토링~~ — **완료(#145).** 예전
 "완료" 표시는 거짓이었다 — `locSessionReducer.ts` 자체가 없었고 훅은 여전히
 `useState`+7개 ref로 된 옛 FSM이었다(TODO-102와 같은 문서 드리프트). 크기
 추정("작음")도 틀렸다 — 실제로는 601줄 훅 + 823줄 테스트짜리 임상 검사(LOC,
 각성 수준 측정)였다. 상세는 아래 TODO-001 절 참고.
+
+### TODO-118: TRIAL_SUBMIT_FAILED가 IDLE로 가면 이미 끝낸 시도가 조용히 지워진다
+
+**What:** LOC 검사에서 시도 제출(`ConductLocTrialUseCase.execute()`)이 실패하면
+`useLocViewModel.ts`가 `TRIAL_SUBMIT_FAILED`를 dispatch해 `IDLE`로 돌아간다.
+그런데 `startAssessment`(같은 파일, `IDLE` 가드 뒤)는 `IDLE`에서 호출되면
+`accumulatedTrialsRef.current = []`로 누적 시도를 통째로 비운다.
+
+**Why:** 2번째나 3번째 시도에서 이 실패가 나면, 이미 끝내고 채점된 앞선
+시도(들)가 검사자가 "검사 시작"을 다시 누르는 순간 조용히 사라진다.
+재검사는 학습효과로 반응시간이 짧아져 점수를 실제보다 좋게 만든다 —
+`useLocViewModel.ts`의 검사 완료 실패 처리(`finishAssessmentUseCase` catch 블록)
+주석이 똑같은 이유로 `IDLE`을 피하는 것과 정확히 같은 문제인데, 시도 단위
+실패 경로에는 그 처리가 없다. 게다가 `mapErrorToMessage`의 `STORAGE_FAILED`
+분기("저장 실패. 계속 진행합니다.")가 실제로는 리셋되는데 "계속 진행"이라고
+말해 사용자에게 거짓 정보를 준다.
+
+**대칭이 깨진 곳:** `TTS_PLAYING + TTS_FAILED`는 `hasTrials`를 보고
+`TRIAL_INTERRUPTED`로 보내 누적 시도를 지키는데(`locSessionReducer.ts`),
+`TOUCH_DETECTED + TRIAL_SUBMIT_FAILED`에는 그 가드가 없다. 고칠 때 이
+비대칭을 기준으로 삼으면 된다.
+
+**어떻게 발견했나:** `/plan-eng-review`로 PR #145(TODO-001 useReducer
+리팩토링)를 리뷰하던 중 outside voice(Claude 서브에이전트, Codex는 사용
+한도 초과로 대체)가 찾았다. 원래부터 있던 버그이고 이 PR이 만든 게
+아니다 — 예전 `useState` 코드도 같은 자리에서 똑같이 `setAssessmentState('IDLE')`을
+불렀다.
+
+**Pros:** 임상 데이터 무결성. 검사자가 재시작 버튼 하나로 완료된 시도를
+날리는 사고를 막는다.
+**Cons:** `TRIAL_SUBMIT_FAILED`를 `IDLE` 대신 `TRIAL_INTERRUPTED`로 보내려면
+— (a) 실패한 시도 자체를 재시도할지, 건너뛸지 결정해야 하고 (b)
+`resumeInterruptedTrial`이 지금은 "같은 시도를 처음부터 다시 듣는다"만
+가정하는데, 이 경로는 이미 터치까지 끝난 뒤(제출만 실패)라 "다시 듣기"가
+맞는 복구인지부터 설계가 필요하다. 기계적 치환이 아니라 실제 동작
+변경이다.
+**Context:** 재현: `mockExecute`가 **2번째** 시도에서만 reject하게 하고,
+`IDLE`로 떨어진 뒤 `startAssessment()`를 다시 부르면 1번째 시도 결과가
+사라지는 것을 확인할 수 있다. **`useLocViewModel.test.ts`의 12번 테스트는
+이걸 재현하지 못한다** — 첫 시도에서만 실패시키므로 `trialResults`가 0인
+것이 버그와 무관하게 참이다(리듀서 가지만 덮는다). 다중 시도 회귀
+테스트는 TODO-118을 고칠 때 같이 써야 한다. 관련 상태:
+`TOUCH_DETECTED + TRIAL_SUBMIT_FAILED → IDLE`(`locSessionReducer.ts`).
+**Depends on / blocked by:** 없음. TODO-001과 별개로 독립적으로 처리 가능.
 
 ### 이 문서를 믿을 때 주의할 것
 

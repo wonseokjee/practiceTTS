@@ -9,6 +9,10 @@
  * FSM 상태 전이:
  *   IDLE → TTS_PLAYING → AWAITING_TOUCH → TOUCH_DETECTED → TRIAL_COMPLETE
  *   TRIAL_COMPLETE → TTS_PLAYING (다음 시도) | ASSESSMENT_COMPLETE (완료)
+ *   (TTS_PLAYING | AWAITING_TOUCH | TRIAL_COMPLETE) → TRIAL_INTERRUPTED (화면 이탈)
+ *   TTS_PLAYING → TRIAL_INTERRUPTED (TTS 실패 + 이미 끝낸 시도가 있을 때)
+ *   TRIAL_INTERRUPTED → TTS_PLAYING (다시 듣기)
+ *   전이 전체 표는 locSessionReducer.ts 주석에 있다.
  *
  * 핵심 규칙:
  * - TTS_PLAYING 상태에서만 AWAITING_TOUCH로 전이
