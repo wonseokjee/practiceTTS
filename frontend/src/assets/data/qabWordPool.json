@@ -1,6 +1,6 @@
 {
  "version": 1,
- "totalItems": 103,
+ "totalItems": 116,
  "items": [
   {
    "itemId": "qw_001",
@@ -3088,6 +3088,396 @@
      "choiceId": "qw_119_c4",
      "label": "사탕",
      "imageUrl": "/assets/images/wordComp/candy.svg",
+     "isCorrect": false
+    }
+   ]
+  },
+  {
+   "itemId": "qw_120",
+   "targetWord": "냄비",
+   "choices": [
+    {
+     "choiceId": "qw_120_c1",
+     "label": "냄비",
+     "imageUrl": "/assets/images/wordComp/pot.svg",
+     "isCorrect": true
+    },
+    {
+     "choiceId": "qw_120_c2",
+     "label": "비행기",
+     "imageUrl": "/assets/images/wordComp/airplane.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_120_c3",
+     "label": "자동차",
+     "imageUrl": "/assets/images/wordComp/car.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_120_c4",
+     "label": "망치",
+     "imageUrl": "/assets/images/wordComp/hammer.svg",
+     "isCorrect": false
+    }
+   ]
+  },
+  {
+   "itemId": "qw_121",
+   "targetWord": "오리",
+   "choices": [
+    {
+     "choiceId": "qw_121_c1",
+     "label": "오리",
+     "imageUrl": "/assets/images/wordComp/duck.svg",
+     "isCorrect": true
+    },
+    {
+     "choiceId": "qw_121_c2",
+     "label": "자전거",
+     "imageUrl": "/assets/images/wordComp/bicycle.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_121_c3",
+     "label": "강아지",
+     "imageUrl": "/assets/images/wordComp/dog.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_121_c4",
+     "label": "우체통",
+     "imageUrl": "/assets/images/wordComp/mailbox.svg",
+     "isCorrect": false
+    }
+   ]
+  },
+  {
+   "itemId": "qw_122",
+   "targetWord": "달팽이",
+   "choices": [
+    {
+     "choiceId": "qw_122_c1",
+     "label": "달팽이",
+     "imageUrl": "/assets/images/wordComp/snail.svg",
+     "isCorrect": true
+    },
+    {
+     "choiceId": "qw_122_c2",
+     "label": "고양이",
+     "imageUrl": "/assets/images/wordComp/cat.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_122_c3",
+     "label": "모자",
+     "imageUrl": "/assets/images/wordComp/hat.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_122_c4",
+     "label": "텔레비전",
+     "imageUrl": "/assets/images/wordComp/television.svg",
+     "isCorrect": false
+    }
+   ]
+  },
+  {
+   "itemId": "qw_123",
+   "targetWord": "피자",
+   "choices": [
+    {
+     "choiceId": "qw_123_c1",
+     "label": "피자",
+     "imageUrl": "/assets/images/wordComp/pizza.svg",
+     "isCorrect": true
+    },
+    {
+     "choiceId": "qw_123_c2",
+     "label": "코끼리",
+     "imageUrl": "/assets/images/wordComp/elephant.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_123_c3",
+     "label": "멜론",
+     "imageUrl": "/assets/images/wordComp/melon.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_123_c4",
+     "label": "학생",
+     "imageUrl": "/assets/images/wordComp/student.svg",
+     "isCorrect": false
+    }
+   ]
+  },
+  {
+   "itemId": "qw_124",
+   "targetWord": "도넛",
+   "choices": [
+    {
+     "choiceId": "qw_124_c1",
+     "label": "도넛",
+     "imageUrl": "/assets/images/wordComp/doughnut.svg",
+     "isCorrect": true
+    },
+    {
+     "choiceId": "qw_124_c2",
+     "label": "주스",
+     "imageUrl": "/assets/images/wordComp/juice.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_124_c3",
+     "label": "돌",
+     "imageUrl": "/assets/images/wordComp/rock.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_124_c4",
+     "label": "나팔",
+     "imageUrl": "/assets/images/wordComp/trumpet.svg",
+     "isCorrect": false
+    }
+   ]
+  },
+  {
+   "itemId": "qw_125",
+   "targetWord": "야자수",
+   "choices": [
+    {
+     "choiceId": "qw_125_c1",
+     "label": "야자수",
+     "imageUrl": "/assets/images/wordComp/palm_tree.svg",
+     "isCorrect": true
+    },
+    {
+     "choiceId": "qw_125_c2",
+     "label": "우유",
+     "imageUrl": "/assets/images/wordComp/milk.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_125_c3",
+     "label": "호랑이",
+     "imageUrl": "/assets/images/wordComp/tiger.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_125_c4",
+     "label": "열쇠",
+     "imageUrl": "/assets/images/wordComp/key.svg",
+     "isCorrect": false
+    }
+   ]
+  },
+  {
+   "itemId": "qw_126",
+   "targetWord": "욕조",
+   "choices": [
+    {
+     "choiceId": "qw_126_c1",
+     "label": "욕조",
+     "imageUrl": "/assets/images/wordComp/bathtub.svg",
+     "isCorrect": true
+    },
+    {
+     "choiceId": "qw_126_c2",
+     "label": "가위",
+     "imageUrl": "/assets/images/wordComp/scissors.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_126_c3",
+     "label": "거북이",
+     "imageUrl": "/assets/images/wordComp/turtle.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_126_c4",
+     "label": "당근",
+     "imageUrl": "/assets/images/wordComp/carrot.svg",
+     "isCorrect": false
+    }
+   ]
+  },
+  {
+   "itemId": "qw_127",
+   "targetWord": "크레용",
+   "choices": [
+    {
+     "choiceId": "qw_127_c1",
+     "label": "크레용",
+     "imageUrl": "/assets/images/wordComp/crayon.svg",
+     "isCorrect": true
+    },
+    {
+     "choiceId": "qw_127_c2",
+     "label": "토마토",
+     "imageUrl": "/assets/images/wordComp/tomato.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_127_c3",
+     "label": "주전자",
+     "imageUrl": "/assets/images/wordComp/kettle.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_127_c4",
+     "label": "발",
+     "imageUrl": "/assets/images/wordComp/foot.svg",
+     "isCorrect": false
+    }
+   ]
+  },
+  {
+   "itemId": "qw_128",
+   "targetWord": "붓",
+   "choices": [
+    {
+     "choiceId": "qw_128_c1",
+     "label": "붓",
+     "imageUrl": "/assets/images/wordComp/paintbrush.svg",
+     "isCorrect": true
+    },
+    {
+     "choiceId": "qw_128_c2",
+     "label": "우산",
+     "imageUrl": "/assets/images/wordComp/umbrella.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_128_c3",
+     "label": "케이크",
+     "imageUrl": "/assets/images/wordComp/cake.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_128_c4",
+     "label": "소방관",
+     "imageUrl": "/assets/images/wordComp/firefighter.svg",
+     "isCorrect": false
+    }
+   ]
+  },
+  {
+   "itemId": "qw_129",
+   "targetWord": "경찰관",
+   "choices": [
+    {
+     "choiceId": "qw_129_c1",
+     "label": "경찰관",
+     "imageUrl": "/assets/images/wordComp/police_officer.svg",
+     "isCorrect": true
+    },
+    {
+     "choiceId": "qw_129_c2",
+     "label": "시계",
+     "imageUrl": "/assets/images/wordComp/clock.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_129_c3",
+     "label": "눈",
+     "imageUrl": "/assets/images/wordComp/eye.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_129_c4",
+     "label": "공장",
+     "imageUrl": "/assets/images/wordComp/factory.svg",
+     "isCorrect": false
+    }
+   ]
+  },
+  {
+   "itemId": "qw_130",
+   "targetWord": "전구",
+   "choices": [
+    {
+     "choiceId": "qw_130_c1",
+     "label": "전구",
+     "imageUrl": "/assets/images/wordComp/light_bulb.svg",
+     "isCorrect": true
+    },
+    {
+     "choiceId": "qw_130_c2",
+     "label": "선인장",
+     "imageUrl": "/assets/images/wordComp/cactus.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_130_c3",
+     "label": "비누",
+     "imageUrl": "/assets/images/wordComp/soap.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_130_c4",
+     "label": "샤워기",
+     "imageUrl": "/assets/images/wordComp/shower.svg",
+     "isCorrect": false
+    }
+   ]
+  },
+  {
+   "itemId": "qw_131",
+   "targetWord": "북",
+   "choices": [
+    {
+     "choiceId": "qw_131_c1",
+     "label": "북",
+     "imageUrl": "/assets/images/wordComp/drum.svg",
+     "isCorrect": true
+    },
+    {
+     "choiceId": "qw_131_c2",
+     "label": "귀",
+     "imageUrl": "/assets/images/wordComp/ear.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_131_c3",
+     "label": "성",
+     "imageUrl": "/assets/images/wordComp/castle.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_131_c4",
+     "label": "비행기",
+     "imageUrl": "/assets/images/wordComp/airplane.svg",
+     "isCorrect": false
+    }
+   ]
+  },
+  {
+   "itemId": "qw_132",
+   "targetWord": "연",
+   "choices": [
+    {
+     "choiceId": "qw_132_c1",
+     "label": "연",
+     "imageUrl": "/assets/images/wordComp/kite.svg",
+     "isCorrect": true
+    },
+    {
+     "choiceId": "qw_132_c2",
+     "label": "드라이버",
+     "imageUrl": "/assets/images/wordComp/screwdriver.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_132_c3",
+     "label": "손전등",
+     "imageUrl": "/assets/images/wordComp/flashlight.svg",
+     "isCorrect": false
+    },
+    {
+     "choiceId": "qw_132_c4",
+     "label": "자전거",
+     "imageUrl": "/assets/images/wordComp/bicycle.svg",
      "isCorrect": false
     }
    ]

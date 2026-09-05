@@ -898,8 +898,15 @@ describe('폴백·자극 종류를 기록한다 (D3·E11)', () => {
   });
 
   it('밴드보다 많이 요청하면 되돌림을 표시한다', () => {
-    // 글자 조합 3~4음절 후보는 28개다. 그보다 많이 달라고 하면 범위가 풀린다.
-    const items = pickSpellItems(40, 3);
+    // 요청 수를 **밴드 크기 + 1**로 구한다. 낱말 풀이 자랄 때마다(이 밴드가
+    // 27 → 39 → 43으로 늘었다) 고정 숫자를 박아 두면 그 숫자를 넘어서는
+    // 순간 이 테스트가 조용히 무의미해진다 — 실제로 여기서 한 번 그랬다.
+    const 음절수 = (s: string): number => Array.from(s.replace(/\s+/g, '')).length;
+    const 밴드 = masterWords().filter((w) => {
+      const n = 음절수(w.label);
+      return n >= 3 && n <= 4;
+    }).length;
+    const items = pickSpellItems(밴드 + 1, 3);
     expect(items.length).toBeGreaterThan(0);
     expect(items.every((it) => it.bandFallback === true)).toBe(true);
   });
