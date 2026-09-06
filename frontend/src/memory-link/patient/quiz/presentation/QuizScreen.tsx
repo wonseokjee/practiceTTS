@@ -213,6 +213,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
           showFeedback={showFeedback}
           result={dailyResult}
           onSubmit={(answer) => void actions.submitDaily(answer)}
+          onSkip={() => void actions.submitDaily('', true)}
         />
       ) : currentItem.kind === 'naming' ? (
         <PictureNamingItem
@@ -370,6 +371,8 @@ interface QuestionBodyProps {
   /** 채점 결과 (피드백 단계에서만 non-null) */
   result: AttemptResult | null;
   onSubmit: (answer: string) => void;
+  /** 보호자 넘어가기(TODO-48) — tile_arrange에서만 쓰인다. */
+  onSkip: () => void;
 }
 
 /**
@@ -383,6 +386,7 @@ function QuestionBody({
   showFeedback,
   result,
   onSubmit,
+  onSkip,
 }: QuestionBodyProps) {
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const correctAnswer = showFeedback ? (result?.correctAnswer ?? null) : null;
@@ -432,6 +436,7 @@ function QuestionBody({
         correctAnswer={correctAnswer}
         hintFirstChar={question.hintFirstChar}
         onSubmit={handleSubmit}
+        onSkip={onSkip}
       />
     );
   }

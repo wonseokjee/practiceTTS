@@ -7,6 +7,7 @@
 //  - 아무것도 안 고르면 제출 비활성화
 //  - hintFirstChar 표시
 //  - 피드백 단계: 정답/오답 색상 + 정답 노출, 타일 숨김
+//  - 넘어가기(TODO-48 1단계): 조합 여부와 무관하게 눌리고, 피드백 단계엔 숨김
 
 import { describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
@@ -23,6 +24,7 @@ interface Overrides {
 
 function renderInput(overrides?: Overrides) {
   const onSubmit = vi.fn();
+  const onSkip = vi.fn();
   render(
     <TileArrangeInput
       tiles={overrides?.tiles ?? ['다', '바', '산', '강']}
@@ -32,9 +34,10 @@ function renderInput(overrides?: Overrides) {
       correctAnswer={overrides?.correctAnswer ?? null}
       hintFirstChar={overrides?.hintFirstChar ?? null}
       onSubmit={onSubmit}
+      onSkip={onSkip}
     />,
   );
-  return { onSubmit };
+  return { onSubmit, onSkip };
 }
 
 describe('TileArrangeInput', () => {
@@ -91,6 +94,31 @@ describe('TileArrangeInput', () => {
     cleanup();
     renderInput({ hintFirstChar: '사', tiles: ['다', '바', '산'] });
     expect(screen.getByText(/첫 글자는/)).toHaveTextContent('사예요');
+  });
+
+  // TODO-48 1단계: 못 풀어도 세션이 막히지 않게 넘어가기를 뒀다.
+  it('보호자가 넘어가기로 통과시킬 수 있다', () => {
+    const { onSkip } = renderInput();
+
+    fireEvent.click(screen.getByLabelText('넘어가기'));
+
+    expect(onSkip).toHaveBeenCalled();
+  });
+
+  it('피드백 단계에서는 넘어가기를 감춘다', () => {
+    // 이미 채점된 문항을 도움받음으로 되돌릴 수 없어야 한다.
+    renderInput({ showFeedback: true, isCorrect: false, correctAnswer: '바다' });
+
+    expect(screen.queryByRole('button', { name: '넘어가기' })).toBeNull();
+  });
+
+  it('조합이 비어 있어도 넘어가기는 눌린다 — 제출과 달리 조건이 없다', () => {
+    const { onSkip } = renderInput();
+
+    expect(screen.getByRole('button', { name: '답 제출' })).toBeDisabled();
+    fireEvent.click(screen.getByLabelText('넘어가기'));
+
+    expect(onSkip).toHaveBeenCalled();
   });
 
   describe('피드백 단계', () => {

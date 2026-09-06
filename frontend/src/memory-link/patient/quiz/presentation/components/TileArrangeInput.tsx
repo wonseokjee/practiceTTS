@@ -21,6 +21,18 @@ interface TileArrangeInputProps {
   /** 첫 글자 힌트 (없으면 null) */
   hintFirstChar: string | null;
   onSubmit: (text: string) => void;
+  /**
+   * 보호자가 옆에서 통과 처리(막히지 않게, TODO-48 1단계). 생략하면(SpellTileItem
+   * 재사용 시) 버튼을 그리지 않는다 — SpellTileItem은 자기 넘어가기 버튼을
+   * 이 컴포넌트 바깥에 따로 두므로, 여기서도 그리면 버튼이 두 개가 된다.
+   *
+   * SpeechInput처럼 "정답을 그대로 제출"하지 못한다 — tile_arrange는 정답이
+   * 서버 전용(QuizQuestionPublic에 안 실림)이라 클라이언트가 애초에 모른다.
+   * 그래서 SpellTileItem·PictureNamingItem처럼 별도 콜백으로 부모(QuizScreen)에
+   * "넘어갔다"만 알리고, 정답 확인은 제출 응답(AttemptResult.correctAnswer)에
+   * 맡긴다.
+   */
+  onSkip?: () => void;
 }
 
 /** 선택된 타일 1개 (원본 타일 인덱스를 함께 보관해 중복 음절을 구분) */
@@ -38,6 +50,7 @@ export function TileArrangeInput({
   correctAnswer,
   hintFirstChar,
   onSubmit,
+  onSkip,
 }: TileArrangeInputProps) {
   const [picked, setPicked] = useState<PickedTile[]>([]);
 
@@ -170,6 +183,21 @@ export function TileArrangeInput({
           >
             제출
           </button>
+
+          {/* 보호자가 옆에서 통과 처리 — 조합이 안 돼도 막히지 않게(TODO-48).
+              onSkip이 없으면(SpellTileItem 재사용) 그리지 않는다 — 거긴 자기
+              버튼을 이 컴포넌트 바깥에 따로 둔다. */}
+          {onSkip && (
+            <button
+              type="button"
+              onClick={onSkip}
+              disabled={!isSelectable}
+              className="min-h-[48px] rounded-md bg-white px-5 py-3 text-base font-medium text-muted-sage ring-1 ring-inset ring-line-strong transition-colors duration-[180ms] ease-out hover:bg-canvas-hover disabled:cursor-not-allowed disabled:text-disabled-surface"
+              aria-label="넘어가기"
+            >
+              넘어가기
+            </button>
+          )}
         </>
       )}
     </div>
