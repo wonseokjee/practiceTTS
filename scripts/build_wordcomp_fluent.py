@@ -96,11 +96,89 @@ NEW.update({
 NEW.update({
     "castle": ("성", "place", "castle"),
 })
+# 2026-09-06 — #150(글자조합 신규 단어) 1차 배치 47개. qabWordPool.json이
+# 116→163으로 자라, 글자조합 2음절(56→81)·3~4음절(43→65) 두 밴드가 커진다
+# (목표 116엔 아직 못 닿는다 — 이 이슈는 소규모 배치로 여러 PR에 나눠 진행).
+#
+# 전부 Fluent 원본이고 auto_name이 스스로 맞힌다(EXPLICIT 넷만 보정 필요 —
+# 아래 참고). **육안 확인은 이 세션에서 SVG 렌더링 도구가 없어 못 했다** —
+# 과거에 물린 사례(호텔 24H처럼 글자가 박힌 아이콘, 화풍이 어긋난 손그림)에
+# 해당할 만한 후보는 미리 걸러냈지만, 병합 전 202px 카드로 한 번 훑어보는
+# 사람 확인이 필요하다.
+NEW.update({
+    # 동물 1
+    "octopus": ("문어", "animal", "octopus"),
+    # 음식 6
+    "kiwi": ("키위", "food", "kiwi-fruit"),
+    "egg": ("계란", "food", "egg"),
+    "eggplant": ("가지", "food", "eggplant"),
+    "beer": ("맥주", "food", "beer-mug"),
+    "peach": ("복숭아", "food", "peach"),
+    "coconut": ("코코넛", "food", "coconut"),
+    # 탈것 5 — 로켓·구급차·트랙터·택시·스쿠터로 기존 아홉에 더한다.
+    "rocket": ("로켓", "vehicle", "rocket"),
+    "taxi": ("택시", "vehicle", "taxi"),
+    "tractor": ("트랙터", "vehicle", "tractor"),
+    "ambulance": ("구급차", "vehicle", "ambulance"),
+    "scooter": ("스쿠터", "vehicle", "motor-scooter"),
+    # 하늘(신규 범주) 5 — 해·구름·무지개·눈송이·보름달로 다섯을 채운다.
+    "sun": ("태양", "sky", "sun"),
+    "cloud": ("구름", "sky", "cloud"),
+    "rainbow": ("무지개", "sky", "rainbow"),
+    "snowflake": ("눈송이", "sky", "snowflake"),
+    "full_moon": ("보름달", "sky", "full-moon"),
+    # 식물 2
+    "sprout": ("새싹", "plant", "seedling"),
+    "fallen_leaf": ("나뭇잎", "plant", "fallen-leaf"),
+    # 의료(신규 범주) 5 — 약·주사기·반창고·체온계·청진기로 다섯을 채운다.
+    "pill": ("알약", "medical", "pill"),
+    "syringe": ("주사기", "medical", "syringe"),
+    "bandage": ("반창고", "medical", "adhesive-bandage"),
+    "thermometer": ("체온계", "medical", "thermometer"),
+    "stethoscope": ("청진기", "medical", "stethoscope"),
+    # 연장 2 — 도끼·렌치로 기존 넷에 더한다.
+    "axe": ("도끼", "tool", "axe"),
+    "wrench": ("렌치", "tool", "wrench"),
+    # 가전 3 — 마이크·스피커·라디오로 기존 여섯에 더한다.
+    "microphone": ("마이크", "appliance", "microphone"),
+    "speaker": ("스피커", "appliance", "speaker-high-volume"),
+    "radio": ("라디오", "appliance", "radio"),
+    # 문구 1
+    "envelope": ("봉투", "stationery", "envelope"),
+    # 범주 없음 17 — 서로 한 무리가 아니거나, 무리를 이룰 만큼 남지 않았다
+    # (망원경·현미경은 과학 도구지만 둘뿐이라 범주로 묶지 않는다 — 범주가
+    # 너무 얇으면 의미 오답 3개를 그 안에서 못 채워 결국 무작위로 샌다).
+    "baby_bottle": ("젖병", None, "baby-bottle"),
+    "gift": ("선물", None, "wrapped-gift"),
+    "ribbon": ("리본", None, "ribbon"),
+    "crown": ("왕관", None, "crown"),
+    "ring": ("반지", None, "ring"),
+    "tent": ("텐트", None, "tent"),
+    "satellite": ("위성", None, "satellite"),
+    "gem": ("보석", None, "gem-stone"),
+    "desert": ("사막", None, "desert"),
+    "volcano": ("화산", None, "volcano"),
+    "shield": ("방패", None, "shield"),
+    "wood": ("통나무", None, "wood"),
+    "desert_island": ("무인도", None, "desert-island"),
+    "telescope": ("망원경", None, "telescope"),
+    "microscope": ("현미경", None, "microscope"),
+    "padlock": ("자물쇠", None, "locked"),
+    "trophy": ("트로피", None, "trophy"),
+})
 # 기존 단어의 이름 교정/명시(오매칭 방지). slug -> fluent-name
 EXPLICIT = {
     "flower": "tulip", "melon": "melon", "phone": "telephone",
     "piano": "musical-keyboard", "tree": "deciduous-tree", "turtle": "turtle",
     "orange": "tangerine",
+    # 2026-09-06 #150 배치 — auto_name이 잘못 짚은 넷을 보정한다.
+    # sprout/padlock은 애초에 못 찾았고(seedling/locked라는 이름을 모른다),
+    # scooter는 "kick-scooter"(어린이 발판)로, speaker는 "muted-speaker"
+    # (음소거 표시)로 잘못 짚었다 — 둘 다 NEW에 이미 올바른 이름을 직접
+    # 박아 뒀지만(위 참고), auto_name이 다른 곳에서 이 slug를 다시 볼 때도
+    # 같은 실수를 반복하지 않도록 여기에도 남긴다.
+    "sprout": "seedling", "padlock": "locked",
+    "scooter": "motor-scooter", "speaker": "speaker-high-volume",
     # 자동매칭이 애매한 것들 보정
     "juice": "cup-with-straw", "car": "automobile", "computer": "laptop",
     "book": "open-book", "bag": "backpack", "chick": "front-facing-baby-chick",
