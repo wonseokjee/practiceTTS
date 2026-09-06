@@ -378,11 +378,31 @@ export function useMixedQuizSession(
       // 합류시켰다(TODOS "QAB 세션" 절, 2026-09-02).
       //
       // 조회 실패는 무작위로 떨어질 뿐이라 세션은 그대로 진행한다.
+      //
+      // `days` 기본값(백엔드 30일)은 밴드 크기 39개 기준이다. 90일
+      // 무겹침(밴드당 116개)에 콘텐츠가 이미 닿은 검사만 90을 넘긴다 —
+      // 아직 자산이 모자란 검사(문장이해·이름대기, #150·#151)에 90을
+      // 넘기면 콘텐츠보다 창이 먼저 벌어져 되돌리기만 늘어난다
+      // (TODOS "QAB 90일" 절, 2026-09-06).
+      //   낱말(전체 116, 레벨 무관 단일 풀) · 따라말하기·읽기(다섯 레벨
+      //   전부 116 이상, #138~#143) — 90일로 올림.
+      //   문장이해(밴드당 40) · 이름대기(89) — 30일 유지.
+      const NINETY_DAY_SUBTESTS: ReadonlySet<QabSubtest> = new Set([
+        'word',
+        'repeat',
+        'reading',
+      ]);
       const fetchExclude = async (
         subtest: QabSubtest,
       ): Promise<Set<string> | undefined> => {
         try {
-          const recent = await apiRef.current.getRecentItems(subtest);
+          // days를 아예 안 넘기면(단일 인자 호출) 백엔드 기본값 30일 그대로다.
+          // 인자를 둘 다 항상 넘기면서 undefined를 쓰지 않는 이유는, 그러면
+          // 호출이 (subtest, undefined) 형태로 기록되어 기존 단일 인자
+          // 호출을 기대하는 곳과 어긋나기 때문이다.
+          const recent = NINETY_DAY_SUBTESTS.has(subtest)
+            ? await apiRef.current.getRecentItems(subtest, 90)
+            : await apiRef.current.getRecentItems(subtest);
           return new Set(recent.map((r) => r.itemRef));
         } catch {
           return undefined;
