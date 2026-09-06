@@ -194,7 +194,7 @@ export function QabProgressCard({
           const 표본부족 = it.total > 0 && it.assisted > it.total;
           return (
             <li key={it.subtest} className="flex flex-col gap-1">
-              <div className="flex items-baseline justify-between">
+              <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between">
                 <span className="flex items-center gap-2 text-sm font-medium text-ink-sage">
                   {label}
                   {IS_DRILL_BASED(it.subtest) ? (
