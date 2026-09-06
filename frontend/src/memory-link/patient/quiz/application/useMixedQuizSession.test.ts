@@ -1693,7 +1693,9 @@ describe('겹침 방지 — word·sentence·naming (spell의 재출제와 반대
     );
 
     await waitFor(() => expect(spy).toHaveBeenCalled());
-    expect(api.getRecentItems).toHaveBeenCalledWith('word');
+    // word는 90일 무겹침 콘텐츠(116개)에 닿아 있어 조회 창을 90일로 넘긴다
+    // (sentence·naming은 아직 30일 기본값 — 아래 두 테스트 참고).
+    expect(api.getRecentItems).toHaveBeenCalledWith('word', 90);
     const exclude = spy.mock.calls[0][2]?.exclude as Set<string>;
     expect([...exclude]).toEqual(['qw_001', 'qw_002']);
   });
@@ -1765,7 +1767,9 @@ describe('겹침 방지 — word·sentence·naming (spell의 재출제와 반대
       }),
     );
 
-    await waitFor(() => expect(api.getRecentItems).toHaveBeenCalledWith('word'));
+    await waitFor(() =>
+      expect(api.getRecentItems).toHaveBeenCalledWith('word', 90),
+    );
     expect(api.getRecentItems).not.toHaveBeenCalledWith('sentence');
     expect(api.getRecentItems).not.toHaveBeenCalledWith('naming');
   });
@@ -1813,7 +1817,8 @@ describe('겹침 방지 — repeat·reading (2026-09-02 합류, 원래 재출제
     );
 
     await waitFor(() => expect(spy).toHaveBeenCalled());
-    expect(api.getRecentItems).toHaveBeenCalledWith('repeat');
+    // repeat도 다섯 레벨 전부 116개에 닿아 있어 90일로 넘긴다.
+    expect(api.getRecentItems).toHaveBeenCalledWith('repeat', 90);
     const exclude = spy.mock.calls[0][2]?.exclude as Set<string>;
     expect([...exclude]).toEqual(['repeat_w3']);
   });
@@ -1839,7 +1844,8 @@ describe('겹침 방지 — repeat·reading (2026-09-02 합류, 원래 재출제
     );
 
     await waitFor(() => expect(spy).toHaveBeenCalled());
-    expect(api.getRecentItems).toHaveBeenCalledWith('reading');
+    // reading도 다섯 레벨 전부 116개 이상에 닿아 있어 90일로 넘긴다.
+    expect(api.getRecentItems).toHaveBeenCalledWith('reading', 90);
     const exclude = spy.mock.calls[0][2]?.exclude as Set<string>;
     expect([...exclude]).toEqual(['reading_2']);
   });
