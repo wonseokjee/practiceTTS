@@ -2,10 +2,10 @@
 
 ## 다음 할 일 (2026-09-06 기준)
 
-**#48 1단계 — `tile_arrange`에 넘어가기를 붙였다(이 PR).** 남은 건
+**#48 1~2단계 끝(1단계 #156 머지, 2단계 이 PR).** 남은 건 3단계(렌더러
+제거, 한 릴리스 관찰 후 — 지금 DB에 `tile_arrange` 0행이지만 아직 이르다)와
 문장이해·이름대기·글자조합 자산 확보(#149~#151, 사람이 사진을 직접 골라야
-해 별도 작업)와 #48 2~3단계(저장된 legacy 문항을 speech로 소급 전환 → 렌더러
-제거, 한 릴리스 관찰 후).
+해 별도 작업).
 
 **30일→90일 전환(PR #155, 머지됨)으로 낱말·따라말하기·읽기의 90일 콘텐츠가
 실제로 쓰이기 시작했다.**
@@ -15,7 +15,29 @@
 폴백해 임의 사용자 사칭이 가능했던 문제, /auth/login·/auth/register
 레이트리밋 부재. 둘 다 2026-03-28 첫 감사부터 지속되던 항목.
 
-### #48 1단계 — `TileArrangeInput`에 넘어가기를 붙인다 (이 PR)
+### #48 2단계 — 저장된 `tile_arrange` 문항을 `speech`로 소급 전환 (이 PR)
+
+마이그레이션 `RetireLegacyTileArrangeQuestions1785800000000`(M26). 생성
+규칙이 이미 fill_blank→speech인 것과 같은 규칙(`QuizService#diversifyRecall
+Questions`)을 저장된 legacy 문항에 소급 적용: `type: tile_arrange→speech`,
+`choices→NULL`, `prompt→고정 안내`, `hint_first_char→NULL`,
+`correct_answer`는 그대로(읽을 단어로 쓰인다). `id` 유지라
+`quiz_attempts.question_id` 참조가 안 깨진다.
+
+**dev DB에서 실제로 검증했다** — 마이그레이션 전 `tile_arrange` 3행·
+`speech` 1행 → 마이그레이션 후 `tile_arrange` 0행·`speech` 4행, 형태
+전부 일치. `quiz.service.spec.ts` 105개 통과.
+
+**down()은 의도적으로 거부한다(되돌리기 시도도 검증함).** up() 이후엔
+"원래 tile_arrange였던 speech 행"과 "정상 생성된 speech 행"이 구분
+불가능해진다(둘 다 같은 형태). `migration:revert`를 실제로 돌려 거부
+메시지와 롤백(빈 상태 변경 없음)을 확인했다 — 복구가 필요하면 DB
+백업(PITR)을 쓴다.
+
+**3단계(렌더러 제거)는 아직 하지 않는다.** 이슈의 진입 조건이 "한 릴리스
+관찰 후"인데, 이 마이그레이션은 이번 배포에서야 처음 적용된다.
+
+### #48 1단계 — `TileArrangeInput`에 넘어가기를 붙인다 (#156, 머지됨)
 
 **증상:** `tile_arrange`(레거시 기억 기반 문항, 생성은 #44로 이미 끊김)에
 넘어가기가 없어 2026-08-17 QA에서 세 번 다 진행이 막혔다. `speech`·`spell`·
