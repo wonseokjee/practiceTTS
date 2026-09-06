@@ -179,14 +179,20 @@ const NAMING_INSTRUCTION = '그림을 보고 이름을 말해주세요';
  * 아직 어디에도 없다.
  */
 export const WORD_CATEGORY: Record<string, string | null> = {
-  // 동물 17
+  // 동물 24 — 문어·복숭아·코코넛·구급차·스쿠터가 사람 검수(낱말카드
+  // 검수판)에서 물려(대체 아이콘이 없어 다른 단어로 갈았다) 여덟으로
+  // 채웠다. 사슴·판다는 태양·구름(하늘 범주)이 물린 자리를 채운다.
   bear: 'animal', butterfly: 'animal', cat: 'animal', chick: 'animal',
   dog: 'animal', elephant: 'animal', lion: 'animal', pig: 'animal',
   rabbit: 'animal', tiger: 'animal', turtle: 'animal', whale: 'animal',
   chipmunk: 'animal', monkey: 'animal',
   duck: 'animal', snail: 'animal',
-  octopus: 'animal',
-  // 음식 26
+  fox: 'animal', camel: 'animal', deer: 'animal', panda: 'animal',
+  hedgehog: 'animal', parrot: 'animal', kangaroo: 'animal', koala: 'animal',
+  // 음식 22 — 키위·복숭아·코코넛이 물려 빠졌다(대체는 위 동물로 갔다).
+  // 계란 자리는 세 번 갈았지만(nest-with-eggs→감자→새우) 전부 "단어와
+  // 이미지가 안 맞는다"로 물려, 결국 자리 자체를 없앴다(사용자 결정,
+  // 2026-09-06) — 풀은 163이 아니라 160개다.
   apple: 'food', banana: 'food', bread: 'food', cake: 'food', candy: 'food',
   carrot: 'food', corn: 'food', grape: 'food', juice: 'food', melon: 'food',
   milk: 'food', orange: 'food', strawberry: 'food', sweet_potato: 'food',
@@ -194,14 +200,12 @@ export const WORD_CATEGORY: Record<string, string | null> = {
   watermelon: 'food',
   hamburger: 'food',
   pizza: 'food', doughnut: 'food', cheese_wedge: 'food',
-  kiwi: 'food', egg: 'food', eggplant: 'food', beer: 'food',
-  peach: 'food', coconut: 'food',
-  // 탈것 14 — 로켓·구급차·트랙터·택시·스쿠터(#150 배치1)로 다섯을 더한다.
+  eggplant: 'food', beer: 'food',
+  // 탈것 11 — 구급차·스쿠터·트랙터가 물려(대체 아이콘이 없어) 빠졌다.
   airplane: 'vehicle', bicycle: 'vehicle', bus: 'vehicle', car: 'vehicle',
   ship: 'vehicle', train: 'vehicle', truck: 'vehicle',
   motorcycle: 'vehicle', helicopter: 'vehicle',
-  rocket: 'vehicle', taxi: 'vehicle', tractor: 'vehicle',
-  ambulance: 'vehicle', scooter: 'vehicle',
+  rocket: 'vehicle', taxi: 'vehicle',
   // 식물 8
   cactus: 'plant', flower: 'plant', mushroom: 'plant', tree: 'plant',
   sunflower: 'plant',
@@ -260,9 +264,10 @@ export const WORD_CATEGORY: Record<string, string | null> = {
   hammer: 'tool', ladder: 'tool', screwdriver: 'tool',
   flashlight: 'tool',
   axe: 'tool', wrench: 'tool',
-  // 하늘 5 (#150 배치1, 신규 범주) — 해·구름·무지개·눈송이·보름달.
-  sun: 'sky', cloud: 'sky', rainbow: 'sky', snowflake: 'sky',
-  full_moon: 'sky',
+  // "하늘" 범주(#150 배치1 신규)는 해체됐다. 해·구름·보름달이 차례로
+  // 물려(각각 사슴·판다·너구리로 대체) 무지개·눈송이 둘만 남았는데, 둘로는
+  // 의미 오답 3개를 못 채운다 — 아래 범주 없음으로 옮긴다.
+  //
   // 의료 5 (#150 배치1, 신규 범주) — 약·주사기·반창고·체온계·청진기.
   pill: 'medical', syringe: 'medical', bandage: 'medical',
   thermometer: 'medical', stethoscope: 'medical',
@@ -290,6 +295,7 @@ export const WORD_CATEGORY: Record<string, string | null> = {
   tent: null, satellite: null, gem: null, desert: null, volcano: null,
   shield: null, wood: null, desert_island: null, telescope: null,
   microscope: null, padlock: null, trophy: null,
+  rainbow: null, snowflake: null,
 };
 
 /**

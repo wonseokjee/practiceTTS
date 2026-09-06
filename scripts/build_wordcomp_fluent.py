@@ -96,38 +96,37 @@ NEW.update({
 NEW.update({
     "castle": ("성", "place", "castle"),
 })
-# 2026-09-06 — #150(글자조합 신규 단어) 1차 배치 47개. qabWordPool.json이
-# 116→163으로 자라, 글자조합 2음절(56→81)·3~4음절(43→65) 두 밴드가 커진다
-# (목표 116엔 아직 못 닿는다 — 이 이슈는 소규모 배치로 여러 PR에 나눠 진행).
+# 2026-09-06 — #150(글자조합 신규 단어) 1차 배치. 사람 검수(아래 여러
+# 교정 라운드) 끝에 44개가 살아남아 qabWordPool.json이 116→160으로
+# 자랐다(47개 중 3자리는 네 번 갈아도 안 맞아 그냥 없앴다 — 맨 아래
+# 참고). 글자조합 2음절(56→80)·3~4음절(43→63) 두 밴드가 커진다(목표
+# 116엔 아직 못 닿는다 — 이 이슈는 소규모 배치로 여러 PR에 나눠 진행).
 #
 # 전부 Fluent 원본이고 auto_name이 스스로 맞힌다(EXPLICIT 넷만 보정 필요 —
-# 아래 참고). **육안 확인은 이 세션에서 SVG 렌더링 도구가 없어 못 했다** —
-# 과거에 물린 사례(호텔 24H처럼 글자가 박힌 아이콘, 화풍이 어긋난 손그림)에
-# 해당할 만한 후보는 미리 걸러냈지만, 병합 전 202px 카드로 한 번 훑어보는
-# 사람 확인이 필요하다.
+# 아래 참고).
+#
+# **사람 검수(낱말카드 검수판, 같은 날)에서 아홉이 물렸다** — 문어·키위·
+# 태양·구름·복숭아·코코넛·구급차·스쿠터·트랙터. 전부 단독 아이콘이거나
+# (문어·키위·복숭아·코코넛·구급차·트랙터: Fluent에 그 낱말을 가리키는
+# 아이콘이 하나뿐이었다) 대안이 다른 개념이라(스쿠터의 유일한 대안
+# kick-scooter는 어린이 발판이다) 다른 단어로 바꿨다(교정 배치, 아래
+# 참고) — 이 자리는 그 흔적만 남긴다.
 NEW.update({
-    # 동물 1
-    "octopus": ("문어", "animal", "octopus"),
-    # 음식 6
-    "kiwi": ("키위", "food", "kiwi-fruit"),
-    "egg": ("계란", "food", "egg"),
+    # 음식 2 — 계란은 2차 검수에서 또 물려(같은 단어에 다른 아이콘도
+    # 안 통했다) 아예 다른 단어로 갔다(아래 2차 교정 배치 참고).
     "eggplant": ("가지", "food", "eggplant"),
     "beer": ("맥주", "food", "beer-mug"),
-    "peach": ("복숭아", "food", "peach"),
-    "coconut": ("코코넛", "food", "coconut"),
-    # 탈것 5 — 로켓·구급차·트랙터·택시·스쿠터로 기존 아홉에 더한다.
+    # 탈것 2 — 로켓·택시만 남는다(구급차·트랙터·스쿠터는 물려 아래 교정
+    # 배치의 동물·옷으로 대체됐다).
     "rocket": ("로켓", "vehicle", "rocket"),
     "taxi": ("택시", "vehicle", "taxi"),
-    "tractor": ("트랙터", "vehicle", "tractor"),
-    "ambulance": ("구급차", "vehicle", "ambulance"),
-    "scooter": ("스쿠터", "vehicle", "motor-scooter"),
-    # 하늘(신규 범주) 5 — 해·구름·무지개·눈송이·보름달로 다섯을 채운다.
-    "sun": ("태양", "sky", "sun"),
-    "cloud": ("구름", "sky", "cloud"),
-    "rainbow": ("무지개", "sky", "rainbow"),
-    "snowflake": ("눈송이", "sky", "snowflake"),
-    "full_moon": ("보름달", "sky", "full-moon"),
-    # 식물 2
+    # 무지개·눈송이만 남는다 — "하늘" 범주는 해체됐다. 태양·구름은 1차
+    # 교정으로, 보름달은 2차 교정으로 차례로 물려 둘만 남았고, 둘로는
+    # 의미 오답 3개를 못 채워 범주 자체를 접었다(QabItemBank.ts 참고).
+    "rainbow": ("무지개", None, "rainbow"),
+    "snowflake": ("눈송이", None, "snowflake"),
+    # 식물 2 — 새싹·나뭇잎 둘 다 사람 검수를 통과했다(나뭇잎은 같은 단어에
+    # 다른 아이콘으로 바뀌었다).
     "sprout": ("새싹", "plant", "seedling"),
     "fallen_leaf": ("나뭇잎", "plant", "fallen-leaf"),
     # 의료(신규 범주) 5 — 약·주사기·반창고·체온계·청진기로 다섯을 채운다.
@@ -166,19 +165,58 @@ NEW.update({
     "padlock": ("자물쇠", None, "locked"),
     "trophy": ("트로피", None, "trophy"),
 })
+# 2026-09-06(같은 날 두 번째) — #150 배치1 사람 검수 교정. 낱말카드
+# 검수판(아티팩트)에서 47개 중 처음엔 31개가 걸렸는데, 검수판 자체의
+# 렌더링 버그(안쪽 216×216 중첩 SVG에 바깥 CSS `width:100%`가 새어 들어가
+# 부모 300×300 기준으로 늘어나며 찌그러졌다 — 실제 앱은 <img> 태그로
+# 그려 이 버그와 무관하다) 때문에 상당수가 오탐이었다. `<img>`로 고쳐
+# 다시 47개 전부를 처음부터 재검수하니 **아홉만** 진짜로 문제였다:
+# 문어·키위·태양·구름·복숭아·코코넛·구급차·스쿠터·트랙터.
+#
+# Fluent 컬렉션을 다시 뒤졌지만 아홉 다 그 단어를 가리키는 아이콘이
+# 하나뿐이었거나(문어·키위·복숭아·코코넛·구급차·트랙터) 유일한 대안이
+# 다른 개념이라(스쿠터의 kick-scooter는 어린이 발판) 단어를 바꿨다.
+# 사슴·판다는 "하늘" 범주가 줄어드는 계기이기도 하다(해·구름이 빠졌다 —
+# 최종적으로는 보름달도 빠져 범주 자체가 해체됐다, 아래 2차 교정 참고).
+NEW.update({
+    "fox": ("여우", "animal", "fox"),
+    "camel": ("낙타", "animal", "camel"),
+    "deer": ("사슴", "animal", "deer"),
+    "panda": ("판다", "animal", "panda"),
+    "hedgehog": ("고슴도치", "animal", "hedgehog"),
+    "parrot": ("앵무새", "animal", "parrot"),
+    "kangaroo": ("캥거루", "animal", "kangaroo"),
+    "koala": ("코알라", "animal", "koala"),
+})
+# 2026-09-06(같은 날 세 번째) — 낱말카드 검수판으로 1차 교정 열한 개
+# (아홉 단어 교체 + 계란·보름달 아이콘 교체)를 다시 검수하니 셋이 또
+# 물렸다: 계란(새 아이콘 nest-with-eggs도 안 통함), 보름달(새 아이콘
+# full-moon-face도 안 통함), 목도리(교체한 단어 자체가 안 통함). 계란·
+# 보름달은 같은 단어의 대안 아이콘이 Fluent에 더 없어서(egg 계열은
+# egg·nest-with-eggs·eggplant뿐, moon 계열은 위상별 얼굴 이모지뿐) 아예
+# 다른 단어로 갔다. 목도리도 대안 아이콘이 없어(scarf 계열의 나머지는
+# 전부 사람이 두건을 쓴 모습이다) 다른 단어로 갔다.
+# 2026-09-06(같은 날 네 번째) — 2차 교정 셋(감자·너구리·코뿔소)도 전부
+# "단어와 이미지가 안 맞는다"로 물렸다. 3차로 새우·손목시계·아코디언까지
+# 시도했지만(실루엣이 뚜렷한 서로 다른 종류의 사물로 골랐다) 그것도
+# 안 통해, **결국 세 자리를 그냥 없앴다**(사용자 결정, 2026-09-06) —
+# qabWordPool.json이 163이 아니라 160개다. 한 단어가 네 번(계란→
+# nest-with-eggs→감자→새우) 자리를 갈아도 안 되면, 그 이상 찾는 것보다
+# 자리를 접는 게 낫다는 판단이다. 목도리(→코뿔소→손목시계)·보름달(→
+# full-moon-face→너구리→아코디언)도 같은 이유로 접었다.
 # 기존 단어의 이름 교정/명시(오매칭 방지). slug -> fluent-name
 EXPLICIT = {
     "flower": "tulip", "melon": "melon", "phone": "telephone",
     "piano": "musical-keyboard", "tree": "deciduous-tree", "turtle": "turtle",
     "orange": "tangerine",
-    # 2026-09-06 #150 배치 — auto_name이 잘못 짚은 넷을 보정한다.
-    # sprout/padlock은 애초에 못 찾았고(seedling/locked라는 이름을 모른다),
-    # scooter는 "kick-scooter"(어린이 발판)로, speaker는 "muted-speaker"
-    # (음소거 표시)로 잘못 짚었다 — 둘 다 NEW에 이미 올바른 이름을 직접
-    # 박아 뒀지만(위 참고), auto_name이 다른 곳에서 이 slug를 다시 볼 때도
-    # 같은 실수를 반복하지 않도록 여기에도 남긴다.
+    # 2026-09-06 #150 배치 — auto_name이 잘못 짚은 둘을 보정한다.
+    # sprout/padlock은 애초에 못 찾았다(seedling/locked라는 이름을 모른다).
+    # 둘 다 NEW에 이미 올바른 이름을 직접 박아 뒀지만(위 참고), auto_name이
+    # 다른 곳에서 이 slug를 다시 볼 때도 같은 실수를 반복하지 않도록
+    # 여기에도 남긴다. (scooter는 사람 검수로 빠졌다 — koala/코알라로
+    # 대체됐다. speaker는 그대로 남아 EXPLICIT이 필요 없다 — NEW에 이미
+    # 올바른 이름이 있다.)
     "sprout": "seedling", "padlock": "locked",
-    "scooter": "motor-scooter", "speaker": "speaker-high-volume",
     # 자동매칭이 애매한 것들 보정
     "juice": "cup-with-straw", "car": "automobile", "computer": "laptop",
     "book": "open-book", "bag": "backpack", "chick": "front-facing-baby-chick",
