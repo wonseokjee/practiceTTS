@@ -55,7 +55,7 @@ export function EntryListScreen({
   return (
     <div className="w-full">
       {/* 헤더 영역 */}
-      <h2 className="text-lg font-bold text-ink mb-4">기억 목록</h2>
+      <h2 className="mb-4 text-base font-bold text-ink-sage">기억 목록</h2>
 
       {/* 빈 상태 */}
       {entries.length === 0 ? (
