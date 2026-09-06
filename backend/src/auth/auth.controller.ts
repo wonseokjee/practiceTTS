@@ -36,6 +36,7 @@ import {
 } from './oauth-state';
 import { SocialAuthExceptionFilter } from './social-auth-exception.filter';
 import type { SocialProfile } from './social-profile';
+import { RateLimit, RateLimitGuard } from '../common/rate-limit.guard';
 
 /** 수동 연결 가능한 소셜 제공자 화이트리스트. */
 const LINKABLE_PROVIDERS: readonly SocialProviderName[] = ['kakao', 'google'];
@@ -81,8 +82,14 @@ export class AuthController {
   ) {}
 
   // POST /auth/register - 회원가입
+  //
+  // 로그인 전이라 req.user가 없다 — RateLimitGuard는 이 경우 IP로 떨어진다
+  // (common/rate-limit.guard.ts 참고). 정확한 사용자별 격리는 아니지만,
+  // 무제한 계정 생성보다는 낫다.
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
+  @UseGuards(RateLimitGuard)
+  @RateLimit({ name: 'auth-register', limit: 5, windowMs: 10 * 60_000 })
   async register(
     @Body() dto: RegisterDto,
   ): Promise<{ accessToken: string; user: UserResponse }> {
@@ -90,8 +97,13 @@ export class AuthController {
   }
 
   // POST /auth/login - 로그인
+  //
+  // 크리덴셜 스터핑·무차별 대입 방어. IP당 5분에 10회 — 정상 사용자가
+  // 비밀번호를 몇 번 틀리는 정도는 통과하고, 스크립트 대입은 막는다.
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(RateLimitGuard)
+  @RateLimit({ name: 'auth-login', limit: 10, windowMs: 5 * 60_000 })
   async login(
     @Body() dto: LoginDto,
   ): Promise<{ accessToken: string; user: UserResponse }> {

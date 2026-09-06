@@ -4,6 +4,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { User } from './entities/user.entity';
 import { AuthService, JwtPayload } from './auth.service';
+import { resolveJwtSecret } from './auth.constants';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -15,10 +16,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       // Authorization 헤더의 Bearer 토큰에서 JWT 추출
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>(
-        'JWT_SECRET',
-        'memorylink-secret-key-change-in-prod',
-      ),
+      secretOrKey: resolveJwtSecret(configService),
     });
   }
 
