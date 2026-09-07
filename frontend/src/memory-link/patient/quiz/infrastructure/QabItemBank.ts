@@ -189,6 +189,14 @@ export const WORD_CATEGORY: Record<string, string | null> = {
   duck: 'animal', snail: 'animal',
   fox: 'animal', camel: 'animal', deer: 'animal', panda: 'animal',
   hedgehog: 'animal', parrot: 'animal', kangaroo: 'animal', koala: 'animal',
+  // #150 배치2(2026-09-07) — 검수판 후보 110개 중 22개가 살아남았다(50%가
+  // 물렸다, 아래 범주 없음 절 참고).
+  ant: 'animal', shark: 'animal', lobster: 'animal', penguin: 'animal',
+  peacock: 'animal', swan: 'animal', giraffe: 'animal', wolf: 'animal',
+  seal_animal: 'animal', bat_animal: 'animal', squid: 'animal',
+  ladybug: 'animal', owl: 'animal', eagle: 'animal', flamingo: 'animal',
+  lizard: 'animal', frog: 'animal', dolphin: 'animal', gorilla: 'animal',
+  sloth: 'animal', unicorn: 'animal', dragon: 'animal',
   // 음식 22 — 키위·복숭아·코코넛이 물려 빠졌다(대체는 위 동물로 갔다).
   // 계란 자리는 세 번 갈았지만(nest-with-eggs→감자→새우) 전부 "단어와
   // 이미지가 안 맞는다"로 물려, 결국 자리 자체를 없앴다(사용자 결정,
@@ -201,11 +209,16 @@ export const WORD_CATEGORY: Record<string, string | null> = {
   hamburger: 'food',
   pizza: 'food', doughnut: 'food', cheese_wedge: 'food',
   eggplant: 'food', beer: 'food',
+  // #150 배치2 — 7개.
+  cherries: 'food', lemon: 'food', onion: 'food', garlic: 'food',
+  hot_pepper: 'food', avocado: 'food', chocolate_bar: 'food',
   // 탈것 11 — 구급차·스쿠터·트랙터가 물려(대체 아이콘이 없어) 빠졌다.
   airplane: 'vehicle', bicycle: 'vehicle', bus: 'vehicle', car: 'vehicle',
   ship: 'vehicle', train: 'vehicle', truck: 'vehicle',
   motorcycle: 'vehicle', helicopter: 'vehicle',
   rocket: 'vehicle', taxi: 'vehicle',
+  // #150 배치2 — 2개.
+  fire_engine: 'vehicle', police_car: 'vehicle',
   // 식물 8
   cactus: 'plant', flower: 'plant', mushroom: 'plant', tree: 'plant',
   sunflower: 'plant',
@@ -235,6 +248,9 @@ export const WORD_CATEGORY: Record<string, string | null> = {
   // 사람 5
   baby: 'person', doctor: 'person', firefighter: 'person', student: 'person',
   police_officer: 'person',
+  // #150 배치2 — 6개.
+  farmer: 'person', artist: 'person', boy: 'person', girl: 'person',
+  cook: 'person', teacher: 'person',
   // 옷·착용 5
   glasses: 'clothing', gloves: 'clothing', hat: 'clothing', shoes: 'clothing',
   socks: 'clothing',
@@ -243,6 +259,8 @@ export const WORD_CATEGORY: Record<string, string | null> = {
   scissors: 'stationery',
   crayon: 'stationery', paintbrush: 'stationery',
   envelope: 'stationery',
+  // #150 배치2 — 2개.
+  clip: 'stationery', pushpin: 'stationery',
   // 가구 3
   bed: 'furniture', chair: 'furniture', couch: 'furniture',
   // 악기 6
@@ -254,8 +272,9 @@ export const WORD_CATEGORY: Record<string, string | null> = {
   camera: 'appliance', headphone: 'appliance',
   light_bulb: 'appliance',
   microphone: 'appliance', speaker: 'appliance', radio: 'appliance',
-  // 주방 3
+  // 주방 4 — 젓가락(#150 배치2)으로 하나를 더한다.
   kettle: 'kitchen', knife: 'kitchen', spoon: 'kitchen',
+  chopsticks: 'kitchen',
   // 욕실 5
   mirror: 'bathroom', soap: 'bathroom', toothbrush: 'bathroom',
   shower: 'bathroom',
@@ -268,10 +287,16 @@ export const WORD_CATEGORY: Record<string, string | null> = {
   // 물려(각각 사슴·판다·너구리로 대체) 무지개·눈송이 둘만 남았는데, 둘로는
   // 의미 오답 3개를 못 채운다 — 아래 범주 없음으로 옮긴다.
   //
-  // 의료 5 (#150 배치1, 신규 범주) — 약·주사기·반창고·체온계·청진기.
+  // 의료 7 — 약·주사기·반창고·체온계·청진기(#150 배치1) + 목발·휠체어
+  // (#150 배치2).
   pill: 'medical', syringe: 'medical', bandage: 'medical',
   thermometer: 'medical', stethoscope: 'medical',
-  // ── 범주 없음 27 ──────────────────────────────────────────────
+  crutch: 'medical', wheelchair: 'medical',
+  // 스포츠 4 (#150 배치2, 신규 범주) — 검수판에서 축구공·탁구공·배구공·
+  // 프리스비·테니스공·스키가 물려 야구공·농구공·볼링공·스케이트만 남았다.
+  baseball: 'sport', basketball: 'sport', bowling: 'sport',
+  ice_skate: 'sport',
+  // ── 범주 없음 34 ──────────────────────────────────────────────
   //
   // 서로 한 무리가 아니다. 예전에는 이 아홉을 `'object'`라는 이름의 범주로 묶어
   // 뒀는데, 그러면 `buildControlledChoices`가 가방의 "같은 범주 오답"으로 풍선·돌을
@@ -296,6 +321,10 @@ export const WORD_CATEGORY: Record<string, string | null> = {
   shield: null, wood: null, desert_island: null, telescope: null,
   microscope: null, padlock: null, trophy: null,
   rainbow: null, snowflake: null,
+  // #150 배치2 — 7개. 주사위·곰인형은 "장난감"으로 묶으려 했지만 요요·
+  // 퍼즐이 물려 둘만 남아(최소 3개 미달) 범주 없음으로 접었다.
+  compass: null, traffic_light: null, fire_extinguisher: null,
+  sewing_needle: null, hand_fan: null, dice: null, teddy_bear: null,
 };
 
 /**

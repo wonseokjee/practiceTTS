@@ -204,6 +204,83 @@ NEW.update({
 # nest-with-eggs→감자→새우) 자리를 갈아도 안 되면, 그 이상 찾는 것보다
 # 자리를 접는 게 낫다는 판단이다. 목도리(→코뿔소→손목시계)·보름달(→
 # full-moon-face→너구리→아코디언)도 같은 이유로 접었다.
+# 2026-09-07 — #150 배치2. 검수판(같은 아티팩트, <img> 렌더링으로 고친
+# 뒤 처음부터 새로 만듦)에 후보 110개를 올려 사람이 직접 봤다 — 57개가
+# 물렸다(50%, 배치1보다 훨씬 높다 — 이번엔 렌더링 버그가 없었으니 진짜
+# 판정이다. 타코·스시·와플처럼 배치1 1차 초안에서 "흔하고 알아보기 쉽다"고
+# 판단했던 단어들도 이번엔 물렸다 — 아이콘 자체보다 "이 단어를 이 그림
+# 하나로 보여줘도 되는가"의 기준이 더 엄격했다는 뜻으로 읽는다). 53개가
+# 살아남아 qabWordPool.json이 160→213으로 자란다(글자조합 2음절
+# 80→104·3~4음절 63→92 — 목표 116엔 아직 못 닿는다, 다음 배치에서 계속).
+#
+# "장난감" 범주는 접었다 — 요요·퍼즐이 물려 주사위·곰인형 둘만 남았는데,
+# 최소 3개가 없으면 의미 오답을 못 채운다(QabItemBank.ts 참고). 둘 다
+# 범주 없음으로 둔다. "스포츠"는 새로 연다 — 야구공·농구공·볼링공·
+# 스케이트 넷이 살아남아 가구·주방과 같은 크기로 성립한다.
+NEW.update({
+    # 동물 22
+    "ant": ("개미", "animal", "ant"),
+    "shark": ("상어", "animal", "shark"),
+    "lobster": ("가재", "animal", "lobster"),
+    "penguin": ("펭귄", "animal", "penguin"),
+    "peacock": ("공작", "animal", "peacock"),
+    "swan": ("백조", "animal", "swan"),
+    "giraffe": ("기린", "animal", "giraffe"),
+    "wolf": ("늑대", "animal", "wolf"),
+    "seal_animal": ("물개", "animal", "seal"),
+    "bat_animal": ("박쥐", "animal", "bat"),
+    "squid": ("오징어", "animal", "squid"),
+    "ladybug": ("무당벌레", "animal", "lady-beetle"),
+    "owl": ("부엉이", "animal", "owl"),
+    "eagle": ("독수리", "animal", "eagle"),
+    "flamingo": ("플라밍고", "animal", "flamingo"),
+    "lizard": ("도마뱀", "animal", "lizard"),
+    "frog": ("개구리", "animal", "frog"),
+    "dolphin": ("돌고래", "animal", "dolphin"),
+    "gorilla": ("고릴라", "animal", "gorilla"),
+    "sloth": ("나무늘보", "animal", "sloth"),
+    "unicorn": ("유니콘", "animal", "unicorn"),
+    "dragon": ("드래곤", "animal", "dragon"),
+    # 음식 7
+    "cherries": ("체리", "food", "cherries"),
+    "lemon": ("레몬", "food", "lemon"),
+    "onion": ("양파", "food", "onion"),
+    "garlic": ("마늘", "food", "garlic"),
+    "hot_pepper": ("고추", "food", "hot-pepper"),
+    "avocado": ("아보카도", "food", "avocado"),
+    "chocolate_bar": ("초콜릿", "food", "chocolate-bar"),
+    # 탈것 2
+    "fire_engine": ("소방차", "vehicle", "fire-engine"),
+    "police_car": ("경찰차", "vehicle", "police-car"),
+    # 사람 6
+    "farmer": ("농부", "person", "farmer"),
+    "artist": ("화가", "person", "artist"),
+    "boy": ("소년", "person", "boy"),
+    "girl": ("소녀", "person", "girl"),
+    "cook": ("요리사", "person", "cook"),
+    "teacher": ("선생님", "person", "teacher"),
+    # 문구 2
+    "clip": ("클립", "stationery", "paperclip"),
+    "pushpin": ("압정", "stationery", "pushpin"),
+    # 주방 1
+    "chopsticks": ("젓가락", "kitchen", "chopsticks"),
+    # 의료 2
+    "crutch": ("목발", "medical", "crutch"),
+    "wheelchair": ("휠체어", "medical", "manual-wheelchair"),
+    # 스포츠 4(신규 범주)
+    "basketball": ("농구공", "sport", "basketball"),
+    "baseball": ("야구공", "sport", "baseball"),
+    "bowling": ("볼링공", "sport", "bowling"),
+    "ice_skate": ("스케이트", "sport", "ice-skate"),
+    # 범주 없음 7
+    "dice": ("주사위", None, "game-die"),
+    "teddy_bear": ("곰인형", None, "teddy-bear"),
+    "compass": ("나침반", None, "compass"),
+    "traffic_light": ("신호등", None, "vertical-traffic-light"),
+    "fire_extinguisher": ("소화기", None, "fire-extinguisher"),
+    "sewing_needle": ("바늘", None, "sewing-needle"),
+    "hand_fan": ("부채", None, "folding-hand-fan"),
+})
 # 기존 단어의 이름 교정/명시(오매칭 방지). slug -> fluent-name
 EXPLICIT = {
     "flower": "tulip", "melon": "melon", "phone": "telephone",
