@@ -16,6 +16,25 @@ interface ReplacePair {
 }
 
 /**
+ * 라틴 문자 이름의 **인접 금지** 문자류. 라틴 글자와 숫자만 막는다.
+ *
+ * `\b`를 쓰지 않는 이유가 둘이다.
+ * 1. `\b`의 기준은 `[A-Za-z0-9_]`라 **악센트가 든 이름이 아예 안 잡힌다** —
+ *    `José`는 끝의 `é`가 단어 문자가 아니라서 뒤쪽 경계가 서지 않는다.
+ * 2. 한글이 붙은 자리(`Al이랑`)는 **막으면 안 된다.** `\p{L}` 같은 넓은
+ *    부류로 막으면 조사가 붙은 실명을 놓쳐 그대로 LLM에 나간다.
+ */
+const LATIN_ADJACENT = '[\\p{Script=Latin}\\p{N}]';
+
+/** 이름이 라틴 문자로 시작/끝나는지 — 경계를 어느 쪽에 걸지 정한다. */
+const LATIN_CHAR = /\p{Script=Latin}/u;
+
+/** 실명은 사용자 입력이라 정규식 메타문자가 들어올 수 있다. */
+function escapeRegExp(literal: string): string {
+  return literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
  * 페르소나 컨텍스트 서비스.
  *
  * - 외부 LLM에는 실명 대신 관계/장소 토큰([아들1], [장소1])만 전달한다.
@@ -44,9 +63,7 @@ export class PersonaContextService implements IPersonaContextService {
     );
     let tokenized = baseContext;
     for (const { realName, token } of sorted) {
-      if (realName) {
-        tokenized = tokenized.split(realName).join(token);
-      }
+      tokenized = this.replaceName(tokenized, realName, token);
     }
 
     // 프로필 배경 부가 (직업·취미는 PII가 아니므로 평문, 고향은 장소 토큰)
@@ -68,9 +85,7 @@ export class PersonaContextService implements IPersonaContextService {
   private sealRealNames(context: string, pairs: ReplacePair[]): string {
     let sealed = context;
     for (const { realName, token } of pairs) {
-      if (realName && sealed.includes(realName)) {
-        sealed = sealed.split(realName).join(token);
-      }
+      sealed = this.replaceName(sealed, realName, token);
     }
     return sealed;
   }
@@ -97,9 +112,7 @@ export class PersonaContextService implements IPersonaContextService {
     );
     let tokenized = text;
     for (const { realName, token } of sorted) {
-      if (realName) {
-        tokenized = tokenized.split(realName).join(token);
-      }
+      tokenized = this.replaceName(tokenized, realName, token);
     }
     return tokenized;
   }
@@ -117,12 +130,53 @@ export class PersonaContextService implements IPersonaContextService {
     }
 
     // 미매핑 토큰 폴백: [라벨숫자] → 라벨 (토큰이 환자에게 노출되지 않게)
-    restored = restored.replace(/\[([가-힣]+?)\d*\]/g, '$1');
+    //
+    // 라벨 부류가 `[가-힣]`이면 **한국어 라벨만** 걸러진다. 토큰 라벨이
+    // 한국어가 아닌 순간(영어판의 `[Son1]`) 이 그물이 통과시켜 환자 화면에
+    // 토큰이 그대로 뜬다. 실어증 환자는 읽히지 않는 글을 자기 증상으로
+    // 받아들일 수 있어, 일반 앱의 "번역 누락"과 무게가 다르다.
+    restored = restored.replace(/\[(\p{L}+?)\d*\]/gu, '$1');
 
     return restored;
   }
 
   // ─── 내부 헬퍼 ────────────────────────────────────────────────
+
+  /**
+   * 텍스트에서 실명 하나를 찾아 토큰으로 바꾼다.
+   *
+   * **경계 규칙이 언어 설정이 아니라 이름의 문자 체계에 따라 갈린다.**
+   * 한국어 앱에 영어 이름이 등록될 수도, 영어 앱에 한국어 이름이 등록될 수도
+   * 있어서(다국어 가정) 로케일로 정하면 둘 중 하나가 틀린다.
+   *
+   * | 이름 | 규칙 | 왜 |
+   * |---|---|---|
+   * | 한글·한자 | **부분 문자열** | 조사가 낱말에 붙어(`철수랑`) 뒤에 경계가 없다. 경계를 요구하면 실명이 그대로 LLM에 나간다 |
+   * | 라틴 문자 | **경계 필수** | 부분 문자열이면 `Al`이 `Also`에 걸려 `[아들1]so`가 된다 |
+   *
+   * 경계는 이름의 **양 끝을 각각 보고** 건다 — `Al김`처럼 섞인 이름은 앞쪽만
+   * 라틴이라 앞에만 필요하다.
+   *
+   * 치환 문자열이 아니라 함수를 넘기는 이유: 토큰에 `$&` 같은 치환 패턴이
+   * 들어가도 그대로 박히게 하기 위해서다.
+   */
+  private replaceName(text: string, realName: string, token: string): string {
+    if (!realName) {
+      return text;
+    }
+    const startsLatin = LATIN_CHAR.test(realName.charAt(0));
+    const endsLatin = LATIN_CHAR.test(realName.charAt(realName.length - 1));
+    if (!startsLatin && !endsLatin) {
+      return text.split(realName).join(token);
+    }
+    const before = startsLatin ? `(?<!${LATIN_ADJACENT})` : '';
+    const after = endsLatin ? `(?!${LATIN_ADJACENT})` : '';
+    const pattern = new RegExp(
+      `${before}${escapeRegExp(realName)}${after}`,
+      'gu',
+    );
+    return text.replace(pattern, () => token);
+  }
 
   /**
    * 프로필 소스로부터 token↔realName 매핑을 결정적으로 생성한다.
