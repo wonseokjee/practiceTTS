@@ -115,11 +115,13 @@ describe('buildOddOneOutItems', () => {
    * 실제 뱅크로 한 번 돌려본다.
    *
    * 위 테스트들은 손으로 만든 낱말 목록을 쓴다. 진짜 데이터의 범주 분포는
-   * food 15 / animal 12 / object 9 / vehicle 7 / place 6 / body 6 /
-   * clothing 5 / person 4 / plant 4 / stationery 4 / furniture 3 /
-   * instrument 3 / appliance 3 / kitchen 3 / bathroom 3 / tool 3이고,
-   * 무리로 쓸 수 있는 범주는 object를 뺀 15개다(2026-08-22, 낱말 90개).
-   * 늘리는 방법은 `docs/ASSETS-NEEDED.md`에 있다.
+   * animal 46 / food 29 / vehicle 13 / person 11 / appliance 9 /
+   * stationery 9 / plant 8 / medical 7 / body 6 / instrument 6 /
+   * place 6 / tool 6 / bathroom 5 / clothing 5 / kitchen 4 / sport 4 /
+   * furniture 3 이고, 범주 없음(null)이 36이다.
+   * 무리로 쓸 수 있는 범주는 null을 뺀 **17개**다(2026-09-08, 낱말 213개 —
+   * #150 배치로 medical·sport가 늘었다). 늘리는 방법은
+   * `docs/ASSETS-NEEDED.md`에 있다.
    */
   it('그림이(또는 이름대기 사진이) 낱말을 안 보여 주던 장소 다섯은 어디에도 안 나온다', () => {
     // 도서관은 책 더미, 수영장은 헤엄치는 사람 — 아이콘이 건물이 아니었다. 실물
@@ -156,12 +158,15 @@ describe('buildOddOneOutItems', () => {
     }
   });
 
-  it('실제 낱말 풀에서 무리 범주가 15개 선다', () => {
-    // object 하나를 뺀 나머지 전부. 이 수가 곧 이 양식의 상한이다 —
+  it('실제 낱말 풀에서 무리 범주가 17개 선다', () => {
+    // 범주 없음(null)을 뺀 나머지 전부. 이 수가 곧 이 양식의 상한이다 —
     // 세션당 2문항을 범주 안 겹치게 뽑으므로 매일 해도 한참 안 겹친다.
+    //
+    // **이 수는 범주를 열 때마다 바뀐다.** 숫자만 고치지 말고 위 분포 주석도
+    // 함께 맞춘다 — 주석이 먼저 거짓이 되면 다음 사람이 그걸 믿는다.
     const items = buildOddOneOutItems(masterWords(), 99);
 
-    expect(items).toHaveLength(15);
+    expect(items).toHaveLength(17);
   });
 
   it('실제 낱말 풀에서도 기본 개수만큼 만들어진다', () => {

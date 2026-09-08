@@ -72,7 +72,11 @@ export interface Cue {
  * 의미 범주 → 단서 문장.
  *
  * 범주마다 자연스러운 말이 다르다. "동물에서 쓰는 물건이에요"는 말이 안 된다.
- * `WORD_CATEGORY`의 15개를 빠짐없이 덮는다(테스트가 지킨다).
+ * `WORD_CATEGORY`의 범주를 **빠짐없이** 덮는다(테스트가 지킨다).
+ *
+ * 범주를 새로 열면 여기에 문구를 함께 넣어야 한다. #150 배치에서
+ * medical·sport를 열면서 이걸 빠뜨려, 그 낱말들이 단서 1단계에서
+ * 의미 단서를 못 받았다 — 테스트가 그걸 잡았다.
  */
 const SEMANTIC_CUE: Record<string, string> = {
   animal: '동물이에요.',
@@ -84,9 +88,11 @@ const SEMANTIC_CUE: Record<string, string> = {
   furniture: '집에 두고 쓰는 가구예요.',
   instrument: '소리를 내는 악기예요.',
   kitchen: '부엌에서 쓰는 물건이에요.',
+  medical: '아플 때 쓰는 거예요.',
   person: '사람이에요.',
   place: '어딘가 가는 곳이에요.',
   plant: '자라나는 식물이에요.',
+  sport: '운동할 때 쓰는 거예요.',
   stationery: '글 쓸 때 쓰는 물건이에요.',
   tool: '무언가 고칠 때 쓰는 연장이에요.',
   vehicle: '타고 다니는 거예요.',
