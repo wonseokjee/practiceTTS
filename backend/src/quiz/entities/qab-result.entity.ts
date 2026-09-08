@@ -136,6 +136,23 @@ export class QabResult {
   @Column({ name: 'manifest_version', type: 'smallint', nullable: true })
   manifestVersion: number | null;
 
+  /**
+   * 이 수행이 어느 언어였는가 (M27, BCP 47).
+   *
+   * **환자 로케일이고, 세션 시작 시점에 고정한 값이다**(계획 §7-7 B). 문항을
+   * 푼 것은 환자이므로 보호자 로케일은 이 행에 뜻이 없다.
+   *
+   * 세션 중에 설정이 바뀌어도 이 행에는 시작할 때의 값이 박힌다. 한 세션에
+   * 두 언어가 섞이면 그 회차 점수가 서로 다른 자로 재서 합산한 값이 되는데,
+   * `pronunciationScore`가 문자열 폴백을 금지한 것과 같은 종류의 오염이다.
+   *
+   * **NULL이 정상이다** — `manifest_version`과 같은 모양이다. 컬럼 이전의 행,
+   * 값을 안 보내는 옛 클라이언트. 기본값을 채워 "모름"을 특정 로케일로 바꾸면
+   * 없는 사실이 생긴다.
+   */
+  @Column({ name: 'locale', type: 'varchar', length: 8, nullable: true })
+  locale: string | null;
+
   // ddk 감지 횟수 등 수치 지표(없으면 null)
   @Column({ name: 'metric', type: 'int', nullable: true })
   metric: number | null;
