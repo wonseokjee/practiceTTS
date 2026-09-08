@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
+import { User } from '../auth/entities/user.entity';
 import { MemoryEntry } from '../memory/entities/memory-entry.entity';
 import { PatientMemoryNote } from '../memory/entities/patient-memory-note.entity';
 import { FastApiClientService } from '../memory/services/fast-api-client.service';
@@ -73,6 +74,7 @@ describe('Quiz Phase 3 와이어링', () => {
           useValue: buildRepoMock(),
         },
         { provide: getRepositoryToken(QabResult), useValue: buildRepoMock() },
+        { provide: getRepositoryToken(User), useValue: buildRepoMock() },
         { provide: getRepositoryToken(SkillLevel), useValue: buildRepoMock() },
         {
           provide: getRepositoryToken(QabSessionCompletion),

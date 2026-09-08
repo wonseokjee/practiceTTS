@@ -5,6 +5,15 @@ import { MemoryEntry } from '../memory/entities/memory-entry.entity';
 import { PatientMemoryNote } from '../memory/entities/patient-memory-note.entity';
 import { FastApiClientService } from '../memory/services/fast-api-client.service';
 import { PersonaContextService } from '../profile/services/persona-context.service';
+import { User } from '../auth/entities/user.entity';
+import {
+  DEFAULT_TIMEZONE,
+  DEFAULT_WEEK_START,
+  dayBucket,
+  dayWindowStart,
+  weekBucket,
+  weekWindowStart,
+} from '../common/week-boundary';
 import { DEFAULT_QUIZ_DISTRIBUTION } from './constants/quiz-distribution';
 import { QuizSetSummaryDto } from './dto/quiz-set-summary.dto';
 import {
@@ -319,6 +328,8 @@ export class QuizService {
     private readonly quizBestScoreRepository: Repository<QuizBestScore>,
     @InjectRepository(QabResult)
     private readonly qabResultRepository: Repository<QabResult>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
     @InjectRepository(SkillLevel)
     private readonly skillLevelRepository: Repository<SkillLevel>,
     @InjectRepository(QabSessionCompletion)
@@ -1356,14 +1367,14 @@ export class QuizService {
     effectivePatientId: string,
     days = 14,
   ): Promise<string[]> {
+    const { timezone } = await this.timeAxisOf(effectivePatientId);
+    const bucket = dayBucket('r.created_at', timezone);
     const raw = await this.qabResultRepository
       .createQueryBuilder('r')
-      .select("to_char(date_trunc('day', r.created_at), 'YYYY-MM-DD')", 'day')
+      .select(`to_char(${bucket}, 'YYYY-MM-DD')`, 'day')
       .distinct(true)
       .where('r.patient_id = :pid', { pid: effectivePatientId })
-      .andWhere('r.created_at >= now() - make_interval(days => :days)', {
-        days,
-      })
+      .andWhere(`r.created_at >= ${dayWindowStart(timezone, days)}`)
       .orderBy('day', 'DESC')
       .getRawMany<{ day: string }>();
     return raw.map((x) => x.day);
@@ -1510,16 +1521,39 @@ export class QuizService {
     };
   }
 
+  /**
+   * 이 환자의 **시간 축** — 집계 버킷을 자르는 기준.
+   *
+   * 로케일이 아니라 타임존·주 시작 요일이다. 언어가 아니라 집계 축이라
+   * 환자·보호자로 나누지 않는다(M27).
+   *
+   * 행을 못 찾으면 컬럼 기본값과 같은 값으로 떨어진다 — 지금 동작 그대로다.
+   */
+  private async timeAxisOf(
+    patientId: string,
+  ): Promise<{ timezone: string; weekStart: number }> {
+    const user = await this.userRepository.findOne({
+      where: { id: patientId },
+      select: { id: true, timezone: true, weekStart: true },
+    });
+    return {
+      timezone: user?.timezone ?? DEFAULT_TIMEZONE,
+      weekStart: user?.weekStart ?? DEFAULT_WEEK_START,
+    };
+  }
+
   async getQabTrend(
     effectivePatientId: string,
     weeks = 8,
   ): Promise<QabTrendResult> {
+    // 버킷 식을 **한 번만** 만들어 select·where·groupBy·orderBy가 모두 그걸
+    // 쓴다. 예전엔 같은 식이 네 번 적혀 있어, 셋만 고쳐도 컴파일되고 테스트도
+    // 통과하면서 버킷과 창의 기준점이 어긋났다(첫 주·마지막 주가 반쪽).
+    const { timezone, weekStart } = await this.timeAxisOf(effectivePatientId);
+    const bucket = weekBucket('r.created_at', timezone, weekStart);
     const raw = await this.qabResultRepository
       .createQueryBuilder('r')
-      .select(
-        "to_char(date_trunc('week', r.created_at), 'YYYY-MM-DD')",
-        'weekStart',
-      )
+      .select(`to_char(${bucket}, 'YYYY-MM-DD')`, 'weekStart')
       .addSelect('r.subtest', 'subtest')
       // 채점 불가(unscored)는 오답이 아니라 측정 실패다. 분모에서 뺀다 —
       // 넣으면 Azure가 흔들린 날마다 환자가 퇴행한 것처럼 보인다.
@@ -1534,13 +1568,14 @@ export class QuizService {
       .addSelect('AVG(r.score)', 'avgScore')
       .addSelect('AVG(r.metric)', 'avgMetric')
       .where('r.patient_id = :pid', { pid: effectivePatientId })
+      // 창의 하한도 **같은 버킷 식**으로 만든다. 예전엔 `now()`를 서버 TZ·
+      // 월요일로 잘라 창과 버킷의 기준점이 달랐다.
       .andWhere(
-        "r.created_at >= date_trunc('week', now()) - make_interval(weeks => :weeks)",
-        { weeks: weeks - 1 },
+        `r.created_at >= ${weekWindowStart(timezone, weekStart, weeks - 1)}`,
       )
-      .groupBy("date_trunc('week', r.created_at)")
+      .groupBy(bucket)
       .addGroupBy('r.subtest')
-      .orderBy("date_trunc('week', r.created_at)", 'ASC')
+      .orderBy(bucket, 'ASC')
       .getRawMany<{
         weekStart: string;
         subtest: string;

@@ -1,5 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { User } from '../auth/entities/user.entity';
+import {
+  DEFAULT_TIMEZONE,
+  dayBucket,
+  dayWindowStart,
+} from '../common/week-boundary';
 import { Repository } from 'typeorm';
 import { PracticeResult } from './entities/practice-result.entity';
 import type { SubmitPracticeResultsDto } from './dto/submit-practice-results.dto';
@@ -23,6 +29,8 @@ export class PracticeService {
   constructor(
     @InjectRepository(PracticeResult)
     private readonly practiceResultRepository: Repository<PracticeResult>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) {}
 
   async saveResults(
@@ -85,18 +93,25 @@ export class PracticeService {
    * 이걸 안 내보내면 어르신이 하루 세 번 연습해도 보호자 화면에는 "오늘 아무것도
    * 안 했네"로 보인다. 측정 오염을 막으려다 참여 기록까지 지운 셈이 된다.
    *
-   * 날짜 경계는 DB 세션 타임존 기준 — 검사의 getActivityDays와 같은 규칙이라
-   * 두 목록을 합쳐도 경계가 어긋나지 않는다.
+   * 날짜 경계는 **환자 프로필의 타임존** 기준(M27) — 검사의 getActivityDays와
+   * 같은 규칙이라 두 목록을 합쳐도 경계가 어긋나지 않는다. 예전에는 서버 세션
+   * 타임존이라, 서버가 KST면 미국 환자의 '오늘'이 KST 자정으로 잘렸다.
    */
   async getActivityDays(patientId: string, days = 14): Promise<string[]> {
+    // 검사의 getActivityDays와 **같은 환자 행**에서 타임존을 읽는다. 두 목록을
+    // 합쳐도 경계가 어긋나지 않아야 한다는 아래 규칙이 이걸로 지켜진다.
+    const user = await this.userRepository.findOne({
+      where: { id: patientId },
+      select: { id: true, timezone: true },
+    });
+    const timezone = user?.timezone ?? DEFAULT_TIMEZONE;
+    const bucket = dayBucket('p.created_at', timezone);
     const raw = await this.practiceResultRepository
       .createQueryBuilder('p')
-      .select("to_char(date_trunc('day', p.created_at), 'YYYY-MM-DD')", 'day')
+      .select(`to_char(${bucket}, 'YYYY-MM-DD')`, 'day')
       .distinct(true)
       .where('p.patient_id = :pid', { pid: patientId })
-      .andWhere('p.created_at >= now() - make_interval(days => :days)', {
-        days,
-      })
+      .andWhere(`p.created_at >= ${dayWindowStart(timezone, days)}`)
       .orderBy('day', 'DESC')
       .getRawMany<{ day: string }>();
     return raw.map((x) => x.day);

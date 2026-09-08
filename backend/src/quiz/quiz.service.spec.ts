@@ -20,6 +20,7 @@ import { FastApiClientService } from '../memory/services/fast-api-client.service
 import { PersonaContextService } from '../profile/services/persona-context.service';
 import type { PersonaSource, ProfileService } from '../profile/profile.service';
 import { QuizService } from './quiz.service';
+import { User } from '../auth/entities/user.entity';
 import { SpecMock, specMock } from '../common/testing/spec-mock';
 
 /**
@@ -43,6 +44,8 @@ describe('QuizService', () => {
   const SESSION_TOKEN = 'session-uuid';
 
   let service: QuizService;
+
+  let userRepo: ReturnType<typeof buildRepoMock>;
 
   let quizSetRepo: ReturnType<typeof buildRepoMock>;
   let quizQuestionRepo: ReturnType<typeof buildRepoMock>;
@@ -161,6 +164,14 @@ describe('QuizService', () => {
     quizAttemptRepo = buildRepoMock();
     quizBestScoreRepo = buildRepoMock();
     qabResultRepo = buildRepoMock();
+    userRepo = buildRepoMock();
+    // 시간 축(M27). 컬럼 기본값과 같은 값이라 이 목이 있어도 기존 기대값은
+    // 그대로다 — 주 경계가 월요일·KST로 유지된다.
+    userRepo.findOne.mockResolvedValue({
+      id: PATIENT_ID,
+      timezone: 'Asia/Seoul',
+      weekStart: 1,
+    });
     skillLevelRepo = buildRepoMock();
     qabSessionCompletionRepo = buildRepoMock();
     memoryEntryRepo = buildRepoMock();
@@ -190,6 +201,7 @@ describe('QuizService', () => {
           useValue: quizBestScoreRepo,
         },
         { provide: getRepositoryToken(QabResult), useValue: qabResultRepo },
+        { provide: getRepositoryToken(User), useValue: userRepo },
         { provide: getRepositoryToken(SkillLevel), useValue: skillLevelRepo },
         {
           provide: getRepositoryToken(QabSessionCompletion),

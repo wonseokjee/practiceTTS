@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
 import { MemoryEntry } from '../memory/entities/memory-entry.entity';
 import { PatientMemoryNote } from '../memory/entities/patient-memory-note.entity';
+import { User } from '../auth/entities/user.entity';
 import { FastApiClientService } from '../memory/services/fast-api-client.service';
 import { QabResult } from './entities/qab-result.entity';
 import { QabSessionCompletion } from './entities/qab-session-completion.entity';
@@ -48,6 +49,8 @@ import { WishConversionClient } from './services/wish-conversion.client';
       SkillLevel,
       MemoryEntry,
       PatientMemoryNote,
+      // 집계 버킷을 자를 환자 타임존·주 시작 요일을 읽는다(M27, 읽기 전용).
+      User,
     ]),
     HttpModule,
     AuthModule,
