@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { memoryLinkApi } from '../../shared/MemoryLinkApi.js';
+import { CAREGIVER_LOCALE } from '../../../shared/domain/locale.js';
 
 interface ConsentState {
   consent: boolean;
@@ -120,7 +121,7 @@ export function SpeechConsentScreen({
               <span className="mt-0.5 block text-xs text-muted-sage">
                 {consent
                   ? state?.consentAt
-                    ? `${new Date(state.consentAt).toLocaleDateString('ko-KR')}부터 저장 중`
+                    ? `${new Date(state.consentAt).toLocaleDateString(CAREGIVER_LOCALE)}부터 저장 중`
                     : '저장 중'
                   : '지금은 저장하지 않습니다'}
               </span>

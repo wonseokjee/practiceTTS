@@ -24,6 +24,7 @@ import { aiServiceHeaders } from '../common/ai-service-auth';
 import { RateLimit, RateLimitGuard } from '../common/rate-limit.guard';
 import { EffectivePatientId } from '../auth/decorators/effective-patient-id.decorator';
 import { SpeechDataService } from '../speech-data/speech-data.service';
+import { DEFAULT_LOCALE } from '../common/locale';
 
 /** JwtAuthGuard가 주입한 사용자. 레이트리밋 키로 쓴다. */
 interface AuthenticatedRequest {
@@ -157,7 +158,7 @@ export class AiProxyController {
       }),
       audio.originalname || 'speech.wav',
     );
-    form.append('lang', body.lang ?? 'ko-KR');
+    form.append('lang', body.lang ?? DEFAULT_LOCALE);
 
     // candidates는 phrase hint다. 빠뜨리면 인식 정확도가 눈에 띄게 떨어지므로
     // 반드시 그대로 넘긴다(폼 필드가 하나면 문자열, 여럿이면 배열로 온다).
@@ -248,7 +249,7 @@ export class AiProxyController {
       }),
       audio.originalname || 'speech.wav',
     );
-    form.append('lang', body.lang ?? 'ko-KR');
+    form.append('lang', body.lang ?? DEFAULT_LOCALE);
     form.append('reference_text', reference);
 
     try {

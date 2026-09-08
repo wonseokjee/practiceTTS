@@ -14,6 +14,7 @@ import { WebSpeechSttService } from '../../infrastructure/SttService.js';
 import { WavRecorder } from './WavRecorder.js';
 import { QUIZ_RECORDING_LIMIT_MS } from './recordingLimits.js';
 import { API_BASE_URL, ML_TOKEN_KEY } from '../../../shared/MemoryLinkApi.js';
+import { DEFAULT_LOCALE } from '../../../../shared/domain/locale.js';
 
 /** 발화 캡처 결과 — 전사 + (있으면) Azure 음소 점수. */
 export interface SpeechCaptureResult {
@@ -74,7 +75,7 @@ export class ServerPronunciationService implements ISpeechCaptureService {
   private cancelled = false;
   private inflight: AbortController | null = null;
 
-  constructor(lang = 'ko-KR') {
+  constructor(lang: string = DEFAULT_LOCALE) {
     this.lang = lang;
   }
 
@@ -279,7 +280,7 @@ function canUseServerCapture(): boolean {
  * 서버 녹음 가능 → 발음 평가(음소 점수), 아니면 → WebSpeech(전사만).
  */
 export function createSpeechCaptureService(
-  lang = 'ko-KR',
+  lang: string = DEFAULT_LOCALE,
 ): ISpeechCaptureService {
   return canUseServerCapture()
     ? new ServerPronunciationService(lang)

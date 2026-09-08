@@ -9,6 +9,7 @@
 import type { ISttService } from '../../infrastructure/SttService.js';
 import { WebSpeechSttService } from '../../infrastructure/SttService.js';
 import { ServerSttService } from './ServerSttService.js';
+import { DEFAULT_LOCALE } from '../../../../shared/domain/locale.js';
 
 function canUseServerStt(): boolean {
   if (import.meta.env.VITE_USE_SERVER_STT === 'false') return false;
@@ -28,7 +29,7 @@ function canUseServerStt(): boolean {
  * 발화 인식용 STT 서비스를 생성한다.
  * 서버 STT가 가능하면 Azure(정확도↑, phrase hint), 아니면 Web Speech로 폴백.
  */
-export function createSttService(lang = 'ko-KR'): ISttService {
+export function createSttService(lang: string = DEFAULT_LOCALE): ISttService {
   return canUseServerStt()
     ? new ServerSttService(lang)
     : new WebSpeechSttService();
