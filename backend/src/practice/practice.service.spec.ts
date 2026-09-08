@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { User } from '../auth/entities/user.entity';
 import { PracticeResult } from './entities/practice-result.entity';
 import { PracticeService } from './practice.service';
 import type { SubmitPracticeResultsDto } from './dto/submit-practice-results.dto';
@@ -72,6 +73,18 @@ describe('PracticeService', () => {
       providers: [
         PracticeService,
         { provide: getRepositoryToken(PracticeResult), useValue: repoMock },
+        {
+          provide: getRepositoryToken(User),
+          useValue: {
+            findOne: jest.fn(() =>
+              Promise.resolve({
+                id: 'p1',
+                timezone: 'Asia/Seoul',
+                weekStart: 1,
+              }),
+            ),
+          },
+        },
       ],
     }).compile();
 
@@ -102,12 +115,22 @@ describe('PracticeService', () => {
     it('레벨 재계산·추세·완료 마커에 해당하는 부수효과가 없다', () => {
       // 검사 경로(QuizService.saveQabResults)는 저장 후 recomputeSkillLevel과
       // 완료 마커 upsert를 실행한다. 연습에는 그에 대응하는 것이 없어야 한다.
-      // 서비스가 주입받은 의존성이 practice_results 리포지토리 하나뿐이라는 사실이
-      // 곧 그 보증이다 — 다른 테이블에 닿을 손이 없다.
+      // 주입 목록이 그 보증이었다 — 다른 테이블에 닿을 손이 없어야 한다.
+      //
+      // M27로 `userRepository`가 늘었다. 활동 일자 버킷을 환자 타임존으로
+      // 자르려면 그 값을 읽어야 하기 때문인데, **읽기 전용이라 보증은 유지된다.**
+      // 아래에서 쓰기 메서드가 아예 없다는 것으로 그걸 못 박는다 — 목록만
+      // 넓히면 다음 사람이 여기에 쓰기를 얹어도 아무도 모른다.
       const injected = Reflect.ownKeys(service).filter(
         (k) => typeof k === 'string',
       );
-      expect(injected).toEqual(['practiceResultRepository']);
+      expect(injected).toEqual(['practiceResultRepository', 'userRepository']);
+
+      const userRepo = (service as unknown as Record<string, unknown>)
+        .userRepository as Record<string, unknown>;
+      for (const write of ['save', 'insert', 'update', 'upsert', 'delete']) {
+        expect(userRepo[write]).toBeUndefined();
+      }
     });
   });
 
@@ -299,15 +322,20 @@ describe('PracticeService', () => {
 
     let calls: { where: string[]; params: Record<string, unknown> };
     let distinctArgs: boolean[];
+    let selectArgs: string[];
     let rows: { day: string }[];
 
     beforeEach(async () => {
       calls = { where: [], params: {} };
       distinctArgs = [];
       rows = [{ day: '2026-08-21' }, { day: '2026-08-19' }];
+      selectArgs = [];
 
       const qb: SelectQbMock = {
-        select: jest.fn((): SelectQbMock => qb),
+        select: jest.fn((expr: string): SelectQbMock => {
+          selectArgs.push(expr);
+          return qb;
+        }),
         distinct: jest.fn((v: boolean): SelectQbMock => {
           distinctArgs.push(v);
           return qb;
@@ -337,6 +365,18 @@ describe('PracticeService', () => {
             provide: getRepositoryToken(PracticeResult),
             useValue: { createQueryBuilder: jest.fn(() => qb) },
           },
+          {
+            provide: getRepositoryToken(User),
+            useValue: {
+              findOne: jest.fn(() =>
+                Promise.resolve({
+                  id: 'p1',
+                  timezone: 'Asia/Seoul',
+                  weekStart: 1,
+                }),
+              ),
+            },
+          },
         ],
       }).compile();
       service = module.get<PracticeService>(PracticeService);
@@ -359,7 +399,24 @@ describe('PracticeService', () => {
 
     it('조회 기간은 인자를 따른다', async () => {
       await service.getActivityDays(PATIENT_ID, 30);
-      expect(calls.params.days).toBe(30);
+      // M27로 창의 하한이 파라미터가 아니라 **버킷과 같은 식**으로 들어간다.
+      // 예전에는 `now() - make_interval(days => :days)`라 버킷(서버 TZ 자정)과
+      // 기준점이 달랐다.
+      expect(
+        calls.where.some((c) => c.includes('make_interval(days => 30)')),
+      ).toBe(true);
+    });
+
+    it('일 버킷과 창의 하한이 같은 타임존으로 잘린다', async () => {
+      // 둘 중 하나만 환자 타임존이면 첫날·마지막날이 반쪽이 된다.
+      await service.getActivityDays(PATIENT_ID, 14);
+      const windowClause = calls.where.find((c) =>
+        c.includes('make_interval(days =>'),
+      );
+      expect(windowClause).toContain("AT TIME ZONE 'Asia/Seoul'");
+      expect(
+        selectArgs.some((a) => a.includes("AT TIME ZONE 'Asia/Seoul'")),
+      ).toBe(true);
     });
   });
 });
