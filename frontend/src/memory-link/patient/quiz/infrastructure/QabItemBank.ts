@@ -179,13 +179,28 @@ const NAMING_INSTRUCTION = '그림을 보고 이름을 말해주세요';
  * 아직 어디에도 없다.
  */
 export const WORD_CATEGORY: Record<string, string | null> = {
-  // 동물 16
+  // 동물 24 — 문어·복숭아·코코넛·구급차·스쿠터가 사람 검수(낱말카드
+  // 검수판)에서 물려(대체 아이콘이 없어 다른 단어로 갈았다) 여덟으로
+  // 채웠다. 사슴·판다는 태양·구름(하늘 범주)이 물린 자리를 채운다.
   bear: 'animal', butterfly: 'animal', cat: 'animal', chick: 'animal',
   dog: 'animal', elephant: 'animal', lion: 'animal', pig: 'animal',
   rabbit: 'animal', tiger: 'animal', turtle: 'animal', whale: 'animal',
   chipmunk: 'animal', monkey: 'animal',
   duck: 'animal', snail: 'animal',
-  // 음식 20
+  fox: 'animal', camel: 'animal', deer: 'animal', panda: 'animal',
+  hedgehog: 'animal', parrot: 'animal', kangaroo: 'animal', koala: 'animal',
+  // #150 배치2(2026-09-07) — 검수판 후보 110개 중 22개가 살아남았다(50%가
+  // 물렸다, 아래 범주 없음 절 참고).
+  ant: 'animal', shark: 'animal', lobster: 'animal', penguin: 'animal',
+  peacock: 'animal', swan: 'animal', giraffe: 'animal', wolf: 'animal',
+  seal_animal: 'animal', bat_animal: 'animal', squid: 'animal',
+  ladybug: 'animal', owl: 'animal', eagle: 'animal', flamingo: 'animal',
+  lizard: 'animal', frog: 'animal', dolphin: 'animal', gorilla: 'animal',
+  sloth: 'animal', unicorn: 'animal', dragon: 'animal',
+  // 음식 22 — 키위·복숭아·코코넛이 물려 빠졌다(대체는 위 동물로 갔다).
+  // 계란 자리는 세 번 갈았지만(nest-with-eggs→감자→새우) 전부 "단어와
+  // 이미지가 안 맞는다"로 물려, 결국 자리 자체를 없앴다(사용자 결정,
+  // 2026-09-06) — 풀은 163이 아니라 160개다.
   apple: 'food', banana: 'food', bread: 'food', cake: 'food', candy: 'food',
   carrot: 'food', corn: 'food', grape: 'food', juice: 'food', melon: 'food',
   milk: 'food', orange: 'food', strawberry: 'food', sweet_potato: 'food',
@@ -193,14 +208,22 @@ export const WORD_CATEGORY: Record<string, string | null> = {
   watermelon: 'food',
   hamburger: 'food',
   pizza: 'food', doughnut: 'food', cheese_wedge: 'food',
-  // 탈것 9
+  eggplant: 'food', beer: 'food',
+  // #150 배치2 — 7개.
+  cherries: 'food', lemon: 'food', onion: 'food', garlic: 'food',
+  hot_pepper: 'food', avocado: 'food', chocolate_bar: 'food',
+  // 탈것 11 — 구급차·스쿠터·트랙터가 물려(대체 아이콘이 없어) 빠졌다.
   airplane: 'vehicle', bicycle: 'vehicle', bus: 'vehicle', car: 'vehicle',
   ship: 'vehicle', train: 'vehicle', truck: 'vehicle',
   motorcycle: 'vehicle', helicopter: 'vehicle',
-  // 식물 6
+  rocket: 'vehicle', taxi: 'vehicle',
+  // #150 배치2 — 2개.
+  fire_engine: 'vehicle', police_car: 'vehicle',
+  // 식물 8
   cactus: 'plant', flower: 'plant', mushroom: 'plant', tree: 'plant',
   sunflower: 'plant',
   palm_tree: 'plant',
+  sprout: 'plant', fallen_leaf: 'plant',
   // 장소 6 — 여섯 다 **어떤 건물인지**가 그림에 보인다. 기둥과 화폐(은행), 시계탑과
   // 깃발(학교), 지붕과 문(집), 종탑 십자가(교회), 굴뚝(공장), 탑과 성벽(성).
   // 전부 Fluent 원본이다.
@@ -225,33 +248,55 @@ export const WORD_CATEGORY: Record<string, string | null> = {
   // 사람 5
   baby: 'person', doctor: 'person', firefighter: 'person', student: 'person',
   police_officer: 'person',
+  // #150 배치2 — 6개.
+  farmer: 'person', artist: 'person', boy: 'person', girl: 'person',
+  cook: 'person', teacher: 'person',
   // 옷·착용 5
   glasses: 'clothing', gloves: 'clothing', hat: 'clothing', shoes: 'clothing',
   socks: 'clothing',
-  // 문구 6
+  // 문구 7
   book: 'stationery', notebook: 'stationery', pencil: 'stationery',
   scissors: 'stationery',
   crayon: 'stationery', paintbrush: 'stationery',
+  envelope: 'stationery',
+  // #150 배치2 — 2개.
+  clip: 'stationery', pushpin: 'stationery',
   // 가구 3
   bed: 'furniture', chair: 'furniture', couch: 'furniture',
   // 악기 6
   guitar: 'instrument', piano: 'instrument', trumpet: 'instrument',
   violin: 'instrument', saxophone: 'instrument',
   drum: 'instrument',
-  // 가전 6
+  // 가전 9 — 마이크·스피커·라디오(#150 배치1)로 셋을 더한다.
   computer: 'appliance', phone: 'appliance', television: 'appliance',
   camera: 'appliance', headphone: 'appliance',
   light_bulb: 'appliance',
-  // 주방 3
+  microphone: 'appliance', speaker: 'appliance', radio: 'appliance',
+  // 주방 4 — 젓가락(#150 배치2)으로 하나를 더한다.
   kettle: 'kitchen', knife: 'kitchen', spoon: 'kitchen',
+  chopsticks: 'kitchen',
   // 욕실 5
   mirror: 'bathroom', soap: 'bathroom', toothbrush: 'bathroom',
   shower: 'bathroom',
   bathtub: 'bathroom',
-  // 연장 4
+  // 연장 6 — 도끼·렌치(#150 배치1)로 둘을 더한다.
   hammer: 'tool', ladder: 'tool', screwdriver: 'tool',
   flashlight: 'tool',
-  // ── 범주 없음 10 ──────────────────────────────────────────────
+  axe: 'tool', wrench: 'tool',
+  // "하늘" 범주(#150 배치1 신규)는 해체됐다. 해·구름·보름달이 차례로
+  // 물려(각각 사슴·판다·너구리로 대체) 무지개·눈송이 둘만 남았는데, 둘로는
+  // 의미 오답 3개를 못 채운다 — 아래 범주 없음으로 옮긴다.
+  //
+  // 의료 7 — 약·주사기·반창고·체온계·청진기(#150 배치1) + 목발·휠체어
+  // (#150 배치2).
+  pill: 'medical', syringe: 'medical', bandage: 'medical',
+  thermometer: 'medical', stethoscope: 'medical',
+  crutch: 'medical', wheelchair: 'medical',
+  // 스포츠 4 (#150 배치2, 신규 범주) — 검수판에서 축구공·탁구공·배구공·
+  // 프리스비·테니스공·스키가 물려 야구공·농구공·볼링공·스케이트만 남았다.
+  baseball: 'sport', basketball: 'sport', bowling: 'sport',
+  ice_skate: 'sport',
+  // ── 범주 없음 34 ──────────────────────────────────────────────
   //
   // 서로 한 무리가 아니다. 예전에는 이 아홉을 `'object'`라는 이름의 범주로 묶어
   // 뒀는데, 그러면 `buildControlledChoices`가 가방의 "같은 범주 오답"으로 풍선·돌을
@@ -264,9 +309,22 @@ export const WORD_CATEGORY: Record<string, string | null> = {
   // 음운 오답으로 넘어간다(아래 buildControlledChoices).
   //
   // "다른 하나"(연습)로는 얼마든지 쓴다 — 동물 셋 사이의 열쇠는 명확하다.
+  //
+  // #150 배치1(2026-09-06)로 열일곱이 늘었다. 망원경·현미경은 과학 도구
+  // 둘뿐이라 범주로 묶지 않았다 — 의미 오답 3개를 그 안에서 못 채우면
+  // 결국 다른 범주로 새는데, 그럴 바엔 처음부터 null이 정직하다.
   bag: null, balloon: null, basket: null, candle: null, kite: null,
   clock: null, key: null, mailbox: null, rock: null,
   umbrella: null,
+  baby_bottle: null, gift: null, ribbon: null, crown: null, ring: null,
+  tent: null, satellite: null, gem: null, desert: null, volcano: null,
+  shield: null, wood: null, desert_island: null, telescope: null,
+  microscope: null, padlock: null, trophy: null,
+  rainbow: null, snowflake: null,
+  // #150 배치2 — 7개. 주사위·곰인형은 "장난감"으로 묶으려 했지만 요요·
+  // 퍼즐이 물려 둘만 남아(최소 3개 미달) 범주 없음으로 접었다.
+  compass: null, traffic_light: null, fire_extinguisher: null,
+  sewing_needle: null, hand_fan: null, dice: null, teddy_bear: null,
 };
 
 /**
