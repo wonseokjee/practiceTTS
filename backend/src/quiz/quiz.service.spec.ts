@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { MemoryEntry } from '../memory/entities/memory-entry.entity';
@@ -2419,7 +2421,7 @@ describe('QuizService', () => {
       // 1순위: 최근에 틀린 문항(false < true)
       expect(qb.orderBy).toHaveBeenCalledWith('"lastCorrect"', 'ASC');
       // 2순위: 마지막 출제가 오래된 것 — 여기서 "간격"이 생긴다
-      expect(qb.addOrderBy).toHaveBeenCalledWith('max(r.created_at)', 'ASC');
+      expect(qb.addOrderBy).toHaveBeenCalledWith('max(r.answered_at)', 'ASC');
     });
 
     it('정오답을 최신 시도로 판정한다 — bool_or를 쓰지 않는다', async () => {
@@ -2436,10 +2438,33 @@ describe('QuizService', () => {
       const selected = qb.addSelect.mock.calls.map((c) => String(c[0]));
       expect(selected).toContainEqual(
         expect.stringContaining(
-          'array_agg(r.is_correct ORDER BY r.created_at DESC',
+          'array_agg(r.is_correct ORDER BY r.answered_at DESC',
         ),
       );
       expect(selected.join(' ')).not.toContain('bool_or');
+    });
+  });
+
+  describe('시간 축 — qab_results는 푼 시각(answered_at)으로 센다', () => {
+    /**
+     * 다섯 쿼리(활동일·재출제·세션 분모·주간 추이·요약 lastAt)가 전부
+     * `answered_at`을 봐야 한다. 하나라도 `created_at`에 남으면 **늦게 재전송된
+     * 결과가 그 쿼리에서만 도착한 날로 잡힌다** — 스트릭은 월요일인데 주간 추이는
+     * 수요일인 식으로, 화면끼리 어긋난다. 틀려도 숫자는 그럴듯하다.
+     *
+     * 목 쿼리빌더 테스트로는 이걸 못 잡는다(쿼리 문자열이 뭐든 목은 통과한다).
+     * 그래서 소스를 직접 본다. `r`은 이 파일에서 `qab_results`의 별칭이다.
+     */
+    const source = readFileSync(join(__dirname, 'quiz.service.ts'), 'utf8');
+
+    it('qab_results 집계에 created_at이 남아 있지 않다', () => {
+      expect(source.match(/\br\.created_at\b/g) ?? []).toEqual([]);
+    });
+
+    it('다섯 쿼리의 시간 축 10곳이 전부 answered_at이다', () => {
+      // 개수를 고정한다 — 쿼리를 지우거나 새로 붙이면 여기서 한 번 멈춰
+      // 시간 축을 다시 확인하게 한다.
+      expect(source.match(/\br\.answered_at\b/g)).toHaveLength(10);
     });
   });
 

@@ -1360,21 +1360,26 @@ export class QuizService {
    * 환자가 연습을 완료한 날짜 목록(최근 days일, YYYY-MM-DD). 솔로 홈의 스트릭에
    * 쓴다. 세션 하나라도 qab_results가 남으면 그 날을 "완료"로 본다.
    *
-   * 날짜 경계는 DB 세션 타임존 기준(getQabTrend의 주차 집계와 동일). 자정 근처
-   * 세션이 인접일로 잡힐 수 있으나 스트릭 표시엔 충분하다.
+   * 날짜 경계는 환자 타임존 기준(getQabTrend의 주차 집계와 같은 헬퍼).
+   *
+   * **시간 축은 `answered_at`(푼 시각)이다 — 이 파일의 `qab_results` 집계 전부.**
+   * `created_at`은 서버가 받은 시각이라, 늦게 재전송된 결과를 도착한 날로 센다
+   * (월요일에 푼 것이 수요일 스트릭이 된다). 기존 행은 M28이 `created_at`으로
+   * 소급해 결과가 전과 같다. 새 쿼리를 붙일 때도 이 컬럼을 쓸 것 — 스펙의
+   * "시간 축" 가드가 이 파일에서 받은 시각 컬럼을 찾으면 깬다.
    */
   async getActivityDays(
     effectivePatientId: string,
     days = 14,
   ): Promise<string[]> {
     const { timezone } = await this.timeAxisOf(effectivePatientId);
-    const bucket = dayBucket('r.created_at', timezone);
+    const bucket = dayBucket('r.answered_at', timezone);
     const raw = await this.qabResultRepository
       .createQueryBuilder('r')
       .select(`to_char(${bucket}, 'YYYY-MM-DD')`, 'day')
       .distinct(true)
       .where('r.patient_id = :pid', { pid: effectivePatientId })
-      .andWhere(`r.created_at >= ${dayWindowStart(timezone, days)}`)
+      .andWhere(`r.answered_at >= ${dayWindowStart(timezone, days)}`)
       .orderBy('day', 'DESC')
       .getRawMany<{ day: string }>();
     return raw.map((x) => x.day);
@@ -1407,10 +1412,10 @@ export class QuizService {
       // 그 낱말을 다시 내는 것이라, 정확히 거꾸로 동작했다.
       // 동시각 타이는 id DESC로 결정론(recomputeSkillLevel의 윈도우와 같은 규칙).
       .addSelect(
-        '(array_agg(r.is_correct ORDER BY r.created_at DESC, r.id DESC))[1]',
+        '(array_agg(r.is_correct ORDER BY r.answered_at DESC, r.id DESC))[1]',
         'lastCorrect',
       )
-      .addSelect('max(r.created_at)', 'lastAt')
+      .addSelect('max(r.answered_at)', 'lastAt')
       .where('r.patient_id = :pid', { pid: effectivePatientId })
       .andWhere('r.subtest = :subtest', { subtest })
       // 보호자가 넘어가기로 통과시킨 건 실력 근거가 아니라 재출제 판단에서 뺀다.
@@ -1418,14 +1423,14 @@ export class QuizService {
       // 채점 불가도 뺀다. is_correct가 false로 들어 있어 그대로 두면 "방금 틀린
       // 문항"으로 잡혀 재출제 1순위가 된다 — 실제로는 못 잰 것뿐이다.
       .andWhere('r.unscored = false')
-      .andWhere('r.created_at >= now() - make_interval(days => :days)', {
+      .andWhere('r.answered_at >= now() - make_interval(days => :days)', {
         days,
       })
       .groupBy('r.item_ref')
       // 1순위: 최근에 틀린 문항(false < true). 2순위: 마지막 출제가 오래된 것 —
       // 여기서 간격이 생긴다. 프론트는 이 순서를 재정렬 없이 우선순위로 쓴다.
       .orderBy('"lastCorrect"', 'ASC')
-      .addOrderBy('max(r.created_at)', 'ASC')
+      .addOrderBy('max(r.answered_at)', 'ASC')
       .limit(Math.max(1, Math.min(200, limit)))
       .getRawMany<{ itemRef: string; lastCorrect: boolean; lastAt: Date }>();
 
@@ -1467,7 +1472,7 @@ export class QuizService {
       .select('r.session_token', 'token')
       .addSelect('COUNT(*)', 'items')
       .where('r.patient_id = :pid', { pid })
-      .andWhere('r.created_at >= now() - make_interval(days => :days)', {
+      .andWhere('r.answered_at >= now() - make_interval(days => :days)', {
         days,
       })
       .groupBy('r.session_token')
@@ -1550,7 +1555,7 @@ export class QuizService {
     // 쓴다. 예전엔 같은 식이 네 번 적혀 있어, 셋만 고쳐도 컴파일되고 테스트도
     // 통과하면서 버킷과 창의 기준점이 어긋났다(첫 주·마지막 주가 반쪽).
     const { timezone, weekStart } = await this.timeAxisOf(effectivePatientId);
-    const bucket = weekBucket('r.created_at', timezone, weekStart);
+    const bucket = weekBucket('r.answered_at', timezone, weekStart);
     const raw = await this.qabResultRepository
       .createQueryBuilder('r')
       .select(`to_char(${bucket}, 'YYYY-MM-DD')`, 'weekStart')
@@ -1571,7 +1576,7 @@ export class QuizService {
       // 창의 하한도 **같은 버킷 식**으로 만든다. 예전엔 `now()`를 서버 TZ·
       // 월요일로 잘라 창과 버킷의 기준점이 달랐다.
       .andWhere(
-        `r.created_at >= ${weekWindowStart(timezone, weekStart, weeks - 1)}`,
+        `r.answered_at >= ${weekWindowStart(timezone, weekStart, weeks - 1)}`,
       )
       .groupBy(bucket)
       .addGroupBy('r.subtest')
@@ -1646,7 +1651,7 @@ export class QuizService {
       .addSelect('AVG(r.metric)', 'avgMetric')
       .addSelect('MAX(r.metric)', 'maxMetric')
       .addSelect('AVG(r.score)', 'avgScore')
-      .addSelect('MAX(r.created_at)', 'lastAt')
+      .addSelect('MAX(r.answered_at)', 'lastAt')
       // 오답 갈래 — total/correct와 같은 기준(도움받은 문항 제외)으로 센다.
       // foil_kind는 오답에만 값이 있으므로 is_correct 조건은 불필요하다.
       .addSelect(
