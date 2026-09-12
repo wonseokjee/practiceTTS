@@ -126,7 +126,14 @@ export class User {
    * 월요일 시작을 원할 수 있고, 집계가 서버에서 일어나므로 서버가 이 값을
    * 알아야 한다.
    */
-  @Column({ name: 'week_start', type: 'smallint', default: 1 })
+  // 주석도 M27과 글자 그대로 같아야 한다 — 다르면 `schema:log`가 지우자고 한다.
+  @Column({
+    name: 'week_start',
+    type: 'smallint',
+    default: 1,
+    comment:
+      '주 시작 요일. 0=일요일 … 6=토요일 (JS getDay·PG EXTRACT(DOW)와 같은 축)',
+  })
   weekStart: number;
 
   // 음성 데이터 보존 동의(opt-in). 자체 ASR 학습을 위해 환자 발화를 보존할지 여부.

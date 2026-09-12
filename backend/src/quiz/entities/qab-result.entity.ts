@@ -1,4 +1,5 @@
 import {
+  Check,
   Column,
   CreateDateColumn,
   Entity,
@@ -25,6 +26,17 @@ import type { QabFoilKind } from '../constants/qab-foil-kind';
 @Entity('qab_results')
 @Index('IDX_qab_results_patient_subtest', ['patientId', 'subtest'])
 @Index('IDX_qab_results_session', ['sessionToken'])
+// 시간 축 쿼리는 전부 `patient_id = ? AND answered_at >= ?` 모양이다(M28).
+@Index('IDX_qab_results_patient_answered', ['patientId', 'answeredAt'])
+// M25가 만든 것들. 엔티티에 선언이 빠져 `schema:log`가 지우자고 하고 있었다 —
+// 운영에서 synchronize가 켜지면 실제로 지워진다.
+@Index('IDX_qab_results_cue_level', ['patientId', 'createdAt'], {
+  where: '"cue_level" IS NOT NULL',
+})
+@Check(
+  'CHK_qab_results_cue_level',
+  '"cue_level" IS NULL OR ("cue_level" >= 0 AND "cue_level" <= 4)',
+)
 // 멱등성: 같은 세션의 같은 문항 결과는 1행만. 재시도/중복 제출 시 추세 이중 집계 방지.
 @Index(
   'UQ_qab_results_dedup',
@@ -199,6 +211,23 @@ export class QabResult {
 
   @Column({ name: 'presented_level', type: 'smallint', nullable: true })
   presentedLevel: number | null;
+
+  /**
+   * 문항을 **푼** 시각(M28). 시간 축(활동일·주간 추이·재출제)은 이 컬럼을 본다.
+   *
+   * `created_at`은 서버가 **받은** 시각이라, 늦게 재전송된 결과를 도착한 날로
+   * 센다. 기존 행은 `created_at`으로 소급했다 — 재전송 경로가 없던 시절이라
+   * 그게 사실이다.
+   *
+   * 제출 경로가 값을 안 넣으면 DB 기본값 `now()`가 들어간다(= `created_at`과
+   * 같은 트랜잭션 시각). 클라이언트가 시각을 보내는 계약은 후속이다(계획 OV-B).
+   */
+  @Column({
+    name: 'answered_at',
+    type: 'timestamptz',
+    default: () => 'now()',
+  })
+  answeredAt: Date;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
