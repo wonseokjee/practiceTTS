@@ -1150,6 +1150,157 @@ qw_026    false       (null)       08-17 15:24   ← 컬럼 이전의 옛 행
 `frontend/src/memory-link/patient/quiz/infrastructure/QabItemBank.ts`
 (`buildControlledChoices`)
 
+## [plan-ceo-review-2026-09-10] 영어판 실행 계획 CEO 리뷰
+
+`/plan-ceo-review` 결과 (SELECTIVE EXPANSION). 확장 후보 6개 중 4개 채택·2개 미룸,
+11개 섹션 발견 15건 전부 결정. Codex는 사용량 한도로 실패해 외부 의견은 Claude
+서브에이전트 `[single-model]`. 결정 전문은 `docs/history/20260906_EnglishLocalization_execution_plan.md`의
+「CEO 리뷰」 절(§13).
+
+**착수 조건(2026-09-12)**: 출시는 한국이 먼저다(첫 사용자 = 한국 거주 한국인). Phase 0과 계측·리포트·비용 상한·outbox·2단 배포는 한국 출시 전, Phase 1(i18n)·Phase 3(영어 문항)은 한국 코호트 수치 뒤. 외부 의견 12건 중 넷이 이 리뷰의 권장을 정정했다(기억 퀴즈 가드 3, 인메모리 상한, outbox 늦은 도착, D3 문구).
+
+### 이 리뷰가 정정한 것
+
+| | 내용 |
+|---|---|
+| **콘텐츠 물량** | 2,000대 → **1,100 안팎**. 밴드가 겹친다(`QabSpeechBank.test.ts:326`) — 한국어 699개(읽기 348 + 따라말하기 351)가 열 개 밴드를 전부 116 이상으로 채운다. 물량은 임계 경로가 아니다(2026-09-04~05 이틀에 353개). **영어 자연스러움 검수가 임계 경로다** |
+| **"critical gap 0"의 바닥** | 엔지니어링 리뷰는 주 경계 CRITICAL GAP을 "DB 통합 테스트"로 닫았다고 기록했지만 그 인프라가 **없다** — 테스트 DB·`.env.test`·DataSource를 여는 테스트 0건, 유일한 e2e는 스캐폴드 `Hello World`. 계획의 6-1A가 만든다 |
+
+### 남은 작업
+
+| | 내용 | 우선순위 |
+|---|---|---|
+| **zero-downtime-multi-instance** | 무중단 배포(다중 인스턴스 전환) | `P2` |
+| **stripe-and-founding-sunset** | 결제 + 창립 기간 종료 안내 + 유료 층 결정 | `P2` |
+
+### zero-downtime-multi-instance
+
+**What:** `DEPLOYMENT.md` 「다중 인스턴스로 띄우면 깨지는 것」 4가지(로컬 디스크 사진·TTS 캐시,
+인메모리 레이트리밋, 배타 리스 아닌 퀴즈 복구 claim)를 풀고 `ecosystem.config.cjs`의 `instances`를 올린다.
+
+**Why:** 단일 인스턴스의 정당화가 "치료 시간을 피해 배포하면 된다"인데, 한국 낮 = 미국 밤이라
+미국 사용자 한 명부터 피할 시간이 없다.
+
+**Context:** 절차는 `DEPLOYMENT.md` 표 1~4와 「마지막」 절에 이미 있다(`SingleInstanceGuard` 제거 포함).
+그전까지는 계획의 8-1B(기기 outbox 재전송)와 9-1A(2단 배포)가 배포 피해를 줄인다.
+CEO 리뷰 D5.5에서 미루기로 결정.
+
+**Effort:** L (human ~2-3주) → CC+gstack M (~3-5일)
+**Priority:** P2
+**Depends on:** 착수 조건 = **첫 미국 사용자 전**
+
+### stripe-and-founding-sunset
+
+**What:** Stripe USD + Stripe Tax 결제, 창립 기간 종료 D-30 안내 화면, 창립 기간 뒤 유료 층 모양
+(전액 구독 vs 환자 무료 + 보호자 기능 유료) 결정.
+
+**Why:** 창립 회원은 가입일부터 12개월 무료다(계획 10-1A). **첫 창립 가입일 + 12개월이 결제의 사실상
+마감**이다. 전략 문서 §3이 Stripe를 결정했지만 앱 코드엔 결제 0줄.
+
+**Context:** 유료 층 경계는 계획 8-2A의 `npm run report:retention` 코호트 유지율로 판단한다.
+10-1A 약속 문장이 "그동안 제공되는 모든 기능 무료(나중 유료 기능 포함)"라서 **창립 회원에겐 유료 기능
+구분을 소급할 수 없다.** 카드 등록을 받지 않았으므로 자동 청구가 아니라 전환 안내다.
+CEO 리뷰 D5.6·D5.final에서 미루기로 결정.
+
+**Effort:** M/L (human ~2-3주) → CC+gstack M (~2-3일)
+**Priority:** P2
+**Depends on:** 착수 = 첫 창립 가입일 + 12개월 − 준비 2개월. 계획 ③킬 기준이 "접는다"로 판정되면 불필요
+
+## [plan-eng-review-2026-09-06] 영어판 실행 계획 엔지니어링 리뷰
+
+`/plan-eng-review` 결과. 발견 7건 전부 해소, 외부 의견(Claude 서브에이전트) 4건 수용.
+Codex는 사용량 한도로 실패해 `[single-model]`이다.
+
+### 이 리뷰가 계획에서 걷어낸 것
+
+| | 내용 |
+|---|---|
+| **Phase 2 삭제** | 계획이 "영어 채점기를 새로 쓴다, 가장 큰 리스크"라고 한 근거인 자모 모듈 셋(`nameMatch`·`speechScore`·`phoneticDistance`, 283줄)이 **커밋 `17443af` 이후 프로덕션에서 안 돈다.** 그리고 임계값 `90/75/60/40`은 한국어로 측정된 값이 아니라 **죽은 모듈의 경계에서 유비로 뽑은 둥근 수**였다(`pronunciationScore.ts:157-161`). 없던 기준선을 억지로 만드는 연구였으므로 관측 항목으로 강등 |
+| **CMUdict 런타임 제거** | 음절 수를 콘텐츠 JSON에 필드로 박는다. 근거였던 "채점기가 어차피 쓰므로"가 위에서 사라졌다 |
+| **콘텐츠 물량 정정** | ~900 → ~~**2,000대**~~ → **1,100 안팎**(2026-09-10 CEO 리뷰 정정: 밴드가 겹친다, `QabSpeechBank.test.ts:326`). 아래 원문은 당시 기록 — `QabSpeechBank.test.ts:333,373`이 밴드당 116×5레벨을 읽기·따라말하기 각각에 강제한다. **여기가 임계 경로다** |
+
+### 이 리뷰가 계획에 넣은 것
+
+주 경계 헬퍼 추출(0-5b) · 백엔드 게이트 fail-closed(0-5c) · 제출 DTO `locale`(0-5d) ·
+TZ·주시작도 행에 얼리기 · 필드별 게이트 · `isPatientMode`가 로케일 결정 ·
+로케일별 지연 로딩 · 치유 메시지 id 공유 · 주 경계 DB 통합 테스트(REGRESSION, CRITICAL)
+
+### 남은 작업
+
+| | 내용 | 우선순위 |
+|---|---|---|
+| **dead-string-scorers** | 죽은 채점 모듈 283줄의 처리 판단 | `P3` |
+
+**What:** `nameMatch.ts`(45) · `speechScore.ts`(87) · `phoneticDistance.ts`(151)와
+그 테스트(`speechScoreGolden.test.ts` 포함)를 지울지 정한다.
+
+**Why:** 커밋 `17443af`(#15)에서 호출부가 끊겼고 지금은 **서로만 부른다.**
+그런데 남아 있어서 **계획을 오도했다** — 영어판 계획이 "가장 큰 리스크는 채점기"라고
+적은 근거가 이 모듈들이었고, 그 결론이 Phase 하나를 통째로 잘못 잡았다.
+다음 사람도 같은 착각을 한다.
+
+**Pros:** 저장소가 작아지고 골든 테스트 유지 비용이 사라진다 · "안 도는 코드가
+계획을 오도하는" 상황이 끝난다.
+
+**Cons:** **자유 발화 STT 부채**가 풀릴 때 문자열 거리가 다시 필요해질 수 있다 —
+대화 모드는 정답을 모르므로 음향 평가를 못 쓴다 · 지우면 git 이력에서 꺼내야 한다.
+
+**Context:** `pronunciationScore.ts` 머리말이 "문자열 기반 채점 함수를 다시 넣지 말 것"을
+명시한다(Azure accuracy와 순위상관 −0.376). 그런데 **모듈은 남아 있어** 누군가 다시
+쓸 수 있는 상태다. 지금은 계획 §3의 0-4에 "안 도는 모듈"이라고 적어 두었지만,
+그 문서는 `docs/history/`로 내려간다 — 코드를 보는 사람은 그 정정을 못 본다.
+
+**Depends on:** 자유 발화 STT 부채의 방향이 정해지면 판단이 쉬워진다.
+
+---
+
+## [plan-design-review-2026-09-06] 영어판 실행 계획 디자인 리뷰
+
+`/plan-design-review` 결과. 대상은 `docs/history/20260906_EnglishLocalization_execution_plan.md`,
+기준은 `DESIGN.md`. 디자인 완성도 **4/10 → 8/10**, 결정 8건이 계획에 반영됐다.
+
+목업 생성기(OpenAI 키 없음) 대신 **실측 스케치**를 썼다 — 앱의 실제 마크업
+(`CaregiverDashboard.tsx:149-167`)과 전역 CSS를 옮겨 브라우저가 재게 했다.
+`~/.gstack/projects/wonseokjee-practiceTTS/designs/locale-setup-20260906/en-layout-probe.html`
+
+### 이번에 고친 것
+
+| | 내용 |
+|---|---|
+| **Pretendard CDN → dynamic-subset** | `frontend/index.html:9`. 실측 **2,346KB → 257KB (약 89% 감소)**. 영어판과 무관하게 **한국어 사용자에게 지금 이득**이다 — 지금까지 한국 사용자도 안 만나는 한자·희귀 글자까지 받고 있었다. 화면은 1px도 안 바뀐다 |
+| **DESIGN.md에 「다국어」 절 신설** | 칸 폭별 팽창 예산·로케일별 줄바꿈·고정 치수 판정 기준·문구 규칙(FK 5학년, 8단어, 구동사 금지, 130~140wpm). 계획 문서는 `docs/history/`라 언젠가 아카이브가 되므로 **지켜야 할 규칙의 정본은 DESIGN.md**로 올렸다 |
+
+### 남은 작업
+
+| | 내용 | 우선순위 |
+|---|---|---|
+| **pseudo-loc-layout-test** | 한국어 문구를 1.5배·2배로 늘린 더미로 375px 넘침·잘림을 잡는 자동 검사 | `P2` |
+
+**What:** 의사 현지화(pseudo-localization) 레이아웃 검사를 만든다. DESIGN.md
+「다국어」 절의 칸 폭별 예산(좁은 칸 2배 / 카드 라벨 1.7배 / 전체 폭 버튼 1.5배)을
+기준으로 쓴다.
+
+**Why:** 이번 리뷰가 **손으로 재서** 대시보드 헤더가 375px를 9px 넘는 것을 찾았다
+(ko 368px → en 384px). 사람이 계속 잴 수는 없다. 고정 높이가 **93곳**
+(`h-[48px]` 39 · `h-[56px]` 24 · `h-[64px]` 18 · `h-[44px]` 12)이고 `truncate`는
+3곳뿐이라, 넘치면 잘리는 구조가 앱 전반에 깔려 있다.
+
+**Pros:** `accentContrast.test.ts`가 색을 지키듯 레이아웃을 지킨다. **한국어판
+신규 화면에도 바로 쓸모가 있다**(긴 환자명, 긴 낱말). 기준은 DESIGN.md가 이미 준다.
+
+**Cons:** 렌더링 기반이라 유닛 테스트보다 느리고 깨지기 쉽다. 대상 컴포넌트를
+골라야 한다.
+
+**Context:** `/plan-design-review` 2026-09-06. 근거 실측치와 스케치는 위 경로.
+전역 CSS(`index.css:136-137`)의 `word-break: keep-all`은 **한국어 전용 수정**
+(TODO-008)이라 영어에서 무력화되고, 남는 `overflow-wrap: anywhere`가 영어 단어를
+글자 단위로 쪼갠다 — 같은 버그가 언어만 바꿔 돌아온다.
+
+**Depends on:** 영어판 계획 §7-5(테스트 전략 분류)가 정해지면 그 구조 안에 넣는다.
+분류를 기다리지 않고 먼저 만들어도 되지만, 그러면 자리를 두 번 잡게 된다.
+
+---
+
 ## [design-review-2026-08-27] 환자 화면 디자인 리뷰
 
 `/design-review` 결과. 대상은 환자 모드 + 보호자 대시보드, 기준은 `DESIGN.md`.
