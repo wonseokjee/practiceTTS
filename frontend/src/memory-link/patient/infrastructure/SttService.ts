@@ -1,4 +1,5 @@
 import type { SttResult } from '../domain/TrainingSession.js';
+import { DEFAULT_LOCALE } from '../../../shared/domain/locale.js';
 
 /**
  * STT(Speech-to-Text) 서비스 인터페이스
@@ -88,7 +89,7 @@ export class WebSpeechSttService implements ISttService {
   }
 
   private setupRecognition(recognition: SpeechRecognition): void {
-    recognition.lang = 'ko-KR';
+    recognition.lang = DEFAULT_LOCALE;
     recognition.continuous = false;
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;

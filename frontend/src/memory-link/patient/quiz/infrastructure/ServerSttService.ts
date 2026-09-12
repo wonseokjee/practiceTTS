@@ -11,6 +11,7 @@ import type { ISttService } from '../../infrastructure/SttService.js';
 import { WavRecorder } from './WavRecorder.js';
 import { QUIZ_RECORDING_LIMIT_MS } from './recordingLimits.js';
 import { API_BASE_URL, ML_TOKEN_KEY } from '../../../shared/MemoryLinkApi.js';
+import { DEFAULT_LOCALE } from '../../../../shared/domain/locale.js';
 
 // ai-service를 브라우저가 직접 부르지 않는다. 그러면 그 경로만 인증을 걸 수 없어
 // 누구나 Azure 음성 할당량을 태울 수 있다. 백엔드 프록시를 거쳐 JWT로 막는다.
@@ -45,7 +46,7 @@ export class ServerSttService implements ISttService {
   private cancelled = false;
   private inflight: AbortController | null = null;
 
-  constructor(lang = 'ko-KR') {
+  constructor(lang: string = DEFAULT_LOCALE) {
     this.lang = lang;
   }
 

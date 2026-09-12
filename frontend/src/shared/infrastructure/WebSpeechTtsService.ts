@@ -14,6 +14,7 @@
  */
 
 import type { ITtsService, TtsPlaybackResult } from '../domain/ITtsService.js';
+import { DEFAULT_LOCALE, languageOf } from '../domain/locale.js';
 
 const VOICE_LOAD_TIMEOUT_MS = 3_000;
 const TTS_SAFETY_TIMEOUT_MS = 30_000;
@@ -42,21 +43,30 @@ function loadVoices(): Promise<SpeechSynthesisVoice[]> {
   });
 }
 
-/** ko-KR 음성을 선택한다. 없으면 시스템 기본 음성을 사용한다. */
-function selectKoreanVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
-  // 1순위: ko-KR 로컬 음성
-  const localKorean = voices.find(
-    (v) => v.lang === 'ko-KR' && v.localService,
+/**
+ * 그 로케일의 음성을 고른다. 없으면 시스템 기본 음성을 쓴다.
+ *
+ * 순위는 예전 `selectKoreanVoice`와 **똑같다** — 로케일만 인자로 뺐다.
+ * 브라우저가 주는 음성 목록은 지역까지 맞는 것이 없을 수도 있어(`ko`만 있는
+ * 경우) 언어 코드로 한 번 더 찾는 단계가 필요하다.
+ */
+function selectVoiceForLocale(
+  voices: SpeechSynthesisVoice[],
+  locale: string,
+): SpeechSynthesisVoice | null {
+  // 1순위: 로케일이 정확히 맞는 로컬 음성
+  const localExact = voices.find((v) => v.lang === locale && v.localService);
+  if (localExact) return localExact;
+
+  // 2순위: 로케일이 정확히 맞는 음성 (원격 포함)
+  const anyExact = voices.find((v) => v.lang === locale);
+  if (anyExact) return anyExact;
+
+  // 3순위: 언어만 맞는 음성 (ko-KR 요청에 ko 음성만 있는 경우)
+  const sameLanguage = voices.find((v) =>
+    v.lang.startsWith(languageOf(locale)),
   );
-  if (localKorean) return localKorean;
-
-  // 2순위: ko-KR 음성 (원격 포함)
-  const anyKorean = voices.find((v) => v.lang === 'ko-KR');
-  if (anyKorean) return anyKorean;
-
-  // 3순위: ko 언어 음성
-  const koreanLang = voices.find((v) => v.lang.startsWith('ko'));
-  if (koreanLang) return koreanLang;
+  if (sameLanguage) return sameLanguage;
 
   // 4순위: 시스템 기본 음성
   const defaultVoice = voices.find((v) => v.default);
@@ -65,14 +75,20 @@ function selectKoreanVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice
 
 export class WebSpeechTtsService implements ITtsService {
   private readonly rate = 0.85;
+  /** 어느 언어로 읽을지. 기본값의 출처는 `shared/domain/locale` 하나다. */
+  private readonly locale: string;
   private cachedVoice: SpeechSynthesisVoice | null = null;
   private voiceLoaded = false;
+
+  constructor(locale: string = DEFAULT_LOCALE) {
+    this.locale = locale;
+  }
 
   /** 음성을 미리 로드한다. 첫 speak() 호출 전에 초기화할 수 있다. */
   async preloadVoice(): Promise<void> {
     if (this.voiceLoaded) return;
     const voices = await loadVoices();
-    this.cachedVoice = selectKoreanVoice(voices);
+    this.cachedVoice = selectVoiceForLocale(voices, this.locale);
     this.voiceLoaded = true;
   }
 
@@ -85,7 +101,7 @@ export class WebSpeechTtsService implements ITtsService {
         // 음성이 캐시되지 않았으면 로드
         if (!this.voiceLoaded) {
           const voices = await loadVoices();
-          this.cachedVoice = selectKoreanVoice(voices);
+          this.cachedVoice = selectVoiceForLocale(voices, this.locale);
           this.voiceLoaded = true;
         }
 
@@ -97,7 +113,7 @@ export class WebSpeechTtsService implements ITtsService {
           utterance.voice = this.cachedVoice;
           utterance.lang = this.cachedVoice.lang;
         } else {
-          utterance.lang = 'ko-KR';
+          utterance.lang = this.locale;
         }
 
         let startTime = performance.now();
