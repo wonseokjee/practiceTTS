@@ -29,7 +29,11 @@ import {
   type AzurePronunciationScores,
 } from '../domain/pronunciationScore.js';
 import { isDdkPass } from '../domain/ddkScore.js';
-import type { QabResultInput, QabSubtest } from '../domain/QabResult.js';
+import {
+  stampAnswered,
+  type QabResultInput,
+  type QabSubtest,
+} from '../domain/QabResult.js';
 import { quizApi } from '../infrastructure/QuizApi.js';
 import type { IQuizApi } from '../infrastructure/QuizApi.js';
 import {
@@ -64,6 +68,23 @@ import {
 } from '../infrastructure/QabSpeechBank.js';
 import type { PickSpeechOptions } from '../infrastructure/QabSpeechBank.js';
 import { toQuizErrorInfo } from './quizError.js';
+
+/**
+ * QAB 결과를 쌓으며 **푼 시각**을 찍는다(계획 OV-B).
+ *
+ * 결과는 이 ref에 쌓였다가 문항마다 tail로 보내지고, 실패하면 다음 flush에서
+ * 다시 보내진다. 시각을 **보낼 때** 찍으면 재시도한 만큼 늦어지고, 앞으로
+ * 재전송 대기열(QabOutbox)이 붙으면 며칠씩 밀린다. 그래서 쌓는 순간 찍는다.
+ *
+ * 결과를 쌓는 곳이 여섯이라 한 곳으로 모은다 — 하나라도 직접 push하면 그
+ * 문항만 서버 시각으로 떨어진다. `QabResult.test.ts`의 가드가 그걸 막는다.
+ */
+function pushAnswered(
+  ref: { current: QabResultInput[] },
+  result: QabResultInput,
+): void {
+  ref.current.push(stampAnswered(result));
+}
 
 export type MixedPhase =
   | 'loading'
@@ -773,7 +794,7 @@ export function useMixedQuizSession(
       // 거짓이 되면 그 통계로 정답률을 거르는 곳이 같이 오염된다.
       // unscored 규약대로 isCorrect는 false로 보낸다(값에 뜻이 없다).
       const unheard = ctx?.unheard === true;
-      qabResultsRef.current.push({
+      pushAnswered(qabResultsRef, {
         subtest: item.item.category,
         itemRef: item.item.itemId,
         isCorrect: unheard ? false : isCorrect,
@@ -818,7 +839,7 @@ export function useMixedQuizSession(
     ): void => {
       const extra = opts.extra ?? {};
       if (!assessment.scored) {
-        qabResultsRef.current.push({
+        pushAnswered(qabResultsRef, {
           ...extra,
           subtest: opts.subtest,
           itemRef: opts.itemRef,
@@ -835,7 +856,7 @@ export function useMixedQuizSession(
         );
         return;
       }
-      qabResultsRef.current.push({
+      pushAnswered(qabResultsRef, {
         ...extra,
         subtest: opts.subtest,
         itemRef: opts.itemRef,
@@ -940,7 +961,7 @@ export function useMixedQuizSession(
       // 발화 채점처럼 관대하게 볼 여지가 없다 — 만든 글자가 목표와 같거나 다르다.
       const norm = (t: string): string => t.replace(/\s+/g, '');
       const correct = norm(assembled) === norm(item.item.targetWord);
-      qabResultsRef.current.push({
+      pushAnswered(qabResultsRef, {
         subtest: 'spell',
         itemRef: item.item.itemId,
         isCorrect: correct,
@@ -961,7 +982,7 @@ export function useMixedQuizSession(
       if (!item || item.kind !== 'ddk') return;
 
       const correct = isDdkPass(count, item.item.targetCount);
-      qabResultsRef.current.push({
+      pushAnswered(qabResultsRef, {
         subtest: 'ddk',
         itemRef: item.item.itemId,
         isCorrect: correct,
@@ -1013,7 +1034,7 @@ export function useMixedQuizSession(
     }
 
     // 도움받음으로 기록(추세 정확도 집계 제외). 환자에겐 긍정 피드백 유지.
-    qabResultsRef.current.push({
+    pushAnswered(qabResultsRef, {
       subtest,
       itemRef: item.id,
       isCorrect: true,

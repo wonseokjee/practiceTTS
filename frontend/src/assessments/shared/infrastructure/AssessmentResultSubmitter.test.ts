@@ -97,24 +97,58 @@ describe('createAssessmentSessionToken', () => {
 });
 
 describe('toQabResults', () => {
+  const FINISHED = new Date('2026-09-14T01:23:45.000Z');
+
   it('선택 필드는 값이 있을 때만 넣는다', () => {
     // undefined를 그대로 실어 보내면 백엔드 검증이 거부할 수 있다.
-    const results = toQabResults('loc', [
-      { itemRef: 'trial-1', isCorrect: true, score: 3 },
-      { itemRef: 'trial-2', isCorrect: false },
-    ]);
+    const results = toQabResults(
+      'loc',
+      [
+        { itemRef: 'trial-1', isCorrect: true, score: 3 },
+        { itemRef: 'trial-2', isCorrect: false },
+      ],
+      FINISHED,
+    );
 
     expect(results[0]).toEqual({
       subtest: 'loc',
       itemRef: 'trial-1',
       isCorrect: true,
       score: 3,
+      answeredAt: FINISHED.toISOString(),
     });
     expect(results[1]).toEqual({
       subtest: 'loc',
       itemRef: 'trial-2',
       isCorrect: false,
+      answeredAt: FINISHED.toISOString(),
     });
     expect('score' in results[1]).toBe(false);
+  });
+
+  it('푼 시각은 검사를 마친 시각이다 — 보내는 시각이 아니다', () => {
+    // 제출이 실패하거나 늦게 도착해도 검사한 날로 센다(계획 OV-B).
+    const results = toQabResults(
+      'word',
+      [
+        { itemRef: 'w-1', isCorrect: true },
+        { itemRef: 'w-2', isCorrect: true },
+      ],
+      FINISHED,
+    );
+
+    expect(results.map((r) => r.answeredAt)).toEqual([
+      '2026-09-14T01:23:45.000Z',
+      '2026-09-14T01:23:45.000Z',
+    ]);
+  });
+
+  it('종료 시각을 안 넘기면 지금이다', () => {
+    const before = Date.now();
+    const [row] = toQabResults('word', [{ itemRef: 'w-1', isCorrect: true }]);
+    const at = Date.parse(row.answeredAt ?? '');
+
+    expect(at).toBeGreaterThanOrEqual(before);
+    expect(at).toBeLessThanOrEqual(Date.now());
   });
 });

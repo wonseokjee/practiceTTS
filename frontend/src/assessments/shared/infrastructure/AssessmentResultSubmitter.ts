@@ -10,9 +10,10 @@
 // 저장 경로를 하나로 합쳐 위 셋을 해결한다.
 
 import { quizApi } from '../../../memory-link/patient/quiz/infrastructure/QuizApi.js';
-import type {
-  QabResultInput,
-  QabSubtest,
+import {
+  stampAnswered,
+  type QabResultInput,
+  type QabSubtest,
 } from '../../../memory-link/patient/quiz/domain/QabResult.js';
 
 /** 검사 한 회차를 식별하는 토큰. 백엔드가 UUID v4를 요구한다. */
@@ -74,7 +75,13 @@ export class ServerAssessmentResultSubmitter
   }
 }
 
-/** 검사별 결과를 QAB 제출 형식으로 바꾸는 도우미. */
+/**
+ * 검사별 결과를 QAB 제출 형식으로 바꾸는 도우미.
+ *
+ * 이 도우미는 **검사가 끝날 때** 불린다(세 호출처 모두). 그래서 푼 시각은
+ * 검사를 마친 시각이다. 한 검사가 몇 분이라 날짜 경계에서 어긋날 일은 거의
+ * 없고, 서버 시각을 쓰던 것보다 늘 정직하다 — 제출이 늦게 도착해도 안 밀린다.
+ */
 export function toQabResults(
   subtest: QabSubtest,
   items: ReadonlyArray<{
@@ -83,12 +90,18 @@ export function toQabResults(
     score?: number;
     metric?: number;
   }>,
+  finishedAt: Date = new Date(),
 ): QabResultInput[] {
-  return items.map((item) => ({
-    subtest,
-    itemRef: item.itemRef,
-    isCorrect: item.isCorrect,
-    ...(item.score !== undefined ? { score: item.score } : {}),
-    ...(item.metric !== undefined ? { metric: item.metric } : {}),
-  }));
+  return items.map((item) =>
+    stampAnswered(
+      {
+        subtest,
+        itemRef: item.itemRef,
+        isCorrect: item.isCorrect,
+        ...(item.score !== undefined ? { score: item.score } : {}),
+        ...(item.metric !== undefined ? { metric: item.metric } : {}),
+      },
+      finishedAt,
+    ),
+  );
 }

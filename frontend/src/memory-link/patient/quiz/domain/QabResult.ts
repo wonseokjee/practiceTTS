@@ -96,6 +96,29 @@ export interface QabResultInput {
    * 관측용이라 클라이언트가 보내도 측정이 흔들리지 않는다.
    */
   foilKind?: 'semantic' | 'phonological' | 'unrelated';
+  /**
+   * 이 문항을 **푼** 시각(ISO 8601, UTC). `stampAnswered`로 결과가 생기는
+   * 자리에서 찍는다.
+   *
+   * 보내는 시각이 아니다. 제출이 실패해 나중에 다시 보내져도 푼 날로 센다.
+   * 서버는 `[지금 − 24h, 지금]`으로 접고, 없으면 서버 시각을 쓴다.
+   */
+  answeredAt?: string;
+}
+
+/**
+ * 결과에 **푼 시각**을 찍는다(계획 OV-B). 결과가 생기는 그 자리에서 불러야
+ * 한다 — 보낼 때 찍으면 재전송 대기열에 머문 만큼 늦은 날로 저장된다.
+ *
+ * 이미 찍혀 있으면 덮지 않는다. 재전송이 원래 시각을 지키게 하려는 것이다.
+ * `toISOString()`은 늘 UTC(`Z`)라 서버의 시간대 필수 검사를 통과한다.
+ */
+export function stampAnswered(
+  result: QabResultInput,
+  at: Date = new Date(),
+): QabResultInput {
+  if (result.answeredAt !== undefined) return result;
+  return { ...result, answeredAt: at.toISOString() };
 }
 
 /**
