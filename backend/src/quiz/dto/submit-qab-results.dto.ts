@@ -5,10 +5,12 @@ import {
   IsBoolean,
   IsIn,
   IsInt,
+  IsISO8601,
   IsObject,
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -154,6 +156,27 @@ export class QabResultItemDto {
   @IsOptional()
   @IsIn(['photo', 'svg'])
   stimulusKind?: 'photo' | 'svg';
+
+  /**
+   * 이 문항을 **푼** 시각(ISO 8601). 결과가 생기는 자리에서 찍는다(계획 OV-B).
+   *
+   * 보내는 시각이 아니다 — 재전송 대기열에 머물다 늦게 도착해도 푼 날로 센다.
+   * 안 보내면 서버 시각이다(옛 클라이언트, 지금 동작 그대로). 기기 시계가
+   * 틀릴 수 있어 서버가 `[지금 − 24h, 지금]`으로 접는다.
+   *
+   * **시간대 표기(`Z`·`±hh:mm`)가 있어야 한다.** `@IsISO8601`만으로는 모자란다 —
+   * validator.js는 표기 없는 `2026-09-14T10:00:00`, 공백 구분 `2026-09-14 10:00`,
+   * 날짜만 있는 `2026-09-14`도 ISO로 받는다. 앞의 둘은 JS가 **서버의 현지 시각**
+   * 으로 읽어, 서버 TZ가 바뀌면 같은 결과가 다른 날로 저장된다. 그래서 RFC 3339
+   * 모양(날짜·`T`·시각·시간대)만 받는다. 프론트의 `toISOString()`이 이 모양이다.
+   */
+  @IsOptional()
+  @IsISO8601({ strict: true, strictSeparator: true })
+  @Matches(
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,9})?)?(Z|[+-]\d{2}:\d{2})$/,
+    { message: 'answeredAt은 시간대가 붙은 ISO 8601 시각이어야 한다' },
+  )
+  answeredAt?: string;
 }
 
 /**

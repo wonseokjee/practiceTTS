@@ -60,6 +60,8 @@ describe('QuizService', () => {
   let insertedValues: unknown[];
   /** orIgnore() 호출 여부 — 멱등이 DB 수준(ON CONFLICT)인지 확인용 */
   let orIgnoreCalls: boolean[];
+  // 트랜잭션 안의 MAX(answered_at) 조회가 돌려줄 값(완료 마커 completedAt, OV-C).
+  let storedLastAnsweredAt: Date | null;
   let memoryEntryRepo: ReturnType<typeof buildRepoMock>;
   let patientMemoryNoteRepo: ReturnType<typeof buildRepoMock>;
   let generationClientMock: { generate: SpecMock };
@@ -150,6 +152,7 @@ describe('QuizService', () => {
     jest.clearAllMocks();
     insertedValues = [];
     orIgnoreCalls = [];
+    storedLastAnsweredAt = null;
 
     // 기본값: 프로필 미등록 → 개인화 생략(원문 그대로 통과)
     personaSource = null;
@@ -262,6 +265,10 @@ describe('QuizService', () => {
                     addOrderBy: specMock().mockReturnThis(),
                     limit: specMock().mockReturnThis(),
                     getRawMany: specMock().mockResolvedValue([]),
+                    // 완료 마커의 completedAt = 세션의 MAX(answered_at)(OV-C).
+                    getRawOne: jest.fn(() =>
+                      Promise.resolve({ lastAnsweredAt: storedLastAnsweredAt }),
+                    ),
                     insert: specMock().mockReturnThis(),
                     into: specMock().mockReturnThis(),
                     values: jest.fn(function (this: unknown, rows: unknown) {
@@ -2158,6 +2165,94 @@ describe('QuizService', () => {
 
       expect(qabSessionCompletionRepo.upsert).not.toHaveBeenCalled();
     });
+
+    describe('푼 시각(answeredAt) — 늦은 재전송이 도착한 날로 새지 않는다', () => {
+      const NOW = Date.parse('2026-09-16T03:00:00.000Z'); // 수요일
+      const DAY = 24 * 60 * 60 * 1000;
+      let nowSpy: jest.SpyInstance<number, []>;
+
+      beforeEach(() => {
+        skillLevelRepo.find.mockResolvedValue([]);
+        qabResultRepo.save.mockResolvedValue([]);
+        nowSpy = jest.spyOn(Date, 'now').mockReturnValue(NOW);
+      });
+      afterEach(() => nowSpy.mockRestore());
+
+      const submit = (
+        answeredAt: string | undefined,
+        completed = false,
+      ): Promise<unknown> =>
+        service.saveQabResults(PATIENT_ID, {
+          sessionToken: SESSION_TOKEN,
+          results: [
+            { subtest: 'word', itemRef: 'qw_001', isCorrect: true, answeredAt },
+          ],
+          completed,
+        });
+
+      it('클라이언트가 찍은 시각을 행에 남긴다', async () => {
+        const solved = new Date(NOW - 3 * 60 * 60 * 1000).toISOString();
+
+        await submit(solved);
+
+        expect(qabResultRepo.create).toHaveBeenCalledWith(
+          expect.objectContaining({ answeredAt: new Date(solved) }),
+        );
+      });
+
+      it('안 보내면 비워 둔다 — DB 기본값(서버 시각)이 들어간다', async () => {
+        // 옛 클라이언트. 서비스가 new Date()로 채우면 기본값과 같은 뜻이지만,
+        // 비워 둬야 created_at과 **같은 트랜잭션 시각**이 된다(M28).
+        await submit(undefined);
+
+        expect(qabResultRepo.create).toHaveBeenCalledWith(
+          expect.objectContaining({ answeredAt: undefined }),
+        );
+      });
+
+      it('미래 시각은 지금으로 접는다 — 기기 시계가 앞서 있다', async () => {
+        await submit(new Date(NOW + 2 * 60 * 60 * 1000).toISOString());
+
+        expect(qabResultRepo.create).toHaveBeenCalledWith(
+          expect.objectContaining({ answeredAt: new Date(NOW) }),
+        );
+      });
+
+      it('24시간보다 오래된 시각은 24시간 전으로 접는다', async () => {
+        await submit(new Date(NOW - 3 * DAY).toISOString());
+
+        expect(qabResultRepo.create).toHaveBeenCalledWith(
+          expect.objectContaining({ answeredAt: new Date(NOW - DAY) }),
+        );
+      });
+
+      it('완료 시각은 세션에서 마지막으로 푼 시각이다 — 도착한 날이 아니다', async () => {
+        // 화요일에 푼 세션의 완료 제출이 수요일에 도착했다. 서버 시각을 찍으면
+        // 완료율 창이 이 세션을 수요일로 센다.
+        storedLastAnsweredAt = new Date(NOW - 20 * 60 * 60 * 1000);
+
+        await submit(storedLastAnsweredAt.toISOString(), true);
+
+        expect(qabSessionCompletionRepo.upsert).toHaveBeenCalledWith(
+          expect.objectContaining({ completedAt: storedLastAnsweredAt }),
+          ['sessionToken'],
+        );
+      });
+
+      it('세션에 저장된 행이 하나도 없을 때만 서버 시각이다', async () => {
+        // 데일리 문항만 푼 세션의 완료 제출 — qab_results에 행이 없다.
+        await service.saveQabResults(PATIENT_ID, {
+          sessionToken: SESSION_TOKEN,
+          results: [],
+          completed: true,
+        });
+
+        const [values] = qabSessionCompletionRepo.upsert.mock.calls[0] as [
+          { completedAt: Date },
+        ];
+        expect(values.completedAt).toBeInstanceOf(Date);
+      });
+    });
   });
 
   describe('getSkillLevels', () => {
@@ -2461,10 +2556,12 @@ describe('QuizService', () => {
       expect(source.match(/\br\.created_at\b/g) ?? []).toEqual([]);
     });
 
-    it('다섯 쿼리의 시간 축 10곳이 전부 answered_at이다', () => {
+    it('시간 축 11곳이 전부 answered_at이다', () => {
       // 개수를 고정한다 — 쿼리를 지우거나 새로 붙이면 여기서 한 번 멈춰
       // 시간 축을 다시 확인하게 한다.
-      expect(source.match(/\br\.answered_at\b/g)).toHaveLength(10);
+      //   10 = 읽기 다섯 쿼리(활동일·재출제·세션 분모·주간 추이·요약 lastAt)
+      //   +1 = 완료 마커의 completedAt(세션에서 마지막으로 푼 시각, OV-C)
+      expect(source.match(/\br\.answered_at\b/g)).toHaveLength(11);
     });
   });
 

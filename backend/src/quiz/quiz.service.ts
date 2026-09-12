@@ -58,6 +58,13 @@ import {
 const SESSION_TTL_MS = 30 * 60 * 1000;
 
 /**
+ * QAB 결과의 `answeredAt`(푼 시각)으로 받아들이는 가장 오래된 과거(OV-B).
+ * 재전송 대기열의 TTL과 같다 — 그보다 오래된 결과는 정상 클라이언트가 보내지
+ * 않는다. 더 오래된 값이 오면 이 경계로 접는다(기기 시계 오류 방어).
+ */
+const ANSWERED_AT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+/**
  * pending QuizSet이 이 시간보다 오래 멈춰 있으면 "고아"로 간주하고 복구한다.
  * LLM 타임아웃(25s)보다 충분히 길게 잡아 정상 진행 중인 생성을 건드리지 않는다.
  */
@@ -1200,6 +1207,31 @@ export class QuizService {
       return bounded as SkillLevelValue;
     };
 
+    /**
+     * 클라이언트가 찍은 "푼 시각"을 받는다(OV-B). 안 보냈으면 undefined —
+     * DB 기본값 now()가 들어간다(옛 클라이언트, 지금 동작 그대로).
+     *
+     * 기기 시계는 틀릴 수 있어 `[지금 − 24h, 지금]`으로 접는다. 미래 시각을 그대로
+     * 두면 아직 안 온 날에 수행이 찍힌다. 24h보다 오래된 것은 재전송 대기열의
+     * TTL을 넘은 것이라 정상 클라이언트는 보내지 않는다 — 접되 경고를 남긴다.
+     */
+    const now = Date.now();
+    const acceptAnsweredAt = (iso: string | undefined): Date | undefined => {
+      if (iso === undefined) return undefined;
+      const claimed = new Date(iso).getTime();
+      const bounded = Math.min(
+        now,
+        Math.max(now - ANSWERED_AT_MAX_AGE_MS, claimed),
+      );
+      if (bounded !== claimed) {
+        this.logger.warn(
+          `answeredAt 범위 밖: client=${iso} → ${new Date(bounded).toISOString()} ` +
+            `(patient=${effectivePatientId})`,
+        );
+      }
+      return new Date(bounded);
+    };
+
     const rows = dto.results.map((r) => {
       const serverLevel = acceptLevel(
         r.subtest,
@@ -1241,6 +1273,7 @@ export class QuizService {
         // 클라이언트가 보낸 버전을 그대로 남긴다. 서버 상수로 덮어쓰면 안 된다 —
         // 옛 클라이언트가 낸 문항이 새 풀 기준으로 기록돼 경계가 사라진다.
         manifestVersion: r_manifest,
+        answeredAt: acceptAnsweredAt(r.answeredAt),
       });
     });
 
@@ -1296,13 +1329,27 @@ export class QuizService {
       // 완료 마커: 자연 종료·피로 탈출 등 세션이 의도한 대로 끝났을 때만 프론트가
       // completed=true를 보낸다. 점진 제출의 중간 flush·화면 이탈 시 best-effort
       // flush는 completed를 안 보내 이탈로 남는다(완료 vs 중단 구분).
+      //
+      // 완료 시각은 **세션에서 마지막으로 푼 시각**이다(OV-C). 제출이 도착한
+      // 시각이 아니다 — 늦게 재전송된 완료 제출의 도착일을 찍으면 완료율 창
+      // (completed_at)이 그 세션을 다른 날로 센다.
+      //
+      // 이번 배치는 바로 위에서 같은 트랜잭션으로 넣었으므로 이 MAX 하나가
+      // (이번 배치 ∪ 이미 저장된 행)을 함께 본다. 빈 tail 완료 제출 — 흔한 정상
+      // 경로다 — 도 저장된 행에서 시각을 얻는다. 행이 없을 때만 서버 시각이다.
       if (dto.completed) {
+        const last = await manager
+          .createQueryBuilder(QabResult, 'r')
+          .select('MAX(r.answered_at)', 'lastAnsweredAt')
+          .where('r.session_token = :token', { token: dto.sessionToken })
+          .andWhere('r.patient_id = :pid', { pid: effectivePatientId })
+          .getRawOne<{ lastAnsweredAt: Date | null }>();
         await manager.upsert(
           QabSessionCompletion,
           {
             sessionToken: dto.sessionToken,
             patientId: effectivePatientId,
-            completedAt: new Date(),
+            completedAt: last?.lastAnsweredAt ?? new Date(),
           },
           ['sessionToken'],
         );
