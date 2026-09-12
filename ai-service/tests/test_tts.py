@@ -6,11 +6,19 @@
 import os
 
 import main
+import pytest
 from dependencies import get_tts_rate_limiter, get_tts_service
 from fastapi.testclient import TestClient
 
 from tests.service_auth_helper import SERVICE_HEADERS
-from infra.azure_tts import AzureTtsEngine
+from infra import azure_tts
+from infra.azure_tts import (
+    ALLOWED_VOICES,
+    VOICES_BY_LOCALE,
+    AzureTtsEngine,
+    locale_of_voice,
+    speech_rate_for,
+)
 from infra.rate_limiter import SlidingWindowRateLimiter
 from services.tts_service import TtsService
 
@@ -23,6 +31,75 @@ def test_ssml_escapes_text_and_voice():
     assert "&amp;" in ssml
     assert "&lt;고양이&gt;" in ssml
     assert "<고양이>" not in ssml  # raw 꺾쇠가 그대로 들어가면 안 됨
+
+
+def test_ssml_lang_is_derived_from_voice():
+    """xml:lang을 박아 두면 영어 음성을 넣어도 엔진이 한국어로 읽는다.
+
+    로케일별 음성을 실제로 넣는 것은 말속도 결정(§7-2) 뒤의 일이라, 여기서는
+    **파생이 일어나는지**를 본다. 다국어 음성(HyunsuMultilingual)도 이름은
+    ko-KR이라 지금은 ko-KR로 읽는 것이 맞다.
+    """
+    for voice in sorted(VOICES_BY_LOCALE["ko-KR"]):
+        ssml = AzureTtsEngine._build_ssml("바다", voice)
+        assert 'xml:lang="ko-KR"' in ssml
+        assert f'<voice name="{voice}">' in ssml
+
+
+def test_ssml_lang_actually_follows_a_non_korean_voice(monkeypatch):
+    """**파생이 진짜로 일어나는지**를 본다.
+
+    ko-KR 음성만으로 `xml:lang="ko-KR"`을 확인하면, 값을 다시 박아 넣어도
+    테스트가 통과한다(실제로 그렇게 확인해 봤다 — 공허한 단언이었다).
+    그래서 말속도 표에 en-US를 임시로 넣어 **다른 로케일에서도 따라가는지**
+    본다. 말속도 정책과 xml:lang 파생은 별개 관심사다.
+    """
+    monkeypatch.setitem(azure_tts.SPEECH_RATE_BY_LOCALE, "en-US", "-5%")
+    ssml = AzureTtsEngine._build_ssml("sea", "en-US-AriaNeural")
+    assert 'xml:lang="en-US"' in ssml
+    assert "ko-KR" not in ssml
+    assert 'rate="-5%"' in ssml
+
+
+def test_ssml_for_unconfigured_locale_raises_instead_of_reading_in_korean():
+    """말속도를 안 정한 로케일은 **한국어로 읽어 버리지 않고** 터진다.
+
+    예전에는 xml:lang이 ko-KR로 박혀 있어, 영어 음성을 넣으면 조용히 한국어
+    발음으로 읽혔다. 지금은 음성을 추가하려면 말속도를 먼저 정해야 한다.
+    """
+    with pytest.raises(ValueError):
+        AzureTtsEngine._build_ssml("sea", "en-US-AriaNeural")
+
+
+def test_locale_of_voice():
+    assert locale_of_voice("ko-KR-SunHiNeural") == "ko-KR"
+    assert locale_of_voice("en-US-AriaNeural") == "en-US"
+    with pytest.raises(ValueError):
+        locale_of_voice("nonsense")
+
+
+def test_speech_rate_is_per_locale_and_fails_loudly():
+    """-10%는 ko-KR 기준 속도에 대한 값이라 다른 언어로 복사하면 안 된다.
+
+    말속도를 안 정한 로케일은 **조용히 폴백하지 않고** 터져야 한다 —
+    화이트리스트에 음성만 넣고 속도를 빠뜨린 실수가 곧바로 드러나야 한다.
+    """
+    assert speech_rate_for("ko-KR-SunHiNeural") == "-10%"
+    with pytest.raises(ValueError):
+        speech_rate_for("en-US-AriaNeural")
+
+
+def test_allowed_voices_matches_locale_map():
+    """평평한 화이트리스트가 로케일별 표에서 그대로 유도된다 —
+    둘이 갈리면 한쪽에만 음성이 추가돼 검증이 새거나 못 쓰게 된다."""
+    flattened = {v for voices in VOICES_BY_LOCALE.values() for v in voices}
+    assert flattened == set(ALLOWED_VOICES)
+
+
+def test_every_allowed_voice_has_a_rate():
+    """화이트리스트의 모든 음성이 말속도를 가진다(추가 시 함께 정하도록)."""
+    for voice in ALLOWED_VOICES:
+        assert speech_rate_for(voice)
 
 
 class FakeEngine:
