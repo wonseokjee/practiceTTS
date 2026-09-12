@@ -6,7 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Memory Link</title>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-    <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet" />
+    <!-- dynamic-subset: unicode-range로 갈려 있어 실제로 쓰는 글자 조각만 받는다.
+         서브셋 없는 static/pretendard.css로 되돌리지 말 것 — @font-face 9개가
+         각각 통짜 woff2라 Regular 767KB + Bold 792KB + SemiBold 787KB = 약 2.3MB를
+         받는다(2026-09-06 실측). 근거: DESIGN.md 「다국어」 절. -->
+    <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-dynamic-subset.css" rel="stylesheet" />
   </head>
   <body>
     <div id="root"></div>
