@@ -23,6 +23,7 @@ import { OnboardingGuard } from '../auth/onboarding.guard';
 import { resolveEffectivePatientId } from '../auth/effective-patient-id.util';
 import { PracticeService } from '../practice/practice.service';
 import { DailyCap, DailyCapGuard } from '../usage/daily-cap.guard';
+import { TrackView } from '../events/track-view.decorator';
 import { QAB_SUBTESTS, type QabSubtest } from './constants/qab-subtest';
 import { GenerateQuizDto } from './dto/generate-quiz.dto';
 import { QuizSetSummaryDto } from './dto/quiz-set-summary.dto';
@@ -194,6 +195,7 @@ export class QuizController {
    * 검사별 주차 추이. 보호자가 회복 방향(나아지는지)을 본다.
    */
   @Get('quiz/qab-trend')
+  @TrackView('qab_trend_viewed')
   async getQabTrend(
     @Req() req: AuthenticatedRequest,
     @Query('weeks') weeks?: string,
@@ -217,6 +219,7 @@ export class QuizController {
    * QAB 검사별 회복 추적 요약 (보호자 가시성). 유효 환자 ID 기준 집계.
    */
   @Get('quiz/qab-summary')
+  @TrackView('qab_summary_viewed')
   async getQabSummary(
     @Req() req: AuthenticatedRequest,
   ): Promise<QabSummaryResult> {
@@ -320,6 +323,7 @@ export class QuizController {
    * 최근 N일 세션 완료율(보호자용) — 시작한 세션 중 끝까지 마친 비율.
    */
   @Get('quiz/session-stats')
+  @TrackView('session_stats_viewed')
   async getSessionStats(
     @Req() req: AuthenticatedRequest,
     @Query('days') days?: string,
