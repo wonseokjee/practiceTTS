@@ -20,6 +20,8 @@
  * 레벨을 모를 때 쓰는 기본값. 백엔드 `COLD_START_LEVEL`과 **같아야 한다** —
  * 다르면 환자가 본 난이도와 서버가 기록한 레벨이 어긋난다.
  */
+import { languageOf } from '../../../../shared/domain/locale.js';
+
 export const MIN_LEVEL = 1;
 export const MAX_LEVEL = 5;
 export const COLD_START_LEVEL = 2;
@@ -294,6 +296,73 @@ export function readingRangeForLevel(level?: number): {
   if (lv <= 3) return { min: 3, max: 4 };
   if (lv <= 4) return { min: 4, max: 5 };
   return { min: 5, max: 7 };
+}
+
+/** 길이 범위(양끝 포함). */
+export interface LengthRange {
+  min: number;
+  max: number;
+}
+
+/**
+ * 영어 문장 밴드 — **단어 수.** 한국어 어절 수 × 1.5를 반올림했다
+ * (설계 docs/history/20260913_EnglishSpeechContent_design.md §3-3, 사용자 결정 D1).
+ *
+ * 같은 뜻이면 영어가 단어는 1.5배, 음절은 오히려 적다 — 음절을 한국어에 맞추면
+ * 영어 문장이 내용상 1.5배 무거워지고, 숫자를 그대로 쓰면 짧은 레벨이 전보문이
+ * 된다. 경계는 등급 임계값처럼 **관측 항목**이다 — 실사용 정답률이 레벨 순서대로
+ * 안 떨어지면 그때 고친다.
+ *
+ * 낱말(음절) 밴드는 한국어와 같은 개념이라 그대로 쓴다.
+ */
+const EN_REPEAT_SENTENCE: Readonly<Record<number, LengthRange>> = {
+  3: { min: 5, max: 6 },
+  4: { min: 5, max: 8 },
+  5: { min: 8, max: 11 },
+};
+const EN_READING: Readonly<Record<number, LengthRange>> = {
+  1: { min: 3, max: 3 },
+  2: { min: 3, max: 5 },
+  3: { min: 5, max: 6 },
+  4: { min: 6, max: 8 },
+  5: { min: 8, max: 11 },
+};
+
+function isEnglish(locale?: string): boolean {
+  return locale !== undefined && languageOf(locale) === 'en';
+}
+
+/**
+ * 따라말하기 밴드를 **로케일별로** — 낱말(음절)과 문장(한국어 어절·영어 단어)을
+ * 따로 돌려준다.
+ *
+ * 한국어는 `repeatSpecForLevel`과 같다(lv3 mixed에서 낱말 음절과 문장 어절이 같은
+ * 3~4를 쓴다). 영어는 lv3에서 둘이 갈린다 — 낱말 3~4음절, 문장 5~6단어. 그래서
+ * 범위 하나(`min`/`max`)로는 표현이 안 돼 둘로 나눴다. 로케일을 안 주면 한국어다.
+ */
+export function repeatBandsForLevel(
+  level?: number,
+  locale?: string,
+): {
+  kind: 'word' | 'sentence' | 'mixed';
+  word: LengthRange | null;
+  sentence: LengthRange | null;
+} {
+  const spec = repeatSpecForLevel(level);
+  const range = { min: spec.min, max: spec.max };
+  const word = spec.kind === 'sentence' ? null : range;
+  let sentence = spec.kind === 'word' ? null : range;
+  if (sentence !== null && isEnglish(locale)) {
+    sentence = EN_REPEAT_SENTENCE[normalizeLevel(level)] ?? sentence;
+  }
+  return { kind: spec.kind, word, sentence };
+}
+
+/** 읽기 밴드를 로케일별로. 로케일을 안 주면 한국어(`readingRangeForLevel`)다. */
+export function readingBandForLevel(level?: number, locale?: string): LengthRange {
+  return isEnglish(locale)
+    ? EN_READING[normalizeLevel(level)]
+    : readingRangeForLevel(level);
 }
 
 /**
