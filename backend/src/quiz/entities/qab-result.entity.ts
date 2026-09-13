@@ -33,6 +33,14 @@ import type { QabFoilKind } from '../constants/qab-foil-kind';
 @Index('IDX_qab_results_cue_level', ['patientId', 'createdAt'], {
   where: '"cue_level" IS NOT NULL',
 })
+// M21·M22가 만든 것들. 선언이 빠져 있던 동안 개발 DB에서는 실제로 지워졌다 —
+// 빈 DB 마이그레이션 테스트(test/int)가 잡았고 M29가 되살린다.
+@Index('IDX_qab_results_foil_kind', ['patientId', 'foilKind'], {
+  where: '"foil_kind" IS NOT NULL',
+})
+@Index('IDX_qab_results_band_fallback', ['patientId', 'subtest'], {
+  where: '"band_fallback" IS TRUE',
+})
 @Check(
   'CHK_qab_results_cue_level',
   '"cue_level" IS NULL OR ("cue_level" >= 0 AND "cue_level" <= 4)',
