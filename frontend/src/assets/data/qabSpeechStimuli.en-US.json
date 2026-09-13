@@ -2,7 +2,7 @@
   "version": 1,
   "locale": "en-US",
   "note": "QAB 발화 검사 영어 자극(따라말하기·읽기). 설계: docs/history/20260913_EnglishSpeechContent_design.md. 항목은 {text, syllables} — syllables는 CMUdict로 저작 시 채운 값이고(frontend/scripts/en-syllables.mjs), 테스트가 같은 도구로 대조한다. 손으로 고치지 말 것. 문장 난이도는 단어 수(한국어 어절 × 1.5), 낱말은 음절 수. 배치마다 사람 검수를 거친 항목만 들어온다.",
-  "bandNote": "목표는 한국어판과 같은 밴드마다 116개(90일 무겹침). 채우는 중 — 배치 8개(설계 §6). 규칙: (1) readingSentences와 repeatSentences는 한 문장도 겹치지 않는다. (2) 추가만 한다 — 문항 id가 배열 위치다. 영어 id에는 뱅크가 'en-US:' 접두를 붙인다(한국어 id와 섞이지 않게).",
+  "bandNote": "한국어판과 같은 밴드마다 116개(90일 무겹침) — 배치 8개(설계 §6)로 채웠다(2026-09-13). 규칙: (1) readingSentences와 repeatSentences는 한 문장도 겹치지 않는다. (2) 추가만 한다 — 문항 id가 배열 위치다. 영어 id에는 뱅크가 'en-US:' 접두를 붙인다(한국어 id와 섞이지 않게).",
   "repeatWords": [
     {
       "text": "bread",
@@ -629,6 +629,2168 @@
       "syllables": 4
     }
   ],
-  "repeatSentences": [],
-  "readingSentences": []
+  "repeatSentences": [
+    {
+      "text": "My sister bakes fresh bread",
+      "syllables": 6
+    },
+    {
+      "text": "The dog sleeps by the door",
+      "syllables": 6
+    },
+    {
+      "text": "We eat dinner together tonight",
+      "syllables": 9
+    },
+    {
+      "text": "Dad is washing the car",
+      "syllables": 6
+    },
+    {
+      "text": "The baby is sleeping now",
+      "syllables": 7
+    },
+    {
+      "text": "I drink warm milk before bed",
+      "syllables": 7
+    },
+    {
+      "text": "She waters the plants outside",
+      "syllables": 7
+    },
+    {
+      "text": "The bus stops near the park",
+      "syllables": 6
+    },
+    {
+      "text": "He wears a blue coat",
+      "syllables": 5
+    },
+    {
+      "text": "My neighbor walks her dog",
+      "syllables": 6
+    },
+    {
+      "text": "We planted seeds in spring",
+      "syllables": 6
+    },
+    {
+      "text": "The soup smells very good",
+      "syllables": 6
+    },
+    {
+      "text": "Grandpa sits in his chair",
+      "syllables": 6
+    },
+    {
+      "text": "The cat jumps on the bed",
+      "syllables": 6
+    },
+    {
+      "text": "Mom folds the clean laundry",
+      "syllables": 6
+    },
+    {
+      "text": "The sun is very bright",
+      "syllables": 6
+    },
+    {
+      "text": "We walk to the store",
+      "syllables": 5
+    },
+    {
+      "text": "He brushes his teeth slowly",
+      "syllables": 7
+    },
+    {
+      "text": "The rain stopped this morning",
+      "syllables": 6
+    },
+    {
+      "text": "She put the cups away",
+      "syllables": 6
+    },
+    {
+      "text": "I like hot tea with honey",
+      "syllables": 7
+    },
+    {
+      "text": "The children play in the yard",
+      "syllables": 7
+    },
+    {
+      "text": "My brother fixed the old fence",
+      "syllables": 7
+    },
+    {
+      "text": "We watched a movie last night",
+      "syllables": 7
+    },
+    {
+      "text": "The phone is on the table",
+      "syllables": 7
+    },
+    {
+      "text": "Please pass me the salt",
+      "syllables": 5
+    },
+    {
+      "text": "The birds sing in the trees",
+      "syllables": 6
+    },
+    {
+      "text": "I bought apples at the market",
+      "syllables": 8
+    },
+    {
+      "text": "He is cooking rice for lunch",
+      "syllables": 7
+    },
+    {
+      "text": "The window is open today",
+      "syllables": 8
+    },
+    {
+      "text": "My friend called me yesterday",
+      "syllables": 7
+    },
+    {
+      "text": "She keeps her glasses nearby",
+      "syllables": 7
+    },
+    {
+      "text": "The mail came early today",
+      "syllables": 7
+    },
+    {
+      "text": "We sat on the porch",
+      "syllables": 5
+    },
+    {
+      "text": "Dad makes pancakes on weekends",
+      "syllables": 7
+    },
+    {
+      "text": "The grass needs cutting soon",
+      "syllables": 6
+    },
+    {
+      "text": "I hung my coat up",
+      "syllables": 5
+    },
+    {
+      "text": "The water is too cold",
+      "syllables": 6
+    },
+    {
+      "text": "My daughter drives me to town",
+      "syllables": 7
+    },
+    {
+      "text": "He takes a walk after lunch",
+      "syllables": 7
+    },
+    {
+      "text": "The oven is still hot",
+      "syllables": 6
+    },
+    {
+      "text": "She is knitting a warm scarf",
+      "syllables": 7
+    },
+    {
+      "text": "We need more dish soap",
+      "syllables": 5
+    },
+    {
+      "text": "The leaves are turning red",
+      "syllables": 6
+    },
+    {
+      "text": "The train was late again",
+      "syllables": 6
+    },
+    {
+      "text": "My son plays the guitar",
+      "syllables": 6
+    },
+    {
+      "text": "The milk is in the fridge",
+      "syllables": 6
+    },
+    {
+      "text": "She smiled and waved at me",
+      "syllables": 6
+    },
+    {
+      "text": "The coffee is ready now",
+      "syllables": 7
+    },
+    {
+      "text": "He opened the big box",
+      "syllables": 6
+    },
+    {
+      "text": "We had soup for dinner",
+      "syllables": 6
+    },
+    {
+      "text": "It is windy outside today",
+      "syllables": 8
+    },
+    {
+      "text": "My feet are a little cold",
+      "syllables": 7
+    },
+    {
+      "text": "The store opens at noon",
+      "syllables": 6
+    },
+    {
+      "text": "I wrote a letter to her",
+      "syllables": 7
+    },
+    {
+      "text": "She sings while she cooks",
+      "syllables": 5
+    },
+    {
+      "text": "We shared a big pizza",
+      "syllables": 6
+    },
+    {
+      "text": "The dog wants to go out",
+      "syllables": 6
+    },
+    {
+      "text": "He is painting the kitchen",
+      "syllables": 7
+    },
+    {
+      "text": "I need a warm blanket",
+      "syllables": 6
+    },
+    {
+      "text": "The boat is on the lake",
+      "syllables": 6
+    },
+    {
+      "text": "My granddaughter visits on weekends",
+      "syllables": 9
+    },
+    {
+      "text": "The bread is still warm",
+      "syllables": 5
+    },
+    {
+      "text": "We fed the ducks today",
+      "syllables": 6
+    },
+    {
+      "text": "The lamp needs a new bulb",
+      "syllables": 6
+    },
+    {
+      "text": "He puts sugar in his tea",
+      "syllables": 7
+    },
+    {
+      "text": "The garden looks very nice",
+      "syllables": 7
+    },
+    {
+      "text": "I washed the dishes after dinner",
+      "syllables": 9
+    },
+    {
+      "text": "The mailman waved at me",
+      "syllables": 6
+    },
+    {
+      "text": "My shoes are by the door",
+      "syllables": 6
+    },
+    {
+      "text": "She is sweeping the floor",
+      "syllables": 6
+    },
+    {
+      "text": "We rode the bus downtown",
+      "syllables": 6
+    },
+    {
+      "text": "The pie is cooling off",
+      "syllables": 6
+    },
+    {
+      "text": "He cleaned the kitchen sink",
+      "syllables": 6
+    },
+    {
+      "text": "The moon is bright tonight",
+      "syllables": 6
+    },
+    {
+      "text": "I sat by the window",
+      "syllables": 6
+    },
+    {
+      "text": "The newspaper lands on the front step early",
+      "syllables": 11
+    },
+    {
+      "text": "My grandson taught me a new card game",
+      "syllables": 9
+    },
+    {
+      "text": "We keep spare blankets in the hall closet",
+      "syllables": 10
+    },
+    {
+      "text": "The barber gave my husband a short haircut",
+      "syllables": 11
+    },
+    {
+      "text": "My sister and I solve the crossword together",
+      "syllables": 12
+    },
+    {
+      "text": "The hardware store sells paint and small tools",
+      "syllables": 9
+    },
+    {
+      "text": "He painted the fence a pale blue color",
+      "syllables": 10
+    },
+    {
+      "text": "The cat sits and watches birds all day",
+      "syllables": 9
+    },
+    {
+      "text": "My daughter and I went shopping for shoes",
+      "syllables": 10
+    },
+    {
+      "text": "The waiter filled the glasses with cold water",
+      "syllables": 11
+    },
+    {
+      "text": "We take the train to visit my sister",
+      "syllables": 10
+    },
+    {
+      "text": "She put a small plant on her desk",
+      "syllables": 8
+    },
+    {
+      "text": "He brushes the dog on the back steps",
+      "syllables": 9
+    },
+    {
+      "text": "We wrapped the gift in bright yellow paper",
+      "syllables": 10
+    },
+    {
+      "text": "My neighbor plays the piano in the evening",
+      "syllables": 12
+    },
+    {
+      "text": "We bought a mattress for the guest room",
+      "syllables": 9
+    },
+    {
+      "text": "She paints pictures of boats and the sea",
+      "syllables": 9
+    },
+    {
+      "text": "The clerk packed the apples in a bag",
+      "syllables": 9
+    },
+    {
+      "text": "The mechanic changed the oil in my car",
+      "syllables": 10
+    },
+    {
+      "text": "We sort the mail at the dining table",
+      "syllables": 10
+    },
+    {
+      "text": "The little dog barks at the mail truck",
+      "syllables": 9
+    },
+    {
+      "text": "My friend sends me jokes by text message",
+      "syllables": 9
+    },
+    {
+      "text": "The tailor shortened the sleeves of my coat",
+      "syllables": 10
+    },
+    {
+      "text": "We stacked the logs beside the back door",
+      "syllables": 9
+    },
+    {
+      "text": "She makes lemonade when the weather is hot",
+      "syllables": 11
+    },
+    {
+      "text": "The garden center sells seeds and small trees",
+      "syllables": 10
+    },
+    {
+      "text": "We sent a small gift for the baby",
+      "syllables": 9
+    },
+    {
+      "text": "The hotel room looked out on the beach",
+      "syllables": 9
+    },
+    {
+      "text": "I pay the bills at the kitchen table",
+      "syllables": 10
+    },
+    {
+      "text": "The deer walked across the field at dusk",
+      "syllables": 9
+    },
+    {
+      "text": "My son helps me with the computer sometimes",
+      "syllables": 11
+    },
+    {
+      "text": "The soap smells like lemons and fresh grass",
+      "syllables": 9
+    },
+    {
+      "text": "We watch the ball game on the weekend",
+      "syllables": 9
+    },
+    {
+      "text": "The tree in the yard gives us shade",
+      "syllables": 8
+    },
+    {
+      "text": "He fixed the wobbly leg of the table",
+      "syllables": 11
+    },
+    {
+      "text": "My granddaughter loves to dance in the kitchen",
+      "syllables": 11
+    },
+    {
+      "text": "The bus driver knows all the regular riders",
+      "syllables": 12
+    },
+    {
+      "text": "We cleaned out the closet in the spring",
+      "syllables": 9
+    },
+    {
+      "text": "The shoe store is having a big sale",
+      "syllables": 9
+    },
+    {
+      "text": "The puzzle on the table has many pieces",
+      "syllables": 12
+    },
+    {
+      "text": "The shop on the corner sells fresh fruit and warm bread",
+      "syllables": 12
+    },
+    {
+      "text": "We always have soup and bread for lunch on cold days",
+      "syllables": 12
+    },
+    {
+      "text": "My husband likes to fix things around the house",
+      "syllables": 11
+    },
+    {
+      "text": "My sister and I like to walk by the river",
+      "syllables": 12
+    },
+    {
+      "text": "The cat likes to sleep in the sun by the window",
+      "syllables": 12
+    },
+    {
+      "text": "I made a cup of tea and sat down to rest",
+      "syllables": 11
+    },
+    {
+      "text": "The mailman brings the letters just before noon each day",
+      "syllables": 13
+    },
+    {
+      "text": "She planted red and yellow tulips along the front path",
+      "syllables": 14
+    },
+    {
+      "text": "We played cards at the kitchen table after dinner",
+      "syllables": 13
+    },
+    {
+      "text": "My son called to say he would visit on the weekend",
+      "syllables": 13
+    },
+    {
+      "text": "The snow fell quietly all night and covered the road",
+      "syllables": 13
+    },
+    {
+      "text": "I like to listen to music while I clean the house",
+      "syllables": 13
+    },
+    {
+      "text": "The soup was hot so I let it cool down",
+      "syllables": 10
+    },
+    {
+      "text": "We sat by the lake and watched the ducks swim",
+      "syllables": 10
+    },
+    {
+      "text": "My grandson helped me carry the heavy bags inside",
+      "syllables": 13
+    },
+    {
+      "text": "The baker sells warm rolls early in the morning",
+      "syllables": 12
+    },
+    {
+      "text": "She opened the windows to let in the fresh air",
+      "syllables": 12
+    },
+    {
+      "text": "The bus was crowded so we waited for the next one",
+      "syllables": 13
+    },
+    {
+      "text": "He likes to whistle a happy song while he works",
+      "syllables": 12
+    },
+    {
+      "text": "We went to the park and fed the hungry birds",
+      "syllables": 11
+    },
+    {
+      "text": "My friend and I talk on the phone on weekends",
+      "syllables": 11
+    },
+    {
+      "text": "The warm sun felt nice on my face this afternoon",
+      "syllables": 12
+    },
+    {
+      "text": "The man at the fruit stand gave us an extra peach",
+      "syllables": 12
+    },
+    {
+      "text": "We sat in the shade and talked until sunset",
+      "syllables": 11
+    },
+    {
+      "text": "The farmer let the children feed the goats by the fence",
+      "syllables": 13
+    },
+    {
+      "text": "The new neighbors brought us a basket of fresh muffins",
+      "syllables": 13
+    },
+    {
+      "text": "He built a wooden bench for the front of the house",
+      "syllables": 12
+    },
+    {
+      "text": "My husband and I take a slow walk around the pond",
+      "syllables": 13
+    },
+    {
+      "text": "The cashier at the grocery store always asks about my garden",
+      "syllables": 17
+    },
+    {
+      "text": "We rented a small cabin near the mountains for the week",
+      "syllables": 14
+    },
+    {
+      "text": "The baby giggled when the dog licked her little toes",
+      "syllables": 13
+    },
+    {
+      "text": "My son planted lettuce and carrots in a sunny corner",
+      "syllables": 15
+    },
+    {
+      "text": "The bus stop has a bench where we can sit",
+      "syllables": 10
+    },
+    {
+      "text": "He whistled and the dog came running across the yard",
+      "syllables": 13
+    },
+    {
+      "text": "The corner cafe serves soup and sandwiches until the afternoon",
+      "syllables": 17
+    },
+    {
+      "text": "My neighbor gave me a jar of homemade jam",
+      "syllables": 11
+    },
+    {
+      "text": "I dusted the shelves and polished the table before lunch",
+      "syllables": 14
+    },
+    {
+      "text": "The train station has a big clock above the doors",
+      "syllables": 12
+    },
+    {
+      "text": "We celebrated my birthday with cake and a few friends",
+      "syllables": 14
+    },
+    {
+      "text": "My wife planted mint and parsley in pots by the steps",
+      "syllables": 13
+    },
+    {
+      "text": "The joke made the whole table laugh out loud",
+      "syllables": 10
+    },
+    {
+      "text": "The dog rolled in the grass and got very muddy",
+      "syllables": 12
+    },
+    {
+      "text": "My grandchildren and I baked cookies for the neighbors",
+      "syllables": 13
+    },
+    {
+      "text": "She wore her favorite blue dress to the wedding",
+      "syllables": 12
+    },
+    {
+      "text": "We walked through the market and tasted the fresh cheese",
+      "syllables": 12
+    },
+    {
+      "text": "My husband dozed off in his chair during the game",
+      "syllables": 12
+    },
+    {
+      "text": "A gentle rain started just as we reached the car",
+      "syllables": 12
+    },
+    {
+      "text": "The cook let me taste the sauce before dinner",
+      "syllables": 11
+    },
+    {
+      "text": "The waves washed over the sand and back out to sea",
+      "syllables": 12
+    },
+    {
+      "text": "We hiked up the hill and ate lunch at the top",
+      "syllables": 11
+    },
+    {
+      "text": "The morning fog made the whole valley look soft and gray",
+      "syllables": 13
+    },
+    {
+      "text": "He carefully wrapped the glass bowl in paper for the move",
+      "syllables": 14
+    },
+    {
+      "text": "The squirrels chase each other around the big oak tree",
+      "syllables": 13
+    },
+    {
+      "text": "I like to take the long way home through the park",
+      "syllables": 11
+    },
+    {
+      "text": "We found a good spot to sit near the water",
+      "syllables": 11
+    },
+    {
+      "text": "The grandchildren slept in a tent in the back yard",
+      "syllables": 12
+    },
+    {
+      "text": "The restaurant down the street makes the best fried chicken",
+      "syllables": 13
+    },
+    {
+      "text": "We set up the chairs in a circle for the meeting",
+      "syllables": 13
+    },
+    {
+      "text": "The cold lemonade tasted good after working in the yard",
+      "syllables": 15
+    },
+    {
+      "text": "My neighbor and I trade books and talk about them",
+      "syllables": 12
+    },
+    {
+      "text": "The children waited by the window for the snow to start",
+      "syllables": 14
+    },
+    {
+      "text": "We sipped hot cider and watched the leaves fall",
+      "syllables": 10
+    },
+    {
+      "text": "The kind woman at the bank gave me a free pen",
+      "syllables": 12
+    },
+    {
+      "text": "My grandson won a blue ribbon at the county fair",
+      "syllables": 13
+    },
+    {
+      "text": "She rearranged the furniture so the room feels bigger",
+      "syllables": 14
+    },
+    {
+      "text": "We planted a hedge along the side of the yard",
+      "syllables": 12
+    },
+    {
+      "text": "The ice cream truck plays a song as it drives by",
+      "syllables": 11
+    },
+    {
+      "text": "My friend drove me to the beach to watch the sunrise",
+      "syllables": 12
+    },
+    {
+      "text": "The band played cheerful music in the park last night",
+      "syllables": 12
+    },
+    {
+      "text": "I carried the laundry basket down to the basement",
+      "syllables": 13
+    },
+    {
+      "text": "The neighbors hung a swing from the big maple tree",
+      "syllables": 12
+    },
+    {
+      "text": "We sat on the steps and ate cold slices of watermelon",
+      "syllables": 15
+    },
+    {
+      "text": "The little shop sells yarn in so many bright colors",
+      "syllables": 13
+    },
+    {
+      "text": "We waved goodbye as the boat pulled away from the dock",
+      "syllables": 13
+    },
+    {
+      "text": "She sprinkled cheese on the noodles and served them hot",
+      "syllables": 12
+    },
+    {
+      "text": "The clerk at the post office knows my name",
+      "syllables": 10
+    }
+  ],
+  "readingSentences": [
+    {
+      "text": "The sun rises",
+      "syllables": 4
+    },
+    {
+      "text": "Birds are singing",
+      "syllables": 4
+    },
+    {
+      "text": "The dog barks",
+      "syllables": 3
+    },
+    {
+      "text": "Snow is falling",
+      "syllables": 4
+    },
+    {
+      "text": "Rain is falling",
+      "syllables": 4
+    },
+    {
+      "text": "The baby sleeps",
+      "syllables": 4
+    },
+    {
+      "text": "Mom bakes bread",
+      "syllables": 3
+    },
+    {
+      "text": "Dad drinks coffee",
+      "syllables": 4
+    },
+    {
+      "text": "The cat purrs",
+      "syllables": 3
+    },
+    {
+      "text": "Leaves are falling",
+      "syllables": 4
+    },
+    {
+      "text": "The kettle whistles",
+      "syllables": 5
+    },
+    {
+      "text": "Grandma knits scarves",
+      "syllables": 4
+    },
+    {
+      "text": "The bus arrives",
+      "syllables": 4
+    },
+    {
+      "text": "The phone rings",
+      "syllables": 3
+    },
+    {
+      "text": "Water is boiling",
+      "syllables": 5
+    },
+    {
+      "text": "The door opens",
+      "syllables": 4
+    },
+    {
+      "text": "The clock ticks",
+      "syllables": 3
+    },
+    {
+      "text": "Bells are ringing",
+      "syllables": 4
+    },
+    {
+      "text": "Children are laughing",
+      "syllables": 5
+    },
+    {
+      "text": "The moon shines",
+      "syllables": 3
+    },
+    {
+      "text": "Stars are twinkling",
+      "syllables": 5
+    },
+    {
+      "text": "The grass grows",
+      "syllables": 3
+    },
+    {
+      "text": "Grandpa naps quietly",
+      "syllables": 6
+    },
+    {
+      "text": "She sings softly",
+      "syllables": 4
+    },
+    {
+      "text": "He walks slowly",
+      "syllables": 4
+    },
+    {
+      "text": "We eat lunch",
+      "syllables": 3
+    },
+    {
+      "text": "I drink tea",
+      "syllables": 3
+    },
+    {
+      "text": "The soup simmers",
+      "syllables": 4
+    },
+    {
+      "text": "The train leaves",
+      "syllables": 3
+    },
+    {
+      "text": "Ducks swim quietly",
+      "syllables": 5
+    },
+    {
+      "text": "The river flows",
+      "syllables": 4
+    },
+    {
+      "text": "Clouds are moving",
+      "syllables": 4
+    },
+    {
+      "text": "The bread rises",
+      "syllables": 4
+    },
+    {
+      "text": "She smiles warmly",
+      "syllables": 4
+    },
+    {
+      "text": "He waves hello",
+      "syllables": 4
+    },
+    {
+      "text": "We plant seeds",
+      "syllables": 3
+    },
+    {
+      "text": "I wash dishes",
+      "syllables": 4
+    },
+    {
+      "text": "The car starts",
+      "syllables": 3
+    },
+    {
+      "text": "The dog sleeps",
+      "syllables": 3
+    },
+    {
+      "text": "The baby laughs",
+      "syllables": 4
+    },
+    {
+      "text": "Mom sweeps floors",
+      "syllables": 3
+    },
+    {
+      "text": "Dad fixes chairs",
+      "syllables": 4
+    },
+    {
+      "text": "The mail arrives",
+      "syllables": 4
+    },
+    {
+      "text": "Pancakes are cooking",
+      "syllables": 5
+    },
+    {
+      "text": "Apples are ripe",
+      "syllables": 4
+    },
+    {
+      "text": "The milk spilled",
+      "syllables": 3
+    },
+    {
+      "text": "Grandma bakes pies",
+      "syllables": 4
+    },
+    {
+      "text": "Grandpa feeds birds",
+      "syllables": 4
+    },
+    {
+      "text": "The neighbor waves",
+      "syllables": 4
+    },
+    {
+      "text": "My sister calls",
+      "syllables": 4
+    },
+    {
+      "text": "My brother visits",
+      "syllables": 5
+    },
+    {
+      "text": "The kids play",
+      "syllables": 3
+    },
+    {
+      "text": "We walk outside",
+      "syllables": 4
+    },
+    {
+      "text": "I feel happy",
+      "syllables": 4
+    },
+    {
+      "text": "Coffee is hot",
+      "syllables": 4
+    },
+    {
+      "text": "Water is cold",
+      "syllables": 4
+    },
+    {
+      "text": "Soup is ready",
+      "syllables": 4
+    },
+    {
+      "text": "Lunch is ready",
+      "syllables": 4
+    },
+    {
+      "text": "Dinner smells good",
+      "syllables": 4
+    },
+    {
+      "text": "Blankets are warm",
+      "syllables": 4
+    },
+    {
+      "text": "The ice melts",
+      "syllables": 3
+    },
+    {
+      "text": "The candle burns",
+      "syllables": 4
+    },
+    {
+      "text": "The lamp glows",
+      "syllables": 3
+    },
+    {
+      "text": "The baby cries",
+      "syllables": 4
+    },
+    {
+      "text": "The dog plays",
+      "syllables": 3
+    },
+    {
+      "text": "The bird flies",
+      "syllables": 3
+    },
+    {
+      "text": "Bees are buzzing",
+      "syllables": 4
+    },
+    {
+      "text": "Frogs are croaking",
+      "syllables": 4
+    },
+    {
+      "text": "Cows are grazing",
+      "syllables": 4
+    },
+    {
+      "text": "Horses are running",
+      "syllables": 5
+    },
+    {
+      "text": "Fish are swimming",
+      "syllables": 4
+    },
+    {
+      "text": "The tree sways",
+      "syllables": 3
+    },
+    {
+      "text": "Waves are crashing",
+      "syllables": 4
+    },
+    {
+      "text": "The boat floats",
+      "syllables": 3
+    },
+    {
+      "text": "The plane lands",
+      "syllables": 3
+    },
+    {
+      "text": "Mom hums softly",
+      "syllables": 4
+    },
+    {
+      "text": "Dad whistles happily",
+      "syllables": 6
+    },
+    {
+      "text": "She folds laundry",
+      "syllables": 4
+    },
+    {
+      "text": "He shaves carefully",
+      "syllables": 5
+    },
+    {
+      "text": "We share dessert",
+      "syllables": 4
+    },
+    {
+      "text": "I make breakfast",
+      "syllables": 4
+    },
+    {
+      "text": "She pours milk",
+      "syllables": 3
+    },
+    {
+      "text": "He cuts wood",
+      "syllables": 3
+    },
+    {
+      "text": "We watch television",
+      "syllables": 6
+    },
+    {
+      "text": "I wear glasses",
+      "syllables": 4
+    },
+    {
+      "text": "The baker smiles",
+      "syllables": 4
+    },
+    {
+      "text": "The farmer works",
+      "syllables": 4
+    },
+    {
+      "text": "The teacher speaks",
+      "syllables": 4
+    },
+    {
+      "text": "The mailman knocks",
+      "syllables": 4
+    },
+    {
+      "text": "Snow covers everything",
+      "syllables": 6
+    },
+    {
+      "text": "Thunder is rumbling",
+      "syllables": 6
+    },
+    {
+      "text": "Lightning flashes brightly",
+      "syllables": 6
+    },
+    {
+      "text": "The fog lifts",
+      "syllables": 3
+    },
+    {
+      "text": "Spring is here",
+      "syllables": 3
+    },
+    {
+      "text": "Summer is hot",
+      "syllables": 4
+    },
+    {
+      "text": "Winter is cold",
+      "syllables": 4
+    },
+    {
+      "text": "Autumn is cool",
+      "syllables": 4
+    },
+    {
+      "text": "The pie cools",
+      "syllables": 3
+    },
+    {
+      "text": "Tea tastes sweet",
+      "syllables": 3
+    },
+    {
+      "text": "Soup warms me",
+      "syllables": 3
+    },
+    {
+      "text": "Music is playing",
+      "syllables": 5
+    },
+    {
+      "text": "The radio plays",
+      "syllables": 5
+    },
+    {
+      "text": "The dog runs",
+      "syllables": 3
+    },
+    {
+      "text": "The cat stretches",
+      "syllables": 4
+    },
+    {
+      "text": "He smiles back",
+      "syllables": 3
+    },
+    {
+      "text": "We hug tightly",
+      "syllables": 4
+    },
+    {
+      "text": "I sit down",
+      "syllables": 3
+    },
+    {
+      "text": "She stands up",
+      "syllables": 3
+    },
+    {
+      "text": "He opens windows",
+      "syllables": 5
+    },
+    {
+      "text": "We wrap gifts",
+      "syllables": 3
+    },
+    {
+      "text": "I hang pictures",
+      "syllables": 4
+    },
+    {
+      "text": "The baby yawns",
+      "syllables": 4
+    },
+    {
+      "text": "Grandma rocks slowly",
+      "syllables": 5
+    },
+    {
+      "text": "Grandpa tells stories",
+      "syllables": 5
+    },
+    {
+      "text": "The children sing",
+      "syllables": 4
+    },
+    {
+      "text": "Neighbors say hello",
+      "syllables": 5
+    },
+    {
+      "text": "Grandma waters the front garden",
+      "syllables": 8
+    },
+    {
+      "text": "The bakery smells like cinnamon",
+      "syllables": 9
+    },
+    {
+      "text": "My neighbor grows red peppers",
+      "syllables": 7
+    },
+    {
+      "text": "The mailman brings a package",
+      "syllables": 7
+    },
+    {
+      "text": "We sit under the tree",
+      "syllables": 6
+    },
+    {
+      "text": "The lake looks very calm",
+      "syllables": 6
+    },
+    {
+      "text": "Snow covers the whole street",
+      "syllables": 6
+    },
+    {
+      "text": "Fresh bread cools on racks",
+      "syllables": 5
+    },
+    {
+      "text": "Dad hangs the new curtains",
+      "syllables": 6
+    },
+    {
+      "text": "She wraps a gift carefully",
+      "syllables": 7
+    },
+    {
+      "text": "The farmer feeds the chickens",
+      "syllables": 7
+    },
+    {
+      "text": "Children run across the field",
+      "syllables": 7
+    },
+    {
+      "text": "He sharpens the kitchen knives",
+      "syllables": 7
+    },
+    {
+      "text": "The shop opens very early",
+      "syllables": 8
+    },
+    {
+      "text": "Mom stirs the soup slowly",
+      "syllables": 6
+    },
+    {
+      "text": "The garden hose is leaking",
+      "syllables": 7
+    },
+    {
+      "text": "My grandson plays the drums",
+      "syllables": 6
+    },
+    {
+      "text": "Autumn leaves cover the ground",
+      "syllables": 7
+    },
+    {
+      "text": "The sun warms the porch",
+      "syllables": 5
+    },
+    {
+      "text": "Rain taps on the window",
+      "syllables": 6
+    },
+    {
+      "text": "The kettle sings on the stove",
+      "syllables": 7
+    },
+    {
+      "text": "We share a pot of tea",
+      "syllables": 6
+    },
+    {
+      "text": "Grandma keeps cookies in a tin",
+      "syllables": 8
+    },
+    {
+      "text": "The neighbors plant tulips in spring",
+      "syllables": 8
+    },
+    {
+      "text": "My grandson rides his red bike",
+      "syllables": 7
+    },
+    {
+      "text": "The farmer sells eggs and milk",
+      "syllables": 7
+    },
+    {
+      "text": "Mom hangs laundry in the sunshine",
+      "syllables": 8
+    },
+    {
+      "text": "We drink lemonade on the porch",
+      "syllables": 8
+    },
+    {
+      "text": "The old clock chimes at noon",
+      "syllables": 6
+    },
+    {
+      "text": "He waters the lawn after dinner",
+      "syllables": 9
+    },
+    {
+      "text": "The baker wakes up very early",
+      "syllables": 9
+    },
+    {
+      "text": "Children splash in the cold lake",
+      "syllables": 7
+    },
+    {
+      "text": "The soup tastes better with bread",
+      "syllables": 7
+    },
+    {
+      "text": "My brother works at a bakery",
+      "syllables": 9
+    },
+    {
+      "text": "We found seashells along the shore",
+      "syllables": 8
+    },
+    {
+      "text": "She wears a sun hat outside",
+      "syllables": 7
+    },
+    {
+      "text": "The dog chases leaves in autumn",
+      "syllables": 8
+    },
+    {
+      "text": "He carries groceries up the stairs",
+      "syllables": 9
+    },
+    {
+      "text": "The market opens early on weekends",
+      "syllables": 10
+    },
+    {
+      "text": "Mom sets the table for dinner",
+      "syllables": 8
+    },
+    {
+      "text": "The little boy feeds the ducks",
+      "syllables": 7
+    },
+    {
+      "text": "My friend knits socks for winter",
+      "syllables": 7
+    },
+    {
+      "text": "We hear crickets on summer nights",
+      "syllables": 8
+    },
+    {
+      "text": "The snowplow clears the road early",
+      "syllables": 8
+    },
+    {
+      "text": "She sips cocoa by the window",
+      "syllables": 8
+    },
+    {
+      "text": "He hums while he washes dishes",
+      "syllables": 8
+    },
+    {
+      "text": "The apples in the bowl shine",
+      "syllables": 7
+    },
+    {
+      "text": "The porch chairs are painted white",
+      "syllables": 7
+    },
+    {
+      "text": "I light a candle at dinner",
+      "syllables": 8
+    },
+    {
+      "text": "Grandpa builds birdhouses in the shed",
+      "syllables": 9
+    },
+    {
+      "text": "We bake bread on cold mornings",
+      "syllables": 7
+    },
+    {
+      "text": "The bus driver waves at children",
+      "syllables": 8
+    },
+    {
+      "text": "My daughter braids her long hair",
+      "syllables": 7
+    },
+    {
+      "text": "The pie crust is golden brown",
+      "syllables": 7
+    },
+    {
+      "text": "He fixes the squeaky kitchen door",
+      "syllables": 9
+    },
+    {
+      "text": "The yellow bus comes at noon",
+      "syllables": 7
+    },
+    {
+      "text": "She pours milk into her tea",
+      "syllables": 7
+    },
+    {
+      "text": "The garden needs rain this week",
+      "syllables": 7
+    },
+    {
+      "text": "We roast marshmallows by the campfire",
+      "syllables": 10
+    },
+    {
+      "text": "The waiter brings us warm bread",
+      "syllables": 7
+    },
+    {
+      "text": "Mom plants seeds in small pots",
+      "syllables": 6
+    },
+    {
+      "text": "The kids build a sand castle",
+      "syllables": 7
+    },
+    {
+      "text": "She mails a letter each week",
+      "syllables": 7
+    },
+    {
+      "text": "He puts on his rain boots",
+      "syllables": 6
+    },
+    {
+      "text": "The breeze feels cool this evening",
+      "syllables": 7
+    },
+    {
+      "text": "We walk the dog after supper",
+      "syllables": 8
+    },
+    {
+      "text": "My cousin bakes a lemon cake",
+      "syllables": 8
+    },
+    {
+      "text": "The clock in the hall stopped",
+      "syllables": 6
+    },
+    {
+      "text": "The old radio still works well",
+      "syllables": 8
+    },
+    {
+      "text": "I water the plants each morning",
+      "syllables": 8
+    },
+    {
+      "text": "The pond freezes in the winter",
+      "syllables": 8
+    },
+    {
+      "text": "Grandma knits hats for the babies",
+      "syllables": 8
+    },
+    {
+      "text": "The ferry crosses the wide river",
+      "syllables": 9
+    },
+    {
+      "text": "He sweeps snow off the steps",
+      "syllables": 6
+    },
+    {
+      "text": "She keeps fruit on the counter",
+      "syllables": 7
+    },
+    {
+      "text": "We fly kites at the beach",
+      "syllables": 6
+    },
+    {
+      "text": "My grandson drew me a picture",
+      "syllables": 8
+    },
+    {
+      "text": "The teacher rings the school bell",
+      "syllables": 7
+    },
+    {
+      "text": "The garden smells sweet after rain",
+      "syllables": 8
+    },
+    {
+      "text": "Mom keeps recipes in a box",
+      "syllables": 8
+    },
+    {
+      "text": "The frogs sing near the pond",
+      "syllables": 6
+    },
+    {
+      "text": "The baby holds her soft blanket",
+      "syllables": 8
+    },
+    {
+      "text": "He trims the hedges in spring",
+      "syllables": 7
+    },
+    {
+      "text": "She sings along with the radio",
+      "syllables": 9
+    },
+    {
+      "text": "The market sells fresh sweet corn",
+      "syllables": 7
+    },
+    {
+      "text": "The old quilt keeps me warm",
+      "syllables": 6
+    },
+    {
+      "text": "Dad chops wood for the stove",
+      "syllables": 6
+    },
+    {
+      "text": "The children wave at the train",
+      "syllables": 7
+    },
+    {
+      "text": "I like the smell of rain",
+      "syllables": 6
+    },
+    {
+      "text": "Grandpa keeps his hat on indoors",
+      "syllables": 8
+    },
+    {
+      "text": "The goldfish swims around the bowl",
+      "syllables": 8
+    },
+    {
+      "text": "She ties her shoes very slowly",
+      "syllables": 8
+    },
+    {
+      "text": "We ate peaches on the porch",
+      "syllables": 7
+    },
+    {
+      "text": "The hot soup warms my hands",
+      "syllables": 6
+    },
+    {
+      "text": "My neighbor shovels the front walk",
+      "syllables": 8
+    },
+    {
+      "text": "He drinks apple juice at breakfast",
+      "syllables": 8
+    },
+    {
+      "text": "The napkins are on the table",
+      "syllables": 8
+    },
+    {
+      "text": "Mom bakes muffins on weekend mornings",
+      "syllables": 9
+    },
+    {
+      "text": "The bees buzz around the garden",
+      "syllables": 8
+    },
+    {
+      "text": "My brother mows the lawn weekly",
+      "syllables": 8
+    },
+    {
+      "text": "The kitchen smells like fresh bread",
+      "syllables": 7
+    },
+    {
+      "text": "The sheep graze on the hill",
+      "syllables": 6
+    },
+    {
+      "text": "The lighthouse shines over the water",
+      "syllables": 9
+    },
+    {
+      "text": "We share popcorn during the movie",
+      "syllables": 9
+    },
+    {
+      "text": "The old bridge crosses the stream",
+      "syllables": 7
+    },
+    {
+      "text": "My wife grows beans and peas",
+      "syllables": 6
+    },
+    {
+      "text": "The mail truck stops at noon",
+      "syllables": 6
+    },
+    {
+      "text": "The toast is warm and crispy",
+      "syllables": 7
+    },
+    {
+      "text": "He tips his hat to neighbors",
+      "syllables": 7
+    },
+    {
+      "text": "She keeps keys in her purse",
+      "syllables": 6
+    },
+    {
+      "text": "We rest on a park bench",
+      "syllables": 6
+    },
+    {
+      "text": "The farmer drives a green tractor",
+      "syllables": 8
+    },
+    {
+      "text": "The bread basket is almost empty",
+      "syllables": 9
+    },
+    {
+      "text": "I wear warm socks at night",
+      "syllables": 6
+    },
+    {
+      "text": "Grandpa tells stories about the farm",
+      "syllables": 9
+    },
+    {
+      "text": "The dog waits by the gate",
+      "syllables": 6
+    },
+    {
+      "text": "The baker puts fresh loaves in the window",
+      "syllables": 10
+    },
+    {
+      "text": "We hung the wet sheets on the line",
+      "syllables": 8
+    },
+    {
+      "text": "My neighbor brings us peaches from her tree",
+      "syllables": 10
+    },
+    {
+      "text": "The children ride their bikes down the hill",
+      "syllables": 9
+    },
+    {
+      "text": "She sprinkles sugar on top of the pie",
+      "syllables": 10
+    },
+    {
+      "text": "The old farmhouse has a big red barn",
+      "syllables": 9
+    },
+    {
+      "text": "We eat breakfast on the porch in summer",
+      "syllables": 10
+    },
+    {
+      "text": "My grandson and I built a little birdhouse",
+      "syllables": 11
+    },
+    {
+      "text": "The lamp by the bed gives soft light",
+      "syllables": 8
+    },
+    {
+      "text": "Mom keeps the good dishes for special days",
+      "syllables": 10
+    },
+    {
+      "text": "The mailman always stops to talk with us",
+      "syllables": 10
+    },
+    {
+      "text": "He found an old coin in the garden",
+      "syllables": 9
+    },
+    {
+      "text": "The rain made puddles all along the road",
+      "syllables": 10
+    },
+    {
+      "text": "She wears a warm scarf when she walks",
+      "syllables": 8
+    },
+    {
+      "text": "We bought a new rug for the hallway",
+      "syllables": 9
+    },
+    {
+      "text": "The coffee shop on the corner smells wonderful",
+      "syllables": 12
+    },
+    {
+      "text": "My daughter sends me photos of the kids",
+      "syllables": 10
+    },
+    {
+      "text": "The farmer grows corn in the big field",
+      "syllables": 9
+    },
+    {
+      "text": "The geese fly over the lake each fall",
+      "syllables": 9
+    },
+    {
+      "text": "Grandpa taught me how to tie a knot",
+      "syllables": 9
+    },
+    {
+      "text": "On warm evenings we sit outside and watch the stars",
+      "syllables": 12
+    },
+    {
+      "text": "The little shop down the road sells fresh eggs and honey",
+      "syllables": 13
+    },
+    {
+      "text": "My brother drives an old blue truck to the farm",
+      "syllables": 11
+    },
+    {
+      "text": "The kitchen window looks out over the garden and the trees",
+      "syllables": 15
+    },
+    {
+      "text": "She keeps a small notebook by the phone for messages",
+      "syllables": 13
+    },
+    {
+      "text": "The children built a fort out of blankets and pillows",
+      "syllables": 13
+    },
+    {
+      "text": "The bus was late so we waited under the shelter",
+      "syllables": 13
+    },
+    {
+      "text": "My granddaughter painted a picture of the sunset for me",
+      "syllables": 15
+    },
+    {
+      "text": "The neighbors invited us over for coffee and cake",
+      "syllables": 14
+    },
+    {
+      "text": "I keep my best photos in a leather album",
+      "syllables": 12
+    },
+    {
+      "text": "The baker gets up before dawn to make the bread",
+      "syllables": 12
+    },
+    {
+      "text": "We planted a small apple tree in the back yard",
+      "syllables": 12
+    },
+    {
+      "text": "The snow was so deep that we stayed inside all day",
+      "syllables": 12
+    },
+    {
+      "text": "She likes to knit while she listens to quiet music",
+      "syllables": 13
+    },
+    {
+      "text": "My son fixed the leaky faucet in the kitchen sink",
+      "syllables": 13
+    },
+    {
+      "text": "We sat on the dock and watched the boats go by",
+      "syllables": 11
+    },
+    {
+      "text": "Grandpa likes to tell stories about when he was young",
+      "syllables": 13
+    },
+    {
+      "text": "The cat curled up on the warm blanket by the stove",
+      "syllables": 12
+    },
+    {
+      "text": "My friend and I walk to the park in the morning",
+      "syllables": 12
+    },
+    {
+      "text": "The rain stopped and a rainbow appeared over the hills",
+      "syllables": 13
+    },
+    {
+      "text": "She bought fresh tulips at the market for the table",
+      "syllables": 13
+    },
+    {
+      "text": "The children laughed as the puppy chased its tail",
+      "syllables": 11
+    },
+    {
+      "text": "We had a picnic by the lake with sandwiches and lemonade",
+      "syllables": 16
+    },
+    {
+      "text": "Dad washed the windows so the sunlight comes in",
+      "syllables": 11
+    },
+    {
+      "text": "The waiter brought us hot soup and a basket of bread",
+      "syllables": 13
+    },
+    {
+      "text": "My daughter calls me on the phone most evenings",
+      "syllables": 11
+    },
+    {
+      "text": "The dry leaves crunch under my feet when I walk",
+      "syllables": 11
+    },
+    {
+      "text": "We keep a big jar of coins for the grandchildren",
+      "syllables": 12
+    },
+    {
+      "text": "The ferry takes us across the bay in the summer",
+      "syllables": 13
+    },
+    {
+      "text": "She sets out bird seed in the yard in winter",
+      "syllables": 11
+    },
+    {
+      "text": "The kettle whistled and I made a cup of tea",
+      "syllables": 12
+    },
+    {
+      "text": "The town holds a parade in the park in summer",
+      "syllables": 12
+    },
+    {
+      "text": "I like the sound of rain on the window at night",
+      "syllables": 12
+    },
+    {
+      "text": "Grandma taught me how to bake bread when I was young",
+      "syllables": 12
+    },
+    {
+      "text": "The bus driver says good morning to everyone who gets on",
+      "syllables": 15
+    },
+    {
+      "text": "We watched the snow fall from the warm living room",
+      "syllables": 11
+    },
+    {
+      "text": "The garden is full of bees and butterflies in the summer",
+      "syllables": 15
+    },
+    {
+      "text": "My husband makes pancakes for the grandchildren when they visit",
+      "syllables": 15
+    },
+    {
+      "text": "She keeps her sewing kit in a basket by the chair",
+      "syllables": 13
+    },
+    {
+      "text": "We ride the train to the city to see the lights",
+      "syllables": 12
+    },
+    {
+      "text": "My sister sends me a card on my birthday each year",
+      "syllables": 13
+    },
+    {
+      "text": "The pie was so good that we ate the whole thing",
+      "syllables": 11
+    },
+    {
+      "text": "I water the garden early before the sun gets hot",
+      "syllables": 14
+    },
+    {
+      "text": "The children collect shells along the beach in the morning",
+      "syllables": 14
+    },
+    {
+      "text": "The warm bread smells so good that we eat it fast",
+      "syllables": 11
+    },
+    {
+      "text": "The neighbors wave from their porch when we walk by",
+      "syllables": 11
+    },
+    {
+      "text": "The little girl feeds the ducks with pieces of bread",
+      "syllables": 12
+    },
+    {
+      "text": "She hums a happy tune while she folds the clothes",
+      "syllables": 11
+    },
+    {
+      "text": "My wife likes to work in the garden after lunch",
+      "syllables": 12
+    },
+    {
+      "text": "The mail carrier brought a letter from my old friend",
+      "syllables": 13
+    },
+    {
+      "text": "We roasted corn on the grill for dinner last night",
+      "syllables": 12
+    },
+    {
+      "text": "The kitchen is warm and smells like cinnamon and apples",
+      "syllables": 14
+    },
+    {
+      "text": "I found my old photo album in a box upstairs",
+      "syllables": 13
+    },
+    {
+      "text": "The bakery down the street has the best cinnamon rolls",
+      "syllables": 14
+    },
+    {
+      "text": "The kids made paper boats and floated them in the stream",
+      "syllables": 13
+    },
+    {
+      "text": "My daughter braided her hair before she went to school",
+      "syllables": 13
+    },
+    {
+      "text": "The quiet lake looks like a mirror in the morning",
+      "syllables": 13
+    },
+    {
+      "text": "Grandpa keeps a garden with beans and peas and corn",
+      "syllables": 12
+    },
+    {
+      "text": "We bundle up in coats and hats when it snows",
+      "syllables": 11
+    },
+    {
+      "text": "She makes a big pot of soup when it is cold",
+      "syllables": 11
+    },
+    {
+      "text": "The old man feeds the pigeons in the park each day",
+      "syllables": 12
+    },
+    {
+      "text": "My friend knitted me a warm scarf for my birthday",
+      "syllables": 12
+    },
+    {
+      "text": "The chickens wake us up early in the morning",
+      "syllables": 12
+    },
+    {
+      "text": "We listened to music on the radio after dinner",
+      "syllables": 15
+    },
+    {
+      "text": "The candles on the table give the room a warm glow",
+      "syllables": 13
+    },
+    {
+      "text": "He shoveled the snow so we could get to the car",
+      "syllables": 12
+    },
+    {
+      "text": "The little boy waved at the train as it passed",
+      "syllables": 11
+    },
+    {
+      "text": "I like to sit by the window and watch the birds",
+      "syllables": 12
+    },
+    {
+      "text": "The trees in the park turn gold in the fall",
+      "syllables": 10
+    },
+    {
+      "text": "Mom keeps fresh fruit in a bowl on the kitchen table",
+      "syllables": 13
+    },
+    {
+      "text": "We walked to the bakery and bought warm bread for lunch",
+      "syllables": 13
+    },
+    {
+      "text": "The baby fell asleep in my arms after her bottle",
+      "syllables": 14
+    },
+    {
+      "text": "My brother visits us on the farm in the summer",
+      "syllables": 13
+    },
+    {
+      "text": "She washed the car and then watered the front lawn",
+      "syllables": 11
+    },
+    {
+      "text": "We sat by the stove to warm up after the walk",
+      "syllables": 12
+    },
+    {
+      "text": "The market sells warm pretzels and fresh lemonade in summer",
+      "syllables": 15
+    },
+    {
+      "text": "Grandma always hums while she bakes her apple pies",
+      "syllables": 12
+    },
+    {
+      "text": "The kids built a snowman with a carrot for a nose",
+      "syllables": 13
+    },
+    {
+      "text": "The sun came out after the rain and dried the streets",
+      "syllables": 12
+    },
+    {
+      "text": "The farmer sells fresh strawberries at a stand by the road",
+      "syllables": 14
+    },
+    {
+      "text": "We watch the ships sail in and out of the harbor",
+      "syllables": 12
+    },
+    {
+      "text": "She keeps a picture of her grandchildren on the fridge",
+      "syllables": 13
+    },
+    {
+      "text": "The old barn is full of hay for the horses",
+      "syllables": 11
+    },
+    {
+      "text": "He likes to fish at the lake early on weekend mornings",
+      "syllables": 14
+    },
+    {
+      "text": "The warm cocoa tastes even better with a little cream",
+      "syllables": 14
+    },
+    {
+      "text": "My granddaughter sings songs to me when she visits",
+      "syllables": 12
+    },
+    {
+      "text": "We watched the boats on the lake on a sunny day",
+      "syllables": 12
+    },
+    {
+      "text": "The quilt on my bed was made by my mother",
+      "syllables": 11
+    },
+    {
+      "text": "The shop owner gave us a free cookie with the coffee",
+      "syllables": 14
+    },
+    {
+      "text": "I like to take a warm bath before bed",
+      "syllables": 10
+    },
+    {
+      "text": "The kids ran through the sprinkler on the hot afternoon",
+      "syllables": 13
+    },
+    {
+      "text": "Dad hung the picture on the wall above the couch",
+      "syllables": 12
+    },
+    {
+      "text": "The baker ties the cake box with a red ribbon",
+      "syllables": 12
+    },
+    {
+      "text": "We picked apples at the orchard and made a pie",
+      "syllables": 12
+    },
+    {
+      "text": "My grandson likes to help me in the garden",
+      "syllables": 11
+    },
+    {
+      "text": "The cold air makes my cheeks turn pink and red",
+      "syllables": 10
+    }
+  ]
 }

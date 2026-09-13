@@ -12,6 +12,8 @@ import {
   pickDdkItems,
   pickReadingItems,
   pickRepeatItems,
+  readingBandForLevel,
+  repeatBandsForLevel,
 } from './QabSpeechBank.js';
 
 const EN = { locale: 'en-US' };
@@ -80,6 +82,47 @@ describe('QabSpeechBank — 로케일', () => {
   it('한국어 세션은 영어 문항을 안 낸다', () => {
     for (const it of many(() => pickRepeatItems(3, 1, { locale: 'ko-KR' }))) {
       expect(it.itemId.startsWith('en-US:')).toBe(false);
+    }
+  });
+});
+
+/**
+ * 영어 밴드 크기 — 한국어판과 같은 기준, 레벨마다 116개(90일 무겹침).
+ * QabSpeechBank.test.ts의 한국어 밴드 크기 테스트와 같은 이유로 자료를 규칙에 직접 건다
+ * (pick(999)는 되돌리기가 걸려 전체 풀을 돌려준다).
+ */
+describe('영어 밴드 크기 — 레벨마다 116개', () => {
+  const 최소밴드 = 116;
+  const within = (n: number, r: { min: number; max: number } | null) =>
+    r !== null && n >= r.min && n <= r.max;
+  const words = (t: string) => t.split(' ').length;
+
+  it('따라말하기 — 다섯 레벨 모두 116개 이상', () => {
+    for (const lv of [1, 2, 3, 4, 5]) {
+      const b = repeatBandsForLevel(lv, 'en-US');
+      const n =
+        en.repeatWords.filter((w) => within(w.syllables, b.word)).length +
+        en.repeatSentences.filter((s) => within(words(s.text), b.sentence)).length;
+      expect(n, `lv${lv}`).toBeGreaterThanOrEqual(최소밴드);
+    }
+  });
+
+  it('읽기 — 다섯 레벨 모두 116개 이상', () => {
+    for (const lv of [1, 2, 3, 4, 5]) {
+      const b = readingBandForLevel(lv, 'en-US');
+      const n = en.readingSentences.filter((s) => within(words(s.text), b)).length;
+      expect(n, `lv${lv}`).toBeGreaterThanOrEqual(최소밴드);
+    }
+  });
+
+  it('밴드를 채웠으니 영어 세션은 레벨 밖으로 되돌아가지 않는다', () => {
+    for (const lv of [1, 2, 3, 4, 5]) {
+      const picks = [
+        ...many(() => pickRepeatItems(3, lv, EN), 10),
+        ...many(() => pickReadingItems(3, lv, EN), 10),
+      ];
+      expect(picks.length, `lv${lv}`).toBe(60);
+      for (const it of picks) expect(it.bandFallback, `lv${lv} ${it.itemId}`).toBeUndefined();
     }
   });
 });
