@@ -6,7 +6,7 @@ import type { ScenarioStatus } from '../application/useMemoryEntries.js';
 import { extractErrorMessage } from '../../shared/extractErrorMessage.js';
 import { AuthedImage } from '../../shared/AuthedImage.js';
 import { isConversationModeEnabled } from '../../shared/featureFlags.js';
-import { CAREGIVER_LOCALE } from '../../../shared/domain/locale.js';
+import { formatDate } from '../../../shared/i18n/formatDate.js';
 
 interface EntryDetailScreenProps {
   entryId: string;
@@ -137,7 +137,7 @@ export function EntryDetailScreen({
     );
   }
 
-  const dateLabel = new Date(entry.createdAt).toLocaleDateString(CAREGIVER_LOCALE, {
+  const dateLabel = formatDate(entry.createdAt, {
     year: 'numeric',
     month: 'long',
     day: 'numeric',

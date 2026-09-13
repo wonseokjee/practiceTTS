@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { CAREGIVER_LOCALE, DEFAULT_LOCALE, languageOf } from './locale';
+import { DEFAULT_LOCALE, languageOf } from './locale';
 
 /**
  * 로케일 **단일 출처**를 지킨다.
@@ -46,7 +46,6 @@ describe('로케일 단일 출처', () => {
 
   it('기본값은 한국어다 — 지금 동작을 바꾸지 않는다', () => {
     expect(DEFAULT_LOCALE).toBe('ko-KR');
-    expect(CAREGIVER_LOCALE).toBe('ko-KR');
   });
 
   it('앱 코드에 로케일 문자열이 직접 박힌 곳이 없다', () => {
@@ -55,6 +54,19 @@ describe('로케일 단일 출처', () => {
       .filter((f) => !/\.test\.(ts|tsx)$/.test(f))
       .filter((f) => !ALLOWED.some((a) => f.endsWith(a)))
       .filter((f) => /['"`]ko-KR['"`]/.test(readFileSync(f, 'utf8')))
+      .map((f) => f.slice(SRC_DIR.length + 1));
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('날짜를 로케일 상수로 직접 찍는 곳이 없다 — formatDate를 거친다', () => {
+    // `toLocaleDateString(<상수>)`는 계정 로케일을 우회한다. 화면 날짜는
+    // 현재 화면 로케일(LocaleSync)을 따르는 `formatDate`로만 적는다.
+    const offenders = walk(SRC_DIR)
+      .filter((f) => !/\.test\.(ts|tsx)$/.test(f))
+      .filter((f) =>
+        /toLocale(Date)?String\(\s*[A-Z_]+_LOCALE/.test(readFileSync(f, 'utf8')),
+      )
       .map((f) => f.slice(SRC_DIR.length + 1));
 
     expect(offenders).toEqual([]);

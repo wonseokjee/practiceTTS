@@ -3,7 +3,7 @@ import { EMOTION_TAG_LABELS } from '../domain/MemoryEntry.js';
 import type { UseMemoryEntriesReturn } from '../application/useMemoryEntries.js';
 import { AuthedImage } from '../../shared/AuthedImage.js';
 import { isConversationModeEnabled } from '../../shared/featureFlags.js';
-import { CAREGIVER_LOCALE } from '../../../shared/domain/locale.js';
+import { formatDate } from '../../../shared/i18n/formatDate.js';
 
 interface EntryListScreenProps {
   memoryEntries: UseMemoryEntriesReturn;
@@ -96,7 +96,7 @@ interface MemoryEntryCardProps {
 }
 
 function MemoryEntryCard({ entry, onClick }: MemoryEntryCardProps) {
-  const dateLabel = new Date(entry.createdAt).toLocaleDateString(CAREGIVER_LOCALE, {
+  const dateLabel = formatDate(entry.createdAt, {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
