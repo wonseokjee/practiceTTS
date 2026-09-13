@@ -14,6 +14,7 @@ import { ProfileModule } from './profile/profile.module';
 import { QuizModule } from './quiz/quiz.module';
 import { SpeechDataModule } from './speech-data/speech-data.module';
 import { PracticeModule } from './practice/practice.module';
+import { SettingsModule } from './settings/settings.module';
 import { TrainingModule } from './training/training.module';
 import { SingleInstanceGuard } from './common/single-instance.guard';
 
@@ -33,6 +34,8 @@ import { SingleInstanceGuard } from './common/single-instance.guard';
     QuizModule,
     SpeechDataModule,
     PracticeModule,
+    // 계정 설정 — 로케일 쓰기 경로와 그 게이트(영어판 0-5c)
+    SettingsModule,
   ],
   controllers: [AppController],
   providers: [AppService, SingleInstanceGuard],
