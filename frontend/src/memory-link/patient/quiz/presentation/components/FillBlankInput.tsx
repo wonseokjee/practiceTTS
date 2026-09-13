@@ -5,6 +5,7 @@
 // 피드백 단계에서는 입력을 잠그고 정답/오답 색상 + 정답 표시.
 
 import { useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { copulaSuffix } from '../../../../../shared/domain/korean.js';
 
 interface FillBlankInputProps {
@@ -28,6 +29,7 @@ export function FillBlankInput({
   hintFirstChar,
   onSubmit,
 }: FillBlankInputProps) {
+  const { t } = useTranslation('quiz');
   const [text, setText] = useState<string>('');
 
   const handleSubmit = (): void => {
@@ -49,9 +51,7 @@ export function FillBlankInput({
     <div className="flex flex-col gap-4">
       {hintFirstChar !== null && hintFirstChar.length > 0 && (
         <p className="text-base text-muted-sage">
-          힌트: 첫 글자는{' '}
-          <span className="font-bold text-primary">{hintFirstChar}</span>
-          {copulaSuffix(hintFirstChar)}
+          <Trans t={t} i18nKey="item.hintFirstChar" values={{ char: hintFirstChar, suffix: copulaSuffix(hintFirstChar) }} components={{ b: <span className="font-bold text-primary" /> }} />
         </p>
       )}
 
@@ -68,8 +68,8 @@ export function FillBlankInput({
               handleSubmit();
             }
           }}
-          aria-label="답 입력"
-          placeholder="답을 입력하세요"
+          aria-label={t('fillBlank.inputAria')}
+          placeholder={t('fillBlank.placeholder')}
           className={`min-h-[64px] w-full rounded-md border-2 px-5 py-4 text-xl font-medium transition-colors duration-[180ms] ease-out outline-none focus:border-primary disabled:cursor-default ${fieldClass}`}
         />
         {showFeedback && (
@@ -84,8 +84,7 @@ export function FillBlankInput({
 
       {showFeedback && isCorrect === false && correctAnswer !== null && (
         <p className="text-base text-muted-sage">
-          정답:{' '}
-          <span className="font-bold text-primary">{correctAnswer}</span>
+          <Trans t={t} i18nKey="item.answer" values={{ answer: correctAnswer }} components={{ b: <span className="font-bold text-primary" /> }} />
         </p>
       )}
 
@@ -95,9 +94,9 @@ export function FillBlankInput({
           onClick={handleSubmit}
           disabled={!isSelectable || text.trim().length === 0}
           className="min-h-[56px] rounded-md bg-primary px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-disabled-surface disabled:text-disabled-ink"
-          aria-label="답 제출"
+          aria-label={t('item.submitAnswerAria')}
         >
-          제출
+          {t('item.submit')}
         </button>
       )}
     </div>

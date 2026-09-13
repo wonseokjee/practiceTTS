@@ -13,6 +13,7 @@
 // 넘어가기 버튼을 이 컴포넌트 바깥에 따로 둔다.
 
 import { useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { copulaSuffix } from '../../../../../shared/domain/korean.js';
 
 interface TileArrangeInputProps {
@@ -45,6 +46,7 @@ export function TileArrangeInput({
   hintFirstChar,
   onSubmit,
 }: TileArrangeInputProps) {
+  const { t } = useTranslation('quiz');
   const [picked, setPicked] = useState<PickedTile[]>([]);
 
   const usedIndices = new Set(picked.map((p) => p.tileIndex));
@@ -83,9 +85,7 @@ export function TileArrangeInput({
     <div className="flex flex-col gap-4">
       {hintFirstChar !== null && hintFirstChar.length > 0 && (
         <p className="text-base text-muted-sage">
-          힌트: 첫 글자는{' '}
-          <span className="font-bold text-primary">{hintFirstChar}</span>
-          {copulaSuffix(hintFirstChar)}
+          <Trans t={t} i18nKey="item.hintFirstChar" values={{ char: hintFirstChar, suffix: copulaSuffix(hintFirstChar) }} components={{ b: <span className="font-bold text-primary" /> }} />
         </p>
       )}
 
@@ -93,13 +93,13 @@ export function TileArrangeInput({
       <div
         className={`flex min-h-[64px] items-center justify-between gap-3 rounded-md border-2 px-5 py-4 transition-colors duration-[180ms] ease-out ${answerBoxClass}`}
         aria-live="polite"
-        aria-label={assembled.length > 0 ? `조합한 답: ${assembled}` : '아직 고른 글자가 없어요'}
+        aria-label={assembled.length > 0 ? t('tiles.assembledAria', { answer: assembled }) : t('tiles.emptyAria')}
       >
         <span className="text-2xl font-bold tracking-wide">
           {assembled.length > 0 ? (
             assembled
           ) : (
-            <span className="text-muted-sage">글자를 눌러 단어를 만들어요</span>
+            <span className="text-muted-sage">{t('tiles.empty')}</span>
           )}
         </span>
         {showFeedback && (
@@ -111,8 +111,7 @@ export function TileArrangeInput({
 
       {showFeedback && isCorrect === false && correctAnswer !== null && (
         <p className="text-base text-muted-sage">
-          정답:{' '}
-          <span className="font-bold text-primary">{correctAnswer}</span>
+          <Trans t={t} i18nKey="item.answer" values={{ answer: correctAnswer }} components={{ b: <span className="font-bold text-primary" /> }} />
         </p>
       )}
 
@@ -122,7 +121,7 @@ export function TileArrangeInput({
           <div
             className="flex flex-wrap gap-3"
             role="group"
-            aria-label="글자 타일"
+            aria-label={t('tiles.groupAria')}
           >
             {tiles.map((tile, index) => {
               const used = usedIndices.has(index);
@@ -133,7 +132,7 @@ export function TileArrangeInput({
                   type="button"
                   disabled={!isSelectable || used}
                   onClick={() => handlePick(tile, index)}
-                  aria-label={`${tile} 글자 넣기`}
+                  aria-label={t('tiles.addAria', { tile })}
                   className={`min-h-[64px] min-w-[64px] rounded-md border-2 px-5 py-4 text-2xl font-bold transition-colors duration-[180ms] ease-out ${
                     used
                       ? 'border-line-soft bg-surface-dim text-disabled-surface'
@@ -152,18 +151,18 @@ export function TileArrangeInput({
               onClick={handleRemoveLast}
               disabled={!isSelectable || picked.length === 0}
               className="min-h-[48px] flex-1 rounded-md bg-white px-4 py-3 text-base font-medium text-muted-sage ring-1 ring-inset ring-line-strong transition-colors duration-[180ms] ease-out hover:bg-canvas-hover disabled:cursor-not-allowed disabled:text-disabled-surface"
-              aria-label="한 글자 지우기"
+              aria-label={t('tiles.removeLast')}
             >
-              ← 한 글자 지우기
+              ← {t('tiles.removeLast')}
             </button>
             <button
               type="button"
               onClick={handleClear}
               disabled={!isSelectable || picked.length === 0}
               className="min-h-[48px] rounded-md bg-white px-4 py-3 text-base font-medium text-muted-sage ring-1 ring-inset ring-line-strong transition-colors duration-[180ms] ease-out hover:bg-canvas-hover disabled:cursor-not-allowed disabled:text-disabled-surface"
-              aria-label="모두 지우기"
+              aria-label={t('tiles.clear')}
             >
-              모두 지우기
+              {t('tiles.clear')}
             </button>
           </div>
 
@@ -172,9 +171,9 @@ export function TileArrangeInput({
             onClick={handleSubmit}
             disabled={!isSelectable || assembled.length === 0}
             className="min-h-[56px] rounded-md bg-primary px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-disabled-surface disabled:text-disabled-ink"
-            aria-label="답 제출"
+            aria-label={t('item.submitAnswerAria')}
           >
-            제출
+            {t('item.submit')}
           </button>
         </>
       )}

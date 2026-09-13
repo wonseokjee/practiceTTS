@@ -9,6 +9,7 @@
 // 조합 입력 자체는 데일리 퀴즈와 같은 TileArrangeInput을 재사용한다.
 
 import type { QabSpellItem } from '../../domain/MixedQuiz.js';
+import { useTranslation } from 'react-i18next';
 import { TileArrangeInput } from './TileArrangeInput.js';
 
 interface SpellTileItemProps {
@@ -30,6 +31,7 @@ export function SpellTileItem({
   onSubmit,
   onSkip,
 }: SpellTileItemProps) {
+  const { t } = useTranslation('quiz');
   return (
     <div className="flex flex-col gap-4">
       <p className="text-base text-muted-sage">{item.instruction}</p>
@@ -45,7 +47,7 @@ export function SpellTileItem({
         </div>
         <img
           src={item.imageUrl}
-          alt="낱말을 만들 그림"
+          alt={t('spell.imageAlt')}
           className="absolute inset-0 h-full w-full object-cover"
           loading="eager"
           style={{ zIndex: 1 }}
@@ -73,9 +75,9 @@ export function SpellTileItem({
           onClick={onSkip}
           disabled={!isSelectable}
           className="min-h-[48px] rounded-md bg-white px-5 py-3 text-base font-medium text-muted-sage ring-1 ring-inset ring-line-strong transition-colors duration-[180ms] ease-out hover:bg-canvas-hover disabled:cursor-not-allowed disabled:text-disabled-surface"
-          aria-label="넘어가기"
+          aria-label={t('item.skip')}
         >
-          넘어가기
+          {t('item.skip')}
         </button>
       )}
     </div>

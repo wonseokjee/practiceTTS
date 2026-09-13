@@ -15,9 +15,10 @@
 // **버튼 바로 위에 둔다.** 문구가 "아래 듣기 버튼"이라고 말하므로 위치가
 // 곧 내용이다.
 
-/** 세 화면이 공유하는 문구. 테스트가 이 상수로 확인한다. */
-export const TTS_FAILURE_MESSAGE =
-  '소리가 나오지 않았어요. 아래 듣기 버튼을 눌러 주세요.';
+import { useTranslation } from 'react-i18next';
+
+/** 세 화면이 공유하는 문구의 키(`quiz` 네임스페이스). 테스트가 이 키로 문구를 찾는다. */
+export const TTS_FAILURE_MESSAGE_KEY = 'ttsFailure.message';
 
 /**
  * TTS가 끝내 실패했을 때만 보인다.
@@ -27,11 +28,12 @@ export const TTS_FAILURE_MESSAGE =
  * 그래서 이 안내가 뜨는 상황은 정말로 아무 소리도 안 난 상황이다.
  */
 export function TtsFailureNotice() {
+  const { t } = useTranslation('quiz');
   return (
     // role="alert" — 같은 화면의 다른 상태 문구(SpeechInput·SpeechCaptureItem)와
     // 같은 방식이다. 스크린리더가 즉시 읽는다.
     <p className="text-base text-accent-ink" role="alert">
-      {TTS_FAILURE_MESSAGE}
+      {t(TTS_FAILURE_MESSAGE_KEY)}
     </p>
   );
 }

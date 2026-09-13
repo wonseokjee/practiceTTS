@@ -4,6 +4,7 @@
 // 피드백 색상은 MultipleChoiceCard와 동일 규칙 + 아이콘 동반.
 
 import { YES_NO_ANSWERS } from '../../domain/Quiz.js';
+import { useTranslation } from 'react-i18next';
 import type { YesNoAnswer } from '../../domain/Quiz.js';
 
 interface YesNoButtonsProps {
@@ -18,12 +19,12 @@ interface YesNoButtonsProps {
 
 interface OptionSpec {
   value: YesNoAnswer;
-  label: string;
+  labelKey: 'yesNo.yes' | 'yesNo.no';
 }
 
 const OPTIONS: OptionSpec[] = [
-  { value: YES_NO_ANSWERS.YES, label: '예' },
-  { value: YES_NO_ANSWERS.NO, label: '아니오' },
+  { value: YES_NO_ANSWERS.YES, labelKey: 'yesNo.yes' },
+  { value: YES_NO_ANSWERS.NO, labelKey: 'yesNo.no' },
 ];
 
 /** 예/아니오 2지선다 */
@@ -34,11 +35,12 @@ export function YesNoButtons({
   correctAnswer,
   onSelect,
 }: YesNoButtonsProps) {
+  const { t } = useTranslation('quiz');
   return (
     <div
       className="grid grid-cols-2 gap-4"
       role="group"
-      aria-label="예 또는 아니오 선택"
+      aria-label={t('yesNo.groupAria')}
     >
       {OPTIONS.map((opt) => {
         const isSelected = selectedAnswer === opt.value;
@@ -68,11 +70,11 @@ export function YesNoButtons({
             type="button"
             disabled={!isSelectable}
             onClick={() => onSelect(opt.value)}
-            aria-label={opt.label}
+            aria-label={t(opt.labelKey)}
             aria-pressed={isSelected}
             className={`flex min-h-[80px] items-center justify-center gap-2 rounded-md border-2 px-5 py-4 text-2xl font-bold transition-colors duration-[180ms] ease-out disabled:cursor-default ${stateClass}`}
           >
-            <span>{opt.label}</span>
+            <span>{t(opt.labelKey)}</span>
             {icon !== null && (
               <span aria-hidden="true">{icon}</span>
             )}

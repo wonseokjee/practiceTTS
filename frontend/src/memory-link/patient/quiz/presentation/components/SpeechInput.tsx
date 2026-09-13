@@ -9,6 +9,7 @@
 // 피드백 단계 색상은 다른 유형과 동일 규칙 + 아이콘 동반.
 
 import { useEffect, useMemo, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { useTTS } from '../../../../../shared/hooks/useTTS.js';
 import { TtsFailureNotice } from './TtsFailureNotice.js';
 import { createTtsService } from '../../../../../shared/infrastructure/ttsFactory.js';
@@ -37,6 +38,7 @@ export function SpeechInput({
   correctAnswer,
   onSubmit,
 }: SpeechInputProps) {
+  const { t } = useTranslation('quiz');
   const [status, setStatus] = useState<SpeechStatus>('idle');
   const [transcript, setTranscript] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
@@ -112,7 +114,7 @@ export function SpeechInput({
       {/* 따라 읽을 단어 (크게) */}
       <div
         className="flex min-h-[96px] items-center justify-center rounded-md border-2 border-line-strong bg-white px-5 py-6"
-        aria-label={`따라 읽을 단어: ${word}`}
+        aria-label={t('speechInput.wordAria', { word })}
       >
         <span className="text-4xl font-bold tracking-wide text-ink-sage">
           {word || '—'}
@@ -129,10 +131,10 @@ export function SpeechInput({
           onClick={handleListenModel}
           disabled={isPlaying || word.length === 0}
           className="flex min-h-[48px] items-center justify-center gap-2 rounded-md bg-white px-5 py-3 text-base font-medium text-primary ring-1 ring-inset ring-primary transition-colors duration-[180ms] ease-out hover:bg-primary-light disabled:cursor-not-allowed disabled:text-muted-faint disabled:ring-disabled-surface"
-          aria-label="모범 발음 들어보기"
+          aria-label={t('item.listenModelAria')}
         >
           <span aria-hidden="true" className="text-xl">🔊</span>
-          {isPlaying ? '재생 중…' : '들어보기'}
+          {isPlaying ? t('item.playing') : t('item.listen')}
         </button>
       )}
 
@@ -141,7 +143,7 @@ export function SpeechInput({
         <div
           className={`flex min-h-[56px] items-center justify-between gap-3 rounded-md border-2 px-5 py-3 transition-colors duration-[180ms] ease-out ${resultBoxClass}`}
           aria-live="polite"
-          aria-label={transcript ? `내가 말한 것: ${transcript}` : '인식 결과 없음'}
+          aria-label={transcript ? t('item.heardAria', { text: transcript }) : t('item.noResultAria')}
         >
           <span className="text-xl font-bold">{transcript || '—'}</span>
           {showFeedback && (
@@ -154,15 +156,14 @@ export function SpeechInput({
 
       {showFeedback && isCorrect === false && correctAnswer !== null && (
         <p className="text-base text-muted-sage">
-          정답:{' '}
-          <span className="font-bold text-primary">{correctAnswer}</span>
+          <Trans t={t} i18nKey="item.answer" values={{ answer: correctAnswer }} components={{ b: <span className="font-bold text-primary" /> }} />
         </p>
       )}
 
       {/* 안내/에러 메시지 (피드백 단계 제외) */}
       {!showFeedback && status === 'listening' && (
         <p className="text-base text-primary" role="status">
-          듣고 있어요… 또박또박 따라 말씀해주세요.
+          {t('speechInput.listening')}
         </p>
       )}
       {!showFeedback && status === 'error' && errorMessage.length > 0 && (
@@ -179,10 +180,10 @@ export function SpeechInput({
               type="button"
               onClick={handleStopRecord}
               className="flex min-h-[64px] items-center justify-center gap-2 rounded-md border-2 border-accent-strong bg-white px-6 py-4 text-xl font-medium text-accent-ink transition-colors duration-[180ms] ease-out hover:bg-accent-soft"
-              aria-label="다 말했어요"
+              aria-label={t('item.doneSpeaking')}
             >
               <span aria-hidden="true" className="text-2xl">✓</span>
-              다 말했어요
+              {t('item.doneSpeaking')}
             </button>
           ) : (
             <button
@@ -190,10 +191,10 @@ export function SpeechInput({
               onClick={handleStartRecord}
               disabled={!isSelectable}
               className="flex min-h-[64px] items-center justify-center gap-2 rounded-md border-2 border-primary bg-white px-6 py-4 text-xl font-medium text-primary transition-colors duration-[180ms] ease-out hover:bg-primary-light disabled:cursor-not-allowed disabled:border-disabled-surface disabled:text-muted-faint"
-              aria-label={status === 'idle' ? '따라 말하기' : '다시 말하기'}
+              aria-label={status === 'idle' ? t('speechInput.speak') : t('item.speakAgain')}
             >
               <span aria-hidden="true" className="text-2xl">🎤</span>
-              {status === 'idle' ? '따라 말하기' : '다시 말하기'}
+              {status === 'idle' ? t('speechInput.speak') : t('item.speakAgain')}
             </button>
           )}
 
@@ -203,9 +204,9 @@ export function SpeechInput({
               onClick={handleSubmitTranscript}
               disabled={!isSelectable || transcript.trim().length === 0}
               className="min-h-[56px] rounded-md bg-primary px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-disabled-surface disabled:text-disabled-ink"
-              aria-label="제출"
+              aria-label={t('item.submit')}
             >
-              제출
+              {t('item.submit')}
             </button>
           )}
 
@@ -215,9 +216,9 @@ export function SpeechInput({
             onClick={handleSkip}
             disabled={!isSelectable || word.length === 0}
             className="min-h-[48px] rounded-md bg-white px-5 py-3 text-base font-medium text-muted-sage ring-1 ring-inset ring-line-strong transition-colors duration-[180ms] ease-out hover:bg-canvas-hover disabled:cursor-not-allowed disabled:text-disabled-surface"
-            aria-label="넘어가기"
+            aria-label={t('item.skip')}
           >
-            넘어가기
+            {t('item.skip')}
           </button>
         </div>
       )}

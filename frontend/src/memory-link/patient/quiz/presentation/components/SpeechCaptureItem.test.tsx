@@ -17,7 +17,11 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { SpeechCaptureItem } from './SpeechCaptureItem.js';
-import { TTS_FAILURE_MESSAGE } from './TtsFailureNotice.js';
+import { TTS_FAILURE_MESSAGE_KEY } from './TtsFailureNotice.js';
+import { i18n } from '../../../../../shared/i18n/i18n.js';
+
+/** 안내 문구 — 테스트 셋업의 활성 로케일(한국어) 값. */
+const TTS_FAILURE_MESSAGE = i18n.t(TTS_FAILURE_MESSAGE_KEY, { ns: 'quiz' });
 
 interface MockSttInstance {
   onResult: ((r: { transcript: string; confidence: number }) => void) | null;
