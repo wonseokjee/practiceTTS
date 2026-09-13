@@ -10,6 +10,7 @@ import { DatabaseModule } from './database/database.module';
 import { MemoryModule } from './memory/memory.module';
 import { seedDiaryQuestionsIfMissing } from './memory/seeds/diary-questions.seed';
 import { seedHealingMessagesIfMissing } from './memory/seeds/healing-messages.seed';
+import { EventsModule } from './events/events.module';
 import { ProfileModule } from './profile/profile.module';
 import { QuizModule } from './quiz/quiz.module';
 import { SpeechDataModule } from './speech-data/speech-data.module';
@@ -36,6 +37,8 @@ import { SingleInstanceGuard } from './common/single-instance.guard';
     PracticeModule,
     // 계정 설정 — 로케일 쓰기 경로와 그 게이트(영어판 0-5c)
     SettingsModule,
+    // 범용 이벤트 + 열람 계측(@TrackView) — 영어판 실행 계획 §13-4의 1, M31
+    EventsModule,
   ],
   controllers: [AppController],
   providers: [AppService, SingleInstanceGuard],
