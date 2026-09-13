@@ -10,6 +10,7 @@ import { UnprocessableEntityException } from '@nestjs/common';
 import { QuizController } from './quiz.controller';
 import { QuizService } from './quiz.service';
 import { PracticeService } from '../practice/practice.service';
+import { DailyCapGuard } from '../usage/daily-cap.guard';
 import type { User } from '../auth/entities/user.entity';
 
 const PATIENT_ID = 'patient-1';
@@ -39,7 +40,11 @@ describe('QuizController — recent-items', () => {
         { provide: QuizService, useValue: { getRecentItems } },
         { provide: PracticeService, useValue: { getActivityDays: jest.fn() } },
       ],
-    }).compile();
+    })
+      // 일일 생성 상한은 daily-cap.guard.spec이 본다. 여기선 라우트 로직만.
+      .overrideGuard(DailyCapGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
     controller = moduleRef.get(QuizController);
   });
 
@@ -103,7 +108,10 @@ describe('QuizController — activity-days', () => {
           useValue: { getActivityDays: practiceDays },
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(DailyCapGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
     controller = moduleRef.get(QuizController);
   };
 

@@ -18,6 +18,7 @@ import { DiaryQuestionService } from './services/diary-question.service';
 import { FastApiClientService } from './services/fast-api-client.service';
 import { FileStorageService } from './services/file-storage.service';
 import { HealingMessageService } from './services/healing-message.service';
+import { UsageModule } from '../usage/usage.module';
 
 /**
  * 메모리 엔트리 모듈 (Phase 1 확장)
@@ -41,6 +42,8 @@ import { HealingMessageService } from './services/healing-message.service';
     AuthModule,
     ProfileModule,
     CryptoModule,
+    // 기억 등록·시나리오의 일일 생성 상한(DailyCapGuard).
+    UsageModule,
   ],
   controllers: [MemoryController, MemoryPhotoController],
   providers: [

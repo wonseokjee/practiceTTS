@@ -22,6 +22,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { OnboardingGuard } from '../auth/onboarding.guard';
 import { resolveEffectivePatientId } from '../auth/effective-patient-id.util';
 import { PracticeService } from '../practice/practice.service';
+import { DailyCap, DailyCapGuard } from '../usage/daily-cap.guard';
 import { QAB_SUBTESTS, type QabSubtest } from './constants/qab-subtest';
 import { GenerateQuizDto } from './dto/generate-quiz.dto';
 import { QuizSetSummaryDto } from './dto/quiz-set-summary.dto';
@@ -75,6 +76,8 @@ export class QuizController {
    * 보호자의 수동 퀴즈 생성/재생성 트리거 (R1=(c)).
    */
   @Post('quiz/generate/:memoryEntryId')
+  @UseGuards(DailyCapGuard)
+  @DailyCap('quiz')
   @HttpCode(HttpStatus.ACCEPTED)
   async generate(
     @Req() req: AuthenticatedRequest,

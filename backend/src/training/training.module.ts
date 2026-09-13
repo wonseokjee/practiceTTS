@@ -5,6 +5,7 @@ import { AuthModule } from '../auth/auth.module';
 import { MemoryEntry } from '../memory/entities/memory-entry.entity';
 import { CryptoModule } from '../common/crypto.module';
 import { ProfileModule } from '../profile/profile.module';
+import { UsageModule } from '../usage/usage.module';
 import { ConversationLog } from './entities/conversation-log.entity';
 import { TrainingSession } from './entities/training-session.entity';
 import { FastApiChatClientService } from './services/fast-api-chat-client.service';
@@ -26,6 +27,8 @@ import { TrainingService } from './training.service';
     AuthModule,
     ProfileModule,
     CryptoModule,
+    // 대화 메시지의 일일 생성 상한(DailyCapGuard).
+    UsageModule,
   ],
   controllers: [TrainingController],
   providers: [TrainingService, FastApiChatClientService],

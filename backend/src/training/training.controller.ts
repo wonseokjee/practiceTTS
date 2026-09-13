@@ -12,6 +12,7 @@ import { IsBoolean } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { OnboardingGuard } from '../auth/onboarding.guard';
 import { EffectivePatientId } from '../auth/decorators/effective-patient-id.decorator';
+import { DailyCap, DailyCapGuard } from '../usage/daily-cap.guard';
 import { CreateSessionDto } from './dto/create-session.dto';
 import type { MessageResponseDto } from './dto/message-response.dto';
 import { SendMessageDto } from './dto/send-message.dto';
@@ -78,6 +79,9 @@ export class TrainingController {
    * 환자 발화 전송 → FastAPI /chat 프록시 → AI 응답 반환
    */
   @Post('sessions/:id/message')
+  // AI를 부르는 건 이 경로뿐이다 — 세션 생성·힌트는 LLM 호출이 없다.
+  @UseGuards(DailyCapGuard)
+  @DailyCap('conversation')
   async sendMessage(
     @EffectivePatientId() patientId: string,
     @Param('id', ParseUUIDPipe) id: string,
