@@ -60,7 +60,7 @@ type ResourceModule = { default: Record<string, unknown> };
 const loaders = import.meta.glob<ResourceModule>('./locales/*/*.json');
 
 function localeOfPath(path: string): string {
-  // './locales/ko-KR/common.json' → 'ko-KR'
+  // './locales/<로케일>/common.json' → '<로케일>' (예: ko-KR)
   return path.split('/')[2];
 }
 
@@ -111,7 +111,7 @@ export function initI18n(locale: string = DEFAULT_LOCALE): Promise<unknown> {
       lng: resolveUiLocale(locale),
       fallbackLng: false,
       supportedLngs: [...AVAILABLE_LOCALES],
-      // 'ko-KR'에서 'ko'를 따로 찾지 않는다 — 파일은 로케일 단위로만 있다.
+      // 언어-지역(ko-KR)에서 언어(ko)만 따로 찾지 않는다 — 파일은 로케일 단위로만 있다.
       load: 'currentOnly',
       ns: [...NAMESPACES],
       defaultNS: 'common',
