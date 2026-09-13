@@ -58,7 +58,11 @@ describe('영어 발화 자극 (en-US)', () => {
   it('문장은 첫 글자만 대문자이고 끝 문장부호가 없다(한국어 자극과 같게)', () => {
     for (const it of [...repeatSentences, ...readingSentences]) {
       expect(it.text, it.text).toMatch(/^[A-Z]/);
-      expect(it.text.slice(1), `${it.text}: 가운데 대문자 — 고유명사?`).not.toMatch(/\b[A-Z]/);
+      // 대명사 I는 늘 대문자다 — 고유명사 휴리스틱에서 뺀다.
+      expect(
+        it.text.slice(1).replace(/\bI\b/g, ''),
+        `${it.text}: 가운데 대문자 — 고유명사?`,
+      ).not.toMatch(/\b[A-Z]/);
       expect(it.text, it.text).not.toMatch(/[.!?]$/);
     }
   });
