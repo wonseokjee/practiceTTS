@@ -18,6 +18,7 @@ import type {
   QabSpellItem,
 } from '../domain/MixedQuiz.js';
 import type { QuizSetDetail } from '../domain/Quiz.js';
+import type { QabResultInput } from '../domain/QabResult.js';
 import type { AzurePronunciationScores } from '../domain/pronunciationScore.js';
 
 const QUIZ_SET_ID = 'set-1';
@@ -406,6 +407,7 @@ describe('useMixedQuizSession', () => {
           itemRef: 'qw_001',
           isCorrect: false,
           foilKind: 'phonological',
+          answeredAt: expect.any(String),
         },
       ]);
     });
@@ -647,6 +649,57 @@ describe('useMixedQuizSession', () => {
     await waitFor(() => expect(result.current[0].phase).toBe('result'));
     expect(submitQabResults).toHaveBeenCalledTimes(2);
     expect(submitQabResults.mock.calls[1][3]).toBe(true);
+  });
+
+  it('푼 시각: 제출이 실패해 다시 보내져도 처음 푼 시각 그대로다(OV-B)', async () => {
+    // 실패한 tail은 다음 flush에 **같은 객체로** 다시 실린다. 시각을 보낼 때
+    // 찍었다면 여기서 재시도 시각으로 바뀌어, 오프라인이 길수록 수행이 늦은
+    // 날로 밀린다. 쌓을 때 찍었으므로 두 번 보낸 값이 같아야 한다.
+    const submitQabResults = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValue({ saved: 2 });
+    const twoNaming: QabNamingItem[] = [
+      { itemId: 'naming_a', imageUrl: '/a.svg', targetWord: '사과', instruction: 'x' },
+      { itemId: 'naming_b', imageUrl: '/b.svg', targetWord: '바나나', instruction: 'x' },
+    ];
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi({ submitQabResults }),
+        pickWordItems: () => [],
+        generateSessionToken: () => 'tok-1',
+        dailyCount: 0,
+        wordCount: 0,
+        ...ISOLATED,
+        pickNamingItems: () => twoNaming,
+        namingCount: 2,
+      }),
+    );
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    // 1번째 문항 → flush 실패
+    act(() => result.current[1].submitNaming('사과'));
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    act(() => result.current[1].next());
+    await waitFor(() => expect(warn).toHaveBeenCalled());
+    const firstSent = submitQabResults.mock.calls[0][1] as QabResultInput[];
+
+    // 2번째 문항 → 실패한 1번째가 함께 다시 실린다
+    act(() => result.current[1].submitNaming('바나나'));
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    act(() => result.current[1].next());
+    await waitFor(() => expect(submitQabResults).toHaveBeenCalledTimes(2));
+    const resent = submitQabResults.mock.calls[1][1] as QabResultInput[];
+
+    // 세션이 문항 순서를 섞으므로 이름으로 짝짓는다 — 몇 번째로 나왔는지는
+    // 이 테스트의 관심이 아니다.
+    expect(firstSent).toHaveLength(1);
+    expect(resent).toHaveLength(2);
+    const retried = resent.find((r) => r.itemRef === firstSent[0].itemRef);
+    expect(firstSent[0].answeredAt).toEqual(expect.any(String));
+    expect(retried?.answeredAt).toBe(firstSent[0].answeredAt);
+    warn.mockRestore();
   });
 
   it('완료 마커: 화면 이탈(언마운트) 시 best-effort flush는 완료로 남기지 않는다', async () => {
@@ -1084,6 +1137,7 @@ describe('useMixedQuizSession', () => {
           isCorrect: false,
           cueLevel: 0,
           unscored: true,
+          answeredAt: expect.any(String),
         },
       ],
       1,
@@ -1202,6 +1256,8 @@ describe('useMixedQuizSession', () => {
           itemRef: 'naming_n1',
           isCorrect: true,
           cueLevel: 0,
+          // 판정을 고쳐도 푼 시각은 처음 답한 그대로다(제자리 수정).
+          answeredAt: expect.any(String),
         },
       ],
       1,
@@ -1248,6 +1304,7 @@ describe('useMixedQuizSession', () => {
           itemRef: 'naming_n1',
           isCorrect: false,
           cueLevel: 0,
+          answeredAt: expect.any(String),
         },
       ],
       1,
@@ -1319,7 +1376,15 @@ describe('useMixedQuizSession', () => {
     expect(result.current[0].phase).toBe('result');
     expect(submitQabResults).toHaveBeenCalledWith(
       'tok-1',
-      [{ subtest: 'ddk', itemRef: 'ddk_0', isCorrect: true, metric: 11 }],
+      [
+        {
+          subtest: 'ddk',
+          itemRef: 'ddk_0',
+          isCorrect: true,
+          metric: 11,
+          answeredAt: expect.any(String),
+        },
+      ],
       1,
       true, // 마지막 문항 → 세션 자연 종료 → 완료 마커
       { ddk: 2 },
@@ -1361,6 +1426,7 @@ describe('useMixedQuizSession', () => {
           isCorrect: true,
           assisted: true,
           cueLevel: 4,
+          answeredAt: expect.any(String),
         },
       ],
       1,
