@@ -12,6 +12,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { shuffle } from '../../../../shared/domain/shuffle.js';
 import { enqueue as enqueueQabOutbox } from '../../../shared/QabOutbox.js';
+import { i18n } from '../../../../shared/i18n/i18n.js';
+import { DEFAULT_LOCALE } from '../../../../shared/domain/locale.js';
 import type { QuizSetDetail } from '../domain/Quiz.js';
 import type {
   PlayResult,
@@ -207,7 +209,16 @@ export interface UseMixedQuizDeps {
     options?: PickSpeechOptions,
   ) => QabReadingItem[];
   /** QAB 말운동(DDK) 문항 추출기 (테스트 주입용) */
-  pickDdkItems?: (count: number, level?: number) => QabDdkItem[];
+  pickDdkItems?: (
+    count: number,
+    level?: number,
+    options?: PickSpeechOptions,
+  ) => QabDdkItem[];
+  /**
+   * 이 세션의 환자 로케일(테스트 주입용). 미지정 시 지금 화면 로케일 —
+   * 환자 모드에선 `LocaleSync`가 `patient_locale`로 맞춰 둔다.
+   */
+  locale?: string;
   generateSessionToken?: () => string;
   /**
    * 오늘 낼 하위검사 세 개 (테스트 주입용). 미지정 시 오늘 날짜의 로테이션.
@@ -317,6 +328,12 @@ export function useMixedQuizSession(
   const pickRepeatRef = useRef(deps?.pickRepeatItems ?? pickRepeatItems);
   const pickReadingRef = useRef(deps?.pickReadingItems ?? pickReadingItems);
   const pickDdkRef = useRef(deps?.pickDdkItems ?? pickDdkItems);
+  // **세션 시작 시점에 고정한다**(계획서 §7-7 결정 B). 세션 중 설정에서 언어를
+  // 바꿔도 진행 중인 세션은 한 언어의 문항·밴드만 쓴다 — 섞이면 한 회차
+  // 점수가 두 모집단을 합친 값이 된다.
+  const localeRef = useRef(
+    deps?.locale ?? i18n.resolvedLanguage ?? DEFAULT_LOCALE,
+  );
   const tokenGenRef = useRef(deps?.generateSessionToken ?? defaultGenerateToken);
   // 오늘의 하위검사 세 개. 마운트 때 한 번 정해 자정을 넘겨도 안 바뀐다 —
   // 세션 도중에 구성이 바뀌면 남은 문항이 다른 검사로 갈아끼워진다.
@@ -501,13 +518,19 @@ export function useMixedQuizSession(
       // 같은 과제를 계속 내면서 숫자만 오르내리는 구조였다. 재활 앱에서 그건
       // 단순한 UI 오류가 아니라 보호자의 임상 판단을 오염시키는 거짓 신호다.
       const repeatItems: PlayableItem[] = pickRepeatRef
-        .current(repeatCount, levels?.repeat, { exclude: repeatExclude })
+        .current(repeatCount, levels?.repeat, {
+          exclude: repeatExclude,
+          locale: localeRef.current,
+        })
         .map((it) => ({ kind: 'repeat', id: it.itemId, item: it }));
       const readingItems: PlayableItem[] = pickReadingRef
-        .current(readingCount, levels?.reading, { exclude: readingExclude })
+        .current(readingCount, levels?.reading, {
+          exclude: readingExclude,
+          locale: localeRef.current,
+        })
         .map((it) => ({ kind: 'reading', id: it.itemId, item: it }));
       const ddkItems: PlayableItem[] = pickDdkRef
-        .current(ddkCount, levels?.ddk)
+        .current(ddkCount, levels?.ddk, { locale: localeRef.current })
         .map((it) => ({ kind: 'ddk', id: it.itemId, item: it }));
 
       const shuffled = shuffle([

@@ -2258,3 +2258,45 @@ describe('QAB 결과 저장 실패 → 공유 대기열(R7, 계획 2-2A)', () =>
     warn.mockRestore();
   });
 });
+
+describe('세션 로케일 — 발화 추출기에 넘긴다(영어판 M2 ②, 계획서 §7-7 결정 B)', () => {
+  function renderSpeech(locale?: string) {
+    const pickRepeatItems = vi.fn().mockReturnValue([]);
+    const pickReadingItems = vi.fn().mockReturnValue([]);
+    const pickDdkItems = vi.fn().mockReturnValue([]);
+    renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi(),
+        generateSessionToken: () => 'tok-locale',
+        dailyCount: 2,
+        wordCount: 0,
+        ...ISOLATED,
+        pickRepeatItems,
+        pickReadingItems,
+        pickDdkItems,
+        repeatCount: 1,
+        readingCount: 1,
+        ddkCount: 1,
+        ...(locale === undefined ? {} : { locale }),
+      }),
+    );
+    return { pickRepeatItems, pickReadingItems, pickDdkItems };
+  }
+
+  it('주입한 로케일이 따라말하기·읽기·DDK 추출에 그대로 간다', async () => {
+    const picks = renderSpeech('en-US');
+    await waitFor(() => expect(picks.pickDdkItems).toHaveBeenCalled());
+    for (const pick of Object.values(picks)) {
+      expect(pick.mock.calls[0][2]).toMatchObject({ locale: 'en-US' });
+    }
+  });
+
+  it('주입이 없으면 지금 화면 로케일(테스트 설정은 기본 로케일)', async () => {
+    const picks = renderSpeech();
+    await waitFor(() => expect(picks.pickDdkItems).toHaveBeenCalled());
+    const { DEFAULT_LOCALE } = await import('../../../../shared/domain/locale.js');
+    for (const pick of Object.values(picks)) {
+      expect(pick.mock.calls[0][2]).toMatchObject({ locale: DEFAULT_LOCALE });
+    }
+  });
+});
