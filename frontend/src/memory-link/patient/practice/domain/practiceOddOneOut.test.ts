@@ -115,13 +115,13 @@ describe('buildOddOneOutItems', () => {
    * 실제 뱅크로 한 번 돌려본다.
    *
    * 위 테스트들은 손으로 만든 낱말 목록을 쓴다. 진짜 데이터의 범주 분포는
-   * animal 46 / food 29 / vehicle 13 / person 11 / appliance 9 /
-   * stationery 9 / plant 8 / medical 7 / body 6 / instrument 6 /
-   * place 6 / tool 6 / bathroom 5 / clothing 5 / kitchen 4 / sport 4 /
-   * furniture 3 이고, 범주 없음(null)이 36이다.
-   * 무리로 쓸 수 있는 범주는 null을 뺀 **17개**다(2026-09-08, 낱말 213개 —
-   * #150 배치로 medical·sport가 늘었다). 늘리는 방법은
-   * `docs/ASSETS-NEEDED.md`에 있다.
+   * animal 66 / food 38 / vehicle 14 / person 11 / appliance 11 /
+   * plant 10 / stationery 9 / place 8 / clothing 8 / instrument 7 /
+   * bathroom 7 / tool 7 / medical 7 / body 6 / sport 6 / kitchen 4 /
+   * furniture 3 이고, 범주 없음(null)이 42다.
+   * 무리로 쓸 수 있는 범주는 null을 뺀 **17개**다(2026-09-13, 낱말 264개 —
+   * #150 배치3으로 116/116에 닿았다, 범주 자체는 늘지 않았다). 늘리는
+   * 방법은 `docs/ASSETS-NEEDED.md`에 있다.
    */
   it('그림이(또는 이름대기 사진이) 낱말을 안 보여 주던 장소 다섯은 어디에도 안 나온다', () => {
     // 도서관은 책 더미, 수영장은 헤엄치는 사람 — 아이콘이 건물이 아니었다. 실물

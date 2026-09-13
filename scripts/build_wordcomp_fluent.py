@@ -281,6 +281,96 @@ NEW.update({
     "sewing_needle": ("바늘", None, "sewing-needle"),
     "hand_fan": ("부채", None, "folding-hand-fan"),
 })
+# 2026-09-13 — #150 배치3. 낱말카드 검수판(같은 아티팩트, 이번엔 4라운드에
+# 걸쳐 보강)에 후보 208개를 올려 사람이 직접 봤다 — 105개가 물렸다(51%,
+# 배치2와 비슷하다). 51개가 살아남아 qabWordPool.json이 213→264로 자란다
+# (글자조합 2음절 104→130 · 3~4음절 92→117 — **목표 116/116에 닿았다**,
+# QabItemBank.test.ts의 밴드 크기 검사를 39→116으로 올린다).
+#
+# **거절된 단어는 문자열로 블록리스트에 넣고, 다른 아이콘으로도 다시
+# 시도하지 않는다** — 거절 원인이 대부분 "이 아이콘이 별로다"가 아니라
+# "이 단어 자체가 그림 한 장으로 안 보인다"였다(사용자 결정, 2026-09-13).
+# 아래는 배치3에서 물린 105개(배치1·2의 누적 거절은 그 절의 주석 참고):
+REJECTED_WORDS_BATCH3 = [
+    "라마", "표범", "연꽃", "화분", "피망", "버터", "땅콩", "파이", "찻잔",
+    "구두", "벽돌", "토성", "썰매", "털실", "동전", "바퀴", "당나귀", "해파리",
+    "북극곰", "칠면조", "딱정벌레", "귀뚜라미", "열대어", "매머드", "베이글",
+    "바게트", "도시락", "크루아상", "샐러드", "팬케이크", "닭다리", "주먹밥",
+    "스파게티", "톱니바퀴", "만년필", "물안경", "핸드백", "하이힐", "등산화",
+    "키보드", "확성기", "휴대폰", "반바지", "공구함", "대관람차", "회전목마",
+    "킥보드", "여행가방", "낙하산", "미끄럼틀", "돛단배", "권투장갑", "럭비공",
+    "벌레", "벚꽃", "산호", "소금", "빙수", "얼음", "생강", "달력", "소포",
+    "물총", "창문", "신문", "분수", "과녁", "화투", "골대", "매듭", "훈장",
+    "도복", "오소리", "소나무", "꽃다발", "책갈피", "비눗방울", "시험관",
+    "안테나", "삼각자", "면도기", "스펀지", "물방울", "비행접시", "편의점",
+    "경기장", "기차역", "마술봉", "테니스", "은하수", "세계지도", "통조림",
+    "쇼핑카트", "거미줄", "두루마리", "갈고리", "부메랑", "수정구슬", "미러볼",
+    "안전핀", "토네이도", "불사조", "조이스틱", "필드하키", "체스말",
+]
+NEW.update({
+    # 동물 20 — 단순하고 단일한 실루엣의 동물이 유난히 잘 살아남았다.
+    "honeybee": ("꿀벌", "animal", "honeybee"),
+    "mouse": ("생쥐", "animal", "mouse"),
+    "otter": ("수달", "animal", "otter"),
+    "rooster": ("수탉", "animal", "rooster"),
+    "goose": ("거위", "animal", "goose"),
+    "ox": ("황소", "animal", "ox"),
+    "blowfish": ("복어", "animal", "blowfish"),
+    "bison": ("들소", "animal", "bison"),
+    "beaver": ("비버", "animal", "beaver"),
+    "fly": ("파리", "animal", "fly"),
+    "mosquito": ("모기", "animal", "mosquito"),
+    "scorpion": ("전갈", "animal", "scorpion"),
+    "water_buffalo": ("물소", "animal", "water-buffalo"),
+    "dove": ("비둘기", "animal", "dove"),
+    "hamster": ("햄스터", "animal", "hamster"),
+    "worm": ("지렁이", "animal", "worm"),
+    "skunk": ("스컹크", "animal", "skunk"),
+    "two_hump_camel": ("쌍봉낙타", "animal", "two-hump-camel"),
+    "boar": ("멧돼지", "animal", "boar"),
+    "fish": ("물고기", "animal", "fish"),
+    # 음식 9
+    "cupcake": ("컵케이크", "food", "cupcake"),
+    "french_fries": ("감자튀김", "food", "french-fries"),
+    "hot_dog": ("핫도그", "food", "hot-dog"),
+    "pea_pod": ("완두콩", "food", "pea-pod"),
+    "pineapple": ("파인애플", "food", "pineapple"),
+    "sandwich": ("샌드위치", "food", "sandwich"),
+    "honey_pot": ("꿀단지", "food", "honey-pot"),
+    "burrito": ("부리토", "food", "burrito"),
+    "olive": ("올리브", "food", "olive"),
+    # 옷·착용 3
+    "graduation_cap": ("학사모", "clothing", "graduation-cap"),
+    "sunglasses": ("선글라스", "clothing", "sunglasses"),
+    "safety_vest": ("안전조끼", "clothing", "safety-vest"),
+    # 가전 2
+    "printer": ("프린터", "appliance", "printer"),
+    "computer_mouse": ("마우스", "appliance", "computer-mouse"),
+    # 식물 2
+    "rose": ("장미", "plant", "rose"),
+    "maple_leaf": ("단풍", "plant", "maple-leaf"),
+    # 장소 2
+    "hot_springs": ("온천", "place", "hot-springs"),
+    "hotel": ("호텔", "place", "hotel"),
+    # 스포츠 2
+    "ping_pong": ("탁구", "sport", "ping-pong"),
+    "diving_mask": ("잠수경", "sport", "diving-mask"),
+    # 나머지 — 각 1개씩 기존 범주에 더한다
+    "flute": ("피리", "instrument", "flute"),
+    "magnet": ("자석", "tool", "magnet"),
+    "speedboat": ("보트", "vehicle", "speedboat"),
+    "toilet_paper": ("휴지", "bathroom", "toilet-paper"),
+    "toilet": ("변기", "bathroom", "toilet"),
+    # 범주 없음 6 — 무리를 이룰 만큼 같은 낱말이 없다.
+    # picture_frame은 auto_name이 못 찾는다("picture-frame"이 아니라
+    # "framed-picture"다) — 그래서 여기 정확한 이름을 박아 둔다.
+    "picture_frame": ("액자", None, "framed-picture"),
+    "feather": ("깃털", None, "feather"),
+    "spiral_shell": ("소라", None, "spiral-shell"),
+    "bucket": ("양동이", None, "bucket"),
+    "hourglass": ("모래시계", None, "hourglass-done"),
+    "snowman": ("눈사람", None, "snowman"),
+})
 # 기존 단어의 이름 교정/명시(오매칭 방지). slug -> fluent-name
 EXPLICIT = {
     "flower": "tulip", "melon": "melon", "phone": "telephone",

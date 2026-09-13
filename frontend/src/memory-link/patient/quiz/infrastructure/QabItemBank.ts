@@ -296,6 +296,37 @@ export const WORD_CATEGORY: Record<string, string | null> = {
   // 프리스비·테니스공·스키가 물려 야구공·농구공·볼링공·스케이트만 남았다.
   baseball: 'sport', basketball: 'sport', bowling: 'sport',
   ice_skate: 'sport',
+  // #150 배치3(2026-09-13) — 검수판 후보 208개(4라운드에 걸쳐 보강) 중 51개가
+  // 살아남았다. 나머지 157개는 배치1·2 누적 거절과 합쳐
+  // scripts/build_wordcomp_fluent.py의 REJECTED_WORDS 이력에 남겼다 — 같은
+  // 단어는 다른 아이콘으로도 다시 시도하지 않는다(단어 자체가 그림 한 장으로
+  // 안 보이는 경우가 대부분이었다).
+  //
+  // 동물 20 — 배치2까지와 같은 이유로 채워졌다. 단순하고 단일한 실루엣의
+  // 동물이 유난히 잘 살아남았다(디테일 많은 동물은 대부분 물렸다).
+  honeybee: 'animal', mouse: 'animal', otter: 'animal', rooster: 'animal',
+  goose: 'animal', ox: 'animal', blowfish: 'animal', bison: 'animal',
+  beaver: 'animal', fly: 'animal', mosquito: 'animal', scorpion: 'animal',
+  water_buffalo: 'animal',
+  dove: 'animal', hamster: 'animal', worm: 'animal', skunk: 'animal',
+  two_hump_camel: 'animal', boar: 'animal', fish: 'animal',
+  // 음식 9
+  cupcake: 'food', french_fries: 'food', hot_dog: 'food', pea_pod: 'food',
+  pineapple: 'food', sandwich: 'food', honey_pot: 'food', burrito: 'food',
+  olive: 'food',
+  // 옷·착용 3(신규 slug — 기존 clothing 5와 합류)
+  graduation_cap: 'clothing', sunglasses: 'clothing', safety_vest: 'clothing',
+  // 가전 2
+  printer: 'appliance', computer_mouse: 'appliance',
+  // 식물 2
+  rose: 'plant', maple_leaf: 'plant',
+  // 장소 2
+  hot_springs: 'place', hotel: 'place',
+  // 스포츠 2
+  ping_pong: 'sport', diving_mask: 'sport',
+  // 나머지 — 무리를 못 이룰 만큼 적어(각 1개) 기존 범주에 한 자리씩만 더한다.
+  flute: 'instrument', magnet: 'tool', speedboat: 'vehicle',
+  toilet_paper: 'bathroom', toilet: 'bathroom',
   // ── 범주 없음 34 ──────────────────────────────────────────────
   //
   // 서로 한 무리가 아니다. 예전에는 이 아홉을 `'object'`라는 이름의 범주로 묶어
@@ -325,6 +356,10 @@ export const WORD_CATEGORY: Record<string, string | null> = {
   // 퍼즐이 물려 둘만 남아(최소 3개 미달) 범주 없음으로 접었다.
   compass: null, traffic_light: null, fire_extinguisher: null,
   sewing_needle: null, hand_fan: null, dice: null, teddy_bear: null,
+  // #150 배치3 — 6개. 액자·깃털·소라·양동이·모래시계·눈사람 — 무리를
+  // 이룰 만큼 같은 낱말이 없다.
+  picture_frame: null, feather: null, spiral_shell: null, bucket: null,
+  hourglass: null, snowman: null,
 };
 
 /**
