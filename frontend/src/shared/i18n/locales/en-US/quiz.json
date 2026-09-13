@@ -1,0 +1,96 @@
+{
+  "item": {
+    "skip": "Skip",
+    "submit": "Submit",
+    "submitAnswerAria": "Submit answer",
+    "doneSpeaking": "I'm done",
+    "speakAgain": "Try again",
+    "listen": "Listen",
+    "listenModelAria": "Listen to the example",
+    "playing": "Playing…",
+    "heardAria": "What I said: {{text}}",
+    "noResultAria": "Nothing was recognized",
+    "answer": "Answer: <b>{{answer}}</b>",
+    "hintFirstChar": "Hint: it starts with <b>{{char}}</b>",
+    "listeningClearly": "Listening… Take your time and speak clearly.",
+    "recognizing": "Recognizing…",
+    "override": {
+      "unscored": "Caregiver: we couldn't check this one. Was it said correctly?",
+      "check": "Caregiver: is the automatic score right?",
+      "toIncorrect": "Mark as incorrect",
+      "toCorrect": "Mark as correct"
+    }
+  },
+  "naming": {
+    "imageAlt": "Picture to name",
+    "listening": "Listening… Say the name of the picture clearly.",
+    "processingAria": "Recognizing",
+    "processing": "Recognizing…",
+    "say": "Say the name",
+    "cuesAria": "Hints so far",
+    "hintAria": "Show a hint",
+    "hintMoreAria": "Show another hint",
+    "hint": "Hint",
+    "hintMore": "Another hint"
+  },
+  "speechCapture": {
+    "contentAria": "Text: {{text}}",
+    "processing": "Checking your pronunciation…",
+    "processingAria": "Checking pronunciation",
+    "processingButton": "Checking…",
+    "speak": "Speak"
+  },
+  "speechInput": {
+    "wordAria": "Word to repeat: {{word}}",
+    "listening": "Listening… Repeat the word clearly.",
+    "speak": "Repeat"
+  },
+  "ddk": {
+    "soundAria": "Sound to repeat: {{label}}",
+    "passTarget_one": "Repeat it at least {{count}} time to pass.",
+    "passTarget_other": "Repeat it at least {{count}} times to pass.",
+    "detectedAria_one": "Repetitions detected: {{count}}",
+    "detectedAria_other": "Repetitions detected: {{count}}",
+    "detected_one": "{{count}} repetition",
+    "detected_other": "{{count}} repetitions",
+    "recording": "Recording… Press Stop when you're finished.",
+    "stop": "Stop",
+    "start": "Start",
+    "recordAgain": "Record again",
+    "analyzing": "Analyzing…",
+    "micError": "The microphone couldn't start. Please check the permission.",
+    "analysisError": "We couldn't analyze the recording. Please try again."
+  },
+  "tiles": {
+    "assembledAria": "Your answer: {{answer}}",
+    "emptyAria": "No letters chosen yet",
+    "empty": "Tap the letters to make a word",
+    "groupAria": "Letter tiles",
+    "addAria": "Add {{tile}}",
+    "removeLast": "Delete one letter",
+    "clear": "Clear all"
+  },
+  "imageChoice": {
+    "imageError": "The picture couldn't load",
+    "listenSentence": "Listen to the sentence",
+    "listenWord": "Listen to the word",
+    "listenAgainAria": "{{label}} again",
+    "groupAria": "Picture choices",
+    "choiceAria": "Choose {{label}}"
+  },
+  "fillBlank": {
+    "inputAria": "Answer",
+    "placeholder": "Type your answer"
+  },
+  "yesNo": {
+    "yes": "Yes",
+    "no": "No",
+    "groupAria": "Choose yes or no"
+  },
+  "spell": {
+    "imageAlt": "Picture of the word to make"
+  },
+  "ttsFailure": {
+    "message": "The sound didn't play. Please press the Listen button below."
+  }
+}
