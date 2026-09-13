@@ -16,6 +16,7 @@ import { AssessmentHubScreen } from './shared/hub/AssessmentHubScreen.js';
 import type { ScoreDTO } from './assessments/sentComp/application/dtos.js';
 import type { SessionSummaryDTO } from './assessments/wordComp/application/dtos/SessionSummaryDTO.js';
 import { AuthProvider, useAuth } from './memory-link/shared/AuthContext.js';
+import { LocaleSync } from './memory-link/shared/LocaleSync.js';
 import { LoginScreen } from './memory-link/shared/LoginScreen.js';
 import { SocialCallbackScreen } from './memory-link/shared/SocialCallbackScreen.js';
 import { OnboardingScreen } from './memory-link/shared/OnboardingScreen.js';
@@ -328,6 +329,8 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        {/* 화면 로케일을 계정 설정·환자 모드에 맞춘다(i18n 규약 4) */}
+        <LocaleSync />
         <Routes>
           {/* 루트: 역할에 따라 리다이렉트 */}
           <Route path="/" element={<RootRedirect />} />
