@@ -525,6 +525,11 @@ memory-link/caregiver/presentation/WeeklyReportScreen.tsx:107
 
 ### 2-2. 난이도 축 — 음절을 어떻게 셀 것인가
 
+> **정정(2026-09-13, 영어 발화 문항 설계)**: 바로 아래 문장은 틀렸다. **단어 밴드만 음절이고, 문장 밴드는
+> 어절 수**(`wordCount`, 공백 기준)다 — `repeatSpecForLevel`의 문장 쪽과 `readingRangeForLevel` 전부.
+> 그래서 "음절 필드를 박으면 한국어와 같은 축"은 **단어에만** 맞고, 영어 문장의 축은 따로 정했다:
+> [20260913_EnglishSpeechContent_design.md](20260913_EnglishSpeechContent_design.md) §3.
+
 `difficultyRules.ts`의 밴드가 전부 음절 수 기반이다(`repeatSpecForLevel`,
 `readingRangeForLevel`, `syllableRangeForLevel`, `syllableCount`).
 한국어는 `글자 수 = 음절 수`라 `syllableCount`가 한 줄이지만, **영어는 사전이 필요하다.**
@@ -1837,7 +1842,7 @@ Lane F: D                    (S 뒤)
 |---|---|---|---|
 | **M0** 착수 판정 | 영어판을 할지 정한다 | **T11** ③절 — 기준을 `report:retention` 지표 이름(#173)으로 적는다. 값은 사용자 결정. **리드타임 트랙을 여기서 띄운다**: T12 검수자 섭외(2~4주), T7 법률 확인, §8-2 Q9(콘텐츠를 누가 쓰나) | ③ 기준 통과 판정 |
 | **M1** 영어 보호자 문 (`caregiver_locale='en-US'`) | 한인 가족(영어 보호자 + 한국어 부모)을 받는다 | ① **0-5c 서버 게이트가 첫 커밋**(fail-closed, 지원 목록은 서버가 내려준다) ② Phase 1 — `react-i18next`(1-1 규약 다섯 개 확정) → 문자열 추출 ~25커밋 → 1-3 용어 매핑(웰니스 어휘 = FTC 가드레일) ③ 보호자용 영어 시드(치유 메시지·일기 질문, §3-4) ④ 언어 설정 화면(§7-0·§7-6) + TZ·주 시작 **쓰기 경로**(1-3A) — 이때 §15-1 둘째 줄(과거 버킷 소급)을 정한다 ⑤ 인증은 google + 이메일, 이름 first/last(§7-3) ⑥ T16 `en.json` lint, 타이포(§7-1), 보호자 화면 WCAG 2.1 AA ⑦ **T7 컴플라이언스** ⑧ 창립 회원 약속 문장 고정(10-1) | 서버 지원 목록에 보호자 `en-US`를 넣는다 — 그게 곧 문을 여는 커밋 |
-| **M2** 영어 환자 문 (`patient_locale='en-US'`) | 영어로 푸는 환자를 받는다 | ① 0-4 채점 `lang` 관통 + 로케일별 임계값 상수 ② 0-5d 제출 DTO `locale` → `qab_results.locale` — **2단 배포**(DEPLOYMENT.md), 기존 NULL = `ko-KR` 규약(§15-1 첫 줄) ③ **Phase 3 콘텐츠 ~1,100** — 따라말하기·읽기 신규(음절 필드), 단어이해·이름대기 라벨 + 음운 유인지·단서 문구(Q10), 문장이해 재설계(§6-2), 글자조합 anagram 재설계(Q5가 선행), DDK·LOC 라벨 ④ 그림 167개 문화 적합성(§7-4) + 정적 TTS 34개 재생성 ⑤ T13 메모 번역 저장(OV-1A), T14 문자 체계 관문, T15 `measure_quiz`(번역 케이스) ⑥ T18 조회 창을 `(locale, subtest)`별로 ⑦ 격려 문구 톤(Q11)·`UNSCORED` 문구 재작성(§7-7) | 모든 검사가 밴드 기준(116)을 채움 → 서버 목록에 환자 `en-US` |
+| **M2** 영어 환자 문 (`patient_locale='en-US'`) | 영어로 푸는 환자를 받는다 | ① 0-4 채점 `lang` 관통 + 로케일별 임계값 상수 ② 0-5d 제출 DTO `locale` → `qab_results.locale` — **2단 배포**(DEPLOYMENT.md), 기존 NULL = `ko-KR` 규약(§15-1 첫 줄) ③ **Phase 3 콘텐츠 ~1,100** — 따라말하기·읽기 신규(음절 필드 — 설계: [20260913_EnglishSpeechContent_design.md](20260913_EnglishSpeechContent_design.md)), 단어이해·이름대기 라벨 + 음운 유인지·단서 문구(Q10), 문장이해 재설계(§6-2), 글자조합 anagram 재설계(Q5가 선행), DDK·LOC 라벨 ④ 그림 167개 문화 적합성(§7-4) + 정적 TTS 34개 재생성 ⑤ T13 메모 번역 저장(OV-1A), T14 문자 체계 관문, T15 `measure_quiz`(번역 케이스) ⑥ T18 조회 창을 `(locale, subtest)`별로 ⑦ 격려 문구 톤(Q11)·`UNSCORED` 문구 재작성(§7-7) | 모든 검사가 밴드 기준(116)을 채움 → 서버 목록에 환자 `en-US` |
 | **M3** 유료 전환 준비 | 창립 기간이 끝나기 전 결제 | Stripe USD + Tax, 유료 층 모양(TODOS `stripe-and-founding-sunset`). 착수 = **첫 미국 가입일 + 10개월** | 창립 12개월 만료 전 전환 안내 |
 
 ### 16-3. 이 줄 세우기가 드러낸 것 — 기존 목록과 다른 셋
