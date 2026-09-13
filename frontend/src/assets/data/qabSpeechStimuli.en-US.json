@@ -2792,5 +2792,43 @@
       "text": "The cold air makes my cheeks turn pink and red",
       "syllables": 10
     }
+  ],
+  "ddk": [
+    {
+      "syllable": "puh",
+      "label": "puh"
+    },
+    {
+      "syllable": "tuh",
+      "label": "tuh"
+    },
+    {
+      "syllable": "kuh",
+      "label": "kuh"
+    },
+    {
+      "syllable": "puhtuh",
+      "label": "puh-tuh"
+    },
+    {
+      "syllable": "tuhkuh",
+      "label": "tuh-kuh"
+    },
+    {
+      "syllable": "puhkuh",
+      "label": "puh-kuh"
+    },
+    {
+      "syllable": "puhtuhkuh",
+      "label": "puh-tuh-kuh"
+    },
+    {
+      "syllable": "kuhtuhpuh",
+      "label": "kuh-tuh-puh"
+    },
+    {
+      "syllable": "tuhkuhpuh",
+      "label": "tuh-kuh-puh"
+    }
   ]
 }

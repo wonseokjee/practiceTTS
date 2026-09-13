@@ -84,6 +84,20 @@ describe('영어 발화 자극 (en-US)', () => {
     expect(both.map((i) => i.text)).toEqual([]);
   });
 
+  it('DDK는 puh·tuh·kuh로만, 밴드(음절 1·2·3)마다 3개씩', () => {
+    // 음향 포락선으로 반복을 세므로(ddkScore) 채점은 언어와 무관하다 — 자극만 옮긴다.
+    const ddk = stimuli.ddk;
+    const perBand = new Map<number, number>();
+    for (const d of ddk) {
+      const parts = d.label.split('-');
+      for (const p of parts) expect(['puh', 'tuh', 'kuh'], d.label).toContain(p);
+      expect(d.syllable, d.label).toBe(parts.join(''));
+      perBand.set(parts.length, (perBand.get(parts.length) ?? 0) + 1);
+    }
+    expect(Object.fromEntries(perBand)).toEqual({ 1: 3, 2: 3, 3: 3 });
+    expect(new Set(ddk.map((d) => d.label)).size).toBe(ddk.length);
+  });
+
   it('발음이 갈리는 말을 쓰지 않는다', () => {
     const banned = new Set(FORBIDDEN);
     for (const it of all) {

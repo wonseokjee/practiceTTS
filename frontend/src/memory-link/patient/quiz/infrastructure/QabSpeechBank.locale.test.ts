@@ -8,6 +8,7 @@
 
 import { describe, expect, it } from 'vitest';
 import en from '../../../../assets/data/qabSpeechStimuli.en-US.json';
+import ko from '../../../../assets/data/qabSpeechStimuli.json';
 import {
   pickDdkItems,
   pickReadingItems,
@@ -112,6 +113,26 @@ describe('영어 밴드 크기 — 레벨마다 116개', () => {
       const b = readingBandForLevel(lv, 'en-US');
       const n = en.readingSentences.filter((s) => within(words(s.text), b)).length;
       expect(n, `lv${lv}`).toBeGreaterThanOrEqual(최소밴드);
+    }
+  });
+
+  it('영어 DDK — 레벨마다 한 밴드의 3개를 폴백 없이 낸다', () => {
+    const segments = (label: string) => label.split('-').length;
+    const want: Record<number, number> = { 1: 1, 2: 1, 3: 1, 4: 2, 5: 3 };
+    for (const lv of [1, 2, 3, 4, 5]) {
+      const picked = pickDdkItems(3, lv, EN);
+      expect(new Set(picked.map((i) => i.itemId)).size, `lv${lv}`).toBe(3);
+      for (const it of picked) {
+        expect(it.itemId, `lv${lv}`).toMatch(/^en-US:ddk_\d+$/);
+        expect(segments(it.label), `lv${lv} ${it.label}`).toBe(want[lv]);
+        expect(it.bandFallback, `lv${lv}`).toBeUndefined();
+      }
+    }
+  });
+
+  it('한국어 DDK 라벨의 하이픈 마디 수는 음절(글자) 수와 같다 — 밴드 판정이 안 바뀐다', () => {
+    for (const d of ko.ddk) {
+      expect(d.label.split('-').length, d.label).toBe(Array.from(d.syllable).length);
     }
   });
 
