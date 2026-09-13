@@ -53,6 +53,7 @@ interface EnStimuli {
   repeatWords: EnStimulus[];
   repeatSentences: EnStimulus[];
   readingSentences: EnStimulus[];
+  ddk: RawDdk[];
 }
 
 /** 한 로케일의 자극과 그 로케일의 지시문. */
@@ -89,8 +90,7 @@ const EN_BANK: SpeechBank = {
   words: EN.repeatWords,
   repeatSentences: EN.repeatSentences.map((s) => s.text),
   readingSentences: EN.readingSentences.map((s) => s.text),
-  // 영어 DDK(puh·tuh·kuh)는 아직 없다 — 음절 필드와 함께 따로 넣는다.
-  ddk: [],
+  ddk: EN.ddk,
   instructions: {
     repeat: 'Listen carefully, then say it back',
     reading: 'Read this sentence out loud',
@@ -251,9 +251,15 @@ export function pickReadingItems(
   return markFallback(shuffle(picked.items).slice(0, want), picked.fellBack);
 }
 
-/** 자극의 밴드 — 음절 수가 곧 조음 위치 전환 수 + 1이다. */
-function ddkKindOf(syllable: string): DdkKind {
-  const n = syllableCount(syllable);
+/**
+ * 자극의 밴드 — 음절 수가 곧 조음 위치 전환 수 + 1이다.
+ *
+ * 음절은 **라벨의 하이픈 마디**로 센다('퍼-터-커', 'puh-tuh-kuh'). 글자 수로 세면
+ * 한국어는 맞지만 영어는 'puh' 한 음절이 세 글자다. 한국어 라벨은 원래 음절마다
+ * 하이픈이 있어 두 방식이 같은 값을 낸다(테스트가 고정).
+ */
+function ddkKindOf(label: string): DdkKind {
+  const n = label.split('-').length;
   if (n === 1) return 'amr';
   return n === 2 ? 'smr2' : 'smr3';
 }
@@ -280,7 +286,7 @@ export function pickDdkItems(
     presentedLevel: level,
   }));
   const inRange = (it: QabDdkItem): boolean =>
-    ddkKindOf(it.syllable) === spec.kind;
+    ddkKindOf(it.label) === spec.kind;
 
   const picked = withinOrFallback(items, inRange, want);
   return markFallback(shuffle(picked.items).slice(0, want), picked.fellBack);
