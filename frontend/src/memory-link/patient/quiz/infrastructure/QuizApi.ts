@@ -113,7 +113,6 @@ function isQuestionType(value: unknown): value is QuizQuestionType {
     value === 'multiple_choice' ||
     value === 'yes_no' ||
     value === 'fill_blank' ||
-    value === 'tile_arrange' ||
     value === 'speech'
   );
 }

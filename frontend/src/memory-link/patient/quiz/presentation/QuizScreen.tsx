@@ -3,7 +3,7 @@
 // useMixedQuizSession FSM을 사용한다. 비즈니스 로직은 훅에 위임하고
 // 진행바 + 사진 힌트 + 항목 렌더(데일리/QAB 분기) + 피드백/다음만 담당한다.
 //
-// - daily 항목: QuestionBody(객관식/타일/말하기)를 렌더하고 백엔드로 채점한다.
+// - daily 항목: QuestionBody(객관식/말하기)를 렌더하고 백엔드로 채점한다.
 //   QuestionBody가 자신이 고른 값을 기억해 오답 강조에 쓰므로, 항목이 바뀌면
 //   key(item.id)로 리마운트해 선택 상태를 초기화한다.
 // - qab_word 항목: WordCompQuizItem(듣고 그림 고르기)을 렌더하고 로컬 채점한다.
@@ -19,7 +19,6 @@ import { QuizResultScreen } from './QuizResultScreen.js';
 import { FillBlankInput } from './components/FillBlankInput.js';
 import { MultipleChoiceCard } from './components/MultipleChoiceCard.js';
 import { SpeechInput } from './components/SpeechInput.js';
-import { TileArrangeInput } from './components/TileArrangeInput.js';
 import { ImageChoiceQuizItem } from './components/ImageChoiceQuizItem.js';
 import { SpellTileItem } from './components/SpellTileItem.js';
 import { PictureNamingItem } from './components/PictureNamingItem.js';
@@ -213,7 +212,6 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
           showFeedback={showFeedback}
           result={dailyResult}
           onSubmit={(answer) => void actions.submitDaily(answer)}
-          onSkip={() => void actions.submitDaily('', true)}
         />
       ) : currentItem.kind === 'naming' ? (
         <PictureNamingItem
@@ -371,8 +369,6 @@ interface QuestionBodyProps {
   /** 채점 결과 (피드백 단계에서만 non-null) */
   result: AttemptResult | null;
   onSubmit: (answer: string) => void;
-  /** 보호자 넘어가기(TODO-48) — tile_arrange에서만 쓰인다. */
-  onSkip: () => void;
 }
 
 /**
@@ -386,7 +382,6 @@ function QuestionBody({
   showFeedback,
   result,
   onSubmit,
-  onSkip,
 }: QuestionBodyProps) {
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const correctAnswer = showFeedback ? (result?.correctAnswer ?? null) : null;
@@ -422,21 +417,6 @@ function QuestionBody({
         showFeedback={showFeedback}
         correctAnswer={correctAnswer}
         onSelect={(answer: YesNoAnswer) => handleSubmit(answer)}
-      />
-    );
-  }
-
-  if (question.type === 'tile_arrange') {
-    return (
-      <TileArrangeInput
-        tiles={question.choices ?? []}
-        isSelectable={canAnswer}
-        showFeedback={showFeedback}
-        isCorrect={showFeedback ? (result?.isCorrect ?? null) : null}
-        correctAnswer={correctAnswer}
-        hintFirstChar={question.hintFirstChar}
-        onSubmit={handleSubmit}
-        onSkip={onSkip}
       />
     );
   }

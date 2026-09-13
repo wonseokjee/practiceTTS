@@ -117,14 +117,15 @@ export interface UseMixedQuizActions {
   /**
    * 데일리 문항 답안 제출 (백엔드 채점).
    *
-   * `assisted`는 보호자가 "넘어가기"로 통과시켰다는 뜻이다(TODO-48 1단계).
-   * tile_arrange처럼 정답을 클라이언트가 미리 알 수 없는 유형은 빈 문자열을
-   * 보내 오답 처리를 받고 서버가 돌려주는 correctAnswer로 피드백을 채운다 —
-   * speech처럼 정답(targetWord)이 애초에 공개돼 있어 그 값을 그대로 제출하는
-   * 유형과 달리, 여기는 "채점표를 요청해서 받는" 경로다. QAB의 assisted와
-   * 같은 이유로 기록한다 — 환자가 맞힌 게 아니므로 연속 오답(피로 탈출) 집계를
-   * 끊지도 세지도 않는다. 데일리 문항엔 적응형 레벨링이 없어(recordForAdaptation이
-   * subtest===null로 no-op) 그쪽엔 영향이 없다.
+   * `assisted`는 보호자가 "넘어가기"로 통과시켰다는 뜻이다. 정답을 클라이언트가
+   * 미리 알 수 없는 유형(예전 `tile_arrange`가 그랬다 — #48로 은퇴)은 빈 문자열을
+   * 보내 오답 처리를 받고 서버가 돌려주는 correctAnswer로 피드백을 채우는 식으로
+   * 썼다 — speech처럼 정답(targetWord)이 애초에 공개돼 있어 그 값을 그대로
+   * 제출하는 유형과 달리, "채점표를 요청해서 받는" 경로였다. 지금 데일리 유형
+   * 중에는 이 조건에 해당하는 것이 없어 `assisted=true` 호출부가 없지만, 파라미터
+   * 자체는 QAB의 assisted와 같은 서버 계약(정확도 집계 제외)이라 남겨 둔다.
+   * 데일리 문항엔 적응형 레벨링이 없어(recordForAdaptation이 subtest===null로
+   * no-op) 그쪽엔 영향이 없다.
    */
   submitDaily: (userAnswer: string, assisted?: boolean) => Promise<void>;
   /** QAB 단어이해 선택 (로컬 채점) */
