@@ -1,0 +1,634 @@
+{
+  "version": 1,
+  "locale": "en-US",
+  "note": "QAB 발화 검사 영어 자극(따라말하기·읽기). 설계: docs/history/20260913_EnglishSpeechContent_design.md. 항목은 {text, syllables} — syllables는 CMUdict로 저작 시 채운 값이고(frontend/scripts/en-syllables.mjs), 테스트가 같은 도구로 대조한다. 손으로 고치지 말 것. 문장 난이도는 단어 수(한국어 어절 × 1.5), 낱말은 음절 수. 배치마다 사람 검수를 거친 항목만 들어온다.",
+  "bandNote": "목표는 한국어판과 같은 밴드마다 116개(90일 무겹침). 채우는 중 — 배치 8개(설계 §6). 규칙: (1) readingSentences와 repeatSentences는 한 문장도 겹치지 않는다. (2) 추가만 한다 — 문항 id가 배열 위치다. 영어 id에는 뱅크가 'en-US:' 접두를 붙인다(한국어 id와 섞이지 않게).",
+  "repeatWords": [
+    {
+      "text": "bread",
+      "syllables": 1
+    },
+    {
+      "text": "milk",
+      "syllables": 1
+    },
+    {
+      "text": "chair",
+      "syllables": 1
+    },
+    {
+      "text": "door",
+      "syllables": 1
+    },
+    {
+      "text": "bed",
+      "syllables": 1
+    },
+    {
+      "text": "book",
+      "syllables": 1
+    },
+    {
+      "text": "tree",
+      "syllables": 1
+    },
+    {
+      "text": "sun",
+      "syllables": 1
+    },
+    {
+      "text": "rain",
+      "syllables": 1
+    },
+    {
+      "text": "fish",
+      "syllables": 1
+    },
+    {
+      "text": "bird",
+      "syllables": 1
+    },
+    {
+      "text": "hat",
+      "syllables": 1
+    },
+    {
+      "text": "shoe",
+      "syllables": 1
+    },
+    {
+      "text": "key",
+      "syllables": 1
+    },
+    {
+      "text": "lamp",
+      "syllables": 1
+    },
+    {
+      "text": "clock",
+      "syllables": 1
+    },
+    {
+      "text": "spoon",
+      "syllables": 1
+    },
+    {
+      "text": "plate",
+      "syllables": 1
+    },
+    {
+      "text": "soap",
+      "syllables": 1
+    },
+    {
+      "text": "coat",
+      "syllables": 1
+    },
+    {
+      "text": "apple",
+      "syllables": 2
+    },
+    {
+      "text": "table",
+      "syllables": 2
+    },
+    {
+      "text": "window",
+      "syllables": 2
+    },
+    {
+      "text": "garden",
+      "syllables": 2
+    },
+    {
+      "text": "kitchen",
+      "syllables": 2
+    },
+    {
+      "text": "pencil",
+      "syllables": 2
+    },
+    {
+      "text": "paper",
+      "syllables": 2
+    },
+    {
+      "text": "basket",
+      "syllables": 2
+    },
+    {
+      "text": "bottle",
+      "syllables": 2
+    },
+    {
+      "text": "button",
+      "syllables": 2
+    },
+    {
+      "text": "candle",
+      "syllables": 2
+    },
+    {
+      "text": "carpet",
+      "syllables": 2
+    },
+    {
+      "text": "cookie",
+      "syllables": 2
+    },
+    {
+      "text": "doctor",
+      "syllables": 2
+    },
+    {
+      "text": "dinner",
+      "syllables": 2
+    },
+    {
+      "text": "finger",
+      "syllables": 2
+    },
+    {
+      "text": "hammer",
+      "syllables": 2
+    },
+    {
+      "text": "jacket",
+      "syllables": 2
+    },
+    {
+      "text": "ladder",
+      "syllables": 2
+    },
+    {
+      "text": "lemon",
+      "syllables": 2
+    },
+    {
+      "text": "letter",
+      "syllables": 2
+    },
+    {
+      "text": "market",
+      "syllables": 2
+    },
+    {
+      "text": "mirror",
+      "syllables": 2
+    },
+    {
+      "text": "monkey",
+      "syllables": 2
+    },
+    {
+      "text": "morning",
+      "syllables": 2
+    },
+    {
+      "text": "napkin",
+      "syllables": 2
+    },
+    {
+      "text": "needle",
+      "syllables": 2
+    },
+    {
+      "text": "pillow",
+      "syllables": 2
+    },
+    {
+      "text": "pocket",
+      "syllables": 2
+    },
+    {
+      "text": "rabbit",
+      "syllables": 2
+    },
+    {
+      "text": "river",
+      "syllables": 2
+    },
+    {
+      "text": "sister",
+      "syllables": 2
+    },
+    {
+      "text": "brother",
+      "syllables": 2
+    },
+    {
+      "text": "mother",
+      "syllables": 2
+    },
+    {
+      "text": "father",
+      "syllables": 2
+    },
+    {
+      "text": "teacher",
+      "syllables": 2
+    },
+    {
+      "text": "tiger",
+      "syllables": 2
+    },
+    {
+      "text": "turkey",
+      "syllables": 2
+    },
+    {
+      "text": "wallet",
+      "syllables": 2
+    },
+    {
+      "text": "winter",
+      "syllables": 2
+    },
+    {
+      "text": "summer",
+      "syllables": 2
+    },
+    {
+      "text": "yellow",
+      "syllables": 2
+    },
+    {
+      "text": "zebra",
+      "syllables": 2
+    },
+    {
+      "text": "baby",
+      "syllables": 2
+    },
+    {
+      "text": "blanket",
+      "syllables": 2
+    },
+    {
+      "text": "butter",
+      "syllables": 2
+    },
+    {
+      "text": "cabin",
+      "syllables": 2
+    },
+    {
+      "text": "carrot",
+      "syllables": 2
+    },
+    {
+      "text": "castle",
+      "syllables": 2
+    },
+    {
+      "text": "cherry",
+      "syllables": 2
+    },
+    {
+      "text": "chicken",
+      "syllables": 2
+    },
+    {
+      "text": "circle",
+      "syllables": 2
+    },
+    {
+      "text": "cotton",
+      "syllables": 2
+    },
+    {
+      "text": "dollar",
+      "syllables": 2
+    },
+    {
+      "text": "donkey",
+      "syllables": 2
+    },
+    {
+      "text": "eagle",
+      "syllables": 2
+    },
+    {
+      "text": "forest",
+      "syllables": 2
+    },
+    {
+      "text": "garlic",
+      "syllables": 2
+    },
+    {
+      "text": "guitar",
+      "syllables": 2
+    },
+    {
+      "text": "hotel",
+      "syllables": 2
+    },
+    {
+      "text": "island",
+      "syllables": 2
+    },
+    {
+      "text": "kettle",
+      "syllables": 2
+    },
+    {
+      "text": "lion",
+      "syllables": 2
+    },
+    {
+      "text": "melon",
+      "syllables": 2
+    },
+    {
+      "text": "muffin",
+      "syllables": 2
+    },
+    {
+      "text": "noodle",
+      "syllables": 2
+    },
+    {
+      "text": "olive",
+      "syllables": 2
+    },
+    {
+      "text": "onion",
+      "syllables": 2
+    },
+    {
+      "text": "oven",
+      "syllables": 2
+    },
+    {
+      "text": "panda",
+      "syllables": 2
+    },
+    {
+      "text": "parrot",
+      "syllables": 2
+    },
+    {
+      "text": "peanut",
+      "syllables": 2
+    },
+    {
+      "text": "pepper",
+      "syllables": 2
+    },
+    {
+      "text": "picnic",
+      "syllables": 2
+    },
+    {
+      "text": "pizza",
+      "syllables": 2
+    },
+    {
+      "text": "planet",
+      "syllables": 2
+    },
+    {
+      "text": "pumpkin",
+      "syllables": 2
+    },
+    {
+      "text": "puzzle",
+      "syllables": 2
+    },
+    {
+      "text": "rocket",
+      "syllables": 2
+    },
+    {
+      "text": "salad",
+      "syllables": 2
+    },
+    {
+      "text": "shovel",
+      "syllables": 2
+    },
+    {
+      "text": "silver",
+      "syllables": 2
+    },
+    {
+      "text": "spider",
+      "syllables": 2
+    },
+    {
+      "text": "sugar",
+      "syllables": 2
+    },
+    {
+      "text": "sweater",
+      "syllables": 2
+    },
+    {
+      "text": "ticket",
+      "syllables": 2
+    },
+    {
+      "text": "toaster",
+      "syllables": 2
+    },
+    {
+      "text": "tractor",
+      "syllables": 2
+    },
+    {
+      "text": "trumpet",
+      "syllables": 2
+    },
+    {
+      "text": "tunnel",
+      "syllables": 2
+    },
+    {
+      "text": "wagon",
+      "syllables": 2
+    },
+    {
+      "text": "walnut",
+      "syllables": 2
+    },
+    {
+      "text": "whistle",
+      "syllables": 2
+    },
+    {
+      "text": "yogurt",
+      "syllables": 2
+    },
+    {
+      "text": "zipper",
+      "syllables": 2
+    },
+    {
+      "text": "bucket",
+      "syllables": 2
+    },
+    {
+      "text": "banana",
+      "syllables": 3
+    },
+    {
+      "text": "bicycle",
+      "syllables": 3
+    },
+    {
+      "text": "computer",
+      "syllables": 3
+    },
+    {
+      "text": "potato",
+      "syllables": 3
+    },
+    {
+      "text": "umbrella",
+      "syllables": 3
+    },
+    {
+      "text": "elephant",
+      "syllables": 3
+    },
+    {
+      "text": "kangaroo",
+      "syllables": 3
+    },
+    {
+      "text": "telephone",
+      "syllables": 3
+    },
+    {
+      "text": "newspaper",
+      "syllables": 3
+    },
+    {
+      "text": "butterfly",
+      "syllables": 3
+    },
+    {
+      "text": "strawberry",
+      "syllables": 3
+    },
+    {
+      "text": "pineapple",
+      "syllables": 3
+    },
+    {
+      "text": "piano",
+      "syllables": 3
+    },
+    {
+      "text": "violin",
+      "syllables": 3
+    },
+    {
+      "text": "dinosaur",
+      "syllables": 3
+    },
+    {
+      "text": "gorilla",
+      "syllables": 3
+    },
+    {
+      "text": "octopus",
+      "syllables": 3
+    },
+    {
+      "text": "spaghetti",
+      "syllables": 3
+    },
+    {
+      "text": "cucumber",
+      "syllables": 3
+    },
+    {
+      "text": "grandmother",
+      "syllables": 3
+    },
+    {
+      "text": "watermelon",
+      "syllables": 4
+    },
+    {
+      "text": "television",
+      "syllables": 4
+    },
+    {
+      "text": "helicopter",
+      "syllables": 4
+    },
+    {
+      "text": "caterpillar",
+      "syllables": 4
+    },
+    {
+      "text": "alligator",
+      "syllables": 4
+    },
+    {
+      "text": "macaroni",
+      "syllables": 4
+    },
+    {
+      "text": "avocado",
+      "syllables": 4
+    },
+    {
+      "text": "harmonica",
+      "syllables": 4
+    },
+    {
+      "text": "calculator",
+      "syllables": 4
+    },
+    {
+      "text": "escalator",
+      "syllables": 4
+    },
+    {
+      "text": "motorcycle",
+      "syllables": 4
+    },
+    {
+      "text": "thermometer",
+      "syllables": 4
+    },
+    {
+      "text": "photographer",
+      "syllables": 4
+    },
+    {
+      "text": "supermarket",
+      "syllables": 4
+    },
+    {
+      "text": "elevator",
+      "syllables": 4
+    },
+    {
+      "text": "dictionary",
+      "syllables": 4
+    },
+    {
+      "text": "salamander",
+      "syllables": 4
+    },
+    {
+      "text": "accordion",
+      "syllables": 4
+    },
+    {
+      "text": "rhinoceros",
+      "syllables": 4
+    },
+    {
+      "text": "aquarium",
+      "syllables": 4
+    }
+  ],
+  "repeatSentences": [],
+  "readingSentences": []
+}
