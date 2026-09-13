@@ -116,4 +116,70 @@ describe('useQuizGenerationStatus', () => {
     await waitFor(() => expect(result.current.status).toBe('ready'));
     expect(api.regenerate).toHaveBeenCalledWith(ENTRY_ID);
   });
+
+  it('retry가 일일 생성 상한(429)에 걸리면 "잠시 후"가 아니라 서버 안내를 보인다', async () => {
+    const api = makeApi({
+      fetchLatestByMemoryEntry: vi.fn(async () => ({
+        quizSetId: 'set-1',
+        generationStatus: 'failed' as const,
+        generationError: '일시 오류',
+      })),
+      regenerate: vi.fn(async () => {
+        throw {
+          isAxiosError: true,
+          response: {
+            status: 429,
+            data: {
+              code: 'DAILY_GENERATION_LIMIT',
+              message: '오늘은 여기까지예요. 내일 다시 이어서 해요.',
+            },
+          },
+        };
+      }),
+    });
+
+    const { result } = renderHook(() =>
+      useQuizGenerationStatus(ENTRY_ID, true, { api, ...FAST_DEPS }),
+    );
+    await waitFor(() => expect(result.current.status).toBe('failed'));
+
+    await act(async () => {
+      result.current.retry();
+    });
+
+    await waitFor(() =>
+      expect(result.current.error).toBe(
+        '오늘은 여기까지예요. 내일 다시 이어서 해요.',
+      ),
+    );
+    expect(result.current.status).toBe('failed');
+  });
+
+  it('retry가 다른 이유로 실패하면 기존 안내 그대로', async () => {
+    const api = makeApi({
+      fetchLatestByMemoryEntry: vi.fn(async () => ({
+        quizSetId: 'set-1',
+        generationStatus: 'failed' as const,
+        generationError: '일시 오류',
+      })),
+      regenerate: vi.fn(async () => {
+        throw { isAxiosError: true, response: { status: 502, data: {} } };
+      }),
+    });
+
+    const { result } = renderHook(() =>
+      useQuizGenerationStatus(ENTRY_ID, true, { api, ...FAST_DEPS }),
+    );
+    await waitFor(() => expect(result.current.status).toBe('failed'));
+
+    await act(async () => {
+      result.current.retry();
+    });
+
+    await waitFor(() =>
+      expect(result.current.error).toBe(
+        '재시도 요청에 실패했어요. 잠시 후 다시 시도해주세요.',
+      ),
+    );
+  });
 });

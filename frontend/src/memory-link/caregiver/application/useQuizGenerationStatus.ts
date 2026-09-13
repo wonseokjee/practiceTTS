@@ -17,6 +17,7 @@ import type {
   QuizGenerationState,
 } from '../infrastructure/QuizGenerationApi.js';
 import { quizGenerationApi } from '../infrastructure/QuizGenerationApi.js';
+import { dailyLimitMessage } from '../../shared/dailyLimit.js';
 
 export type GenerationPollStatus =
   | 'idle'
@@ -138,8 +139,12 @@ export function useQuizGenerationStatus(
     void apiRef.current
       .regenerate(memoryEntryId)
       .then(() => startPolling(memoryEntryId))
-      .catch(() => {
-        setError('재시도 요청에 실패했어요. 잠시 후 다시 시도해주세요.');
+      .catch((err: unknown) => {
+        // 오늘 상한(429)이면 "잠시 후 다시"가 틀린 안내다 — 서버 문구를 쓴다.
+        setError(
+          dailyLimitMessage(err) ??
+            '재시도 요청에 실패했어요. 잠시 후 다시 시도해주세요.',
+        );
         setStatus('failed');
       });
   }, [memoryEntryId, startPolling]);

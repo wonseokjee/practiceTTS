@@ -11,6 +11,8 @@ import { CAREGIVER_LOCALE } from '../../../shared/domain/locale.js';
 interface EntryDetailScreenProps {
   entryId: string;
   scenarioStatus: ScenarioStatus;
+  /** 실패 시 기본 문구 대신 보여줄 안내(일일 생성 상한). 없으면 기본 문구. */
+  scenarioNotice?: string;
   onTriggerScenario: (id: string) => Promise<void>;
   onBack: () => void;
 }
@@ -24,6 +26,7 @@ interface EntryDetailScreenProps {
 export function EntryDetailScreen({
   entryId,
   scenarioStatus,
+  scenarioNotice,
   onTriggerScenario,
   onBack,
 }: EntryDetailScreenProps) {
@@ -325,7 +328,7 @@ export function EntryDetailScreen({
           role="alert"
           className="mb-3 p-3 bg-danger/10 border border-danger/30 rounded-2xl text-accent-ink text-sm"
         >
-          시나리오 생성에 실패했습니다. 다시 시도해주세요.
+          {scenarioNotice ?? '시나리오 생성에 실패했습니다. 다시 시도해주세요.'}
         </div>
       )}
 
