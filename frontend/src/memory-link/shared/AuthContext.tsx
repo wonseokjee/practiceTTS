@@ -22,6 +22,8 @@ import {
   ML_PATIENT_MODE_KEY,
   ML_TOKEN_KEY,
 } from './MemoryLinkApi.js';
+import { clear as clearQabOutbox, flush as flushQabOutbox } from './QabOutbox.js';
+import { quizApi } from '../patient/quiz/infrastructure/QuizApi.js';
 
 // ─── 도메인 타입 ─────────────────────────────────────────────
 
@@ -252,6 +254,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(ML_TOKEN_KEY);
     setToken(null);
     setUser(null);
+    // 이 기기를 다른 계정이 이어 쓸 수 있다(보호자 단일 계정 모델 —
+    // 여러 보호자가 한 태블릿을 돌려 쓰는 경우). 재전송 대기열을 남겨두면
+    // 다음 로그인 성공 시점에 그 사람 명의로 새어 나간다(R7, 계획 2-2A).
+    clearQabOutbox();
   }, []);
 
   /** 앱 시작 시 저장된 토큰으로 사용자 정보 복원 */
@@ -453,6 +459,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     [],
   );
+
+  // 로그인 상태가 잡힐 때마다(복원·로그인·회원가입·소셜 교환·개발 바이패스
+  // 전부 setUser를 거친다) 재전송 대기열을 비운다(R7). 큐가 비어 있으면
+  // `flush`는 네트워크를 한 번도 안 부른다 — 대부분의 호출은 사실상 no-op.
+  useEffect(() => {
+    if (user) {
+      void flushQabOutbox(quizApi.submitQabResults);
+    }
+  }, [user]);
 
   return (
     <AuthContext.Provider

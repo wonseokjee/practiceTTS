@@ -2210,3 +2210,51 @@ describe('보호자 넘어가기는 환자 수행이 아니다 (E12)', () => {
     expect(result.current[0].sessionScore).toBe(50);
   });
 });
+
+describe('QAB 결과 저장 실패 → 공유 대기열(R7, 계획 2-2A)', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('flush 실패 시 QabOutbox에 durable하게 남긴다 — 언마운트로 재시도 기회가 사라져도 다음 로그인에서 재시도된다', async () => {
+    // 이 테스트는 "다음 flush가 안 오는" 경우(화면 이탈)를 흉내낸다 — 위
+    // '푼 시각' 테스트는 세션이 계속돼 다음 flush가 오는 경우를 본다. 둘은
+    // 다른 안전망이다.
+    const submitQabResults = vi.fn().mockRejectedValue(new Error('offline'));
+    const oneNaming: QabNamingItem[] = [
+      { itemId: 'naming_a', imageUrl: '/a.svg', targetWord: '사과', instruction: 'x' },
+    ];
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { result, unmount } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi({ submitQabResults }),
+        pickWordItems: () => [],
+        generateSessionToken: () => 'tok-outbox',
+        dailyCount: 0,
+        wordCount: 0,
+        ...ISOLATED,
+        pickNamingItems: () => oneNaming,
+        namingCount: 1,
+      }),
+    );
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    act(() => result.current[1].submitNaming('사과'));
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    act(() => result.current[1].next());
+    await waitFor(() => expect(result.current[0].phase).toBe('result'));
+    // 세션 끝(completed=true)까지 실패했으니 그 시도도 이미 대기열에 남았다.
+    await waitFor(() => expect(warn).toHaveBeenCalled());
+
+    unmount(); // 더 이상 flush가 안 온다 — 대기열만이 유일한 재시도 경로다.
+    // 언마운트 자체도 best-effort flush를 한 번 더 시도하고 그것도
+    // 실패하므로(같은 mock), 대기열에 최소 한 건 이상(세션 끝 flush +
+    // 언마운트 flush) 쌓인다 — 정확한 건수보다 "durable하게 남았는가"가
+    // 이 테스트의 관심이다.
+    const stored = JSON.parse(
+      localStorage.getItem('ml_qab_outbox') ?? '[]',
+    ) as { sessionToken: string; completed?: boolean }[];
+    expect(stored.length).toBeGreaterThan(0);
+    expect(stored.every((s) => s.sessionToken === 'tok-outbox')).toBe(true);
+    expect(stored.some((s) => s.completed === true)).toBe(true);
+    warn.mockRestore();
+  });
+});

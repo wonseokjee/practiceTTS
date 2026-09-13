@@ -10,6 +10,7 @@
 // 저장 경로를 하나로 합쳐 위 셋을 해결한다.
 
 import { quizApi } from '../../../memory-link/patient/quiz/infrastructure/QuizApi.js';
+import { enqueue as enqueueQabOutbox } from '../../../memory-link/shared/QabOutbox.js';
 import {
   stampAnswered,
   type QabResultInput,
@@ -71,6 +72,15 @@ export class ServerAssessmentResultSubmitter
         count: submission.results.length,
         error,
       });
+      // 이 경로는 검사 종료 후 1회뿐이라 이 훅 안에는 "다음 재시도"가 없다 —
+      // 지금까지는 여기서 끝이었다(영영 유실). 재부팅 재시도를 위해 공유
+      // 대기열에 남긴다(R7, 계획 2-2A). completed=true는 원래 호출과 같다.
+      enqueueQabOutbox(
+        submission.sessionToken,
+        submission.results,
+        undefined,
+        true,
+      );
     }
   }
 }
