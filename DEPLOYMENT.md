@@ -132,6 +132,72 @@ pm2 set pm2-logrotate:compress true
 - 확인: `pm2 conf pm2-logrotate` — 설정이 반영됐는지, `pm2 logs`로 로그가
   실제로 쌓이는지.
 
+## 배포 순서 — 하위 호환 없는 변경 (2단 배포)
+
+**문제(계획 §13 9-1).** API 계약이 바뀌는 배포에 정해진 순서가 없었다. 서버와
+클라이언트를 한 번에 같이 올릴 수 없다 — 무중단 배포에서도, 롤백에서도 잠깐은
+구버전과 신버전이 섞여 돈다(§ "현재 전제: 단일 인스턴스" 참고). 신버전 프론트가
+구버전 백엔드를 잠깐이라도 부르면 그 요청은 실패해야 하는데, 순서를 안 정해두면
+그게 "가끔 나는 에러"로만 보인다.
+
+**원칙.** 필드를 늘리는 변경은 **서버 먼저, 클라이언트 나중**이다. 서버가 새
+필드를 "있으면 받고 없으면 기존대로"로 먼저 배포되면, 그 사이 잠깐 도는 구버전
+프론트도 여전히 정상 동작한다. 필드를 없애는 변경은 반대로 **클라이언트가
+먼저 안 보내게 하고, 그 다음 서버가 안 받아도 되게** 한다.
+
+```
+정방향  1단계: migration:run ─▶ 백엔드 배포(새 필드는 optional, 안 와도 기존대로) ─▶ 스모크
+        2단계: 프론트 배포(새 필드를 보내기 시작) ─▶ 스모크
+롤백    프론트 되돌림(안 보내던 대로) ─▶ 백엔드 되돌림 ─▶ migration:revert   ← 정방향의 역순
+```
+
+각 단계 뒤에 스모크를 반드시 돌린다 — 다음 단계로 넘어가기 전에 지금 단계가
+실제로 동작하는지 확인하지 않으면, 2단계가 깨졌을 때 1단계까지 원인을 좁히는
+데 시간이 걸린다.
+
+**실제 사례 — `answeredAt`/`locale` 롤아웃(OV-B, M27~M28).** 이 패턴을 만든
+계기다.
+
+| 단계 | PR | 내용 | 상태 |
+|---|---|---|---|
+| migration | #167 | `qab_results.answered_at` 컬럼 추가(NULL 허용) | main 병합 |
+| 1단계(백엔드) | #169 | DTO에 `answeredAt` 선택 필드 추가. 안 오면 서버 시각 사용 — 구버전 프론트도 그대로 동작 | main 병합 |
+| 2단계(프론트) | #170 | 결과가 생기는 자리에서 `answeredAt`을 찍어 보내기 시작 | **운영 서버에 #169가 배포된 것을 확인하기 전엔 머지하지 않는다** |
+
+`ValidationPipe`가 `forbidNonWhitelisted: true`(`main.ts`)라서 순서가 특히
+중요하다 — 프론트가 백엔드보다 먼저 새 필드를 보내면, 그 필드를 모르는
+구버전 백엔드는 요청 자체를 **400으로 거절한다.** "가끔 나는 에러"가 아니라
+그 필드를 보내는 모든 요청이 배포 창 동안 전부 실패한다.
+
+## 스모크 체크리스트
+
+배포 각 단계 뒤, 실제 계정으로 딱 한 건만 오가는지 눈으로 확인한다. 자동화된
+스크립트를 두지 않은 이유: 운영 자격증명을 리포지토리에 들여오지 않기 위해서다.
+
+```bash
+# 1) 로그인 — JWT 확보
+curl -s -X POST "$API_BASE/auth/login" \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"<스모크용 계정>","password":"<비밀번호>"}' \
+  | tee /tmp/login.json
+TOKEN=$(node -pe "JSON.parse(require('fs').readFileSync('/tmp/login.json')).accessToken")
+
+# 2) QAB 결과 1건 제출 — 201이 나와야 한다
+curl -s -o /tmp/qab.json -w '%{http_code}\n' -X POST "$API_BASE/quiz/qab-results" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{
+    "sessionToken":"00000000-0000-4000-8000-000000000001",
+    "results":[{"subtest":"word","itemRef":"smoke-check","isCorrect":true}]
+  }'
+```
+
+- **1단계(백엔드만) 뒤:** 이 curl이 `answeredAt` 필드 **없이** 201을 받는지 —
+  구버전 프론트를 흉내낸 것이다.
+- **2단계(프론트) 뒤:** 실제 앱에서 문항 하나를 눌러 완료하고, 보호자 화면의
+  추이 카드에 방금 그 시도가 반영되는지 — DB까지 실제로 갔는지 확인한다.
+- 어느 단계든 400/500이면 §"전역 예외 필터" 로그(`pm2 logs practivetts-backend`)에서
+  `method·path·status`를 먼저 본다 — 필드명까지는 나오되 값은 안 나온다.
+
 ## 배포 전 확인
 
 ```bash
@@ -139,11 +205,9 @@ pm2 set pm2-logrotate:compress true
 cd backend && npx jest src/common/env-drift.spec.ts
 cd ai-service && python -m pytest tests/test_env_drift.py
 
-# 마이그레이션이 빈 DB에서 완주하는지
-cd backend && npm run migration:run
-
-# 엔티티-스키마 드리프트 0건인지
-npx typeorm-ts-node-commonjs schema:log -d src/database/data-source.ts
+# 마이그레이션이 빈 DB에서 완주하는지 + 엔티티-스키마 드리프트 0건인지
+# (R5: practivetts_test에 새로 만들어 검증한다 — 개발 DB를 손대지 않는다)
+cd backend && npm run test:int
 ```
 
 `CRYPTO_SECRET_KEY`는 32자 이상이어야 하고, `NODE_ENV=production`이면
