@@ -79,4 +79,11 @@ describe('EntryListScreen 카드', () => {
     renderList([makeEntry({ patientNotes: [] })]);
     expect(screen.getByText(/2026/)).toBeTruthy();
   });
+
+  it('날짜는 화면 로케일(지금 한국어)로 적는다 — formatDate를 거친다', () => {
+    // 달 단위까지만 본다 — 7/20 00:00Z는 어느 타임존에서도 7월이다.
+    // 영어로 새면 "July 20, 2026"이 되어 여기서 깨진다.
+    renderList([makeEntry()]);
+    expect(screen.getByText(/2026년 7월/)).toBeTruthy();
+  });
 });

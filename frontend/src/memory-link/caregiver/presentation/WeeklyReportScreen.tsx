@@ -25,7 +25,7 @@ import type {
   QabWeeklyPoint,
 } from '../../patient/quiz/domain/QabResult.js';
 import { withHonorific } from '../../shared/honorific.js';
-import { CAREGIVER_LOCALE } from '../../../shared/domain/locale.js';
+import { formatDate } from '../../../shared/i18n/formatDate.js';
 
 /** 약 3개월. 주간 변동이 커서 이 정도는 봐야 흐름이 보인다. */
 const REPORT_WEEKS = 12;
@@ -105,7 +105,7 @@ export function WeeklyReportScreen({ onBack }: WeeklyReportScreenProps) {
     };
   }, []);
 
-  const viewedAt = new Date().toLocaleDateString(CAREGIVER_LOCALE, {
+  const viewedAt = formatDate(new Date(), {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
