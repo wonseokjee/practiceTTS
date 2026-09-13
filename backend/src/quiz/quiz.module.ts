@@ -18,6 +18,7 @@ import { QUIZ_SCORER } from './interfaces/IQuizScorer';
 import { WISH_CONVERSION_CLIENT } from './interfaces/IWishConversionClient';
 import { PracticeModule } from '../practice/practice.module';
 import { ProfileModule } from '../profile/profile.module';
+import { UsageModule } from '../usage/usage.module';
 import { QuizController } from './quiz.controller';
 import { QuizService } from './quiz.service';
 import { QuizGenerationClient } from './services/quiz-generation.client';
@@ -59,6 +60,8 @@ import { WishConversionClient } from './services/wish-conversion.client';
     // 활동 일자(스트릭)만 합치려고 가져온다. QuizService가 아니라 **컨트롤러**가
     // 쓴다 — 아래 QuizController.getActivityDays의 주석 참고.
     PracticeModule,
+    // 수동 퀴즈 생성·재생성의 일일 생성 상한(DailyCapGuard).
+    UsageModule,
   ],
   controllers: [QuizController],
   providers: [
