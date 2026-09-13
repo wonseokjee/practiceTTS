@@ -1,0 +1,15 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": "..",
+  "roots": ["<rootDir>/src", "<rootDir>/test/int"],
+  "testRegex": ".*\\.int-spec\\.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "setupFiles": ["dotenv/config"],
+  "globalSetup": "<rootDir>/test/int/global-setup.ts",
+  "globalTeardown": "<rootDir>/test/int/global-teardown.ts",
+  "testEnvironment": "node",
+  "maxWorkers": 1,
+  "testTimeout": 120000
+}
