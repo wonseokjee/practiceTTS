@@ -766,12 +766,32 @@ describe('pickSentItems — 통사 복잡도 위계', () => {
  * 그래서 두 수정이 한 묶음이다.
  */
 describe('pickQabItems — 단어/문장 몫', () => {
-  /** 레벨 lv에서 QAB 슬롯 중 문장이 차지한 비율. */
+  /** 시드 고정 난수(mulberry32). 같은 시드면 같은 수열이다. */
+  function seededRng(seed: number): () => number {
+    let a = seed >>> 0;
+    return () => {
+      a = (a + 0x6d2b79f5) >>> 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  /**
+   * 레벨 lv에서 QAB 슬롯 중 문장이 차지한 비율.
+   *
+   * **레벨마다 같은 시드로 새 난수를 준다.** 예전엔 `Math.random`이라 세 레벨이
+   * 서로 다른 표본이었고, 차이가 표본 오차만으로 가끔 0.03을 넘어 실패했다
+   * (2026-09-12 전체 실행에서 1회, 같은 파일 재실행 6회는 통과). 같은 수열을
+   * 쓰면 표본 오차가 사라지고, 남는 차이는 **레벨이 몫에 새는 만큼**뿐이다.
+   */
   function sentShare(lv: number, draws = 3000): number {
+    const rng = seededRng(20260913);
     let sent = 0;
     let total = 0;
     for (let i = 0; i < draws; i += 1) {
-      for (const it of pickQabItems(2, { word: 3, sentence: lv })) {
+      for (const it of pickQabItems(2, { word: 3, sentence: lv }, rng)) {
         total += 1;
         if (it.category === 'sentence') sent += 1;
       }
@@ -782,7 +802,8 @@ describe('pickQabItems — 단어/문장 몫', () => {
   it('문장 출제 비율이 문장 레벨에 흔들리지 않는다', () => {
     const shares = [1, 3, 5].map((lv) => sentShare(lv));
     // 통사 유형별 풀 크기는 14 / 8 / 4로 3.5배 차이가 난다. 그게 비율에 새면
-    // 여기서 벌어진다. 무작위 추출이라 폭을 조금 준다.
+    // 여기서 벌어진다 — 옛 구현(두 풀을 한 통에 섞기)은 13.7% → 22.7%로 9%p를
+    // 벌렸다. 같은 수열이라 표본 오차는 없고, 0.03은 새는 양의 허용 한계다.
     for (const sh of shares) {
       expect(Math.abs(sh - shares[0])).toBeLessThan(0.03);
     }
