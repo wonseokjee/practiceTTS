@@ -276,6 +276,7 @@ export function CaregiverDashboard() {
             scenarioStatus={
               memoryEntries.scenarioStatus[selectedEntryId] ?? 'idle'
             }
+            scenarioNotice={memoryEntries.scenarioNotice[selectedEntryId]}
             onTriggerScenario={memoryEntries.triggerScenario}
             onBack={handleBackToList}
           />
