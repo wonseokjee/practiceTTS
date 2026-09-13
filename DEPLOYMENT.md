@@ -108,6 +108,30 @@ ENFORCE_SINGLE_INSTANCE=true
 - `SingleInstanceGuard`를 `AppModule` providers에서 제거한다
 - 이 문서의 "현재 전제"를 갱신한다
 
+## 로그 — pm2-logrotate
+
+`AllExceptionsFilter`(backend)가 4xx·5xx를 서버 로그에 남긴다(계획 §13 8-1) —
+QAB 저장 실패 같은 것이 지금까지는 환자 기기 콘솔에만 남아 운영자가 몰랐다.
+문제는 pm2 기본 설정이 로그를 무제한으로 쌓는다는 것이다: 파일이 디스크를
+채우면 새 로그도, 무관한 다른 쓰기(사진 업로드·DB)도 함께 실패한다. 이
+전역 필터가 로그를 늘리는 만큼, 로테이션은 배포와 한 세트다.
+
+**서버에서 최초 1회만** 실행한다(이 저장소의 npm 패키지가 아니라 pm2 모듈이다):
+
+```bash
+pm2 install pm2-logrotate
+pm2 set pm2-logrotate:max_size 10M
+pm2 set pm2-logrotate:retain 14
+pm2 set pm2-logrotate:compress true
+```
+
+- `max_size 10M`: 파일 하나가 이 크기를 넘으면 회전한다.
+- `retain 14`: 회전된 파일을 14개(대략 2주치, 트래픽에 따라 다름)까지만
+  보관하고 그 전 것은 지운다.
+- `compress true`: 회전된 파일을 gzip으로 압축해 보관 용량을 줄인다.
+- 확인: `pm2 conf pm2-logrotate` — 설정이 반영됐는지, `pm2 logs`로 로그가
+  실제로 쌓이는지.
+
 ## 배포 전 확인
 
 ```bash
