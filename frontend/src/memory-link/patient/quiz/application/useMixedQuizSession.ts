@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { shuffle } from '../../../../shared/domain/shuffle.js';
+import { enqueue as enqueueQabOutbox } from '../../../shared/QabOutbox.js';
 import type { QuizSetDetail } from '../domain/Quiz.js';
 import type {
   PlayResult,
@@ -1095,8 +1096,20 @@ export function useMixedQuizSession(
         submittedCountRef.current = targetCount;
       })
       .catch((err) => {
-        // 저장 실패는 환자 경험을 막지 않는다. 다음 flush에서 재시도(멱등).
+        // 저장 실패는 환자 경험을 막지 않는다. 이 세션이 계속되면 다음
+        // flush에서 이 tail이 그대로 다시 실린다(submittedCountRef 미변경).
         console.warn('[quiz] QAB 결과 점진 저장 실패:', err);
+        // 화면 이탈로 이 훅이 언마운트되면 "다음 flush"가 영영 안 온다 —
+        // 그게 이 시도의 마지막 기회일 수 있다. 재부팅 후에도 재시도되도록
+        // 대기열에 durable하게 남긴다(R7, 계획 2-2A). 네트워크를 다시
+        // 부르지 않는다 — 저장만 하고 실제 재시도는 로그인 시점에 일어난다.
+        enqueueQabOutbox(
+          sessionTokenRef.current,
+          pending,
+          manifestVersionRef.current,
+          completed,
+          endingLevels,
+        );
       });
   }, [sessionEndingLevels]);
 

@@ -58,6 +58,31 @@ describe('ServerAssessmentResultSubmitter', () => {
     errorLog.mockRestore();
   });
 
+  it('저장 실패는 공유 대기열에 남는다(R7) — 예전엔 콘솔 로그로 끝, 영영 유실이었다', async () => {
+    localStorage.clear();
+    const spy = vi
+      .spyOn(quizApi, 'submitQabResults')
+      .mockRejectedValue(new Error('network'));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await new ServerAssessmentResultSubmitter().submit({
+      sessionToken: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+      results: [
+        { subtest: 'loc', itemRef: 'trial-1', isCorrect: true, score: 3 },
+      ],
+    });
+
+    const stored = JSON.parse(
+      localStorage.getItem('ml_qab_outbox') ?? '[]',
+    ) as { sessionToken: string; completed?: boolean }[];
+    expect(stored).toHaveLength(1);
+    expect(stored[0].sessionToken).toBe('aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee');
+    // 이 제출은 항상 1회성 완료 마커를 싣는다 — 대기열에 남긴 것도 같아야 한다.
+    expect(stored[0].completed).toBe(true);
+    spy.mockRestore();
+    vi.restoreAllMocks();
+  });
+
   it('결과가 없으면 요청하지 않는다', async () => {
     const spy = vi.spyOn(quizApi, 'submitQabResults');
 
