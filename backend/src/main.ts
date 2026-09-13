@@ -1,11 +1,16 @@
 import { ValidationPipe } from '@nestjs/common';
-import { NestFactory } from '@nestjs/core';
+import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import * as cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
+import { AllExceptionsFilter } from './common/all-exceptions.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // QAB 저장 실패를 비롯한 4xx·5xx를 서버 로그에 남긴다(계획 §13 8-1) —
+  // 지금까지는 환자 기기 콘솔에만 남아 운영자가 알 방법이 없었다.
+  app.useGlobalFilters(new AllExceptionsFilter(app.get(HttpAdapterHost)));
 
   // 소셜 로그인 CSRF state 검증에 httpOnly 쿠키를 쓴다(oauth-state.ts).
   app.use(cookieParser());
