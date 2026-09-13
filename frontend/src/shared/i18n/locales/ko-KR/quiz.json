@@ -1,0 +1,93 @@
+{
+  "item": {
+    "skip": "넘어가기",
+    "submit": "제출",
+    "submitAnswerAria": "답 제출",
+    "doneSpeaking": "다 말했어요",
+    "speakAgain": "다시 말하기",
+    "listen": "들어보기",
+    "listenModelAria": "모범 발음 들어보기",
+    "playing": "재생 중…",
+    "heardAria": "내가 말한 것: {{text}}",
+    "noResultAria": "인식 결과 없음",
+    "answer": "정답: <b>{{answer}}</b>",
+    "hintFirstChar": "힌트: 첫 글자는 <b>{{char}}</b>{{suffix}}",
+    "listeningClearly": "듣고 있어요… 또박또박 말씀해주세요.",
+    "recognizing": "인식하고 있어요…",
+    "override": {
+      "unscored": "보호자님, 이번엔 확인하지 못했어요. 맞게 말씀하셨나요?",
+      "check": "보호자님, 자동 채점이 맞나요?",
+      "toIncorrect": "오답으로 정정",
+      "toCorrect": "정답으로 정정"
+    }
+  },
+  "naming": {
+    "imageAlt": "이름을 말할 그림",
+    "listening": "듣고 있어요… 그림의 이름을 또박또박 말씀해주세요.",
+    "processingAria": "인식 중",
+    "processing": "인식 중…",
+    "say": "이름 말하기",
+    "cuesAria": "받은 힌트",
+    "hintAria": "힌트 보기",
+    "hintMoreAria": "힌트 하나 더 보기",
+    "hint": "힌트",
+    "hintMore": "힌트 하나 더"
+  },
+  "speechCapture": {
+    "contentAria": "내용: {{text}}",
+    "processing": "발음을 확인하고 있어요…",
+    "processingAria": "발음 확인 중",
+    "processingButton": "확인 중…",
+    "speak": "말하기"
+  },
+  "speechInput": {
+    "wordAria": "따라 읽을 단어: {{word}}",
+    "listening": "듣고 있어요… 또박또박 따라 말씀해주세요.",
+    "speak": "따라 말하기"
+  },
+  "ddk": {
+    "soundAria": "반복할 소리: {{label}}",
+    "passTarget_other": "{{count}}회 이상 반복하면 통과예요.",
+    "detectedAria_other": "감지된 반복: {{count}}회",
+    "detected_other": "{{count}}회 반복",
+    "recording": "녹음 중이에요… 끝나면 멈추기를 눌러주세요.",
+    "stop": "멈추기",
+    "start": "시작",
+    "recordAgain": "다시 녹음",
+    "analyzing": "분석 중…",
+    "micError": "마이크를 시작할 수 없습니다. 권한을 확인해주세요.",
+    "analysisError": "녹음 분석에 실패했습니다. 다시 시도해주세요."
+  },
+  "tiles": {
+    "assembledAria": "조합한 답: {{answer}}",
+    "emptyAria": "아직 고른 글자가 없어요",
+    "empty": "글자를 눌러 단어를 만들어요",
+    "groupAria": "글자 타일",
+    "addAria": "{{tile}} 글자 넣기",
+    "removeLast": "한 글자 지우기",
+    "clear": "모두 지우기"
+  },
+  "imageChoice": {
+    "imageError": "그림을 불러올 수 없어요",
+    "listenSentence": "문장 듣기",
+    "listenWord": "단어 듣기",
+    "listenAgainAria": "{{label}} 다시 듣기",
+    "groupAria": "그림 선택지",
+    "choiceAria": "{{label}} 선택"
+  },
+  "fillBlank": {
+    "inputAria": "답 입력",
+    "placeholder": "답을 입력하세요"
+  },
+  "yesNo": {
+    "yes": "예",
+    "no": "아니오",
+    "groupAria": "예 또는 아니오 선택"
+  },
+  "spell": {
+    "imageAlt": "낱말을 만들 그림"
+  },
+  "ttsFailure": {
+    "message": "소리가 나오지 않았어요. 아래 듣기 버튼을 눌러 주세요."
+  }
+}

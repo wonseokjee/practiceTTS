@@ -7,6 +7,7 @@
 // 녹음기(IDdkRecorder)는 주입 가능하며 기본은 Web Audio 구현이다.
 
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { IDdkRecorder } from '../../infrastructure/DdkRecorder.js';
 import { WebAudioDdkRecorder } from '../../infrastructure/DdkRecorder.js';
 import type { QabDdkItem } from '../../domain/MixedQuiz.js';
@@ -37,6 +38,7 @@ export function DdkItem({
   onSkip,
   createRecorder,
 }: DdkItemProps) {
+  const { t } = useTranslation('quiz');
   const [status, setStatus] = useState<DdkStatus>('idle');
   const [count, setCount] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>('');
@@ -62,7 +64,7 @@ export function DdkItem({
       await recorder.start();
       setStatus('recording');
     } catch {
-      setErrorMessage('마이크를 시작할 수 없습니다. 권한을 확인해주세요.');
+      setErrorMessage(t('ddk.micError'));
       setStatus('error');
     }
   };
@@ -74,7 +76,7 @@ export function DdkItem({
       setCount(result.count);
       setStatus('recorded');
     } catch {
-      setErrorMessage('녹음 분석에 실패했습니다. 다시 시도해주세요.');
+      setErrorMessage(t('ddk.analysisError'));
       setStatus('error');
     }
   };
@@ -109,7 +111,7 @@ export function DdkItem({
       {/* 반복할 음절 (크게) */}
       <div
         className="flex min-h-[112px] items-center justify-center rounded-md border-2 border-line-strong bg-white px-5 py-6"
-        aria-label={`반복할 소리: ${item.label}`}
+        aria-label={t('ddk.soundAria', { label: item.label })}
       >
         <span className="text-5xl font-bold tracking-widest text-ink-sage">
           {item.label}
@@ -117,7 +119,7 @@ export function DdkItem({
       </div>
 
       <p className="text-center text-sm text-muted-sage">
-        {item.targetCount}회 이상 반복하면 통과예요.
+        {t('ddk.passTarget', { count: item.targetCount })}
       </p>
 
       {/* 분석 결과 (녹음 완료 또는 피드백 단계) */}
@@ -125,9 +127,9 @@ export function DdkItem({
         <div
           className={`flex min-h-[56px] items-center justify-between gap-3 rounded-md border-2 px-5 py-3 transition-colors duration-[180ms] ease-out ${resultBoxClass}`}
           aria-live="polite"
-          aria-label={`감지된 반복: ${count}회`}
+          aria-label={t('ddk.detectedAria', { count })}
         >
-          <span className="text-lg font-bold">{count}회 반복</span>
+          <span className="text-lg font-bold">{t('ddk.detected', { count })}</span>
           {showFeedback && (
             <span className="text-2xl" aria-hidden="true">
               {isCorrect === true ? '✓' : '✗'}
@@ -138,7 +140,7 @@ export function DdkItem({
 
       {!showFeedback && status === 'recording' && (
         <p className="text-base text-primary" role="status">
-          녹음 중이에요… 끝나면 멈추기를 눌러주세요.
+          {t('ddk.recording')}
         </p>
       )}
       {!showFeedback && status === 'error' && errorMessage.length > 0 && (
@@ -155,10 +157,10 @@ export function DdkItem({
               type="button"
               onClick={() => void handleStop()}
               className="flex min-h-[64px] items-center justify-center gap-2 rounded-md border-2 border-accent-strong bg-white px-6 py-4 text-xl font-medium text-accent-ink transition-colors duration-[180ms] ease-out hover:bg-accent-soft"
-              aria-label="멈추기"
+              aria-label={t('ddk.stop')}
             >
               <span aria-hidden="true" className="text-2xl">⏹️</span>
-              멈추기
+              {t('ddk.stop')}
             </button>
           ) : (
             <button
@@ -166,14 +168,14 @@ export function DdkItem({
               onClick={() => void handleStart()}
               disabled={!isSelectable || status === 'analyzing'}
               className="flex min-h-[64px] items-center justify-center gap-2 rounded-md border-2 border-primary bg-white px-6 py-4 text-xl font-medium text-primary transition-colors duration-[180ms] ease-out hover:bg-primary-light disabled:cursor-not-allowed disabled:border-disabled-surface disabled:text-muted-faint"
-              aria-label={status === 'recorded' ? '다시 녹음' : '시작'}
+              aria-label={status === 'recorded' ? t('ddk.recordAgain') : t('ddk.start')}
             >
               <span aria-hidden="true" className="text-2xl">🎙️</span>
               {status === 'analyzing'
-                ? '분석 중…'
+                ? t('ddk.analyzing')
                 : status === 'recorded'
-                  ? '다시 녹음'
-                  : '시작'}
+                  ? t('ddk.recordAgain')
+                  : t('ddk.start')}
             </button>
           )}
 
@@ -183,9 +185,9 @@ export function DdkItem({
               onClick={handleSubmit}
               disabled={!isSelectable}
               className="min-h-[56px] rounded-md bg-primary px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-disabled-surface disabled:text-disabled-ink"
-              aria-label="제출"
+              aria-label={t('item.submit')}
             >
-              제출
+              {t('item.submit')}
             </button>
           )}
 
@@ -194,9 +196,9 @@ export function DdkItem({
             onClick={handleSkip}
             disabled={!isSelectable}
             className="min-h-[48px] rounded-md bg-white px-5 py-3 text-base font-medium text-muted-sage ring-1 ring-inset ring-line-strong transition-colors duration-[180ms] ease-out hover:bg-canvas-hover disabled:cursor-not-allowed disabled:text-disabled-surface"
-            aria-label="넘어가기"
+            aria-label={t('item.skip')}
           >
-            넘어가기
+            {t('item.skip')}
           </button>
         </div>
       )}

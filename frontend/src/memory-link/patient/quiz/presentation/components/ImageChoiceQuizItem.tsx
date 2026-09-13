@@ -8,6 +8,7 @@
 // 소리가 끝내 안 나면(서버·브라우저 음성 둘 다 실패) 듣기 버튼 위에 안내를 띄운다.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTTS } from '../../../../../shared/hooks/useTTS.js';
 import { createTtsService } from '../../../../../shared/infrastructure/ttsFactory.js';
 import type { QabImageItem } from '../../domain/MixedQuiz.js';
@@ -18,6 +19,7 @@ import { TtsFailureNotice } from './TtsFailureNotice.js';
  * 로딩 전까지 이미지를 투명 처리하고, 라벨이 아닌 중립 표시만 보여 정답 노출을 막는다.
  */
 function ChoiceImage({ src }: { src: string }) {
+  const { t } = useTranslation('quiz');
   const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>(
     'loading',
   );
@@ -34,7 +36,7 @@ function ChoiceImage({ src }: { src: string }) {
           ) : (
             <>
               <span className="text-2xl">🖼️</span>
-              <span className="text-xs">그림을 불러올 수 없어요</span>
+              <span className="text-xs">{t('imageChoice.imageError')}</span>
             </>
           )}
         </div>
@@ -86,6 +88,7 @@ export function ImageChoiceQuizItem({
   selectedChoiceId,
   onSelect,
 }: ImageChoiceQuizItemProps) {
+  const { t } = useTranslation('quiz');
   const ttsService = useMemo(() => createTtsService(), []);
   const { isPlaying, error: ttsError, speak } = useTTS(ttsService);
 
@@ -97,7 +100,10 @@ export function ImageChoiceQuizItem({
     void speak(item.promptText);
   }, [speak, item.promptText]);
 
-  const listenLabel = item.category === 'sentence' ? '문장 듣기' : '단어 듣기';
+  const listenLabel =
+    item.category === 'sentence'
+      ? t('imageChoice.listenSentence')
+      : t('imageChoice.listenWord');
 
   return (
     <div className="flex flex-col gap-4">
@@ -111,16 +117,16 @@ export function ImageChoiceQuizItem({
         onClick={() => void speak(item.promptText)}
         disabled={isPlaying}
         className="flex min-h-[56px] items-center justify-center gap-2 rounded-md bg-white px-5 py-3 text-lg font-medium text-primary ring-1 ring-inset ring-primary transition-colors duration-[180ms] ease-out hover:bg-primary-light disabled:cursor-not-allowed disabled:text-muted-faint disabled:ring-disabled-surface"
-        aria-label={`${listenLabel} 다시 듣기`}
+        aria-label={t('imageChoice.listenAgainAria', { label: listenLabel })}
       >
         <span aria-hidden="true" className="text-2xl">🔊</span>
-        {isPlaying ? '재생 중…' : listenLabel}
+        {isPlaying ? t('item.playing') : listenLabel}
       </button>
 
       <div
         className="grid grid-cols-2 gap-3"
         role="group"
-        aria-label="그림 선택지"
+        aria-label={t('imageChoice.groupAria')}
       >
         {item.choices.map((choice) => {
           const isChosen = selectedChoiceId === choice.choiceId;
@@ -160,7 +166,7 @@ export function ImageChoiceQuizItem({
                   onSelect(choice.choiceId, { unheard: ttsError !== null });
                 }
               }}
-              aria-label={`${choice.label} 선택`}
+              aria-label={t('imageChoice.choiceAria', { label: choice.label })}
               className={`relative aspect-square w-full overflow-hidden rounded-2xl border-4 transition-all duration-150 disabled:cursor-default ${ring} ${
                 isSelectable ? 'hover:border-muted-faint active:scale-[0.97]' : ''
               }`}
