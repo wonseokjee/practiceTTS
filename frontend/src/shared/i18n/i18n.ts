@@ -51,7 +51,7 @@ import { initReactI18next } from 'react-i18next';
 import { DEFAULT_LOCALE } from '../domain/locale.js';
 
 /** 규약 1의 네임스페이스. 문자열 추출 커밋이 영역마다 하나씩 늘린다. */
-export const NAMESPACES = ['common', 'quiz'] as const;
+export const NAMESPACES = ['common', 'quiz', 'patient'] as const;
 export type Namespace = (typeof NAMESPACES)[number];
 
 type ResourceModule = { default: Record<string, unknown> };

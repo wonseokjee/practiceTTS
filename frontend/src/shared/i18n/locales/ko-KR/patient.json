@@ -1,0 +1,47 @@
+{
+  "common": {
+    "back": "돌아가기",
+    "loading": "불러오는 중..."
+  },
+  "soundCheck": {
+    "title": "소리를 확인할게요",
+    "introAssessment": "검사에는 듣고 답하는 문제가 있어요.",
+    "introPractice": "연습에는 듣고 답하는 문제가 있어요.",
+    "introSub": "소리가 잘 나오는지 먼저 확인해요.",
+    "playing": "소리 나는 중…",
+    "listen": "소리 듣기",
+    "errorDevice": "이 기기에서 소리를 낼 수 없었어요.",
+    "errorNotHeard": "소리가 안 들리시는군요.",
+    "step1": "기기 옆의 소리 버튼을 눌러 소리를 키워 주세요.",
+    "step2": "무음(진동) 상태라면 소리가 나게 바꿔 주세요.",
+    "step3": "이어폰을 쓰신다면 잘 꽂혔는지 봐 주세요.",
+    "retryHint": "그런 다음 위의 <b>소리 듣기</b>를 한 번 더 눌러 주세요.",
+    "skip": "소리 없이 시작하기",
+    "confirm": "소리가 잘 들리셨나요?",
+    "yes": "잘 들려요",
+    "no": "안 들려요",
+    "phrase": "소리가 잘 들리시나요?"
+  },
+  "streak": {
+    "ariaLabel": "이번 주 연습",
+    "title": "이번 주",
+    "today": "오늘"
+  },
+  "soloHome": {
+    "greeting": "오늘도 반가워요.",
+    "subtitle": "오늘 연습, 3~5분이면 충분해요.",
+    "start": "오늘 연습 시작하기",
+    "resumeHint": "지난번에 이어서 해요",
+    "freshHint": "오늘 치 연습을 시작해요",
+    "practiceLink": "가볍게 연습하기",
+    "reviewLink": "이번 주 돌아보기"
+  },
+  "weekReview": {
+    "title": "함께 본 기억",
+    "subtitle": "요즘 연습에서 만난 기억이에요.",
+    "loadError": "기억을 불러오지 못했어요.",
+    "emptyTitle": "요즘 연습한 기억이 아직 없어요.",
+    "emptySub": "오늘 연습을 하면 여기에 모여요.",
+    "photoAlt": "{{date}}의 기억"
+  }
+}
