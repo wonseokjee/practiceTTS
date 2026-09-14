@@ -9,6 +9,7 @@
 
 import type { StreakDay } from '../domain/streak.js';
 import { StreakRow } from './StreakRow.js';
+import { useTranslation } from 'react-i18next';
 
 interface SoloDailyHomeProps {
   /** 인사에 쓸 이름(존칭 포함 문자열). 없으면 이름 없이 인사. */
@@ -39,6 +40,7 @@ export function SoloDailyHome({
   onReview,
   onPractice,
 }: SoloDailyHomeProps) {
+  const { t } = useTranslation('patient');
   return (
     <div className="mx-auto flex w-full max-w-md flex-col px-6 pt-8">
       {/* 인사 (위계 최하) */}
@@ -46,14 +48,14 @@ export function SoloDailyHome({
         {greetingName ? (
           <>
             {greetingName},<br />
-            <span className="text-primary">오늘도 반가워요.</span>
+            <span className="text-primary">{t('soloHome.greeting')}</span>
           </>
         ) : (
-          <span className="text-primary">오늘도 반가워요.</span>
+          <span className="text-primary">{t('soloHome.greeting')}</span>
         )}
       </h1>
       <p className="mt-2 text-base text-muted-sage">
-        오늘 연습, 3~5분이면 충분해요.
+        {t('soloHome.subtitle')}
       </p>
 
       {/* 스트릭 (위계 중간) */}
@@ -66,14 +68,14 @@ export function SoloDailyHome({
         type="button"
         onClick={onStart}
         className="mt-8 flex min-h-[180px] w-full flex-col items-center justify-center gap-2 rounded-3xl bg-primary px-6 text-2xl font-bold text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark active:scale-[0.98]"
-        aria-label="오늘 연습 시작하기"
+        aria-label={t('soloHome.start')}
       >
         <span aria-hidden="true" className="text-4xl">
           ▶
         </span>
-        오늘 연습 시작하기
+        {t('soloHome.start')}
         <span className="text-sm font-normal opacity-90">
-          {hasResumable ? '지난번에 이어서 해요' : '오늘 치 연습을 시작해요'}
+          {hasResumable ? t('soloHome.resumeHint') : t('soloHome.freshHint')}
         </span>
       </button>
 
@@ -86,7 +88,7 @@ export function SoloDailyHome({
               onClick={onPractice}
               className="inline-flex min-h-[44px] items-center justify-center px-4 py-2 text-base text-muted-sage underline underline-offset-4 transition-colors duration-[180ms] ease-out hover:text-ink"
             >
-              가볍게 연습하기
+              {t('soloHome.practiceLink')}
             </button>
           )}
           {onReview && (
@@ -95,7 +97,7 @@ export function SoloDailyHome({
               onClick={onReview}
               className="inline-flex min-h-[44px] items-center justify-center px-4 py-2 text-base text-muted-sage underline underline-offset-4 transition-colors duration-[180ms] ease-out hover:text-ink"
             >
-              이번 주 돌아보기
+              {t('soloHome.reviewLink')}
             </button>
           )}
         </div>

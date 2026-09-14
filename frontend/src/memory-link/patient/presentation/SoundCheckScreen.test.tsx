@@ -24,7 +24,7 @@ function renderScreen(overrides: Partial<Parameters<typeof SoundCheckScreen>[0]>
     onPass: vi.fn(),
     onSkip: vi.fn(),
     onCancel: vi.fn(),
-    destination: '연습' as const,
+    destination: 'practice' as const,
     ...overrides,
   };
   const { container } = render(<SoundCheckScreen {...props} />);
@@ -118,7 +118,7 @@ describe('SoundCheckScreen', () => {
   });
 
   it('어디로 가는 길인지 문구에 담는다', async () => {
-    renderScreen({ destination: '검사' });
+    renderScreen({ destination: 'assessment' });
     expect(
       screen.getByText(/검사에는 듣고 답하는 문제가 있어요/),
     ).toBeInTheDocument();

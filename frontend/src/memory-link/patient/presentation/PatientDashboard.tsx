@@ -267,7 +267,7 @@ export function PatientDashboard() {
     return (
       <div className="min-h-screen" style={{ background: WARM_SCREEN_BG }}>
         <SoundCheckScreen
-          destination={pendingPhase === 'PRACTICE' ? '연습' : '검사'}
+          destination={pendingPhase === 'PRACTICE' ? 'practice' : 'assessment'}
           onPass={() => {
             markSoundCheckedToday();
             proceed();
