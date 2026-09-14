@@ -23,8 +23,9 @@ import type { QuizSetSummary } from '../quiz/domain/Quiz.js';
 import { extractErrorMessage } from '../../shared/extractErrorMessage.js';
 import { WARM_SCREEN_BG } from '../../shared/theme.js';
 import { AuthedImage } from '../../shared/AuthedImage.js';
-import { withHonorific } from '../../shared/honorific.js';
+import { withHonorific, DEFAULT_HONORIFIC } from '../../shared/honorific.js';
 import { isConversationModeEnabled } from '../../shared/featureFlags.js';
+import { Trans, useTranslation } from 'react-i18next';
 
 /** 환자 학습 모드 (R9-a: localStorage에 마지막 모드 저장/복원) */
 type PatientMode = 'QUIZ' | 'CONVERSATION';
@@ -76,6 +77,7 @@ function loadLastMode(): PatientMode {
  * - 훈련 시작 클릭 시 TrainingScreen으로 전환
  */
 export function PatientDashboard() {
+  const { t } = useTranslation('patient');
   const { user, logout, isPatientMode, exitPatientMode } = useAuth();
   const navigate = useNavigate();
 
@@ -324,9 +326,15 @@ export function PatientDashboard() {
               isCaregiverInPatientMode ? () => setIsPinModalOpen(true) : logout
             }
             className="min-h-[44px] rounded-full bg-white/70 px-4 py-2 text-base font-medium text-muted-sage"
-            aria-label={isCaregiverInPatientMode ? '보호자로 돌아가기' : '로그아웃'}
+            aria-label={
+              isCaregiverInPatientMode
+                ? t('dashboard.backToCaregiver')
+                : t('dashboard.logout')
+            }
           >
-            {isCaregiverInPatientMode ? '보호자로' : '로그아웃'}
+            {isCaregiverInPatientMode
+              ? t('dashboard.backToCaregiverShort')
+              : t('dashboard.logout')}
           </button>
         </header>
         <ReturnToCaregiverPinModal
@@ -337,7 +345,7 @@ export function PatientDashboard() {
         <SoloDailyHome
           greetingName={withHonorific(
             user?.patientDisplayName ?? user?.displayName,
-            '님',
+            DEFAULT_HONORIFIC,
             { separator: '' },
           )}
           streakDays={buildWeekStreak(new Set(activityDays))}
@@ -354,14 +362,14 @@ export function PatientDashboard() {
       {/* 헤더 */}
       <header className="px-6 py-5 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-ink">안녕하세요</h1>
+          <h1 className="text-3xl font-bold text-ink">{t('dashboard.greeting')}</h1>
           <p className="text-xl text-muted-sage mt-1">
             {withHonorific(
               user?.patientDisplayName ?? user?.displayName,
-              '님',
+              DEFAULT_HONORIFIC,
               { separator: '' },
             )}
-            , 오늘도 함께 훈련해요!
+            , {t('dashboard.greetingTail')}
           </p>
         </div>
         {isCaregiverInPatientMode ? (
@@ -369,18 +377,18 @@ export function PatientDashboard() {
             type="button"
             onClick={() => setIsPinModalOpen(true)}
             className="min-h-[48px] px-5 py-2 bg-white/70 text-muted-sage text-lg font-medium rounded-full"
-            aria-label="보호자로 돌아가기"
+            aria-label={t('dashboard.backToCaregiver')}
           >
-            보호자로 돌아가기
+            {t('dashboard.backToCaregiver')}
           </button>
         ) : (
           <button
             type="button"
             onClick={logout}
             className="min-h-[48px] px-5 py-2 bg-white/70 text-muted-sage text-lg font-medium rounded-full"
-            aria-label="로그아웃"
+            aria-label={t('dashboard.logout')}
           >
-            로그아웃
+            {t('dashboard.logout')}
           </button>
         )}
       </header>
@@ -440,12 +448,13 @@ interface ModeToggleProps {
  * - 기본 검사는 개인 맞춤 없이 표준 문항으로 언어·인지를 점검하는 검사 화면으로 이동
  */
 function ModeToggle({ mode, onSelectMode, onOpenAssessment }: ModeToggleProps) {
+  const { t } = useTranslation('patient');
   // 대화는 플래그로 감춘다. 비활성 탭으로 남겨두면 환자가 눌러보고
   // 반응이 없어 혼란스러우므로, 아예 렌더하지 않는다.
   const options: Array<{ value: PatientMode; label: string }> = [
-    { value: 'QUIZ', label: '퀴즈' },
+    { value: 'QUIZ', label: t('modeToggle.quiz') },
     ...(isConversationModeEnabled()
-      ? [{ value: 'CONVERSATION' as const, label: '대화' }]
+      ? [{ value: 'CONVERSATION' as const, label: t('modeToggle.conversation') }]
       : []),
   ];
 
@@ -453,7 +462,7 @@ function ModeToggle({ mode, onSelectMode, onOpenAssessment }: ModeToggleProps) {
     <div
       className="mb-6 flex gap-2 rounded-full bg-white/50 p-1"
       role="tablist"
-      aria-label="학습 모드 선택"
+      aria-label={t('modeToggle.ariaLabel')}
     >
       {options.map((opt) => {
         const isActive = mode === opt.value;
@@ -479,10 +488,10 @@ function ModeToggle({ mode, onSelectMode, onOpenAssessment }: ModeToggleProps) {
       <button
         type="button"
         onClick={onOpenAssessment}
-        aria-label="표준 언어·인지 검사 (사진·일기 없이 기본 문항으로 점검)"
+        aria-label={t('modeToggle.assessmentAria')}
         className="min-h-[48px] flex-1 rounded-full text-base font-semibold bg-transparent text-muted-sage transition-colors duration-[180ms] ease-out hover:text-ink"
       >
-        기본 검사
+        {t('modeToggle.assessment')}
       </button>
     </div>
   );
@@ -506,16 +515,17 @@ function ConversationList({
   onReload,
   onStartTraining,
 }: ConversationListProps) {
+  const { t } = useTranslation('patient');
   return (
     <>
       <h2 className="text-2xl font-semibold text-ink mb-4">
-        훈련 목록
+        {t('conversationList.title')}
       </h2>
 
       {/* 로딩 상태 */}
       {isLoading && (
           <div className="flex items-center justify-center py-16" role="status">
-            <p className="text-2xl text-muted-sage">불러오는 중...</p>
+            <p className="text-2xl text-muted-sage">{t('common.loading')}</p>
           </div>
         )}
 
@@ -528,7 +538,7 @@ function ConversationList({
               onClick={onReload}
               className="min-h-[48px] px-8 py-3 bg-primary text-white text-xl font-semibold rounded-full"
             >
-              다시 시도
+              {t('common.retry')}
             </button>
           </div>
         )}
@@ -537,17 +547,17 @@ function ConversationList({
         {!isLoading && error === null && entries.length === 0 && (
           <div className="py-16 text-center">
             <p className="text-2xl text-muted-sage">
-              아직 등록된 훈련이 없습니다.
+              {t('conversationList.emptyTitle')}
             </p>
             <p className="text-xl text-muted-sage mt-2">
-              보호자가 기억 카드를 등록하면 훈련을 시작할 수 있어요.
+              {t('conversationList.emptySub')}
             </p>
           </div>
         )}
 
         {/* 엔트리 목록 */}
         {!isLoading && error === null && entries.length > 0 && (
-          <ul className="flex flex-col gap-4" role="list" aria-label="훈련 가능 항목 목록">
+          <ul className="flex flex-col gap-4" role="list" aria-label={t('conversationList.listAria')}>
             {entries.map((entry) => (
               <EntryCard
                 key={entry.id}
@@ -569,6 +579,7 @@ interface EntryCardProps {
 }
 
 function EntryCard({ entry, onStartTraining }: EntryCardProps) {
+  const { t } = useTranslation('patient');
   const [selectedWord, setSelectedWord] = useState<string>(
     entry.targetWords[0] ?? '',
   );
@@ -580,7 +591,7 @@ function EntryCard({ entry, onStartTraining }: EntryCardProps) {
         {entry.photoUrl !== null && (
           <AuthedImage
             src={entry.photoUrl}
-            alt="기억 사진"
+            alt={t('entryCard.photoAlt')}
             className="w-24 h-24 object-cover rounded-2xl flex-shrink-0"
           />
         )}
@@ -590,7 +601,12 @@ function EntryCard({ entry, onStartTraining }: EntryCardProps) {
           {/* 장소 태그 */}
           {entry.locationTag !== null && (
             <p className="text-xl text-ink">
-              장소: <span className="font-semibold">{entry.locationTag}</span>
+              <Trans
+                t={t}
+                i18nKey="entryCard.location"
+                values={{ location: entry.locationTag }}
+                components={{ b: <span className="font-semibold" /> }}
+              />
             </p>
           )}
 
@@ -602,7 +618,7 @@ function EntryCard({ entry, onStartTraining }: EntryCardProps) {
           {/* 목표 단어 선택 (여러 개인 경우) */}
           {entry.targetWords.length > 1 && (
             <div className="flex flex-col gap-1">
-              <p className="text-lg text-muted-sage">연습할 단어 선택:</p>
+              <p className="text-lg text-muted-sage">{t('entryCard.wordChoicePrompt')}</p>
               <div className="flex gap-2 flex-wrap">
                 {entry.targetWords.map((word) => (
                   <button
@@ -625,7 +641,12 @@ function EntryCard({ entry, onStartTraining }: EntryCardProps) {
           {/* 단어가 1개인 경우 표시만 */}
           {entry.targetWords.length === 1 && (
             <p className="text-xl text-ink">
-              연습 단어: <span className="font-bold text-primary">{entry.targetWords[0]}</span>
+              <Trans
+                t={t}
+                i18nKey="entryCard.wordLabel"
+                values={{ word: entry.targetWords[0] }}
+                components={{ b: <span className="font-bold text-primary" /> }}
+              />
             </p>
           )}
         </div>
@@ -639,13 +660,15 @@ function EntryCard({ entry, onStartTraining }: EntryCardProps) {
             onClick={() => onStartTraining(entry, selectedWord)}
             disabled={selectedWord === ''}
             className="w-full min-h-[56px] bg-primary text-white text-2xl font-bold rounded-full disabled:opacity-50 active:scale-[0.98] transition-transform"
-            aria-label={`${entry.locationTag ?? '기억'} 훈련 시작`}
+            aria-label={t('entryCard.startAria', {
+              location: entry.locationTag ?? t('entryCard.memoryFallback'),
+            })}
           >
-            훈련 시작
+            {t('entryCard.start')}
           </button>
         ) : (
           <div className="w-full min-h-[56px] flex items-center justify-center bg-primary-light/60 rounded-full">
-            <p className="text-xl text-muted-sage">보호자가 준비 중이에요</p>
+            <p className="text-xl text-muted-sage">{t('entryCard.caregiverPreparing')}</p>
           </div>
         )}
       </div>
