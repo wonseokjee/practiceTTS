@@ -4,6 +4,7 @@ import { useSilenceDetector } from '../application/useSilenceDetector.js';
 import { useTrainingSession } from '../application/useTrainingSession.js';
 import { WARM_SCREEN_BG } from '../../shared/theme.js';
 import { AuthedImage } from '../../shared/AuthedImage.js';
+import { Trans, useTranslation } from 'react-i18next';
 
 interface TrainingScreenProps {
   memoryEntryId: string;
@@ -43,6 +44,7 @@ export function TrainingScreen({
   locationTag = null,
   onComplete,
 }: TrainingScreenProps) {
+  const { t } = useTranslation('patient');
   const {
     session,
     messages,
@@ -159,7 +161,7 @@ export function TrainingScreen({
         className="min-h-screen flex items-center justify-center"
         style={{ background: SCREEN_BG }}
       >
-        <p className="text-2xl text-muted-sage">훈련을 준비하고 있습니다...</p>
+        <p className="text-2xl text-muted-sage">{t('training.loading')}</p>
       </div>
     );
   }
@@ -172,7 +174,7 @@ export function TrainingScreen({
         style={{ background: SCREEN_BG }}
       >
         <p className="text-2xl text-danger text-center font-semibold" role="alert">
-          훈련을 시작할 수 없습니다.
+          {t('training.startFailed')}
         </p>
         <p className="text-xl text-muted-sage text-center">{error}</p>
         <button
@@ -180,7 +182,7 @@ export function TrainingScreen({
           onClick={onComplete}
           className="min-h-[48px] px-8 py-3 bg-white/80 text-ink text-xl font-semibold rounded-full border border-line"
         >
-          돌아가기
+          {t('common.back')}
         </button>
       </div>
     );
@@ -194,10 +196,10 @@ export function TrainingScreen({
     <div className="min-h-screen flex flex-col" style={{ background: SCREEN_BG }}>
       {/* 헤더 */}
       <header className="px-6 py-4 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-ink">기억 훈련</h1>
+        <h1 className="text-2xl font-bold text-ink">{t('training.headerTitle')}</h1>
         {/* 힌트 단계 표시 */}
-        <div className="flex items-center gap-2" aria-label={`힌트 단계 ${hintLevel}/2`}>
-          <span className="text-base text-muted-sage mr-1">힌트</span>
+        <div className="flex items-center gap-2" aria-label={t('training.hintStepAria', { level: hintLevel })}>
+          <span className="text-base text-muted-sage mr-1">{t('training.hint')}</span>
           {[0, 1, 2].map((level) => (
             <div
               key={level}
@@ -213,7 +215,7 @@ export function TrainingScreen({
       {/* 본문 — 사진 단서 + 현재 질문 한 장 */}
       <main
         className="flex-1 flex flex-col px-5 pb-2 max-w-2xl w-full mx-auto"
-        aria-label="대화 내용"
+        aria-label={t('training.conversationAria')}
         aria-live="polite"
       >
         {/* 회상 단서 사진 */}
@@ -221,7 +223,11 @@ export function TrainingScreen({
           {photoUrl !== null ? (
             <AuthedImage
               src={photoUrl}
-              alt={locationTag !== null ? `${locationTag} 사진` : '기억 사진'}
+              alt={
+                locationTag !== null
+                  ? t('training.photoWithLocation', { location: locationTag })
+                  : t('training.photoAlt')
+              }
               className="w-full h-44 object-cover rounded-3xl shadow-[0_8px_22px_rgba(45,106,86,0.10)]"
             />
           ) : (
@@ -244,17 +250,17 @@ export function TrainingScreen({
         {/* 현재 질문 카드 (반투명 흰 카드) */}
         <div className="flex-1 flex flex-col justify-center py-4">
           <div className="bg-white/85 border border-white/90 rounded-3xl px-6 py-6 shadow-[0_6px_18px_rgba(0,0,0,0.05)]">
-            <span className="text-sm font-bold text-primary">AI 선생님</span>
+            <span className="text-sm font-bold text-primary">{t('training.teacher')}</span>
 
             {isLoading ? (
               /* AI 질문 준비 중 */
-              <div className="mt-3 flex items-center gap-2" role="status" aria-label="질문 준비 중">
+              <div className="mt-3 flex items-center gap-2" role="status" aria-label={t('training.preparingQuestionAria')}>
                 <span className="flex gap-1.5" aria-hidden="true">
                   <span className="h-2.5 w-2.5 rounded-full bg-[#9fd0bc] animate-pulse [animation-delay:0ms]" />
                   <span className="h-2.5 w-2.5 rounded-full bg-[#9fd0bc] animate-pulse [animation-delay:200ms]" />
                   <span className="h-2.5 w-2.5 rounded-full bg-[#9fd0bc] animate-pulse [animation-delay:400ms]" />
                 </span>
-                <span className="text-xl text-muted-sage">질문을 준비하고 있어요</span>
+                <span className="text-xl text-muted-sage">{t('training.preparingQuestion')}</span>
               </div>
             ) : latestAiMessage !== null ? (
               <p className="mt-3 text-2xl leading-relaxed font-semibold text-ink">
@@ -262,7 +268,7 @@ export function TrainingScreen({
               </p>
             ) : (
               <p className="mt-3 text-2xl leading-relaxed text-muted-sage">
-                잠시만 기다려 주세요.
+                {t('training.waitPlaceholder')}
               </p>
             )}
 
@@ -273,7 +279,7 @@ export function TrainingScreen({
                 aria-live="assertive"
                 role="status"
               >
-                🔊 질문을 읽어드리고 있어요
+                🔊 {t('training.speaking')}
               </p>
             )}
           </div>
@@ -281,7 +287,11 @@ export function TrainingScreen({
           {/* 환자의 마지막 답변 (맥락 유지용, 작게) */}
           {latestPatientMessage !== null && !isRecording && (
             <p className="mt-3 px-2 text-center text-lg text-muted-sage">
-              방금 이렇게 답하셨어요 · “{latestPatientMessage.content}”
+              <Trans
+                t={t}
+                i18nKey="training.lastAnswer"
+                values={{ text: latestPatientMessage.content }}
+              />
             </p>
           )}
         </div>
@@ -310,7 +320,7 @@ export function TrainingScreen({
               role="status"
               aria-live="polite"
             >
-              듣고 있어요... 말씀해주세요
+              {t('training.recording')}
             </p>
           )}
 
@@ -322,9 +332,9 @@ export function TrainingScreen({
                 onClick={handleHintRequest}
                 disabled={isLoading}
                 className="min-h-[52px] px-5 py-3 bg-white/70 text-primary text-xl font-bold rounded-full disabled:opacity-50 active:scale-95 transition-transform"
-                aria-label="힌트 요청"
+                aria-label={t('training.hintRequestAria')}
               >
-                힌트 {hintLevel}/2
+                {t('training.hintButton', { level: hintLevel })}
               </button>
             )}
 
@@ -339,7 +349,7 @@ export function TrainingScreen({
                     ? 'bg-danger scale-110 shadow-lg shadow-danger/40'
                     : 'bg-accent-strong shadow-[0_10px_24px_rgba(184,92,54,0.45)]'
                 }`}
-                aria-label={isRecording ? '녹음 중지' : '말하기'}
+                aria-label={isRecording ? t('training.stopRecordingAria') : t('training.speakAria')}
                 aria-pressed={isRecording}
               >
                 {isRecording ? '■' : '🎤'}
@@ -352,16 +362,16 @@ export function TrainingScreen({
                 type="button"
                 onClick={handleSuccess}
                 className="min-h-[52px] px-5 py-3 bg-white/70 text-muted-sage text-xl font-bold rounded-full active:scale-95 transition-transform"
-                aria-label="훈련 성공으로 완료"
+                aria-label={t('training.completeAria')}
               >
-                완료
+                {t('training.complete')}
               </button>
             )}
           </div>
 
           {/* 안내 문구 */}
           {!isRecording && canRecord && (
-            <span className="text-base text-muted-sage">버튼을 누르고 말씀해 주세요</span>
+            <span className="text-base text-muted-sage">{t('training.micHint')}</span>
           )}
 
           {/* 포기 버튼 */}
@@ -370,9 +380,9 @@ export function TrainingScreen({
               type="button"
               onClick={handleGiveUp}
               className="min-h-[44px] px-6 py-2 text-muted-sage text-lg underline active:scale-95 transition-transform"
-              aria-label="훈련 중단"
+              aria-label={t('training.giveUpAria')}
             >
-              훈련 중단하기
+              {t('training.giveUp')}
             </button>
           )}
         </div>
