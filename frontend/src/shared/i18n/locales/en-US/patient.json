@@ -1,0 +1,47 @@
+{
+  "common": {
+    "back": "Go back",
+    "loading": "Loading…"
+  },
+  "soundCheck": {
+    "title": "Let's check the sound",
+    "introAssessment": "The assessment has questions you'll listen to.",
+    "introPractice": "Practice has questions you'll listen to.",
+    "introSub": "Let's make sure the sound is working first.",
+    "playing": "Playing…",
+    "listen": "Play sound",
+    "errorDevice": "This device couldn't play any sound.",
+    "errorNotHeard": "Sounds like you didn't hear it.",
+    "step1": "Press the volume button on the side of the device.",
+    "step2": "If it's on silent or vibrate, switch the sound on.",
+    "step3": "If you're using earphones, check they're plugged in.",
+    "retryHint": "Then press <b>Play sound</b> above one more time.",
+    "skip": "Start without sound",
+    "confirm": "Did you hear that clearly?",
+    "yes": "Yes, I heard it",
+    "no": "No, I didn't",
+    "phrase": "Can you hear this clearly?"
+  },
+  "streak": {
+    "ariaLabel": "This week's practice",
+    "title": "This week",
+    "today": "Today"
+  },
+  "soloHome": {
+    "greeting": "Good to see you today.",
+    "subtitle": "Today's practice takes just 3 to 5 minutes.",
+    "start": "Start today's practice",
+    "resumeHint": "Pick up where you left off",
+    "freshHint": "Start today's practice",
+    "practiceLink": "Practice without scoring",
+    "reviewLink": "Look back on this week"
+  },
+  "weekReview": {
+    "title": "Memories together",
+    "subtitle": "Memories from your recent practice.",
+    "loadError": "We couldn't load your memories.",
+    "emptyTitle": "No memories from recent practice yet.",
+    "emptySub": "They'll show up here once you practice today.",
+    "photoAlt": "Memory from {{date}}"
+  }
+}

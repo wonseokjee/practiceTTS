@@ -17,6 +17,8 @@ import { useEffect, useState } from 'react';
 import type { WeekReviewItem } from '../quiz/domain/Quiz.js';
 import { quizApi } from '../quiz/infrastructure/QuizApi.js';
 import { AuthedImage } from '../../shared/AuthedImage.js';
+import { useTranslation } from 'react-i18next';
+import { formatDate } from '../../../shared/i18n/formatDate.js';
 
 interface WeekReviewScreenProps {
   onBack: () => void;
@@ -24,14 +26,18 @@ interface WeekReviewScreenProps {
   loadItems?: (days?: number) => Promise<WeekReviewItem[]>;
 }
 
-/** ISO 문자열 → '7월 20일'. 연도는 생략한다 — 최근 며칠이라 늘 올해다. */
+/**
+ * ISO 문자열 → 로케일 날짜(연도 생략 — 최근 며칠이라 늘 올해다).
+ * 예전에는 '${d.getMonth() + 1}월 ${d.getDate()}일'로 한국어를 직접 찍었다(i18n 규약 3).
+ */
 function formatDay(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  return `${d.getMonth() + 1}월 ${d.getDate()}일`;
+  return formatDate(d, { month: 'long', day: 'numeric' });
 }
 
 export function WeekReviewScreen({ onBack, loadItems }: WeekReviewScreenProps) {
+  const { t } = useTranslation('patient');
   const [items, setItems] = useState<WeekReviewItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,20 +49,20 @@ export function WeekReviewScreen({ onBack, loadItems }: WeekReviewScreenProps) {
         if (alive) setItems(rows);
       })
       .catch(() => {
-        if (alive) setError('기억을 불러오지 못했어요.');
+        if (alive) setError(t('weekReview.loadError'));
       });
     return () => {
       alive = false;
     };
-  }, [loadItems]);
+  }, [loadItems, t]);
 
   return (
     <div className="mx-auto w-full max-w-2xl px-6 py-8">
       <h1 className="mb-2 text-3xl font-bold text-ink">
-        함께 본 기억
+        {t('weekReview.title')}
       </h1>
       <p className="mb-8 text-lg text-muted-sage">
-        요즘 연습에서 만난 기억이에요.
+        {t('weekReview.subtitle')}
       </p>
 
       {error !== null && (
@@ -70,7 +76,7 @@ export function WeekReviewScreen({ onBack, loadItems }: WeekReviewScreenProps) {
 
       {error === null && items === null && (
         <p className="py-16 text-center text-lg text-muted-sage" role="status">
-          불러오는 중...
+          {t('common.loading')}
         </p>
       )}
 
@@ -81,10 +87,10 @@ export function WeekReviewScreen({ onBack, loadItems }: WeekReviewScreenProps) {
       {error === null && items !== null && items.length === 0 && (
         <div className="py-16 text-center">
           <p className="text-lg text-muted-sage">
-            요즘 연습한 기억이 아직 없어요.
+            {t('weekReview.emptyTitle')}
           </p>
           <p className="mt-2 text-base text-muted-sage">
-            오늘 연습을 하면 여기에 모여요.
+            {t('weekReview.emptySub')}
           </p>
         </div>
       )}
@@ -98,7 +104,7 @@ export function WeekReviewScreen({ onBack, loadItems }: WeekReviewScreenProps) {
             {item.photoUrl !== null ? (
               <AuthedImage
                 src={item.photoUrl}
-                alt={`${formatDay(item.lastPlayedAt)}의 기억`}
+                alt={t('weekReview.photoAlt', { date: formatDay(item.lastPlayedAt) })}
                 className="aspect-[4/3] w-full object-cover"
               />
             ) : null}
@@ -150,7 +156,7 @@ export function WeekReviewScreen({ onBack, loadItems }: WeekReviewScreenProps) {
         onClick={onBack}
         className="mt-10 inline-flex min-h-[44px] w-full items-center justify-center rounded-full border-2 border-primary bg-white px-6 py-3 text-lg font-semibold text-primary transition-colors duration-[180ms] ease-out hover:bg-primary-light"
       >
-        돌아가기
+        {t('common.back')}
       </button>
     </div>
   );

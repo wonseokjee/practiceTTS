@@ -6,6 +6,7 @@
 // 스크린리더 라벨을 달아 시각 외 접근성도 확보한다.
 
 import type { DayStatus, StreakDay } from '../domain/streak.js';
+import { useTranslation } from 'react-i18next';
 
 interface DotStyle {
   /** 원 컨테이너 className */
@@ -15,7 +16,7 @@ interface DotStyle {
 }
 
 /** 상태별 원 스타일. danger 계열 색은 어디에도 쓰지 않는다. */
-function dotStyle(status: DayStatus): DotStyle {
+function dotStyle(status: DayStatus, todayLabel: string): DotStyle {
   switch (status) {
     case 'done':
       return { circle: 'bg-primary text-white', content: '✓' };
@@ -28,7 +29,7 @@ function dotStyle(status: DayStatus): DotStyle {
     case 'today':
       return {
         circle: 'bg-primary-light border-2 border-primary text-primary',
-        content: '오늘',
+        content: todayLabel,
       };
     case 'missed':
       // 중립: 테두리만. 빨강·✗ 없음.
@@ -44,15 +45,16 @@ interface StreakRowProps {
 
 /** 이번 주 7일 스트릭 카드. */
 export function StreakRow({ days }: StreakRowProps) {
+  const { t } = useTranslation('patient');
   return (
     <section
       className="rounded-3xl border border-line bg-white p-6"
-      aria-label="이번 주 연습"
+      aria-label={t('streak.ariaLabel')}
     >
-      <p className="mb-4 text-sm font-semibold text-muted-sage">이번 주</p>
+      <p className="mb-4 text-sm font-semibold text-muted-sage">{t('streak.title')}</p>
       <ol className="flex items-start justify-between" role="list">
         {days.map((day, i) => {
-          const s = dotStyle(day.status);
+          const s = dotStyle(day.status, t('streak.today'));
           const isToday = day.status === 'today' || day.status === 'today-done';
           return (
             <li
