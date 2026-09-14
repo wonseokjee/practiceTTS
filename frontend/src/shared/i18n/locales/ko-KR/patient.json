@@ -1,7 +1,8 @@
 {
   "common": {
     "back": "돌아가기",
-    "loading": "불러오는 중..."
+    "loading": "불러오는 중...",
+    "retry": "다시 시도"
   },
   "soundCheck": {
     "title": "소리를 확인할게요",
@@ -43,5 +44,61 @@
     "emptyTitle": "요즘 연습한 기억이 아직 없어요.",
     "emptySub": "오늘 연습을 하면 여기에 모여요.",
     "photoAlt": "{{date}}의 기억"
+  },
+  "dashboard": {
+    "backToCaregiver": "보호자로 돌아가기",
+    "backToCaregiverShort": "보호자로",
+    "logout": "로그아웃",
+    "greeting": "안녕하세요",
+    "greetingTail": "오늘도 함께 훈련해요!"
+  },
+  "modeToggle": {
+    "ariaLabel": "학습 모드 선택",
+    "quiz": "퀴즈",
+    "conversation": "대화",
+    "assessmentAria": "표준 언어·인지 검사 (사진·일기 없이 기본 문항으로 점검)",
+    "assessment": "기본 검사"
+  },
+  "conversationList": {
+    "title": "훈련 목록",
+    "emptyTitle": "아직 등록된 훈련이 없습니다.",
+    "emptySub": "보호자가 기억 카드를 등록하면 훈련을 시작할 수 있어요.",
+    "listAria": "훈련 가능 항목 목록"
+  },
+  "entryCard": {
+    "photoAlt": "기억 사진",
+    "location": "장소: <b>{{location}}</b>",
+    "wordChoicePrompt": "연습할 단어 선택:",
+    "wordLabel": "연습 단어: <b>{{word}}</b>",
+    "memoryFallback": "기억",
+    "startAria": "{{location}} 훈련 시작",
+    "start": "훈련 시작",
+    "caregiverPreparing": "보호자가 준비 중이에요"
+  },
+  "training": {
+    "loading": "훈련을 준비하고 있습니다...",
+    "startFailed": "훈련을 시작할 수 없습니다.",
+    "headerTitle": "기억 훈련",
+    "hintStepAria": "힌트 단계 {{level}}/2",
+    "hint": "힌트",
+    "conversationAria": "대화 내용",
+    "photoAlt": "기억 사진",
+    "photoWithLocation": "{{location}} 사진",
+    "teacher": "AI 선생님",
+    "preparingQuestionAria": "질문 준비 중",
+    "preparingQuestion": "질문을 준비하고 있어요",
+    "waitPlaceholder": "잠시만 기다려 주세요.",
+    "speaking": "질문을 읽어드리고 있어요",
+    "lastAnswer": "방금 이렇게 답하셨어요 · “{{text}}”",
+    "recording": "듣고 있어요... 말씀해주세요",
+    "hintRequestAria": "힌트 요청",
+    "hintButton": "힌트 {{level}}/2",
+    "stopRecordingAria": "녹음 중지",
+    "speakAria": "말하기",
+    "completeAria": "훈련 성공으로 완료",
+    "complete": "완료",
+    "micHint": "버튼을 누르고 말씀해 주세요",
+    "giveUpAria": "훈련 중단",
+    "giveUp": "훈련 중단하기"
   }
 }

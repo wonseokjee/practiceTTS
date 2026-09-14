@@ -1,7 +1,8 @@
 {
   "common": {
     "back": "Go back",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "retry": "Try again"
   },
   "soundCheck": {
     "title": "Let's check the sound",
@@ -43,5 +44,61 @@
     "emptyTitle": "No memories from recent practice yet.",
     "emptySub": "They'll show up here once you practice today.",
     "photoAlt": "Memory from {{date}}"
+  },
+  "dashboard": {
+    "backToCaregiver": "Back to caregiver",
+    "backToCaregiverShort": "Caregiver",
+    "logout": "Log out",
+    "greeting": "Hello",
+    "greetingTail": "let's train together today!"
+  },
+  "modeToggle": {
+    "ariaLabel": "Choose how to practice",
+    "quiz": "Quiz",
+    "conversation": "Conversation",
+    "assessmentAria": "Standard assessment (no photos or diary, just the standard questions)",
+    "assessment": "Standard assessment"
+  },
+  "conversationList": {
+    "title": "Training list",
+    "emptyTitle": "No training set up yet.",
+    "emptySub": "Once your caregiver adds a memory card, you can start training.",
+    "listAria": "Available training items"
+  },
+  "entryCard": {
+    "photoAlt": "Memory photo",
+    "location": "Place: <b>{{location}}</b>",
+    "wordChoicePrompt": "Choose a word to practice:",
+    "wordLabel": "Practice word: <b>{{word}}</b>",
+    "memoryFallback": "memory",
+    "startAria": "Start {{location}} training",
+    "start": "Start training",
+    "caregiverPreparing": "Your caregiver is still setting this up"
+  },
+  "training": {
+    "loading": "Getting your training ready…",
+    "startFailed": "We couldn't start training.",
+    "headerTitle": "Memory training",
+    "hintStepAria": "Hint level {{level}} of 2",
+    "hint": "Hint",
+    "conversationAria": "Conversation",
+    "photoAlt": "Memory photo",
+    "photoWithLocation": "Photo of {{location}}",
+    "teacher": "AI Teacher",
+    "preparingQuestionAria": "Preparing the question",
+    "preparingQuestion": "Preparing a question for you",
+    "waitPlaceholder": "One moment, please.",
+    "speaking": "Reading the question aloud",
+    "lastAnswer": "You just said · “{{text}}”",
+    "recording": "Listening… go ahead and speak",
+    "hintRequestAria": "Request a hint",
+    "hintButton": "Hint {{level}}/2",
+    "stopRecordingAria": "Stop recording",
+    "speakAria": "Speak",
+    "completeAria": "Mark training as complete",
+    "complete": "Done",
+    "micHint": "Press the button and start speaking",
+    "giveUpAria": "Stop training",
+    "giveUp": "Stop training"
   }
 }

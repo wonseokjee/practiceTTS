@@ -14,6 +14,7 @@ import { describe, expect, it } from 'vitest';
 const EXTRACTED_DIRS = [
   'memory-link/patient/quiz/presentation',
   'memory-link/patient/quiz/presentation/components',
+  'memory-link/patient/presentation',
 ];
 
 const SRC = join(process.cwd(), 'src');
