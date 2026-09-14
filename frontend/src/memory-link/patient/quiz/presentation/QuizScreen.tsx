@@ -9,6 +9,7 @@
 // - qab_word 항목: WordCompQuizItem(듣고 그림 고르기)을 렌더하고 로컬 채점한다.
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMixedQuizSession } from '../application/useMixedQuizSession.js';
 import type { UseMixedQuizDeps } from '../application/useMixedQuizSession.js';
 import type { AttemptResult, QuizQuestionPublic, YesNoAnswer } from '../domain/Quiz.js';
@@ -36,6 +37,7 @@ interface QuizScreenProps {
 
 /** 퀴즈 풀이 화면 컨테이너 */
 export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
+  const { t } = useTranslation('quiz');
   const [state, actions] = useMixedQuizSession(quizSetId, deps);
   // Phase 6: 보호자 한마디 카드를 퀴즈 앞에 한 번 노출 (있을 때만).
   const [wishDismissed, setWishDismissed] = useState(false);
@@ -86,7 +88,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
         className="font-pretendard flex min-h-[60vh] items-center justify-center"
         role="status"
       >
-        <p className="text-xl text-muted-sage">퀴즈를 준비하고 있어요...</p>
+        <p className="text-xl text-muted-sage">{t('screen.loading')}</p>
       </div>
     );
   }
@@ -100,7 +102,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
           role="alert"
         >
           <p className="mb-5 text-lg text-accent-ink">
-            {error ?? '문제가 생겼어요.'}
+            {error ?? t('screen.error')}
           </p>
           <div className="flex flex-col gap-3">
             <button
@@ -108,14 +110,14 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
               onClick={() => void actions.retry()}
               className="min-h-[56px] rounded-full bg-primary px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark"
             >
-              {isSessionExpired ? '다시 시작' : '다시 시도'}
+              {isSessionExpired ? t('screen.restart') : t('screen.retry')}
             </button>
             <button
               type="button"
               onClick={onExit}
               className="min-h-[48px] rounded-full bg-white px-6 py-3 text-base font-medium text-muted-sage transition-colors duration-[180ms] ease-out hover:bg-canvas-hover"
             >
-              목록으로
+              {t('screen.toList')}
             </button>
           </div>
         </div>
@@ -290,7 +292,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
       {/* 채점 중 표시 */}
       {isSubmitting && (
         <p className="mt-6 text-center text-base text-muted-sage" role="status">
-          채점 중...
+          {t('screen.scoring')}
         </p>
       )}
 
@@ -312,7 +314,7 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
           >
             {/* 발화 항목은 5단계 격려 문구(어르신용, 숫자 미노출), 그 외는 정오답 */}
             {lastResult.encouragement ??
-              (lastResult.isCorrect ? '정답이에요!' : '아쉬워요')}
+              (lastResult.isCorrect ? t('screen.correct') : t('screen.incorrect'))}
           </p>
           {/* 발화/이름대기가 정답이 아니면 같은 문항을 다시 말할 수 있게 한다
               (격려 문구 "다시 말해볼까요?"를 실제로 행동으로 이어준다).
@@ -325,19 +327,19 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
                 type="button"
                 onClick={actions.answerAgain}
                 className="mb-3 flex min-h-[56px] w-full items-center justify-center gap-2 rounded-full border-2 border-primary bg-white px-6 py-3 text-lg font-medium text-primary transition-colors duration-[180ms] ease-out hover:bg-primary-light"
-                aria-label="다시 말하기"
+                aria-label={t('screen.sayAgain')}
               >
                 <span aria-hidden="true" className="text-2xl">🎤</span>
-                다시 말하기
+                {t('screen.sayAgain')}
               </button>
             )}
           <button
             type="button"
             onClick={actions.next}
             className="min-h-[56px] w-full rounded-full bg-primary px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark"
-            aria-label={isLastQuestion ? '결과 보기' : '다음 문제'}
+            aria-label={isLastQuestion ? t('screen.seeResult') : t('screen.nextQuestion')}
           >
-            {isLastQuestion ? '결과 보기' : '다음 문제'}
+            {isLastQuestion ? t('screen.seeResult') : t('screen.nextQuestion')}
           </button>
         </div>
       )}
@@ -349,10 +351,10 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
             type="button"
             onClick={onExit}
             className="text-sm text-muted-sage transition-colors duration-[180ms] hover:text-[#3F4A44]"
-            aria-label="퀴즈 그만두기"
+            aria-label={t('screen.quitAria')}
           >
             {/* 세션을 끝내면 홈으로 돌아간다(DR1b). 예전엔 목록으로 갔다. */}
-            그만두고 처음으로
+            {t('screen.quit')}
           </button>
         </div>
       )}

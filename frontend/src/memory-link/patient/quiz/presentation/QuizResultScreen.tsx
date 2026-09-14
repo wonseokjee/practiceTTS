@@ -9,6 +9,7 @@ import {
   scoreLabel,
   scoreToStars,
 } from '../domain/QuizScoring.js';
+import { useTranslation } from 'react-i18next';
 
 interface QuizResultScreenProps {
   /** 이번 세션 점수 (0..100) */
@@ -50,6 +51,7 @@ export function QuizResultScreen({
   onRetry,
   onBackToList,
 }: QuizResultScreenProps) {
+  const { t } = useTranslation('quiz');
   return (
     <section
       className="font-pretendard mx-auto mt-8 w-full max-w-md rounded-3xl border border-white/90 bg-white/85 p-8 text-center shadow-[0_6px_18px_rgba(0,0,0,0.05)]"
@@ -60,7 +62,7 @@ export function QuizResultScreen({
         <>
           {isNewBest && (
             <div className="mb-4 inline-block rounded-full bg-primary-light px-4 py-1 text-sm font-bold text-primary-dark">
-              새 최고 기록이에요!
+              {t('result.newBest')}
             </div>
           )}
 
@@ -76,7 +78,7 @@ export function QuizResultScreen({
 
           {bestScore !== null && (
             <p className="mt-3 text-base tabular-nums text-muted-sage">
-              최고점 {formatScore(bestScore)}
+              {t('score.best', { score: formatScore(bestScore) })}
             </p>
           )}
         </>
@@ -84,10 +86,10 @@ export function QuizResultScreen({
         <>
           <div className="mb-2 text-5xl" aria-hidden="true">🎉</div>
           <h2 className="text-2xl font-bold text-ink-sage">
-            오늘도 끝까지 잘 하셨어요!
+            {t('result.done')}
           </h2>
           <p className="mt-3 text-base text-muted-sage">
-            모든 문제를 다 마쳤어요.
+            {t('result.doneSub')}
           </p>
         </>
       )}
@@ -97,17 +99,17 @@ export function QuizResultScreen({
           type="button"
           onClick={onRetry}
           className="min-h-[56px] rounded-full bg-primary px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark"
-          aria-label="다시 풀기"
+          aria-label={t('result.retry')}
         >
-          다시 풀기
+          {t('result.retry')}
         </button>
         <button
           type="button"
           onClick={onBackToList}
           className="min-h-[48px] rounded-full bg-white px-6 py-3 text-base font-medium text-muted-sage transition-colors duration-[180ms] ease-out hover:bg-canvas-hover"
-          aria-label="퀴즈 목록으로"
+          aria-label={t('result.toListAria')}
         >
-          목록으로
+          {t('screen.toList')}
         </button>
       </div>
     </section>

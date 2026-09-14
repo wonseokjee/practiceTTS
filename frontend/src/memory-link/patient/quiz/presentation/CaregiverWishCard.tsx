@@ -9,6 +9,7 @@
 // 빈칸은 ai-service 변환이 필요하므로 탭 전환 시점에 한 번만 가져온다(비용/지연 최소).
 
 import { forwardRef, useCallback, useRef, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import type { KeyboardEvent } from 'react';
 import { quizApi } from '../infrastructure/QuizApi.js';
 import type { WishPractice } from '../domain/Quiz.js';
@@ -32,6 +33,7 @@ export function CaregiverWishCard({
   onProceed,
   fetchPractice,
 }: CaregiverWishCardProps) {
+  const { t } = useTranslation('quiz');
   const [tab, setTab] = useState<WishTab>('echo');
   const [practice, setPractice] = useState<WishPractice | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -47,11 +49,11 @@ export function CaregiverWishCard({
       const result = await fetcher(quizSetId);
       setPractice(result);
     } catch {
-      setError('연습 문장을 불러오지 못했어요. 따라말하기로 연습해보세요.');
+      setError(t('wish.loadError'));
     } finally {
       setIsLoading(false);
     }
-  }, [practice, isLoading, fetchPractice, quizSetId]);
+  }, [practice, isLoading, fetchPractice, quizSetId, t]);
 
   const switchToBlank = useCallback((): void => {
     setTab('blank');
@@ -97,7 +99,7 @@ export function CaregiverWishCard({
           id="wish-card-heading"
           className="text-sm font-semibold text-[#7A4A20]"
         >
-          가족이 전하는 한마디
+          {t('wish.heading')}
         </h2>
       </div>
 
@@ -109,14 +111,14 @@ export function CaregiverWishCard({
       <div
         className="mb-4 flex gap-2"
         role="tablist"
-        aria-label="연습 방식 선택"
+        aria-label={t('wish.tabsAria')}
         onKeyDown={onTabListKeyDown}
       >
         <TabButton
           ref={echoRef}
           id={TAB_ID.echo}
           controls={PANEL_ID}
-          label="따라말하기"
+          label={t('wish.tabEcho')}
           active={tab === 'echo'}
           onClick={() => setTab('echo')}
         />
@@ -124,7 +126,7 @@ export function CaregiverWishCard({
           ref={blankRef}
           id={TAB_ID.blank}
           controls={PANEL_ID}
-          label="빈칸 채우기"
+          label={t('wish.tabBlank')}
           active={tab === 'blank'}
           onClick={switchToBlank}
         />
@@ -140,7 +142,7 @@ export function CaregiverWishCard({
       >
         {tab === 'echo' ? (
           <div>
-            <p className="mb-1 text-xs text-muted-sage">소리 내어 따라 말해보세요</p>
+            <p className="mb-1 text-xs text-muted-sage">{t('wish.echoHint')}</p>
             <p className="text-lg font-medium text-ink-sage">{wishMessage}</p>
           </div>
         ) : (
@@ -159,9 +161,9 @@ export function CaregiverWishCard({
         type="button"
         onClick={onProceed}
         className="mt-6 min-h-[56px] w-full rounded-md bg-primary px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark"
-        aria-label="퀴즈 풀이로 이동"
+        aria-label={t('wish.proceedAria')}
       >
-        퀴즈 풀러 가기
+        {t('wish.proceed')}
       </button>
     </section>
   );
@@ -218,10 +220,11 @@ function BlankPanel({
   onReveal,
   onRetry,
 }: BlankPanelProps) {
+  const { t } = useTranslation('quiz');
   if (isLoading) {
     return (
       <p className="text-base text-muted-sage" role="status">
-        연습 문장을 만들고 있어요...
+        {t('wish.loading')}
       </p>
     );
   }
@@ -234,7 +237,7 @@ function BlankPanel({
           onClick={onRetry}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark"
         >
-          다시 시도
+          {t('screen.retry')}
         </button>
       </div>
     );
@@ -246,20 +249,22 @@ function BlankPanel({
   return (
     <div>
       <p className="mb-1 text-xs text-muted-sage">
-        빈칸에 들어갈 말을 떠올려 말해보세요
+        {t('wish.blankHint')}
       </p>
       <p className="mb-3 text-lg font-medium text-ink-sage">
         {practice.fillBlank.prompt}
       </p>
       <p className="mb-3 text-sm text-muted-sage">
-        힌트: 첫 글자는{' '}
-        <span className="font-bold text-primary">
-          {practice.fillBlank.hintFirstChar}
-        </span>
+        <Trans
+          t={t}
+          i18nKey="wish.hintFirstChar"
+          values={{ char: practice.fillBlank.hintFirstChar }}
+          components={{ b: <span className="font-bold text-primary" /> }}
+        />
       </p>
       {revealAnswer ? (
         <p className="text-base font-bold text-primary-dark">
-          정답: {practice.fillBlank.answer}
+          {t('wish.answer', { answer: practice.fillBlank.answer })}
         </p>
       ) : (
         <button
@@ -267,7 +272,7 @@ function BlankPanel({
           onClick={onReveal}
           className="text-sm text-primary underline transition-colors hover:text-primary-dark"
         >
-          정답 보기
+          {t('wish.revealAnswer')}
         </button>
       )}
     </div>

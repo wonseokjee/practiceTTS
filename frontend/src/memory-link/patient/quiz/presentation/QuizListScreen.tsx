@@ -5,6 +5,8 @@
 // 카드 선택 시 onSelectQuiz(quizSetId) 호출.
 
 import { useQuizList } from '../application/useQuizList.js';
+import { useTranslation } from 'react-i18next';
+import { formatDate } from '../../../../shared/i18n/formatDate.js';
 import type { UseQuizListDeps } from '../application/useQuizList.js';
 import type { QuizSetSummary } from '../domain/Quiz.js';
 import { formatScore } from '../domain/QuizScoring.js';
@@ -16,15 +18,19 @@ interface QuizListScreenProps {
   deps?: UseQuizListDeps;
 }
 
-/** 날짜 ISO 문자열을 'YYYY년 M월 D일' 형태로 포맷 */
-function formatDate(iso: string): string {
+/**
+ * 카드 날짜 — 모양은 로케일이 정한다(i18n 규약 3). 값이 날짜가 아니면 빈 문자열.
+ * 예전에는 연·월·일을 한국어로 박아 계정 로케일을 우회했다.
+ */
+function formatCardDate(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
-  return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
+  return formatDate(date, { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 /** 풀 수 있는 퀴즈 카드 목록 */
 export function QuizListScreen({ onSelectQuiz, deps }: QuizListScreenProps) {
+  const { t } = useTranslation('quiz');
   const { items, isLoading, error, reload } = useQuizList(deps);
 
   return (
@@ -39,12 +45,12 @@ export function QuizListScreen({ onSelectQuiz, deps }: QuizListScreenProps) {
         고를 때** 나온다. 제목이 그 상황을 말해야 한다.
       */}
       <h2 className="mb-5 text-2xl font-bold text-ink-sage">
-        풀 수 있는 퀴즈
+        {t('list.title')}
       </h2>
 
       {isLoading && (
         <div className="flex items-center justify-center py-16" role="status">
-          <p className="text-xl text-muted-sage">불러오는 중...</p>
+          <p className="text-xl text-muted-sage">{t('list.loading')}</p>
         </div>
       )}
 
@@ -59,7 +65,7 @@ export function QuizListScreen({ onSelectQuiz, deps }: QuizListScreenProps) {
             onClick={() => void reload()}
             className="min-h-[48px] rounded-full bg-primary px-6 py-3 text-base font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark"
           >
-            다시 시도
+            {t('screen.retry')}
           </button>
         </div>
       )}
@@ -67,11 +73,11 @@ export function QuizListScreen({ onSelectQuiz, deps }: QuizListScreenProps) {
       {!isLoading && error === null && items.length === 0 && (
         <div className="py-16 text-center">
           <p className="text-xl text-muted-sage">
-            아직 풀 수 있는 퀴즈가 없어요.
+            {t('list.empty')}
           </p>
           {/* muted-disabled는 크림 배경에서 2.47:1이라 AA 미달이다(muted는 5.11:1). */}
           <p className="mt-2 text-base text-muted-sage">
-            보호자가 일기를 등록하면 퀴즈가 도착해요.
+            {t('list.emptyHint')}
           </p>
         </div>
       )}
@@ -80,7 +86,7 @@ export function QuizListScreen({ onSelectQuiz, deps }: QuizListScreenProps) {
         <ul
           className="flex flex-col gap-4"
           role="list"
-          aria-label="풀 수 있는 퀴즈 목록"
+          aria-label={t('list.listAria')}
         >
           {items.map((item) => (
             <QuizSetCard
@@ -103,29 +109,30 @@ interface QuizSetCardProps {
 }
 
 function QuizSetCard({ item, onSelect }: QuizSetCardProps) {
+  const { t } = useTranslation('quiz');
   return (
     <li>
       <button
         type="button"
         onClick={() => onSelect(item.quizSetId)}
-        aria-label={`${formatDate(item.createdAt)} 퀴즈 풀기`}
+        aria-label={t('list.cardAria', { date: formatCardDate(item.createdAt) })}
         className="flex w-full items-center gap-4 rounded-3xl border border-line bg-white p-4 text-left shadow-[0_6px_18px_rgba(0,0,0,0.05)] transition-colors duration-[180ms] ease-out hover:border-primary"
       >
         {item.photoUrl !== null && (
           <AuthedImage
             src={item.photoUrl}
-            alt="기억 사진"
+            alt={t('list.photoAlt')}
             className="h-20 w-20 flex-shrink-0 rounded-2xl object-cover"
           />
         )}
 
         <div className="flex flex-1 flex-col gap-1">
           <p className="text-lg font-medium text-ink-sage">
-            {formatDate(item.createdAt)} 기억 퀴즈
+            {t('list.cardTitle', { date: formatCardDate(item.createdAt) })}
           </p>
           {item.bestScore !== null && (
             <span className="text-sm tabular-nums text-primary">
-              최고점 {formatScore(item.bestScore)}
+              {t('score.best', { score: formatScore(item.bestScore) })}
             </span>
           )}
         </div>
