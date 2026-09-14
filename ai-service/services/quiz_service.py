@@ -35,10 +35,10 @@ from models.quiz import (
     QuizQuestionOut,
 )
 from prompts.quiz_prompt import (
-    QUIZ_CRITIQUE_INSTRUCTION,
+    QUIZ_CRITIQUE_DATA_TEMPLATE,
     QUIZ_CRITIQUE_PROMPT,
-    QUIZ_RETRY_INSTRUCTION,
     QUIZ_SYSTEM_PROMPT,
+    QUIZ_USER_DATA_TEMPLATE,
 )
 
 logger = logging.getLogger(__name__)
@@ -103,11 +103,12 @@ class QuizGeneratorService:
         dist = request.distribution
         need = dist.total
 
-        # 3. 프롬프트 구성
-        prompt = self._build_prompt(request, dist)
+        # 3. 프롬프트 구성 (system=고정 지시문 / user=환자 데이터, 분리 이유는
+        #    _build_prompt 문서 참고)
+        system_prompt, user_data = self._build_prompt(request, dist)
 
         # 4. [가드 1] 1차 호출 → 파싱, 실패 시 temperature=0 재시도
-        parsed = await self._generate_and_parse(prompt)
+        parsed = await self._generate_and_parse(system_prompt, user_data)
 
         # 5. [가드 3·4·5] 안전 가드 통과 문제만 추출 (요청 분포도 함께 적용)
         questions = self._sanitize(parsed, notes_blob, dist)
@@ -155,10 +156,18 @@ class QuizGeneratorService:
 
     def _build_prompt(
         self, request: QuizGenerateRequest, dist: QuizDistribution
-    ) -> str:
-        """patient_notes/photo_tags/target_words/distribution만 참조해 프롬프트 구성.
+    ) -> tuple[str, str]:
+        """(system_prompt, user_data) 튜플을 반환한다.
 
-        보호자 사적 데이터는 요청 모델에 존재하지 않으므로 구조적으로 진입 불가하다.
+        system_prompt는 QUIZ_SYSTEM_PROMPT(고정 지시문)만 채워 넣은 문자열이고,
+        보호자 자유 텍스트(patient_notes 등)는 절대 여기 섞이지 않는다 — Gemini
+        호출 시 system_prompt는 system_instruction 슬롯으로 가는데, 그 슬롯에
+        신뢰되지 않은 사용자 텍스트가 들어가면 프롬프트 인젝션 표면이 되기
+        때문이다(gstack /cso 2026-09-14 발견). 데이터는 user_data로 분리해
+        user 턴으로 보낸다.
+
+        보호자 사적 데이터(mood/reflection 등)는 요청 모델에 존재하지 않으므로
+        구조적으로 진입 불가하다.
         """
         patient_notes_str = "\n".join(
             f"- [{n.category}] {n.answer_text}" for n in request.patient_notes
@@ -177,43 +186,52 @@ class QuizGeneratorService:
             ", ".join(request.target_words) if request.target_words else "없음"
         )
 
-        return QUIZ_SYSTEM_PROMPT.format(
+        system_prompt = QUIZ_SYSTEM_PROMPT.format(
             N_MULTIPLE_CHOICE=dist.multiple_choice,
             N_YES_NO=dist.yes_no,
             N_FILL_BLANK=dist.fill_blank,
+        )
+        user_data = QUIZ_USER_DATA_TEMPLATE.format(
             PATIENT_NOTES=patient_notes_str,
             PHOTO_TAGS=photo_tags_str,
             TARGET_WORDS=target_words_str,
         )
+        return system_prompt, user_data
 
-    async def _generate_and_parse(self, prompt: str) -> list[dict]:
+    async def _generate_and_parse(
+        self, system_prompt: str, user_data: str
+    ) -> list[dict]:
         """[가드 1] 1차 호출(temperature=0.7) → 파싱 실패 시 temperature=0 재시도.
 
         2회 모두 파싱 실패하면 빈 리스트를 반환해 가드 2 폴백이 전량 보충하도록 한다.
         타임아웃/API 오류는 폴백으로 흡수하지 않고 그대로 전파한다.
         """
-        raw = await self._call_llm(prompt, temperature=0.7)
+        raw = await self._call_llm(system_prompt, user_data, temperature=0.7)
         try:
             return self._parse_questions(raw)
         except ValueError:
             logger.warning("퀴즈 JSON 1차 파싱 실패, temperature=0 재시도")
 
-        raw_retry = await self._call_llm(prompt, temperature=0.0)
+        raw_retry = await self._call_llm(system_prompt, user_data, temperature=0.0)
         try:
             return self._parse_questions(raw_retry)
         except ValueError:
             logger.warning("퀴즈 JSON 2차 파싱 실패, 규칙 기반 폴백으로 전환")
             return []
 
-    async def _call_llm(self, prompt: str, *, temperature: float) -> str:
+    async def _call_llm(
+        self, system_prompt: str, user_content: str, *, temperature: float
+    ) -> str:
         """asyncio.wait_for(25s)로 self._llm.complete를 래핑한다.
 
         temperature는 generation_config로 래핑해 전달한다 (GeminiClient가 kwargs를
         generate_content로 그대로 흘려보내므로 generation_config 키가 정상 처리됨).
+        system_prompt(고정 지시문)와 user_content(보호자 데이터)는 반드시 분리된
+        채로 들어온다 — 합쳐서 system 롤 하나로 보내지 않는다.
         """
         messages = [
-            {"role": "system", "content": prompt},
-            {"role": "user", "content": QUIZ_RETRY_INSTRUCTION},
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_content},
         ]
         try:
             return await asyncio.wait_for(
@@ -263,13 +281,13 @@ class QuizGeneratorService:
             }
             for i, q in enumerate(questions)
         ]
-        prompt = QUIZ_CRITIQUE_PROMPT.format(
+        user_data = QUIZ_CRITIQUE_DATA_TEMPLATE.format(
             PATIENT_NOTES=notes_blob,
             QUESTIONS_JSON=json.dumps(payload, ensure_ascii=False),
         )
         messages = [
-            {"role": "system", "content": prompt},
-            {"role": "user", "content": QUIZ_CRITIQUE_INSTRUCTION},
+            {"role": "system", "content": QUIZ_CRITIQUE_PROMPT},
+            {"role": "user", "content": user_data},
         ]
         try:
             raw = await asyncio.wait_for(

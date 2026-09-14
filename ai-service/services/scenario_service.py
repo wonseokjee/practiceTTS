@@ -18,7 +18,11 @@ from domain.errors import (
 )
 from interfaces.llm_client import ILlmClient
 from interfaces.vector_store import IVectorStore
-from prompts.scenario_prompt import SCENARIO_FALLBACK_PROMPT, SCENARIO_SYSTEM_PROMPT
+from prompts.scenario_prompt import (
+    SCENARIO_FALLBACK_PROMPT,
+    SCENARIO_SYSTEM_PROMPT,
+    SCENARIO_USER_DATA_TEMPLATE,
+)
 
 # 시나리오 생성 모델 (gemini-1.5-pro는 retired되어 404 → 2.5-flash로 교체)
 _SCENARIO_MODEL = "gemini-2.5-flash"
@@ -102,10 +106,17 @@ class ScenarioService:
         guardrail_words: list[str],
         guardrail_words_str: str,
     ) -> ScenarioResult:
-        """Guardrail 검증을 포함한 시나리오 생성 (최대 재시도 포함)."""
+        """Guardrail 검증을 포함한 시나리오 생성 (최대 재시도 포함).
+
+        system_prompt는 고정 지시문만 담고, masked_context/emotion_tag(자유
+        텍스트 출처)는 user_data로 분리해 user 턴에 실어 보낸다 — system
+        롤(=system_instruction 슬롯)에는 신뢰된 지시문만 남긴다.
+        """
         # 초기 프롬프트 구성
         system_prompt = SCENARIO_SYSTEM_PROMPT.format(
             GUARDRAIL_WORDS=guardrail_words_str,
+        )
+        user_data = SCENARIO_USER_DATA_TEMPLATE.format(
             EMOTION_TAG=emotion_tag,
             MASKED_CONTEXT=masked_context,
         )
@@ -115,10 +126,7 @@ class ScenarioService:
                 # 첫 번째 시도: 초기 프롬프트
                 messages = [
                     {"role": "system", "content": system_prompt},
-                    {
-                        "role": "user",
-                        "content": "위 조건에 맞는 훈련 시나리오를 JSON 형식으로 생성해주세요.",
-                    },
+                    {"role": "user", "content": user_data},
                 ]
             else:
                 # 재시도: Fallback 프롬프트
@@ -127,10 +135,7 @@ class ScenarioService:
                 )
                 messages = [
                     {"role": "system", "content": system_prompt},
-                    {
-                        "role": "user",
-                        "content": "위 조건에 맞는 훈련 시나리오를 JSON 형식으로 생성해주세요.",
-                    },
+                    {"role": "user", "content": user_data},
                     {
                         "role": "model",
                         "content": "(이전 응답에 금지 단어가 포함되어 재시도합니다)",
