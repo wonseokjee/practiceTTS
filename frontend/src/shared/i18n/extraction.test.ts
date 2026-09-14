@@ -11,7 +11,10 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 /** 문구를 i18n 키로 옮긴 디렉터리(src 기준). 하위 디렉터리는 따로 적는다. */
-const EXTRACTED_DIRS = ['memory-link/patient/quiz/presentation/components'];
+const EXTRACTED_DIRS = [
+  'memory-link/patient/quiz/presentation',
+  'memory-link/patient/quiz/presentation/components',
+];
 
 const SRC = join(process.cwd(), 'src');
 const HANGUL = /[가-힣ㄱ-ㅎㅏ-ㅣ]/;
