@@ -14,6 +14,7 @@ import type { QabDdkItem } from '../../domain/MixedQuiz.js';
 import { DdkItem } from './DdkItem.js';
 import { YesNoButtons } from './YesNoButtons.js';
 import { TtsFailureNotice } from './TtsFailureNotice.js';
+import { QuizResultScreen } from '../QuizResultScreen.js';
 
 const HANGUL = /[가-힣]/;
 
@@ -81,6 +82,22 @@ describe('퀴즈 문항 컴포넌트 — 영어로 그린다', () => {
     expect(screen.getByRole('group', { name: 'Choose yes or no' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Yes' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'No' })).toBeInTheDocument();
+    expect(container.textContent).not.toMatch(HANGUL);
+  });
+
+  it('결과 화면 — 점수 없는 완료 화면도 영어', () => {
+    const { container } = render(
+      <QuizResultScreen
+        sessionScore={0}
+        bestScore={null}
+        isNewBest={false}
+        showScore={false}
+        onRetry={() => {}}
+        onBackToList={() => {}}
+      />,
+    );
+    expect(screen.getByText("You finished today's set")).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Play again' })).toBeInTheDocument();
     expect(container.textContent).not.toMatch(HANGUL);
   });
 

@@ -89,5 +89,59 @@
   },
   "ttsFailure": {
     "message": "소리가 나오지 않았어요. 아래 듣기 버튼을 눌러 주세요."
+  },
+  "screen": {
+    "loading": "퀴즈를 준비하고 있어요...",
+    "error": "문제가 생겼어요.",
+    "restart": "다시 시작",
+    "retry": "다시 시도",
+    "toList": "목록으로",
+    "scoring": "채점 중...",
+    "correct": "정답이에요!",
+    "incorrect": "아쉬워요",
+    "sayAgain": "다시 말하기",
+    "seeResult": "결과 보기",
+    "nextQuestion": "다음 문제",
+    "quitAria": "퀴즈 그만두기",
+    "quit": "그만두고 처음으로"
+  },
+  "list": {
+    "title": "풀 수 있는 퀴즈",
+    "loading": "불러오는 중...",
+    "empty": "아직 풀 수 있는 퀴즈가 없어요.",
+    "emptyHint": "보호자가 일기를 등록하면 퀴즈가 도착해요.",
+    "listAria": "풀 수 있는 퀴즈 목록",
+    "cardAria": "{{date}} 퀴즈 풀기",
+    "photoAlt": "기억 사진",
+    "cardTitle": "{{date}} 기억 퀴즈"
+  },
+  "result": {
+    "newBest": "새 최고 기록이에요!",
+    "done": "오늘도 끝까지 잘 하셨어요!",
+    "doneSub": "모든 문제를 다 마쳤어요.",
+    "retry": "다시 풀기",
+    "toListAria": "퀴즈 목록으로"
+  },
+  "score": {
+    "best": "최고점 {{score}}"
+  },
+  "photoHint": {
+    "alt": "기억 사진 힌트",
+    "caption": "사진을 보며 떠올려보세요"
+  },
+  "wish": {
+    "heading": "가족이 전하는 한마디",
+    "tabsAria": "연습 방식 선택",
+    "tabEcho": "따라말하기",
+    "tabBlank": "빈칸 채우기",
+    "echoHint": "소리 내어 따라 말해보세요",
+    "proceedAria": "퀴즈 풀이로 이동",
+    "proceed": "퀴즈 풀러 가기",
+    "loading": "연습 문장을 만들고 있어요...",
+    "loadError": "연습 문장을 불러오지 못했어요. 따라말하기로 연습해보세요.",
+    "blankHint": "빈칸에 들어갈 말을 떠올려 말해보세요",
+    "hintFirstChar": "힌트: 첫 글자는 <b>{{char}}</b>",
+    "answer": "정답: {{answer}}",
+    "revealAnswer": "정답 보기"
   }
 }

@@ -92,5 +92,59 @@
   },
   "ttsFailure": {
     "message": "The sound didn't play. Please press the Listen button below."
+  },
+  "screen": {
+    "loading": "Getting your quiz ready…",
+    "error": "Something went wrong.",
+    "restart": "Start over",
+    "retry": "Try again",
+    "toList": "Back to the list",
+    "scoring": "Checking…",
+    "correct": "That's right!",
+    "incorrect": "Not quite",
+    "sayAgain": "Say it again",
+    "seeResult": "See results",
+    "nextQuestion": "Next question",
+    "quitAria": "Quit the quiz",
+    "quit": "Stop and go home"
+  },
+  "list": {
+    "title": "Quizzes ready for you",
+    "loading": "Loading…",
+    "empty": "No quizzes yet.",
+    "emptyHint": "When your caregiver adds a diary entry, a quiz arrives.",
+    "listAria": "Quizzes ready for you",
+    "cardAria": "Start the quiz from {{date}}",
+    "photoAlt": "Memory photo",
+    "cardTitle": "Memory quiz from {{date}}"
+  },
+  "result": {
+    "newBest": "A new personal best",
+    "done": "You finished today's set",
+    "doneSub": "You answered every question.",
+    "retry": "Play again",
+    "toListAria": "Back to the quiz list"
+  },
+  "score": {
+    "best": "Best {{score}}"
+  },
+  "photoHint": {
+    "alt": "Memory photo hint",
+    "caption": "Look at the photo and try to remember"
+  },
+  "wish": {
+    "heading": "A note from your family",
+    "tabsAria": "Choose how to practice",
+    "tabEcho": "Say it back",
+    "tabBlank": "Fill in the blank",
+    "echoHint": "Say it out loud",
+    "proceedAria": "Go to the quiz",
+    "proceed": "Start the quiz",
+    "loading": "Writing a practice sentence…",
+    "loadError": "We couldn't load the practice sentence. Try saying it back instead.",
+    "blankHint": "Think of the missing word and say it",
+    "hintFirstChar": "Hint: it starts with <b>{{char}}</b>",
+    "answer": "Answer: {{answer}}",
+    "revealAnswer": "Show the answer"
   }
 }
