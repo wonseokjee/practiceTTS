@@ -15,6 +15,21 @@ const EXTRACTED_DIRS = [
   'memory-link/patient/quiz/presentation',
   'memory-link/patient/quiz/presentation/components',
   'memory-link/patient/presentation',
+  'memory-link/shared/components',
+];
+
+/**
+ * 문구를 옮긴 개별 파일(디렉터리 단위로 못 더하는 경우) — `memory-link/shared`는
+ * 로그인·온보딩 같은 화면과 `honorific.ts`(계획서 §6-3)·`QabOutbox.ts`(개발자
+ * 로그) 같은 한국어 전용 도메인/인프라 파일이 한 디렉터리에 섞여 있어, 디렉터리
+ * 전체를 더하면 아직 손대지 않은 파일까지 걸린다. 그 도메인/인프라 문구는 별도
+ * 과제(로그인·온보딩 다음 순서: 인프라 쪽 문구)로 남기고, 화면 파일만 여기 적는다.
+ */
+const EXTRACTED_FILES = [
+  'memory-link/shared/LoginScreen.tsx',
+  'memory-link/shared/OnboardingScreen.tsx',
+  'memory-link/shared/ReturnToCaregiverPinModal.tsx',
+  'memory-link/shared/SocialCallbackScreen.tsx',
 ];
 
 const SRC = join(process.cwd(), 'src');
@@ -53,6 +68,12 @@ describe('문자열 추출 (Phase 1-2)', () => {
           if (HANGUL.test(line)) offenders.push(`${dir}/${name}:${i + 1} ${line.trim()}`);
         });
       }
+    }
+    for (const path of EXTRACTED_FILES) {
+      const code = stripComments(readFileSync(join(SRC, path), 'utf-8'));
+      code.split('\n').forEach((line, i) => {
+        if (HANGUL.test(line)) offenders.push(`${path}:${i + 1} ${line.trim()}`);
+      });
     }
     expect(offenders).toEqual([]);
   });
