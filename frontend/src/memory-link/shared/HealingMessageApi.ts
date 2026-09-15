@@ -1,5 +1,6 @@
 // 매일 치유 메시지 API (Phase 6 Pattern 2) — 환자·보호자 공통.
 import { memoryLinkApi } from './MemoryLinkApi.js';
+import { i18n } from '../../shared/i18n/i18n.js';
 
 export interface HealingMessage {
   id: string;
@@ -21,7 +22,7 @@ export const healingMessageApi: IHealingMessageApi = {
   async fetchToday(): Promise<HealingMessage> {
     const res = await memoryLinkApi.get<unknown>('/healing-messages/today');
     if (!isHealingMessage(res.data)) {
-      throw new Error('서버 응답 형식이 올바르지 않습니다.');
+      throw new Error(i18n.t('errors.invalidServerResponse', { ns: 'common' }));
     }
     return res.data;
   },

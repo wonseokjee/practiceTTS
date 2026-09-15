@@ -11,6 +11,7 @@
 //  axios 경로와 duck-typed 경로를 모두 둔다 — 기존 호출부 동작 보존.)
 
 import axios from 'axios';
+import { i18n } from '../../shared/i18n/i18n.js';
 
 export function extractErrorMessage(error: unknown): string {
   // 1) 실제 axios 에러
@@ -25,9 +26,9 @@ export function extractErrorMessage(error: unknown): string {
       return (data as Record<string, string>).message;
     }
     if (error.response === undefined) {
-      return '서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.';
+      return i18n.t('errors.networkUnavailable', { ns: 'common' });
     }
-    return '요청 처리 중 오류가 발생했습니다.';
+    return i18n.t('errors.requestFailed', { ns: 'common' });
   }
 
   // 2) duck-typed 객체 (예: { response: { data: { message } } })
@@ -47,5 +48,5 @@ export function extractErrorMessage(error: unknown): string {
     if (error instanceof Error) return error.message;
   }
 
-  return '알 수 없는 오류가 발생했습니다.';
+  return i18n.t('errors.unknown', { ns: 'common' });
 }
