@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { MemoryEntry } from '../domain/MemoryEntry.js';
 import { EMOTION_TAG_LABELS } from '../domain/MemoryEntry.js';
 import type { UseMemoryEntriesReturn } from '../application/useMemoryEntries.js';
@@ -20,16 +21,17 @@ export function EntryListScreen({
   memoryEntries,
   onSelectEntry,
 }: EntryListScreenProps) {
+  const { t } = useTranslation('caregiver');
   const { entries, isLoading, error, refresh } = memoryEntries;
 
   if (isLoading) {
     return (
       <div
         className="flex justify-center items-center min-h-[200px]"
-        aria-label="로딩 중"
+        aria-label={t('entryList.loadingAria')}
         aria-live="polite"
       >
-        <div className="text-muted-sage text-sm">불러오는 중...</div>
+        <div className="text-muted-sage text-sm">{t('entryList.loading')}</div>
       </div>
     );
   }
@@ -40,14 +42,14 @@ export function EntryListScreen({
         role="alert"
         className="p-4 bg-danger/10 border border-danger/30 rounded-2xl text-accent-ink text-sm"
       >
-        <p className="font-medium mb-2">목록을 불러오는 데 실패했습니다</p>
+        <p className="font-medium mb-2">{t('entryList.loadErrorTitle')}</p>
         <p className="text-danger mb-3">{error}</p>
         <button
           type="button"
           onClick={() => void refresh()}
           className="text-sm text-danger underline hover:text-accent-ink"
         >
-          다시 시도
+          {t('entryList.retry')}
         </button>
       </div>
     );
@@ -56,7 +58,7 @@ export function EntryListScreen({
   return (
     <div className="w-full">
       {/* 헤더 영역 */}
-      <h2 className="mb-4 text-base font-bold text-ink-sage">기억 목록</h2>
+      <h2 className="mb-4 text-base font-bold text-ink-sage">{t('entryList.title')}</h2>
 
       {/* 빈 상태 */}
       {entries.length === 0 ? (
@@ -64,15 +66,15 @@ export function EntryListScreen({
           <div className="text-5xl text-line-strong mb-4" aria-hidden="true">
             📷
           </div>
-          <p className="text-muted-sage mb-2">등록된 기억이 없습니다</p>
+          <p className="text-muted-sage mb-2">{t('entryList.emptyTitle')}</p>
           <p className="text-sm text-muted-sage">
-            사진과 함께 소중한 기억을 추가해보세요
+            {t('entryList.emptySub')}
           </p>
         </div>
       ) : (
         <ul
           className="grid grid-cols-1 gap-4 sm:grid-cols-2"
-          aria-label="메모리 엔트리 목록"
+          aria-label={t('entryList.listAria')}
         >
           {entries.map((entry) => (
             <li key={entry.id}>
@@ -96,6 +98,7 @@ interface MemoryEntryCardProps {
 }
 
 function MemoryEntryCard({ entry, onClick }: MemoryEntryCardProps) {
+  const { t } = useTranslation('caregiver');
   const dateLabel = formatDate(entry.createdAt, {
     year: 'numeric',
     month: 'long',
@@ -111,7 +114,7 @@ function MemoryEntryCard({ entry, onClick }: MemoryEntryCardProps) {
       type="button"
       onClick={onClick}
       className="w-full text-left bg-white rounded-2xl border border-line overflow-hidden hover:border-primary hover:shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary"
-      aria-label={`${dateLabel} 메모리 엔트리 상세 보기`}
+      aria-label={t('entryList.cardAria', { date: dateLabel })}
     >
       {/* 사진 영역 — **없으면 아무것도 그리지 않는다.**
           예전에는 회색 상자에 📷를 띄웠다. 기억은 사진 아니면 글 중 하나가
@@ -121,7 +124,7 @@ function MemoryEntryCard({ entry, onClick }: MemoryEntryCardProps) {
       {entry.photoUrl && (
         <AuthedImage
           src={entry.photoUrl}
-          alt={`${dateLabel} 기억 사진`}
+          alt={t('entryList.photoAlt', { date: dateLabel })}
           className="w-full h-40 object-cover"
           lazy
         />
@@ -196,6 +199,7 @@ function MemoryEntryCard({ entry, onClick }: MemoryEntryCardProps) {
  * 그래서 완료 표시가 아니라 **다음에 할 일**을 보여준다.
  */
 function TrainingReadiness({ entry }: { entry: MemoryEntry }) {
+  const { t } = useTranslation('caregiver');
   // 대화를 감춘 상태라면 준비 안내 자체가 의미 없다. 환자가 쓸 수 없는
   // 기능을 두고 "대화하려면 …해 주세요"라고 하면 헛수고를 시킨다.
   if (!isConversationModeEnabled()) {
@@ -206,7 +210,7 @@ function TrainingReadiness({ entry }: { entry: MemoryEntry }) {
   if (entry.hasScenario) {
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary-light text-primary rounded-full text-xs font-medium">
-        대화 준비 완료
+        {t('entryList.readyBadge')}
       </span>
     );
   }
@@ -215,7 +219,7 @@ function TrainingReadiness({ entry }: { entry: MemoryEntry }) {
   if (!entry.hasMaskedContext) {
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-surface-dim text-muted-sage rounded-full text-xs">
-        분석 중
+        {t('entryList.analyzingBadge')}
       </span>
     );
   }
@@ -223,12 +227,12 @@ function TrainingReadiness({ entry }: { entry: MemoryEntry }) {
   // 여기서부터가 보호자의 차례다. 무엇을 해야 하는지 구체적으로 말한다.
   const nextStep =
     entry.targetWords.length === 0
-      ? '목표 단어를 등록해 주세요'
-      : '시나리오를 생성해 주세요';
+      ? t('entryList.needsWordsStep')
+      : t('entryList.needsScenarioStep');
 
   return (
     <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-accent/15 text-[#b5602f] rounded-full text-xs font-medium">
-      대화하려면 {nextStep}
+      {t('entryList.needsSetup', { step: nextStep })}
     </span>
   );
 }
