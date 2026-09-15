@@ -3,6 +3,7 @@
 // §9-1-A: 세이지 그린 헤더 + 크림 베이지 배경 (메인 톤)
 // §9-1-B: 5단계 이모지 시각 명세 (선택 시 색상 토큰 적용)
 
+import { useTranslation } from 'react-i18next';
 import type { MoodLevel, MoodVisualToken } from '../domain/CaptureFlow.js';
 import { MOOD_VISUAL_TOKENS } from '../domain/CaptureFlow.js';
 
@@ -23,6 +24,7 @@ export function MoodCheckStep({
   onNext,
   error,
 }: MoodCheckStepProps) {
+  const { t } = useTranslation('caregiver');
   const hasSelection = mood !== null;
 
   return (
@@ -35,17 +37,17 @@ export function MoodCheckStep({
           id="mood-step-heading"
           className="text-2xl font-bold text-primary"
         >
-          오늘 본인의 마음은 어떠셨나요?
+          {t('moodStep.title')}
         </h2>
         <p className="mt-2 text-sm text-muted-sage">
-          1초 안에 가까운 표정을 골라주세요.
+          {t('moodStep.subtitle')}
         </p>
       </header>
 
       <div
         className="grid grid-cols-5 gap-3 sm:gap-4"
         role="radiogroup"
-        aria-label="오늘의 마음 5단계"
+        aria-label={t('moodStep.groupAria')}
       >
         {MOOD_VISUAL_TOKENS.map((token) => (
           <MoodButton
@@ -72,9 +74,9 @@ export function MoodCheckStep({
           onClick={onNext}
           disabled={!hasSelection}
           className="rounded-xl bg-primary px-8 py-3 text-base font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-disabled-surface disabled:text-disabled-ink"
-          aria-label="다음 단계로 이동"
+          aria-label={t('captureFlow.nextAria')}
         >
-          다음
+          {t('captureFlow.next')}
         </button>
       </div>
     </section>

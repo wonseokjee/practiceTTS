@@ -4,6 +4,7 @@
 // 자물쇠 아이콘 + "보호자 본인만 볼 수 있어요" 캡션
 // 건너뛰기 허용
 
+import { useTranslation } from 'react-i18next';
 import type { DiaryQuestion } from '../domain/CaptureFlow.js';
 import { MAX_CAREGIVER_ANSWER_LENGTH } from '../domain/CaptureFlow.js';
 
@@ -28,6 +29,7 @@ export function MyDayStep({
   onNext,
   onPrev,
 }: MyDayStepProps) {
+  const { t } = useTranslation('caregiver');
   const charCount = answerText.length;
 
   return (
@@ -44,30 +46,30 @@ export function MyDayStep({
             id="myday-step-heading"
             className="text-2xl font-bold text-[#3A2E5C]"
           >
-            나의 하루
+            {t('myDayStep.title')}
           </h2>
         </div>
         <p className="mt-2 text-sm text-[#5C5870]">
-          여기에 적은 답은 보호자 본인만 볼 수 있어요.
+          {t('myDayStep.privacyCaption')}
         </p>
       </header>
 
       <div className="rounded-xl bg-white p-5">
         <p className="text-base font-medium text-ink-sage">
-          {question ? question.text : '질문을 불러오는 중입니다…'}
+          {question ? question.text : t('myDayStep.loadingQuestion')}
         </p>
 
         <label className="mt-4 block">
-          <span className="sr-only">보호자 자기 답변 입력</span>
+          <span className="sr-only">{t('myDayStep.answerInputSrLabel')}</span>
           <textarea
             value={answerText}
             onChange={(e) => onChangeAnswerText(e.target.value)}
             disabled={!question}
-            placeholder="자유롭게 적어주세요 (선택)"
+            placeholder={t('myDayStep.answerPlaceholder')}
             maxLength={MAX_CAREGIVER_ANSWER_LENGTH}
             rows={5}
             className="w-full resize-none rounded-xl border border-[#D9D5E0] bg-[#FBFAFE] p-3 text-sm leading-relaxed text-ink-sage focus:border-[#6B5BA8] focus:outline-none focus:ring-1 focus:ring-[#6B5BA8] disabled:bg-[#F0EEF5]"
-            aria-label="나의 하루 답변"
+            aria-label={t('myDayStep.answerAria')}
           />
         </label>
 
@@ -86,9 +88,9 @@ export function MyDayStep({
           type="button"
           onClick={onPrev}
           className="rounded-xl px-5 py-3 text-sm font-medium text-[#5C5870] transition-colors duration-[180ms] ease-out hover:bg-[#E8E4F0]"
-          aria-label="이전 단계로"
+          aria-label={t('captureFlow.prevAria')}
         >
-          이전
+          {t('captureFlow.prev')}
         </button>
 
         <div className="flex gap-2">
@@ -96,17 +98,17 @@ export function MyDayStep({
             type="button"
             onClick={onSkip}
             className="rounded-xl border border-[#D9D5E0] bg-white px-5 py-3 text-sm font-medium text-[#5C5870] transition-colors duration-[180ms] ease-out hover:bg-[#F0EEF5]"
-            aria-label="이 단계 건너뛰기"
+            aria-label={t('myDayStep.skipAria')}
           >
-            건너뛰기
+            {t('myDayStep.skip')}
           </button>
           <button
             type="button"
             onClick={onNext}
             className="rounded-xl bg-[#6B5BA8] px-6 py-3 text-sm font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-[#564A88]"
-            aria-label="다음 단계로 이동"
+            aria-label={t('captureFlow.nextAria')}
           >
-            다음
+            {t('captureFlow.next')}
           </button>
         </div>
       </div>
