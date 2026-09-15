@@ -1,1 +1,69 @@
-{}
+{
+  "login": {
+    "tagline": "Cognitive training and memory connection platform",
+    "socialFailedBanner": "Social login failed. Please try again.",
+    "tabLogin": "Log in",
+    "tabRegister": "Sign up",
+    "emailLabel": "Email",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "submitLoginBusy": "Logging in...",
+    "submitRegisterBusy": "Signing up...",
+    "displayNameLabel": "My name (caregiver)",
+    "displayNamePlaceholder": "Enter your name",
+    "patientPinHint": "A 4-digit number you'll use to return after handing the device to your loved one.",
+    "recentBadge": "Last used",
+    "socialDivider": "Quick sign-in",
+    "kakaoButton": "Continue with Kakao",
+    "googleButton": "Continue with Google",
+    "errorEmailRequired": "Please enter your email.",
+    "errorEmailInvalid": "That doesn't look like a valid email.",
+    "errorPasswordRequired": "Please enter your password.",
+    "errorPasswordTooShort": "Password must be at least 8 characters.",
+    "errorNameRequired": "Please enter your name.",
+    "errorPinInvalid": "Patient mode PIN must be 4 digits."
+  },
+  "onboarding": {
+    "greetingBare": "Welcome",
+    "greetingNamed": "Welcome, {{name}}",
+    "subtitle": "Before we start, tell us about the person you're caring for.",
+    "patientPinHint": "A 4-digit number you'll use to return after handing the device to your loved one.",
+    "errorPinInvalid": "Patient mode PIN must be 4 digits.",
+    "submitBusy": "Saving...",
+    "submit": "Get started",
+    "saveFailed": "We couldn't save that. Please try again shortly.",
+    "mergeSectionTitle": "Already signed up another way?",
+    "mergeSectionSub": "Linking your existing login signs you into that account instead of this one. (Everything you registered is still there.)",
+    "mergeErrorNotfound": "No existing account was found for that login. Please choose another method.",
+    "mergeErrorConflict": "That account already exists or is already linked. Please choose another login method for the existing account.",
+    "mergeErrorGeneric": "Linking failed. Please try again shortly.",
+    "mergeStartFailed": "We couldn't start linking. Please try again shortly.",
+    "mergeBusy": "Redirecting…",
+    "mergeKakao": "Link with Kakao",
+    "mergeGoogle": "Link with Google"
+  },
+  "patientField": {
+    "nameLabel": "Loved one's name",
+    "namePlaceholder": "The name of the person you're caring for",
+    "pinLabel": "Patient mode PIN (4 digits)",
+    "errorNameRequired": "Please enter your loved one's name."
+  },
+  "pinModal": {
+    "title": "Welcome back",
+    "subtitle": "Please enter the caregiver PIN.",
+    "ariaLabel": "Caregiver PIN, 4 digits",
+    "errorInvalidLength": "Please enter a 4-digit number.",
+    "errorMismatch": "That PIN doesn't match. Please try again.",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "confirmBusy": "Confirming..."
+  },
+  "socialCallback": {
+    "failed": "Login failed. Please try again.",
+    "backToLogin": "Back to login",
+    "loading": "Logging in..."
+  },
+  "healingBanner": {
+    "title": "Today's message"
+  }
+}
