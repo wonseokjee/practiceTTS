@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { memoryEntryApi } from '../infrastructure/MemoryEntryApi.js';
 import type { MemoryEntry } from '../domain/MemoryEntry.js';
 import { EMOTION_TAG_LABELS } from '../domain/MemoryEntry.js';
@@ -30,6 +31,7 @@ export function EntryDetailScreen({
   onTriggerScenario,
   onBack,
 }: EntryDetailScreenProps) {
+  const { t } = useTranslation('caregiver');
   const [entry, setEntry] = useState<MemoryEntry | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -109,9 +111,9 @@ export function EntryDetailScreen({
       <div
         className="flex justify-center items-center min-h-[300px]"
         aria-live="polite"
-        aria-label="로딩 중"
+        aria-label={t('entryList.loadingAria')}
       >
-        <div className="text-muted-sage text-sm">불러오는 중...</div>
+        <div className="text-muted-sage text-sm">{t('entryList.loading')}</div>
       </div>
     );
   }
@@ -123,15 +125,15 @@ export function EntryDetailScreen({
           type="button"
           onClick={onBack}
           className="mb-4 text-sm text-muted-sage hover:text-ink flex items-center gap-1"
-          aria-label="목록으로 돌아가기"
+          aria-label={t('settings.backToListAria')}
         >
-          ← 돌아가기
+          {t('entryDetail.back')}
         </button>
         <div
           role="alert"
           className="p-4 bg-danger/10 border border-danger/30 rounded-2xl text-accent-ink text-sm"
         >
-          {error ?? '메모리 엔트리를 찾을 수 없습니다.'}
+          {error ?? t('entryDetail.notFound')}
         </div>
       </div>
     );
@@ -158,16 +160,16 @@ export function EntryDetailScreen({
         type="button"
         onClick={onBack}
         className="mb-4 text-sm text-muted-sage hover:text-ink flex items-center gap-1 transition-colors"
-        aria-label="목록으로 돌아가기"
+        aria-label={t('settings.backToListAria')}
       >
-        ← 목록으로
+        {t('settings.backToList')}
       </button>
 
       {/* 사진 */}
       {entry.photoUrl ? (
         <AuthedImage
           src={entry.photoUrl}
-          alt={`${dateLabel} 기억 사진`}
+          alt={t('entryList.photoAlt', { date: dateLabel })}
           className="w-full rounded-2xl mb-4 max-h-80 object-cover"
         />
       ) : (
@@ -183,7 +185,7 @@ export function EntryDetailScreen({
         {/* 장소 태그 */}
         {entry.locationTag && (
           <div className="mb-3">
-            <dt className="text-xs text-muted-sage font-medium mb-1">장소</dt>
+            <dt className="text-xs text-muted-sage font-medium mb-1">{t('entryDetail.locationLabel')}</dt>
             <dd className="text-sm text-ink">{entry.locationTag}</dd>
           </div>
         )}
@@ -191,7 +193,7 @@ export function EntryDetailScreen({
         {/* 사물 태그 */}
         {entry.objectTags && entry.objectTags.length > 0 && (
           <div className="mb-3">
-            <dt className="text-xs text-muted-sage font-medium mb-1">사물</dt>
+            <dt className="text-xs text-muted-sage font-medium mb-1">{t('entryDetail.objectsLabel')}</dt>
             <dd className="flex flex-wrap gap-1">
               {entry.objectTags.map((tag) => (
                 <span
@@ -208,7 +210,7 @@ export function EntryDetailScreen({
         {/* 감정 태그 */}
         {entry.emotionTag && (
           <div className="mb-3">
-            <dt className="text-xs text-muted-sage font-medium mb-1">감정</dt>
+            <dt className="text-xs text-muted-sage font-medium mb-1">{t('entryDetail.emotionLabel')}</dt>
             <dd>
               <span className="px-2 py-0.5 bg-primary-light text-primary rounded-full text-sm font-medium">
                 {EMOTION_TAG_LABELS[entry.emotionTag]}
@@ -222,13 +224,11 @@ export function EntryDetailScreen({
       {/* 훈련 목표 단어 편집 — 시나리오 생성의 필수 입력 (1~3개) */}
       <div className="bg-white rounded-2xl border border-line p-4 mb-4">
         <h3 className="text-sm font-medium text-ink mb-1">
-          훈련 목표 단어
+          {t('entryDetail.targetWordsTitle')}
         </h3>
         <p className="text-xs text-muted-sage mb-3">
-          환자분이 스스로 떠올릴 단어예요. 퀴즈 문항을 만들 때 함께 쓰입니다.
-          {isConversationModeEnabled()
-            ? ' 1~3개를 등록해야 시나리오를 생성할 수 있어요.'
-            : ''}
+          {t('entryDetail.targetWordsDesc')}
+          {isConversationModeEnabled() ? t('entryDetail.targetWordsDescSuffix') : ''}
         </p>
 
         {localWords.length > 0 && (
@@ -243,7 +243,7 @@ export function EntryDetailScreen({
                   type="button"
                   onClick={() => removeWord(word)}
                   className="text-[#9fd0bc] hover:text-danger"
-                  aria-label={`${word} 삭제`}
+                  aria-label={t('profile.removeItemAria', { item: word })}
                 >
                   ×
                 </button>
@@ -264,12 +264,11 @@ export function EntryDetailScreen({
                   addWord();
                 }
               }}
-              placeholder="예: 바다 (입력 후 추가)"
+              placeholder={t('entryDetail.wordPlaceholder')}
               // placeholder는 이름이 될 수 없다. 입력을 시작하면 사라져서,
               // 스크린리더 사용자가 중간에 포커스를 잃으면 이 필드가 무엇인지
-              // 알 방법이 없다. 실제로 접근성 트리에 "예: 바다 (입력 후 추가)"로
-              // 노출되고 있었다.
-              aria-label="훈련 목표 단어"
+              // 알 방법이 없다. 실제로 접근성 트리에 노출되고 있었다.
+              aria-label={t('entryDetail.wordAria')}
               className="flex-1 rounded-full border border-line bg-canvas px-4 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             />
             <button
@@ -277,7 +276,7 @@ export function EntryDetailScreen({
               onClick={addWord}
               className="rounded-full bg-primary-light px-4 text-sm font-medium text-primary hover:bg-[#dcebe4]"
             >
-              추가
+              {t('profile.add')}
             </button>
           </div>
         )}
@@ -295,26 +294,28 @@ export function EntryDetailScreen({
             disabled={isSavingWords}
             className="mt-3 w-full min-h-[44px] py-2 bg-primary text-white rounded-full text-sm font-medium hover:bg-primary-dark disabled:bg-line disabled:text-muted-disabled transition-colors"
           >
-            {isSavingWords ? '저장 중...' : '목표 단어 저장'}
+            {isSavingWords ? t('entryDetail.saveWordsBusy') : t('entryDetail.saveWords')}
           </button>
         )}
       </div>
 
       {/* AI 처리 상태 */}
       <div className="bg-white rounded-2xl border border-line p-4 mb-4">
-        <h3 className="text-sm font-medium text-ink mb-3">AI 처리 상태</h3>
+        <h3 className="text-sm font-medium text-ink mb-3">{t('entryDetail.aiStatusTitle')}</h3>
         <div className="flex flex-col gap-2">
           <StatusBadge
-            label="기억 분석"
+            label={t('entryDetail.memoryAnalysisLabel')}
             isDone={entry.hasMaskedContext}
-            pendingText="AI 분석 대기 중"
+            pendingText={t('entryDetail.analysisPending')}
           />
           {isConversationModeEnabled() && (
             <StatusBadge
-              label="시나리오 생성"
+              label={t('entryDetail.scenarioLabel')}
               isDone={entry.hasScenario}
               pendingText={
-                !entry.hasMaskedContext ? '기억 분석 후 가능' : '시나리오 미생성'
+                !entry.hasMaskedContext
+                  ? t('entryDetail.scenarioPendingAfterAnalysis')
+                  : t('entryDetail.scenarioNotGenerated')
               }
             />
           )}
@@ -328,7 +329,7 @@ export function EntryDetailScreen({
           role="alert"
           className="mb-3 p-3 bg-danger/10 border border-danger/30 rounded-2xl text-accent-ink text-sm"
         >
-          {scenarioNotice ?? '시나리오 생성에 실패했습니다. 다시 시도해주세요.'}
+          {scenarioNotice ?? t('entryDetail.scenarioFailed')}
         </div>
       )}
 
@@ -339,25 +340,28 @@ export function EntryDetailScreen({
           disabled={!canTriggerScenario || isScenarioPending}
           className="w-full min-h-[52px] py-3 bg-accent-strong text-white rounded-full font-medium hover:bg-accent-hover disabled:bg-line disabled:text-muted-disabled transition-colors"
           aria-label={
-            isScenarioPending ? '시나리오 생성 중' : '시나리오 생성하기'
+            isScenarioPending
+              ? t('entryDetail.scenarioGeneratingAria')
+              : t('entryDetail.scenarioGenerateAria')
           }
           aria-busy={isScenarioPending}
         >
-          {isScenarioPending ? '시나리오 생성 중...' : '훈련 시나리오 생성'}
+          {isScenarioPending ? t('entryDetail.scenarioGenerating') : t('entryDetail.scenarioGenerate')}
         </button>
       )}
 
       {isConversationModeEnabled() && entry.hasScenario && (
         <div className="w-full py-3 bg-primary-light text-primary rounded-full font-medium text-center border border-primary/25">
-          훈련 시나리오 준비 완료
+          {t('entryDetail.scenarioReady')}
         </div>
       )}
 
       {/* 컨텍스트 분석 미완료 안내 (사진 또는 기록 분석 후 시나리오 가능) */}
       {isConversationModeEnabled() && !entry.hasMaskedContext && (
         <p className="mt-2 text-xs text-muted-sage text-center">
-          AI가 기록하신 내용{entry.photoUrl ? '과 사진' : ''}을 분석하면 시나리오를
-          생성할 수 있습니다
+          {t('entryDetail.analysisNeededNote', {
+            photoSuffix: entry.photoUrl ? t('entryDetail.photoSuffix') : '',
+          })}
         </p>
       )}
 
@@ -366,7 +370,7 @@ export function EntryDetailScreen({
         !entry.hasScenario &&
         entry.targetWords.length === 0 && (
           <p className="mt-2 text-xs text-muted-sage text-center">
-            목표 단어를 1개 이상 등록·저장하면 시나리오를 생성할 수 있어요
+            {t('entryDetail.wordsNeededNote')}
           </p>
         )}
     </div>
@@ -382,6 +386,7 @@ interface StatusBadgeProps {
 }
 
 function StatusBadge({ label, isDone, pendingText }: StatusBadgeProps) {
+  const { t } = useTranslation('caregiver');
   return (
     <div className="flex justify-between items-center">
       <span className="text-sm text-muted-sage">{label}</span>
@@ -392,7 +397,7 @@ function StatusBadge({ label, isDone, pendingText }: StatusBadgeProps) {
             : 'bg-surface-dim text-muted-sage'
         }`}
       >
-        {isDone ? '완료' : pendingText}
+        {isDone ? t('entryDetail.done') : pendingText}
       </span>
     </div>
   );
