@@ -4,6 +4,7 @@
 // 조회 실패/빈 풀이면 조용히 렌더하지 않는다 — 대시보드 진입을 막지 않는다.
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { healingMessageApi } from '../HealingMessageApi.js';
 import type { IHealingMessageApi } from '../HealingMessageApi.js';
 
@@ -13,6 +14,7 @@ interface DailyHealingBannerProps {
 }
 
 export function DailyHealingBanner({ api }: DailyHealingBannerProps) {
+  const { t } = useTranslation('common');
   const apiRef = useRef<IHealingMessageApi>(api ?? healingMessageApi);
   const [text, setText] = useState<string | null>(null);
 
@@ -39,14 +41,14 @@ export function DailyHealingBanner({ api }: DailyHealingBannerProps) {
     <section
       className="font-pretendard mb-6 flex items-start gap-3 rounded-xl bg-primary-light p-5"
       role="note"
-      aria-label="오늘의 메시지"
+      aria-label={t('healingBanner.title')}
     >
       <span aria-hidden="true" className="text-2xl leading-none">
         🌿
       </span>
       <div>
         <p className="text-xs font-semibold tracking-wide text-primary">
-          오늘의 메시지
+          {t('healingBanner.title')}
         </p>
         <p className="mt-1 text-lg font-medium leading-relaxed text-ink-sage">
           {text}

@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext.js';
 import { API_BASE_URL, memoryLinkApi } from './MemoryLinkApi.js';
@@ -16,19 +17,20 @@ import { GoogleIcon, KakaoIcon } from './components/ProviderIcons.js';
 type MergeProvider = 'kakao' | 'google';
 
 /** 병합 콜백 실패(?mergeError=..) → 안내 문구. 백엔드 handleSocialCallback과 짝. */
-function parseMergeError(search: string): string | null {
+function parseMergeError(t: (key: string) => string, search: string): string | null {
   const e = new URLSearchParams(search).get('mergeError');
   if (!e) return null;
   if (e === 'notfound') {
-    return '그 로그인으로 가입된 기존 계정이 없어요. 다른 방법을 선택해 주세요.';
+    return t('onboarding.mergeErrorNotfound');
   }
   if (e === 'conflict') {
-    return '같은 계정이거나 이미 정보가 등록된 계정이에요. 기존 계정의 다른 로그인 방법을 선택해 주세요.';
+    return t('onboarding.mergeErrorConflict');
   }
-  return '연결에 실패했어요. 잠시 후 다시 시도해 주세요.';
+  return t('onboarding.mergeErrorGeneric');
 }
 
 export function OnboardingScreen() {
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const { user, refreshUser } = useAuth();
   const [patientDisplayName, setPatientDisplayName] = useState('');
@@ -37,7 +39,7 @@ export function OnboardingScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mergeBusy, setMergeBusy] = useState<MergeProvider | null>(null);
   const [mergeNotice, setMergeNotice] = useState<string | null>(() =>
-    parseMergeError(window.location.search),
+    parseMergeError(t, window.location.search),
   );
 
   // 병합 실패 배너를 띄웠으면 URL의 쿼리를 지운다(새로고침 시 재노출 방지).
@@ -59,7 +61,7 @@ export function OnboardingScreen() {
       window.location.href = `${API_BASE_URL}/auth/${provider}/link`;
     } catch {
       setMergeBusy(null);
-      setError('연결을 시작하지 못했어요. 잠시 후 다시 시도해 주세요.');
+      setError(t('onboarding.mergeStartFailed'));
     }
   };
 
@@ -71,11 +73,11 @@ export function OnboardingScreen() {
     setError(null);
 
     if (patientDisplayName.trim().length === 0) {
-      setError('어르신 성함을 입력해주세요.');
+      setError(t('patientField.errorNameRequired'));
       return;
     }
     if (!/^[0-9]{4}$/.test(patientModePin)) {
-      setError('환자 모드 PIN은 4자리 숫자여야 해요.');
+      setError(t('onboarding.errorPinInvalid'));
       return;
     }
 
@@ -88,7 +90,7 @@ export function OnboardingScreen() {
       await refreshUser();
       navigate('/caregiver', { replace: true });
     } catch {
-      setError('저장에 실패했어요. 잠시 후 다시 시도해 주세요.');
+      setError(t('onboarding.saveFailed'));
       setIsSubmitting(false);
     }
   };
@@ -96,9 +98,13 @@ export function OnboardingScreen() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-canvas p-6">
       <div className="w-full max-w-sm rounded-2xl border border-line bg-white p-6">
-        <h1 className="text-xl font-bold text-ink">환영해요{user?.displayName ? `, ${user.displayName}님` : ''}</h1>
+        <h1 className="text-xl font-bold text-ink">
+          {user?.displayName
+            ? t('onboarding.greetingNamed', { name: user.displayName })
+            : t('onboarding.greetingBare')}
+        </h1>
         <p className="mt-1 mb-5 text-sm text-muted-sage">
-          시작하기 전에 돌보시는 어르신 정보를 알려주세요.
+          {t('onboarding.subtitle')}
         </p>
 
         <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4" noValidate>
@@ -107,7 +113,7 @@ export function OnboardingScreen() {
               htmlFor="ob-patient-name"
               className="block text-sm font-medium text-ink mb-1"
             >
-              어르신 성함
+              {t('patientField.nameLabel')}
             </label>
             <input
               id="ob-patient-name"
@@ -115,7 +121,7 @@ export function OnboardingScreen() {
               value={patientDisplayName}
               onChange={(e) => setPatientDisplayName(e.target.value)}
               className="w-full min-h-[48px] px-3 py-2 border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              placeholder="돌보시는 어르신의 성함"
+              placeholder={t('patientField.namePlaceholder')}
             />
           </div>
 
@@ -124,7 +130,7 @@ export function OnboardingScreen() {
               htmlFor="ob-pin"
               className="block text-sm font-medium text-ink mb-1"
             >
-              환자 모드 PIN (4자리 숫자)
+              {t('patientField.pinLabel')}
             </label>
             <input
               id="ob-pin"
@@ -140,7 +146,7 @@ export function OnboardingScreen() {
               placeholder="••••"
             />
             <p className="mt-1 text-xs text-muted-sage">
-              어르신께 기기를 건넸다가 돌아올 때 쓰는 4자리 숫자예요.
+              {t('onboarding.patientPinHint')}
             </p>
           </div>
 
@@ -158,18 +164,17 @@ export function OnboardingScreen() {
             disabled={isSubmitting}
             className="w-full min-h-[48px] py-2 px-4 bg-primary text-white font-medium rounded-full hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {isSubmitting ? '저장 중...' : '시작하기'}
+            {isSubmitting ? t('onboarding.submitBusy') : t('onboarding.submit')}
           </button>
         </form>
 
         {/* 이미 다른 방법으로 가입한 계정이 있으면, 새로 만들지 말고 그 계정에 흡수 */}
         <div className="mt-6 border-t border-line pt-5">
           <p className="text-sm font-medium text-ink">
-            이미 다른 방법으로 가입하셨나요?
+            {t('onboarding.mergeSectionTitle')}
           </p>
           <p className="mt-1 mb-3 text-xs text-muted-sage">
-            기존에 쓰던 로그인으로 연결하면, 이 계정 대신 그 계정으로 들어가요.
-            (등록해 둔 정보가 그대로 있어요.)
+            {t('onboarding.mergeSectionSub')}
           </p>
 
           {mergeNotice !== null && (
@@ -189,7 +194,7 @@ export function OnboardingScreen() {
               className="flex w-full min-h-[48px] items-center justify-center gap-2 rounded-full bg-[#FEE500] text-sm font-medium text-[#191600] transition-colors hover:bg-[#f5dc00] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <KakaoIcon className="h-4 w-4" />
-              {mergeBusy === 'kakao' ? '이동 중…' : '카카오로 기존 계정에 연결'}
+              {mergeBusy === 'kakao' ? t('onboarding.mergeBusy') : t('onboarding.mergeKakao')}
             </button>
             <button
               type="button"
@@ -198,7 +203,7 @@ export function OnboardingScreen() {
               className="flex w-full min-h-[48px] items-center justify-center gap-2 rounded-full border border-[#DADCE0] bg-white text-sm font-medium text-[#3C4043] transition-colors hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-50"
             >
               <GoogleIcon className="h-4 w-4" />
-              {mergeBusy === 'google' ? '이동 중…' : '구글로 기존 계정에 연결'}
+              {mergeBusy === 'google' ? t('onboarding.mergeBusy') : t('onboarding.mergeGoogle')}
             </button>
           </div>
         </div>
