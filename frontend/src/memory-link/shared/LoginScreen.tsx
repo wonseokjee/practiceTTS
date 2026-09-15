@@ -10,6 +10,7 @@
 
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from './AuthContext.js';
 import type { RegisterData } from './AuthContext.js';
 import { API_BASE_URL, ML_LAST_PROVIDER_KEY } from './MemoryLinkApi.js';
@@ -20,9 +21,10 @@ type Tab = 'login' | 'register';
 
 /** 직전에 성공한 소셜 로그인에 붙이는 "최근 사용" 배지. */
 function RecentBadge() {
+  const { t } = useTranslation('common');
   return (
     <span className="absolute right-3 rounded-full bg-black/10 px-2 py-0.5 text-[11px] font-medium text-[#3C4043]">
-      최근 사용
+      {t('login.recentBadge')}
     </span>
   );
 }
@@ -33,6 +35,7 @@ function RecentBadge() {
  * 직전에 쓴 제공자에는 "최근 사용" 배지를 달아, 어느 걸로 가입했는지 헷갈리지 않게 한다.
  */
 function SocialLoginButtons() {
+  const { t } = useTranslation('common');
   const last =
     typeof window !== 'undefined'
       ? localStorage.getItem(ML_LAST_PROVIDER_KEY)
@@ -42,7 +45,7 @@ function SocialLoginButtons() {
     <div className="mt-6">
       <div className="flex items-center gap-3 text-xs text-muted-sage">
         <span className="h-px flex-1 bg-line" />
-        간편 로그인
+        {t('login.socialDivider')}
         <span className="h-px flex-1 bg-line" />
       </div>
       <button
@@ -53,7 +56,7 @@ function SocialLoginButtons() {
         className="relative mt-4 flex w-full min-h-[48px] items-center justify-center gap-2 rounded-full bg-[#FEE500] font-medium text-[#191600] transition-opacity hover:opacity-90"
       >
         <KakaoIcon className="h-5 w-5" />
-        카카오로 시작하기
+        {t('login.kakaoButton')}
         {last === 'kakao' && <RecentBadge />}
       </button>
       <button
@@ -64,7 +67,7 @@ function SocialLoginButtons() {
         className="relative mt-3 flex w-full min-h-[48px] items-center justify-center gap-2 rounded-full border border-[#DADCE0] bg-white font-medium text-[#3C4043] transition-colors hover:bg-[#F7F8F8]"
       >
         <GoogleIcon className="h-5 w-5" />
-        Google로 시작하기
+        {t('login.googleButton')}
         {last === 'google' && <RecentBadge />}
       </button>
     </div>
@@ -74,6 +77,7 @@ function SocialLoginButtons() {
 // ─── 로그인 폼 ────────────────────────────────────────────────
 
 function LoginForm() {
+  const { t } = useTranslation('common');
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -83,15 +87,15 @@ function LoginForm() {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     if (email.trim() === '') {
-      setError('이메일을 입력해주세요.');
+      setError(t('login.errorEmailRequired'));
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError('올바른 이메일 형식이 아닙니다.');
+      setError(t('login.errorEmailInvalid'));
       return;
     }
     if (password === '') {
-      setError('비밀번호를 입력해주세요.');
+      setError(t('login.errorPasswordRequired'));
       return;
     }
     setError(null);
@@ -109,7 +113,7 @@ function LoginForm() {
     <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4" noValidate>
       <div>
         <label htmlFor="login-email" className="block text-sm font-medium text-ink mb-1">
-          이메일
+          {t('login.emailLabel')}
         </label>
         <input
           id="login-email"
@@ -124,7 +128,7 @@ function LoginForm() {
 
       <div>
         <label htmlFor="login-password" className="block text-sm font-medium text-ink mb-1">
-          비밀번호
+          {t('login.passwordLabel')}
         </label>
         <input
           id="login-password"
@@ -133,7 +137,7 @@ function LoginForm() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="w-full px-3 py-2 border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-          placeholder="비밀번호를 입력하세요"
+          placeholder={t('login.passwordPlaceholder')}
         />
       </div>
 
@@ -151,7 +155,7 @@ function LoginForm() {
         disabled={isSubmitting}
         className="w-full min-h-[48px] py-2 px-4 bg-primary text-white font-medium rounded-full hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
-        {isSubmitting ? '로그인 중...' : '로그인'}
+        {isSubmitting ? t('login.submitLoginBusy') : t('login.tabLogin')}
       </button>
     </form>
   );
@@ -160,6 +164,7 @@ function LoginForm() {
 // ─── 회원가입 폼 ──────────────────────────────────────────────
 
 function RegisterForm() {
+  const { t } = useTranslation('common');
   const { register } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -172,27 +177,27 @@ function RegisterForm() {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     if (email.trim() === '') {
-      setError('이메일을 입력해주세요.');
+      setError(t('login.errorEmailRequired'));
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError('올바른 이메일 형식이 아닙니다.');
+      setError(t('login.errorEmailInvalid'));
       return;
     }
     if (password.length < 8) {
-      setError('비밀번호는 최소 8자 이상이어야 합니다.');
+      setError(t('login.errorPasswordTooShort'));
       return;
     }
     if (displayName.trim() === '') {
-      setError('이름을 입력해주세요.');
+      setError(t('login.errorNameRequired'));
       return;
     }
     if (patientDisplayName.trim() === '') {
-      setError('어르신 성함을 입력해주세요.');
+      setError(t('patientField.errorNameRequired'));
       return;
     }
     if (!/^[0-9]{4}$/.test(patientModePin)) {
-      setError('환자 모드 PIN은 4자리 숫자여야 합니다.');
+      setError(t('login.errorPinInvalid'));
       return;
     }
     setError(null);
@@ -217,7 +222,7 @@ function RegisterForm() {
     <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4" noValidate>
       <div>
         <label htmlFor="reg-email" className="block text-sm font-medium text-ink mb-1">
-          이메일
+          {t('login.emailLabel')}
         </label>
         <input
           id="reg-email"
@@ -232,7 +237,7 @@ function RegisterForm() {
 
       <div>
         <label htmlFor="reg-password" className="block text-sm font-medium text-ink mb-1">
-          비밀번호
+          {t('login.passwordLabel')}
         </label>
         <input
           id="reg-password"
@@ -241,13 +246,13 @@ function RegisterForm() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="w-full px-3 py-2 border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-          placeholder="비밀번호를 입력하세요"
+          placeholder={t('login.passwordPlaceholder')}
         />
       </div>
 
       <div>
         <label htmlFor="reg-display-name" className="block text-sm font-medium text-ink mb-1">
-          내 이름 (보호자)
+          {t('login.displayNameLabel')}
         </label>
         <input
           id="reg-display-name"
@@ -256,13 +261,13 @@ function RegisterForm() {
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
           className="w-full min-h-[48px] px-3 py-2 border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-          placeholder="내 이름을 입력하세요"
+          placeholder={t('login.displayNamePlaceholder')}
         />
       </div>
 
       <div>
         <label htmlFor="reg-patient-name" className="block text-sm font-medium text-ink mb-1">
-          어르신 성함
+          {t('patientField.nameLabel')}
         </label>
         <input
           id="reg-patient-name"
@@ -270,13 +275,13 @@ function RegisterForm() {
           value={patientDisplayName}
           onChange={(e) => setPatientDisplayName(e.target.value)}
           className="w-full min-h-[48px] px-3 py-2 border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-          placeholder="돌보시는 어르신의 성함"
+          placeholder={t('patientField.namePlaceholder')}
         />
       </div>
 
       <div>
         <label htmlFor="reg-pin" className="block text-sm font-medium text-ink mb-1">
-          환자 모드 PIN (4자리 숫자)
+          {t('patientField.pinLabel')}
         </label>
         <input
           id="reg-pin"
@@ -292,7 +297,7 @@ function RegisterForm() {
           placeholder="••••"
         />
         <p className="mt-1 text-xs text-muted-sage">
-          어르신께 기기를 건넸다가 돌아올 때 사용하는 4자리 숫자예요.
+          {t('login.patientPinHint')}
         </p>
       </div>
 
@@ -310,7 +315,7 @@ function RegisterForm() {
         disabled={isSubmitting}
         className="w-full min-h-[48px] py-2 px-4 bg-primary text-white font-medium rounded-full hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
-        {isSubmitting ? '가입 중...' : '회원가입'}
+        {isSubmitting ? t('login.submitRegisterBusy') : t('login.tabRegister')}
       </button>
     </form>
   );
@@ -319,6 +324,7 @@ function RegisterForm() {
 // ─── 메인 화면 ────────────────────────────────────────────────
 
 export function LoginScreen() {
+  const { t } = useTranslation('common');
   const [activeTab, setActiveTab] = useState<Tab>('login');
   // 백엔드 소셜 콜백이 실패하면 /login?error=social로 되돌아온다(state 불일치·동의 거부 등).
   const socialFailed =
@@ -331,7 +337,7 @@ export function LoginScreen() {
         {/* 헤더 */}
         <div className="px-6 pt-8 pb-4 text-center">
           <h1 className="text-2xl font-bold text-ink">Memory Link</h1>
-          <p className="mt-1 text-sm text-muted-sage">인지 훈련 및 기억 연결 플랫폼</p>
+          <p className="mt-1 text-sm text-muted-sage">{t('login.tagline')}</p>
         </div>
 
         {socialFailed && (
@@ -340,7 +346,7 @@ export function LoginScreen() {
               role="alert"
               className="rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm text-danger-ink"
             >
-              소셜 로그인에 실패했어요. 다시 시도해 주세요.
+              {t('login.socialFailedBanner')}
             </p>
           </div>
         )}
@@ -356,7 +362,7 @@ export function LoginScreen() {
                 : 'text-muted-sage hover:text-ink'
             }`}
           >
-            로그인
+            {t('login.tabLogin')}
           </button>
           <button
             type="button"
@@ -367,7 +373,7 @@ export function LoginScreen() {
                 : 'text-muted-sage hover:text-ink'
             }`}
           >
-            회원가입
+            {t('login.tabRegister')}
           </button>
         </div>
 

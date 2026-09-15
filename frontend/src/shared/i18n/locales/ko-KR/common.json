@@ -1,1 +1,69 @@
-{}
+{
+  "login": {
+    "tagline": "인지 훈련 및 기억 연결 플랫폼",
+    "socialFailedBanner": "소셜 로그인에 실패했어요. 다시 시도해 주세요.",
+    "tabLogin": "로그인",
+    "tabRegister": "회원가입",
+    "emailLabel": "이메일",
+    "passwordLabel": "비밀번호",
+    "passwordPlaceholder": "비밀번호를 입력하세요",
+    "submitLoginBusy": "로그인 중...",
+    "submitRegisterBusy": "가입 중...",
+    "displayNameLabel": "내 이름 (보호자)",
+    "displayNamePlaceholder": "내 이름을 입력하세요",
+    "patientPinHint": "어르신께 기기를 건넸다가 돌아올 때 사용하는 4자리 숫자예요.",
+    "recentBadge": "최근 사용",
+    "socialDivider": "간편 로그인",
+    "kakaoButton": "카카오로 시작하기",
+    "googleButton": "Google로 시작하기",
+    "errorEmailRequired": "이메일을 입력해주세요.",
+    "errorEmailInvalid": "올바른 이메일 형식이 아닙니다.",
+    "errorPasswordRequired": "비밀번호를 입력해주세요.",
+    "errorPasswordTooShort": "비밀번호는 최소 8자 이상이어야 합니다.",
+    "errorNameRequired": "이름을 입력해주세요.",
+    "errorPinInvalid": "환자 모드 PIN은 4자리 숫자여야 합니다."
+  },
+  "onboarding": {
+    "greetingBare": "환영해요",
+    "greetingNamed": "환영해요, {{name}}님",
+    "subtitle": "시작하기 전에 돌보시는 어르신 정보를 알려주세요.",
+    "patientPinHint": "어르신께 기기를 건넸다가 돌아올 때 쓰는 4자리 숫자예요.",
+    "errorPinInvalid": "환자 모드 PIN은 4자리 숫자여야 해요.",
+    "submitBusy": "저장 중...",
+    "submit": "시작하기",
+    "saveFailed": "저장에 실패했어요. 잠시 후 다시 시도해 주세요.",
+    "mergeSectionTitle": "이미 다른 방법으로 가입하셨나요?",
+    "mergeSectionSub": "기존에 쓰던 로그인으로 연결하면, 이 계정 대신 그 계정으로 들어가요. (등록해 둔 정보가 그대로 있어요.)",
+    "mergeErrorNotfound": "그 로그인으로 가입된 기존 계정이 없어요. 다른 방법을 선택해 주세요.",
+    "mergeErrorConflict": "같은 계정이거나 이미 정보가 등록된 계정이에요. 기존 계정의 다른 로그인 방법을 선택해 주세요.",
+    "mergeErrorGeneric": "연결에 실패했어요. 잠시 후 다시 시도해 주세요.",
+    "mergeStartFailed": "연결을 시작하지 못했어요. 잠시 후 다시 시도해 주세요.",
+    "mergeBusy": "이동 중…",
+    "mergeKakao": "카카오로 기존 계정에 연결",
+    "mergeGoogle": "구글로 기존 계정에 연결"
+  },
+  "patientField": {
+    "nameLabel": "어르신 성함",
+    "namePlaceholder": "돌보시는 어르신의 성함",
+    "pinLabel": "환자 모드 PIN (4자리 숫자)",
+    "errorNameRequired": "어르신 성함을 입력해주세요."
+  },
+  "pinModal": {
+    "title": "기기를 돌려주셨네요",
+    "subtitle": "보호자 PIN을 입력해주세요.",
+    "ariaLabel": "보호자 PIN 4자리",
+    "errorInvalidLength": "4자리 숫자를 입력해주세요.",
+    "errorMismatch": "PIN이 일치하지 않아요. 다시 입력해주세요.",
+    "cancel": "취소",
+    "confirm": "확인",
+    "confirmBusy": "확인 중..."
+  },
+  "socialCallback": {
+    "failed": "로그인에 실패했어요. 다시 시도해 주세요.",
+    "backToLogin": "로그인 화면으로",
+    "loading": "로그인 중이에요..."
+  },
+  "healingBanner": {
+    "title": "오늘의 메시지"
+  }
+}

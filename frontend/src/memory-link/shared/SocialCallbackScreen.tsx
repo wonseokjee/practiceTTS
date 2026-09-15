@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext.js';
 
@@ -20,6 +21,7 @@ function codeFromHash(): string | null {
 }
 
 export function SocialCallbackScreen() {
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const { loginWithCode } = useAuth();
   const [failed, setFailed] = useState(false);
@@ -45,17 +47,17 @@ export function SocialCallbackScreen() {
     <div className="min-h-screen flex items-center justify-center bg-canvas p-6">
       {failed ? (
         <div className="text-center">
-          <p className="text-danger">로그인에 실패했어요. 다시 시도해 주세요.</p>
+          <p className="text-danger">{t('socialCallback.failed')}</p>
           <button
             type="button"
             onClick={() => navigate('/login', { replace: true })}
             className="mt-4 min-h-[44px] rounded-md bg-primary px-6 py-2 text-white"
           >
-            로그인 화면으로
+            {t('socialCallback.backToLogin')}
           </button>
         </div>
       ) : (
-        <p className="text-muted-sage">로그인 중이에요...</p>
+        <p className="text-muted-sage">{t('socialCallback.loading')}</p>
       )}
     </div>
   );

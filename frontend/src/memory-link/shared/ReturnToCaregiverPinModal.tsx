@@ -13,6 +13,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface ReturnToCaregiverPinModalProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ export function ReturnToCaregiverPinModal({
   onCancel,
   onVerify,
 }: ReturnToCaregiverPinModalProps) {
+  const { t } = useTranslation('common');
   const [pin, setPin] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -50,7 +52,7 @@ export function ReturnToCaregiverPinModal({
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     if (!/^[0-9]{4}$/.test(pin)) {
-      setError('4자리 숫자를 입력해주세요.');
+      setError(t('pinModal.errorInvalidLength'));
       return;
     }
     setError(null);
@@ -58,7 +60,7 @@ export function ReturnToCaregiverPinModal({
     try {
       const ok = await onVerify(pin);
       if (!ok) {
-        setError('PIN이 일치하지 않아요. 다시 입력해주세요.');
+        setError(t('pinModal.errorMismatch'));
         setPin('');
         inputRef.current?.focus();
       }
@@ -91,10 +93,10 @@ export function ReturnToCaregiverPinModal({
           id="pin-modal-title"
           className="text-xl font-bold text-ink-sage"
         >
-          기기를 돌려주셨네요
+          {t('pinModal.title')}
         </h2>
         <p className="mt-2 text-sm text-muted-sage">
-          보호자 PIN을 입력해주세요.
+          {t('pinModal.subtitle')}
         </p>
 
         <form onSubmit={(e) => void handleSubmit(e)} className="mt-5" noValidate>
@@ -110,7 +112,7 @@ export function ReturnToCaregiverPinModal({
             onChange={(e) =>
               setPin(e.target.value.replace(/\D/g, '').slice(0, 4))
             }
-            aria-label="보호자 PIN 4자리"
+            aria-label={t('pinModal.ariaLabel')}
             className={`w-full min-h-[56px] rounded-xl border-2 px-4 text-center text-2xl tracking-[0.6em] tabular-nums focus:outline-none ${
               error
                 ? 'border-accent bg-accent-soft'
@@ -136,14 +138,14 @@ export function ReturnToCaregiverPinModal({
               disabled={isSubmitting}
               className="min-h-[48px] flex-1 rounded-xl bg-canvas px-4 text-sm font-medium text-muted-sage transition-colors hover:bg-[#EFEEE9] disabled:opacity-50"
             >
-              취소
+              {t('pinModal.cancel')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="min-h-[48px] flex-1 rounded-xl bg-primary px-4 text-sm font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark disabled:opacity-50"
             >
-              {isSubmitting ? '확인 중...' : '확인'}
+              {isSubmitting ? t('pinModal.confirmBusy') : t('pinModal.confirm')}
             </button>
           </div>
         </form>
