@@ -1,0 +1,53 @@
+{
+  "captureFlow": {
+    "next": "Next",
+    "nextAria": "Go to next step",
+    "prev": "Back",
+    "prevAria": "Go to previous step"
+  },
+  "moodStep": {
+    "title": "How were you feeling today?",
+    "subtitle": "Pick whichever face feels closest.",
+    "groupAria": "Today's mood, 5 levels"
+  },
+  "myDayStep": {
+    "title": "My Day",
+    "privacyCaption": "Only you can see what you write here.",
+    "loadingQuestion": "Loading a question…",
+    "answerInputSrLabel": "Your own answer",
+    "answerPlaceholder": "Write freely (optional)",
+    "answerAria": "My Day answer",
+    "skip": "Skip",
+    "skipAria": "Skip this step"
+  },
+  "skillLevel": {
+    "sectionAria": "Practice level by skill",
+    "title": "Practice level",
+    "subtitle": "Shows what difficulty each skill is practicing at right now. It rises as they do well, and eases back gently when it's hard, so it always stays at the right level.",
+    "dotsAria": "{{label}} level {{level}} of {{max}}",
+    "excludedNote": "Only activities with difficulty levels show here. (Excludes {{excluded}})",
+    "levelSuffix": "Level {{level}}"
+  },
+  "sessionCompletion": {
+    "sectionAria": "Practice completion",
+    "title": "Practice completion",
+    "subtitle": "The share of started practices finished all the way through. Practices stopped partway are still counted up to however far they got.",
+    "summary": "Last {{days}} days · started {{started}}, completed {{completed}}",
+    "progressAria": "Completion rate {{rate}} percent",
+    "dropoffNote": "Practices stopped partway got to about <b>{{items}} items</b> on average. If it keeps stopping around the same spot, that's usually where it gets hard.",
+    "streakDisclaimer": "‘Days practiced’ on the patient home counts any day with at least one item answered. That's a different measure than completion rate here."
+  },
+  "settings": {
+    "backToList": "← Back to list",
+    "backToListAria": "Back to the list",
+    "title": "Settings",
+    "patientInfoTitle": "Patient info",
+    "patientInfoDesc": "Edit hometown, career, family, and more",
+    "accountTitle": "Account",
+    "accountDesc": "Manage connected Kakao/Google logins",
+    "speechTitle": "Voice data sharing",
+    "speechDesc": "Consent to save recordings / delete them (improves speech recognition)",
+    "logout": "Log out",
+    "footerCredit": "Some images:"
+  }
+}
