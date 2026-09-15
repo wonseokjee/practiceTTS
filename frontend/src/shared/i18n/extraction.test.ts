@@ -21,15 +21,27 @@ const EXTRACTED_DIRS = [
 /**
  * 문구를 옮긴 개별 파일(디렉터리 단위로 못 더하는 경우) — `memory-link/shared`는
  * 로그인·온보딩 같은 화면과 `honorific.ts`(계획서 §6-3)·`QabOutbox.ts`(개발자
- * 로그) 같은 한국어 전용 도메인/인프라 파일이 한 디렉터리에 섞여 있어, 디렉터리
- * 전체를 더하면 아직 손대지 않은 파일까지 걸린다. 그 도메인/인프라 문구는 별도
- * 과제(로그인·온보딩 다음 순서: 인프라 쪽 문구)로 남기고, 화면 파일만 여기 적는다.
+ * 로그)·`AuthContext.tsx`(개발용 자동 로그인 가짜 계정 — 실제 사용자에게 보이지
+ * 않는다) 같은 한국어 전용 도메인/인프라 파일이 한 디렉터리에 섞여 있어, 디렉터리
+ * 전체를 더하면 아직 손대지 않은 파일까지 걸린다.
+ *
+ * `patient/infrastructure`·`patient/quiz/infrastructure`도 마찬가지 —
+ * `QabItemBank.ts`·`QabSpeechBank.ts`(발화 뱅크 데이터)·`QuizApi.ts`·
+ * `TrainingSessionApi.ts`는 이번 배치(음성 인식 실패 메시지) 범위 밖이라
+ * 손대지 않았다.
  */
 const EXTRACTED_FILES = [
   'memory-link/shared/LoginScreen.tsx',
   'memory-link/shared/OnboardingScreen.tsx',
   'memory-link/shared/ReturnToCaregiverPinModal.tsx',
   'memory-link/shared/SocialCallbackScreen.tsx',
+  'memory-link/shared/dailyLimit.ts',
+  'memory-link/shared/extractErrorMessage.ts',
+  'memory-link/shared/SettingsApi.ts',
+  'memory-link/shared/HealingMessageApi.ts',
+  'memory-link/patient/infrastructure/SttService.ts',
+  'memory-link/patient/quiz/infrastructure/ServerSttService.ts',
+  'memory-link/patient/quiz/infrastructure/SpeechCaptureService.ts',
 ];
 
 const SRC = join(process.cwd(), 'src');
