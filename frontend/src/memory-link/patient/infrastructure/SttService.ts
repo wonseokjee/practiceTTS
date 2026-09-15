@@ -1,5 +1,6 @@
 import type { SttResult } from '../domain/TrainingSession.js';
 import { DEFAULT_LOCALE } from '../../../shared/domain/locale.js';
+import { i18n } from '../../../shared/i18n/i18n.js';
 
 /**
  * STT(Speech-to-Text) 서비스 인터페이스
@@ -56,7 +57,7 @@ export class WebSpeechSttService implements ISttService {
     // Web Speech API는 phrase hint를 지원하지 않으므로 candidates는 무시한다.
     void candidates;
     if (this.recognition === null) {
-      this.onError?.('이 브라우저는 음성 인식을 지원하지 않습니다. Chrome 사용을 권장합니다.');
+      this.onError?.(i18n.t('sttError.notSupported', { ns: 'patient' }));
       return;
     }
 
@@ -69,7 +70,7 @@ export class WebSpeechSttService implements ISttService {
       this.recognition.start();
     } catch {
       this.isRunning = false;
-      this.onError?.('음성 인식을 시작할 수 없습니다. 마이크 권한을 확인해주세요.');
+      this.onError?.(i18n.t('sttError.startFailed', { ns: 'patient' }));
     }
   }
 
@@ -98,7 +99,7 @@ export class WebSpeechSttService implements ISttService {
       this.isRunning = false;
       const result = event.results[0]?.[0];
       if (result === undefined) {
-        this.onError?.('음성을 인식하지 못했습니다. 다시 말씀해주세요.');
+        this.onError?.(i18n.t('sttError.noResult', { ns: 'patient' }));
         return;
       }
 
@@ -107,7 +108,10 @@ export class WebSpeechSttService implements ISttService {
       // 신뢰도 기준 미달 시 재시도 안내
       if (confidence < MIN_CONFIDENCE) {
         this.onError?.(
-          `음성이 명확하지 않습니다 (인식률: ${Math.round(confidence * 100)}%). 다시 말씀해주세요.`,
+          i18n.t('sttError.lowConfidence', {
+            ns: 'patient',
+            percent: Math.round(confidence * 100),
+          }),
         );
         return;
       }
@@ -124,14 +128,16 @@ export class WebSpeechSttService implements ISttService {
       }
 
       const errorMessages: Record<string, string> = {
-        'no-speech': '음성이 감지되지 않았습니다. 마이크에 가까이 말씀해주세요.',
-        'audio-capture': '마이크를 찾을 수 없습니다. 마이크 연결을 확인해주세요.',
-        'not-allowed': '마이크 접근이 거부되었습니다. 브라우저 설정에서 허용해주세요.',
-        'network': '네트워크 오류가 발생했습니다. 연결을 확인해주세요.',
-        'service-not-allowed': '음성 인식 서비스를 사용할 수 없습니다.',
+        'no-speech': i18n.t('sttError.noSpeech', { ns: 'patient' }),
+        'audio-capture': i18n.t('sttError.audioCapture', { ns: 'patient' }),
+        'not-allowed': i18n.t('sttError.notAllowed', { ns: 'patient' }),
+        'network': i18n.t('sttError.network', { ns: 'patient' }),
+        'service-not-allowed': i18n.t('sttError.serviceNotAllowed', { ns: 'patient' }),
       };
 
-      const message = errorMessages[event.error] ?? `음성 인식 오류: ${event.error}`;
+      const message =
+        errorMessages[event.error] ??
+        i18n.t('sttError.unknown', { ns: 'patient', error: event.error });
       this.onError?.(message);
     };
 

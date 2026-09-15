@@ -24,6 +24,7 @@ import {
 } from './MemoryLinkApi.js';
 import { clear as clearQabOutbox, flush as flushQabOutbox } from './QabOutbox.js';
 import { quizApi } from '../patient/quiz/infrastructure/QuizApi.js';
+import { i18n } from '../../shared/i18n/i18n.js';
 
 // ─── 도메인 타입 ─────────────────────────────────────────────
 
@@ -354,7 +355,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       const raw = response.data;
       if (!isLoginResponse(raw)) {
-        throw new Error('서버 응답 형식이 올바르지 않습니다.');
+        throw new Error(i18n.t('errors.invalidServerResponse', { ns: 'common' }));
       }
       saveToken(raw.accessToken);
 
@@ -362,7 +363,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const meResponse = await memoryLinkApi.get<unknown>('/auth/me');
       const meRaw = meResponse.data;
       if (!isMeResponse(meRaw)) {
-        throw new Error('사용자 정보 형식이 올바르지 않습니다.');
+        throw new Error(i18n.t('errors.invalidUserResponse', { ns: 'common' }));
       }
       setUser(toAuthUser(meRaw));
     },
@@ -381,7 +382,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       const raw = response.data;
       if (!isLoginResponse(raw)) {
-        throw new Error('서버 응답 형식이 올바르지 않습니다.');
+        throw new Error(i18n.t('errors.invalidServerResponse', { ns: 'common' }));
       }
       saveToken(raw.accessToken);
 
@@ -389,7 +390,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const meResponse = await memoryLinkApi.get<unknown>('/auth/me');
       const meRaw = meResponse.data;
       if (!isMeResponse(meRaw)) {
-        throw new Error('사용자 정보 형식이 올바르지 않습니다.');
+        throw new Error(i18n.t('errors.invalidUserResponse', { ns: 'common' }));
       }
       setUser(toAuthUser(meRaw));
     },
@@ -404,14 +405,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       const raw = response.data;
       if (!isLoginResponse(raw)) {
-        throw new Error('서버 응답 형식이 올바르지 않습니다.');
+        throw new Error(i18n.t('errors.invalidServerResponse', { ns: 'common' }));
       }
       saveToken(raw.accessToken);
 
       const meResponse = await memoryLinkApi.get<unknown>('/auth/me');
       const meRaw = meResponse.data;
       if (!isMeResponse(meRaw)) {
-        throw new Error('사용자 정보 형식이 올바르지 않습니다.');
+        throw new Error(i18n.t('errors.invalidUserResponse', { ns: 'common' }));
       }
       // 어느 소셜로 로그인했는지 기록 → 다음 로그인 화면에 "최근 사용" 배지.
       if (meRaw.authProvider === 'kakao' || meRaw.authProvider === 'google') {

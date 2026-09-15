@@ -15,6 +15,7 @@ import { WavRecorder } from './WavRecorder.js';
 import { QUIZ_RECORDING_LIMIT_MS } from './recordingLimits.js';
 import { API_BASE_URL, ML_TOKEN_KEY } from '../../../shared/MemoryLinkApi.js';
 import { DEFAULT_LOCALE } from '../../../../shared/domain/locale.js';
+import { i18n } from '../../../../shared/i18n/i18n.js';
 
 /** 발화 캡처 결과 — 전사 + (있으면) Azure 음소 점수. */
 export interface SpeechCaptureResult {
@@ -88,7 +89,7 @@ export class ServerPronunciationService implements ISpeechCaptureService {
     this.startPromise = this.recorder.start().catch(() => {
       this.isRecording = false;
       this.startFailed = true;
-      this.onError?.('마이크를 시작할 수 없습니다. 권한을 확인해주세요.');
+      this.onError?.(i18n.t('sttError.micStartFailed', { ns: 'quiz' }));
     });
   }
 
@@ -119,7 +120,7 @@ export class ServerPronunciationService implements ISpeechCaptureService {
     try {
       wav = await this.recorder.stop();
     } catch {
-      this.onError?.('녹음을 처리하지 못했습니다. 다시 시도해주세요.');
+      this.onError?.(i18n.t('sttError.recordingFailed', { ns: 'quiz' }));
       return;
     }
     // 녹음을 처리하는 사이 취소됐으면 업로드하지 않는다.
@@ -142,9 +143,7 @@ export class ServerPronunciationService implements ISpeechCaptureService {
       this.onResult?.({ ...recognized, azure: null });
       return;
     }
-    this.onError?.(
-      '발음 평가 서버에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.',
-    );
+    this.onError?.(i18n.t('sttError.pronunciationServerConnectFailed', { ns: 'quiz' }));
   }
 
   /** /ai/pronunciation 호출. 성공 시 점수 포함 결과, 실패 시 null. */

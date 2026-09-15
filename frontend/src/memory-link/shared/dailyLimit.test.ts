@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DAILY_GENERATION_LIMIT,
-  DAILY_LIMIT_FALLBACK,
+  dailyLimitFallback,
   dailyLimitMessage,
 } from './dailyLimit.js';
 
@@ -26,7 +26,7 @@ describe('dailyLimitMessage', () => {
   it('서버가 문구를 안 주면 기본 안내', () => {
     expect(
       dailyLimitMessage(axiosError(429, { code: DAILY_GENERATION_LIMIT })),
-    ).toBe(DAILY_LIMIT_FALLBACK);
+    ).toBe(dailyLimitFallback());
   });
 
   it('다른 429(잠깐 뒤 풀리는 레이트리밋)는 고르지 않는다', () => {

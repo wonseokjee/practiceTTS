@@ -8,12 +8,15 @@
 // 다른 429(인증·STT 레이트리밋)는 잠깐 뒤 풀리는 종류라 여기서 고르지 않는다.
 
 import axios from 'axios';
+import { i18n } from '../../shared/i18n/i18n.js';
 
 /** 서버 429 본문의 code (backend/src/usage/daily-cap.guard.ts와 같은 값). */
 export const DAILY_GENERATION_LIMIT = 'DAILY_GENERATION_LIMIT';
 
 /** 서버가 문구를 안 줬을 때의 기본 안내. 서버 문구와 같다. */
-export const DAILY_LIMIT_FALLBACK = '오늘은 여기까지예요. 내일 다시 이어서 해요.';
+export function dailyLimitFallback(): string {
+  return i18n.t('errors.dailyLimitFallback', { ns: 'common' });
+}
 
 /**
  * 일일 상한 429면 보여줄 문구를, 아니면 null을 돌려준다.
@@ -29,5 +32,5 @@ export function dailyLimitMessage(error: unknown): string | null {
   if (body.code !== DAILY_GENERATION_LIMIT) return null;
   return typeof body.message === 'string' && body.message.length > 0
     ? body.message
-    : DAILY_LIMIT_FALLBACK;
+    : dailyLimitFallback();
 }

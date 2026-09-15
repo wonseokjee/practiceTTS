@@ -1,4 +1,5 @@
 import { memoryLinkApi } from './MemoryLinkApi.js';
+import { i18n } from '../../shared/i18n/i18n.js';
 
 /** GET /settings/locale 응답 (백엔드 `LocaleSettingsResponse` 미러). */
 export interface LocaleSettings {
@@ -29,7 +30,7 @@ export const settingsApi: ISettingsApi = {
   async getLocale(): Promise<LocaleSettings> {
     const res = await memoryLinkApi.get<unknown>('/settings/locale');
     if (!isLocaleSettings(res.data)) {
-      throw new Error('서버 응답 형식이 올바르지 않습니다.');
+      throw new Error(i18n.t('errors.invalidServerResponse', { ns: 'common' }));
     }
     return res.data;
   },
