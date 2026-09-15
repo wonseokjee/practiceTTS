@@ -18,6 +18,13 @@
  */
 export const DEFAULT_HONORIFIC = '님';
 
+/**
+ * 보호자 화면이 환자(어르신)를 부를 때 쓰는 경칭. 같은 이유로 도메인
+ * 파일에 둔다 — `CaregiverDashboard`·`WeeklyReportScreen`이 문자열
+ * 리터럴 '어르신'을 직접 들고 있지 않게 한다.
+ */
+export const ELDER_HONORIFIC = '어르신';
+
 /** 끝에 오면 이미 높임으로 보는 말. */
 const HONORIFIC_ENDINGS = [
   '어르신',

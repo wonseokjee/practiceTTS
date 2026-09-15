@@ -10,6 +10,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { memoryLinkApi } from '../../shared/MemoryLinkApi.js';
 import { formatDate } from '../../../shared/i18n/formatDate.js';
 
@@ -26,8 +27,10 @@ interface SpeechConsentScreenProps {
 
 export function SpeechConsentScreen({
   onBack,
-  backLabel = '설정',
+  backLabel,
 }: SpeechConsentScreenProps) {
+  const { t } = useTranslation('caregiver');
+  const label = backLabel ?? t('settings.title');
   const [state, setState] = useState<ConsentState | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -43,11 +46,11 @@ export function SpeechConsentScreen({
       );
       setState(data);
     } catch {
-      setError('상태를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.');
+      setError(t('speechConsent.errorLoad'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -61,12 +64,12 @@ export function SpeechConsentScreen({
         await memoryLinkApi.put('/speech-data/consent', { consent: next });
         await load();
       } catch {
-        setError('변경에 실패했어요. 잠시 후 다시 시도해 주세요.');
+        setError(t('speechConsent.errorToggle'));
       } finally {
         setBusy(false);
       }
     },
-    [load],
+    [load, t],
   );
 
   const deleteAll = useCallback(async () => {
@@ -77,11 +80,11 @@ export function SpeechConsentScreen({
       setConfirmDelete(false);
       await load();
     } catch {
-      setError('삭제에 실패했어요. 잠시 후 다시 시도해 주세요.');
+      setError(t('speechConsent.errorDelete'));
     } finally {
       setBusy(false);
     }
-  }, [load]);
+  }, [load, t]);
 
   const consent = state?.consent ?? false;
   const count = state?.count ?? 0;
@@ -92,23 +95,21 @@ export function SpeechConsentScreen({
         type="button"
         onClick={onBack}
         className="mb-4 flex items-center gap-1 text-sm text-muted-sage transition-colors hover:text-primary"
-        aria-label={`${backLabel}(으)로 돌아가기`}
+        aria-label={t('nav.backAria', { label })}
       >
-        ← {backLabel}
+        ← {label}
       </button>
 
       <header className="mb-6">
-        <h2 className="text-2xl font-bold text-primary">음성 데이터 제공</h2>
+        <h2 className="text-2xl font-bold text-primary">{t('speechConsent.title')}</h2>
         <p className="mt-2 text-sm leading-relaxed text-muted-sage">
-          어르신의 발음·받아쓰기 발화를 저장해, 어르신 목소리에 더 잘 맞는 음성
-          인식 기능을 만드는 데 사용합니다. 동의하지 않으면 발화는 채점 직후
-          바로 삭제되어 남지 않습니다.
+          {t('speechConsent.description')}
         </p>
       </header>
 
       {loading ? (
         <div className="rounded-2xl border border-line bg-white px-5 py-8 text-center text-sm text-muted-sage">
-          불러오는 중…
+          {t('speechConsent.loading')}
         </div>
       ) : (
         <div className="flex flex-col gap-3">
@@ -116,14 +117,14 @@ export function SpeechConsentScreen({
           <div className="flex items-center justify-between rounded-2xl border border-line bg-white px-5 py-4">
             <span>
               <span className="block text-base font-medium text-ink-sage">
-                음성 데이터 저장에 동의
+                {t('speechConsent.consentToggleLabel')}
               </span>
               <span className="mt-0.5 block text-xs text-muted-sage">
                 {consent
                   ? state?.consentAt
-                    ? `${formatDate(state.consentAt)}부터 저장 중`
-                    : '저장 중'
-                  : '지금은 저장하지 않습니다'}
+                    ? t('speechConsent.consentStatusSince', { date: formatDate(state.consentAt) })
+                    : t('speechConsent.consentStatusOn')
+                  : t('speechConsent.consentStatusOff')}
               </span>
             </span>
             <ConsentToggle
@@ -138,10 +139,10 @@ export function SpeechConsentScreen({
             <div className="flex items-center justify-between">
               <span>
                 <span className="block text-base font-medium text-ink-sage">
-                  저장된 음성
+                  {t('speechConsent.storedTitle')}
                 </span>
                 <span className="mt-0.5 block text-xs text-muted-sage tabular-nums">
-                  {count}건 보관 중
+                  {t('speechConsent.storedCount', { count })}
                 </span>
               </span>
               {count > 0 && !confirmDelete && (
@@ -151,7 +152,7 @@ export function SpeechConsentScreen({
                   disabled={busy}
                   className="rounded-lg border border-danger/25 px-3 py-1.5 text-sm text-danger-ink transition-colors hover:bg-danger-soft disabled:opacity-50"
                 >
-                  전부 삭제
+                  {t('speechConsent.deleteAll')}
                 </button>
               )}
             </div>
@@ -159,7 +160,7 @@ export function SpeechConsentScreen({
             {confirmDelete && (
               <div className="mt-4 rounded-xl bg-danger-soft px-4 py-3">
                 <p className="text-sm text-danger-ink">
-                  보관된 음성 {count}건을 모두 삭제할까요? 되돌릴 수 없습니다.
+                  {t('speechConsent.confirmDeleteText', { count })}
                 </p>
                 <div className="mt-3 flex gap-2">
                   <button
@@ -168,7 +169,7 @@ export function SpeechConsentScreen({
                     disabled={busy}
                     className="rounded-lg bg-danger px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-[#b23636] disabled:opacity-50"
                   >
-                    삭제
+                    {t('speechConsent.confirmDeleteConfirm')}
                   </button>
                   <button
                     type="button"
@@ -176,7 +177,7 @@ export function SpeechConsentScreen({
                     disabled={busy}
                     className="rounded-lg border border-line px-4 py-1.5 text-sm text-muted-sage transition-colors hover:bg-canvas disabled:opacity-50"
                   >
-                    취소
+                    {t('speechConsent.confirmDeleteCancel')}
                   </button>
                 </div>
               </div>
@@ -203,12 +204,13 @@ interface ConsentToggleProps {
 }
 
 function ConsentToggle({ on, disabled, onChange }: ConsentToggleProps) {
+  const { t } = useTranslation('caregiver');
   return (
     <button
       type="button"
       role="switch"
       aria-checked={on}
-      aria-label="음성 데이터 저장 동의"
+      aria-label={t('speechConsent.consentSwitchAria')}
       disabled={disabled}
       onClick={() => onChange(!on)}
       className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors duration-[180ms] ease-out disabled:opacity-50 ${

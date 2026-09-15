@@ -3,6 +3,7 @@
 // §9-1-A: 단계별 헤더 색상 차별화 (Step1·3 메인 톤 / Step2 라벤더 사적 톤)
 // 진행 인디케이터: ● ○ ○ → ● ● ○ → ● ● ●
 
+import { useTranslation } from 'react-i18next';
 import type { UseCaptureFlowReturn } from '../application/useCaptureFlow.js';
 import { useQuizGenerationStatus } from '../application/useQuizGenerationStatus.js';
 import type { CaptureStep } from '../domain/CaptureFlow.js';
@@ -29,6 +30,7 @@ export function CaptureScreen({
   onComplete,
   onCancel,
 }: CaptureScreenProps) {
+  const { t } = useTranslation('caregiver');
   const {
     step,
     mood,
@@ -64,14 +66,14 @@ export function CaptureScreen({
         role="alert"
       >
         <p className="text-sm text-[#7A4A20]">
-          연결된 환자가 없습니다. 관리자에게 연결을 요청해주세요.
+          {t('captureScreen.noPatientTitle')}
         </p>
         <button
           type="button"
           onClick={onCancel}
           className="mt-4 rounded-xl bg-white px-5 py-2 text-sm font-medium text-muted-sage hover:bg-canvas"
         >
-          돌아가기
+          {t('captureScreen.back')}
         </button>
       </div>
     );
@@ -144,9 +146,9 @@ export function CaptureScreen({
           type="button"
           onClick={onCancel}
           className="text-xs text-muted-sage transition-colors hover:text-[#3F4A44]"
-          aria-label="캡처 취소"
+          aria-label={t('captureScreen.cancelAria')}
         >
-          취소하고 목록으로
+          {t('captureScreen.cancel')}
         </button>
       </div>
     </div>
@@ -160,6 +162,7 @@ interface StepIndicatorProps {
 }
 
 function StepIndicator({ step }: StepIndicatorProps) {
+  const { t } = useTranslation('caregiver');
   // submitting/done은 시각상 무의미하므로 placeholder 처리
   const stepOrder: CaptureStep[] = ['mood', 'myDay', 'patientDay'];
   const currentIndex = stepOrder.indexOf(step);
@@ -172,7 +175,7 @@ function StepIndicator({ step }: StepIndicatorProps) {
       aria-valuenow={safeIndex + 1}
       aria-valuemin={1}
       aria-valuemax={stepOrder.length}
-      aria-label={`진행 단계 ${safeIndex + 1} / ${stepOrder.length}`}
+      aria-label={t('captureScreen.stepAria', { step: safeIndex + 1, total: stepOrder.length })}
     >
       {stepOrder.map((s, i) => (
         <div key={s} className="flex items-center gap-2">
@@ -200,6 +203,7 @@ function StepIndicator({ step }: StepIndicatorProps) {
 }
 
 function SubmittingOverlay() {
+  const { t } = useTranslation('caregiver');
   return (
     <div
       className="font-pretendard fixed inset-0 z-50 flex flex-col items-center justify-center bg-canvas/95 backdrop-blur-sm"
@@ -211,10 +215,10 @@ function SubmittingOverlay() {
         aria-hidden="true"
       />
       <p className="text-lg font-medium text-ink-sage">
-        AI가 문제를 만들고 있어요
+        {t('captureScreen.aiGenerating')}
       </p>
       <p className="mt-2 text-sm text-muted-sage">
-        잠시만 기다려주세요. 보통 10~20초 정도 걸려요.
+        {t('captureScreen.aiGeneratingSub')}
       </p>
     </div>
   );
@@ -236,6 +240,7 @@ interface DoneCardProps {
  *   timeout     → "조금 더 걸리고 있어요" + "다시 확인"
  */
 function DoneCard({ memoryEntryId, quizExpected, onBack }: DoneCardProps) {
+  const { t } = useTranslation('caregiver');
   const { status, error, retry } = useQuizGenerationStatus(
     memoryEntryId,
     quizExpected,
@@ -246,8 +251,8 @@ function DoneCard({ memoryEntryId, quizExpected, onBack }: DoneCardProps) {
   const isTimeout = status === 'timeout';
 
   const headline = isFailed
-    ? '문제 만들기에 실패했어요'
-    : '오늘의 일기가 저장되었어요';
+    ? t('captureScreen.doneFailedHeadline')
+    : t('captureScreen.doneSavedHeadline');
 
   const bgClass = isFailed ? 'bg-accent-soft' : 'bg-primary-light';
   const iconBgClass = isFailed ? 'bg-accent' : 'bg-primary';
@@ -255,16 +260,16 @@ function DoneCard({ memoryEntryId, quizExpected, onBack }: DoneCardProps) {
 
   let body: string;
   if (isFailed) {
-    body = error ?? '문제 생성 중 오류가 발생했어요. 다시 시도해주세요.';
+    body = error ?? t('captureScreen.doneFailedBodyFallback');
   } else if (isPending) {
-    body = 'AI가 환자분의 문제를 만들고 있어요. 잠시만 기다려주세요.';
+    body = t('captureScreen.donePendingBody');
   } else if (isTimeout) {
-    body = '문제 만들기가 조금 더 걸리고 있어요. 잠시 후 환자 화면에서 확인할 수 있어요.';
+    body = t('captureScreen.doneTimeoutBody');
   } else {
     // idle(퀴즈 미기대) 또는 ready
     body = quizExpected
-      ? '환자분이 풀 수 있는 문제가 도착했어요.'
-      : '오늘의 기록이 저장되었어요.';
+      ? t('captureScreen.doneReadyBody')
+      : t('captureScreen.doneIdleBody');
   }
 
   return (
@@ -292,9 +297,9 @@ function DoneCard({ memoryEntryId, quizExpected, onBack }: DoneCardProps) {
             type="button"
             onClick={retry}
             className="rounded-xl bg-primary px-6 py-3 text-sm font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark"
-            aria-label={isFailed ? '문제 다시 만들기' : '생성 상태 다시 확인'}
+            aria-label={isFailed ? t('captureScreen.retryAria') : t('captureScreen.retryCheckAria')}
           >
-            {isFailed ? '다시 만들기' : '다시 확인'}
+            {isFailed ? t('captureScreen.retry') : t('captureScreen.retryCheck')}
           </button>
         )}
         <button
@@ -305,9 +310,9 @@ function DoneCard({ memoryEntryId, quizExpected, onBack }: DoneCardProps) {
               ? 'rounded-xl bg-white px-6 py-3 text-sm font-medium text-muted-sage transition-colors hover:bg-canvas'
               : 'rounded-xl bg-primary px-6 py-3 text-sm font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark'
           }
-          aria-label="대시보드로 돌아가기"
+          aria-label={t('captureScreen.backToDashboardAria')}
         >
-          대시보드로
+          {t('captureScreen.backToDashboard')}
         </button>
       </div>
     </section>

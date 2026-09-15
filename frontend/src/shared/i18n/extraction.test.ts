@@ -49,6 +49,12 @@ const EXTRACTED_FILES = [
   'memory-link/caregiver/presentation/SkillLevelCard.tsx',
   'memory-link/caregiver/presentation/SessionCompletionCard.tsx',
   'memory-link/caregiver/presentation/SettingsScreen.tsx',
+  // caregiver/presentation 배치 B (5개 파일 — 나머지 5개는 배치 C)
+  'memory-link/caregiver/presentation/AccountLinkScreen.tsx',
+  'memory-link/caregiver/presentation/EntryListScreen.tsx',
+  'memory-link/caregiver/presentation/CaptureScreen.tsx',
+  'memory-link/caregiver/presentation/SpeechConsentScreen.tsx',
+  'memory-link/caregiver/presentation/CaregiverDashboard.tsx',
 ];
 
 const SRC = join(process.cwd(), 'src');

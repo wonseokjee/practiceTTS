@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { useAuth } from '../../shared/AuthContext.js';
 import { DailyHealingBanner } from '../../shared/components/DailyHealingBanner.js';
 import { useCaptureFlow } from '../application/useCaptureFlow.js';
@@ -12,7 +13,7 @@ import { QabProgressCard } from './QabProgressCard.js';
 import { SessionCompletionCard } from './SessionCompletionCard.js';
 import { SkillLevelCard } from './SkillLevelCard.js';
 import { WeeklyReportScreen } from './WeeklyReportScreen.js';
-import { withHonorific } from '../../shared/honorific.js';
+import { withHonorific, ELDER_HONORIFIC } from '../../shared/honorific.js';
 import { isConversationModeEnabled } from '../../shared/featureFlags.js';
 
 /** 대시보드 화면 상태 */
@@ -22,21 +23,26 @@ type DashboardView = 'list' | 'capture' | 'detail' | 'report' | 'settings';
  * 소셜 계정 연결 콜백 복귀(/caregiver?linked=..|?linkError=..)를 배너 알림으로.
  * 백엔드 handleSocialCallback이 리다이렉트에 실어 보내는 값과 짝을 맞춘다.
  */
-function parseLinkNotice(search: string): AccountLinkNotice | null {
+function parseLinkNotice(
+  t: (key: string, opts?: Record<string, unknown>) => string,
+  search: string,
+): AccountLinkNotice | null {
   const params = new URLSearchParams(search);
   const linked = params.get('linked');
   if (linked === 'kakao' || linked === 'google') {
-    const label = linked === 'kakao' ? '카카오' : '구글';
-    return { kind: 'success', text: `${label} 계정을 연결했어요.` };
+    const provider = t(
+      linked === 'kakao' ? 'accountLink.providerKakao' : 'accountLink.providerGoogle',
+    );
+    return { kind: 'success', text: t('dashboard.linkSuccess', { provider }) };
   }
   const err = params.get('linkError');
   if (err) {
     const text =
       err === 'conflict'
-        ? '이미 다른 계정에 연결된 소셜 계정이에요.'
+        ? t('dashboard.linkErrorConflict')
         : err === 'state' || err === 'expired'
-          ? '요청이 만료됐어요. 다시 시도해 주세요.'
-          : '연결에 실패했어요. 다시 시도해 주세요.';
+          ? t('dashboard.linkErrorExpired')
+          : t('dashboard.linkErrorGeneric');
     return { kind: 'error', text };
   }
   return null;
@@ -49,6 +55,7 @@ function parseLinkNotice(search: string): AccountLinkNotice | null {
  * - useCaptureFlow: 3단계 생성 플로우
  */
 export function CaregiverDashboard() {
+  const { t } = useTranslation('caregiver');
   const { user, logout, enterPatientMode } = useAuth();
   const [view, setView] = useState<DashboardView>('list');
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
@@ -62,11 +69,13 @@ export function CaregiverDashboard() {
   // URL의 쿼리는 지운다(새로고침·뒤로가기 시 배너가 다시 뜨지 않게).
   // 배너가 있으면 SettingsScreen이 계정 섹션으로 스크롤한다.
   useEffect(() => {
-    const notice = parseLinkNotice(window.location.search);
+    const notice = parseLinkNotice(t, window.location.search);
     if (!notice) return;
     setAccountNotice(notice);
     setView('settings');
     window.history.replaceState(null, '', window.location.pathname);
+    // URL 쿼리는 마운트 시 1회만 읽으면 된다 — t는 의존성에서 제외.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // patientId가 없는 보호자는 기능 사용 불가
@@ -120,20 +129,24 @@ export function CaregiverDashboard() {
     return (
       <div className="min-h-screen bg-canvas flex flex-col items-center justify-center px-4">
         <div className="w-full max-w-lg bg-white rounded-3xl shadow-[0_10px_30px_rgba(0,0,0,0.08)] p-8 text-center">
-          <h1 className="text-2xl font-bold text-ink mb-2">보호자 대시보드</h1>
+          <h1 className="text-2xl font-bold text-ink mb-2">{t('dashboard.title')}</h1>
           <p className="text-muted-sage mb-4">
-            안녕하세요,{' '}
-            <span className="font-medium text-ink">{user?.displayName}</span>님
+            <Trans
+              t={t}
+              i18nKey="dashboard.greeting"
+              values={{ name: user?.displayName }}
+              components={{ b: <span className="font-medium text-ink" /> }}
+            />
           </p>
           <p className="text-sm text-[#8a5a1a] bg-warning/12 border border-warning/35 rounded-2xl p-3 mb-6">
-            연결된 환자가 없습니다. 관리자에게 환자 연결을 요청해주세요.
+            {t('dashboard.noPatientMessage')}
           </p>
           <button
             type="button"
             onClick={logout}
             className="min-h-[44px] px-6 py-2 bg-primary-light text-primary rounded-full hover:bg-[#dcebe4] transition-colors text-sm font-medium"
           >
-            로그아웃
+            {t('settings.logout')}
           </button>
         </div>
       </div>
@@ -153,17 +166,17 @@ export function CaregiverDashboard() {
               setView('settings');
             }}
             className="min-h-[44px] rounded-full border border-primary px-4 py-2 text-sm font-medium text-primary transition-colors duration-[180ms] ease-out hover:bg-primary-light"
-            aria-label="설정 (환자 정보·계정)"
+            aria-label={t('dashboard.settingsAria')}
           >
-            설정
+            {t('settings.title')}
           </button>
           <button
             type="button"
             onClick={enterPatientMode}
             className="min-h-[44px] rounded-full bg-primary px-4 py-2 text-sm font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark"
-            aria-label="환자에게 기기 건네기 (환자 모드로 전환)"
+            aria-label={t('dashboard.handOverAria')}
           >
-            환자에게 건네기
+            {t('dashboard.handOverButton')}
           </button>
           <span className="hidden text-sm text-muted-sage sm:inline">
             {user?.displayName}
@@ -179,17 +192,21 @@ export function CaregiverDashboard() {
             {/* 환자 인사 */}
             <div className="mb-5">
               <h2 className="text-2xl font-bold text-ink">
-                {withHonorific(user?.patientDisplayName, '어르신')}
+                {withHonorific(user?.patientDisplayName, ELDER_HONORIFIC)}
               </h2>
-              <p className="mt-1 text-sm text-muted-sage">오늘도 함께해요</p>
+              <p className="mt-1 text-sm text-muted-sage">{t('dashboard.patientGreetingSub')}</p>
             </div>
 
             {/* 요약 통계 카드 */}
             <div className="mb-4 flex gap-3">
-              <StatCard label="등록한 기억" value={`${entries.length}`} unit="개" />
+              <StatCard
+                label={t('dashboard.statMemories')}
+                value={`${entries.length}`}
+                unit={t('dashboard.statMemoriesUnit') || undefined}
+              />
               {isConversationModeEnabled() && (
                 <StatCard
-                  label="훈련 준비"
+                  label={t('dashboard.statReady')}
                   value={`${readyCount}`}
                   unit={`/ ${entries.length}`}
                 />
@@ -205,12 +222,10 @@ export function CaregiverDashboard() {
                 role="status"
               >
                 <p className="text-sm font-medium text-accent-ink">
-                  대화를 시작하려면 준비가 조금 더 필요해요
+                  {t('dashboard.needsSetupTitle')}
                 </p>
                 <p className="mt-1 text-xs text-muted-sage">
-                  기억 {needsSetupCount}개가 목표 단어 등록과 시나리오 생성을
-                  기다리고 있어요. 아래 목록에서 기억을 눌러 이어서 준비해
-                  주세요.
+                  {t('dashboard.needsSetupBody', { count: needsSetupCount })}
                 </p>
               </div>
             )}
@@ -220,9 +235,9 @@ export function CaregiverDashboard() {
               type="button"
               onClick={handleAddNew}
               className="mb-6 flex w-full min-h-[56px] items-center justify-center gap-2 rounded-full bg-accent-strong text-lg font-bold text-white shadow-[0_8px_20px_rgba(184,92,54,0.35)] transition hover:bg-accent-hover active:scale-[0.99]"
-              aria-label="오늘의 기억 추가"
+              aria-label={t('dashboard.addMemoryAria')}
             >
-              ＋ 오늘의 기억 추가
+              {t('dashboard.addMemoryButton')}
             </button>
 
             {/* 오늘의 치유 메시지 (Pattern 2) */}
@@ -248,7 +263,7 @@ export function CaregiverDashboard() {
         {/* 생성 플로우 화면 */}
         {view === 'capture' && (
           <div>
-            <h2 className="text-lg font-bold text-ink mb-4">새 기억 추가</h2>
+            <h2 className="text-lg font-bold text-ink mb-4">{t('dashboard.newCaptureTitle')}</h2>
             <CaptureScreen
               patientId={patientId}
               flow={captureFlow}

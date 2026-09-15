@@ -11,6 +11,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth, type SocialProvider } from '../../shared/AuthContext.js';
 import { API_BASE_URL, memoryLinkApi } from '../../shared/MemoryLinkApi.js';
 import {
@@ -34,29 +35,30 @@ interface AccountLinkScreenProps {
   embedded?: boolean;
 }
 
-const PROVIDER_META: Record<
-  SocialProvider,
-  { label: string; className: string }
-> = {
+const PROVIDER_META: Record<SocialProvider, { className: string }> = {
   kakao: {
-    label: '카카오',
     className: 'bg-[#FEE500] text-[#191600]',
   },
   google: {
-    label: '구글',
     className: 'border border-[#DADCE0] bg-white text-[#3C4043]',
   },
 };
+
+function providerLabelKey(provider: SocialProvider): string {
+  return provider === 'kakao' ? 'accountLink.providerKakao' : 'accountLink.providerGoogle';
+}
 
 const ALL_PROVIDERS: SocialProvider[] = ['kakao', 'google'];
 
 export function AccountLinkScreen({
   onBack,
   notice,
-  backLabel = '목록으로',
+  backLabel,
   embedded = false,
 }: AccountLinkScreenProps) {
+  const { t } = useTranslation('caregiver');
   const { user, refreshUser } = useAuth();
+  const label = backLabel ?? t('nav.listLabel');
   const [banner, setBanner] = useState<AccountLinkNotice | null>(
     notice ?? null,
   );
@@ -81,7 +83,7 @@ export function AccountLinkScreen({
       setBusyProvider(null);
       setBanner({
         kind: 'error',
-        text: '연결을 시작하지 못했어요. 잠시 후 다시 시도해 주세요.',
+        text: t('accountLink.connectStartFailed'),
       });
     }
   };
@@ -94,7 +96,9 @@ export function AccountLinkScreen({
       await refreshUser();
       setBanner({
         kind: 'success',
-        text: `${PROVIDER_META[provider].label} 연결을 해제했어요.`,
+        text: t('accountLink.disconnectSuccess', {
+          provider: t(providerLabelKey(provider)),
+        }),
       });
     } catch (err) {
       // 403: 마지막 로그인 수단은 해제 불가. 그 외는 일반 오류.
@@ -106,8 +110,8 @@ export function AccountLinkScreen({
         kind: 'error',
         text:
           status === 403
-            ? '마지막 로그인 수단은 해제할 수 없어요.'
-            : '연결 해제에 실패했어요. 잠시 후 다시 시도해 주세요.',
+            ? t('accountLink.onlyLinkTitle')
+            : t('accountLink.disconnectFailed'),
       });
     } finally {
       setBusyProvider(null);
@@ -121,17 +125,16 @@ export function AccountLinkScreen({
           type="button"
           onClick={onBack}
           className="mb-4 flex items-center gap-1 text-sm text-muted-sage transition-colors hover:text-primary"
-          aria-label={`${backLabel}(으)로 돌아가기`}
+          aria-label={t('nav.backAria', { label })}
         >
-          ← {backLabel}
+          ← {label}
         </button>
       )}
 
       <header className="mb-6">
-        <h2 className="text-2xl font-bold text-primary">연결된 계정</h2>
+        <h2 className="text-2xl font-bold text-primary">{t('accountLink.title')}</h2>
         <p className="mt-2 text-sm text-muted-sage">
-          카카오·구글을 연결해 두면 어느 걸로 로그인해도 같은 계정으로 들어와요.
-          연결이 갈라지면 등록한 기억·기록이 나뉘어 보일 수 있어요.
+          {t('accountLink.subtitle')}
         </p>
       </header>
 
@@ -175,10 +178,10 @@ export function AccountLinkScreen({
                 </span>
                 <div>
                   <p className="text-sm font-medium text-ink-sage">
-                    {meta.label}
+                    {t(providerLabelKey(provider))}
                   </p>
                   <p className="text-xs text-muted-sage">
-                    {isLinked ? '연결됨' : '연결 안 됨'}
+                    {isLinked ? t('accountLink.linked') : t('accountLink.notLinked')}
                   </p>
                 </div>
               </div>
@@ -189,11 +192,11 @@ export function AccountLinkScreen({
                   onClick={() => void handleDisconnect(provider)}
                   disabled={isBusy || isOnlyLink}
                   title={
-                    isOnlyLink ? '마지막 로그인 수단은 해제할 수 없어요.' : undefined
+                    isOnlyLink ? t('accountLink.onlyLinkTitle') : undefined
                   }
                   className="min-h-[40px] rounded-full border border-line-strong px-4 text-sm font-medium text-muted-sage transition-colors hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {isBusy ? '처리 중…' : '연결 해제'}
+                  {isBusy ? t('accountLink.disconnectBusy') : t('accountLink.disconnect')}
                 </button>
               ) : (
                 <button
@@ -202,7 +205,7 @@ export function AccountLinkScreen({
                   disabled={isBusy}
                   className="min-h-[40px] rounded-full bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {isBusy ? '이동 중…' : '연결하기'}
+                  {isBusy ? t('accountLink.connectBusy') : t('accountLink.connect')}
                 </button>
               )}
             </li>
