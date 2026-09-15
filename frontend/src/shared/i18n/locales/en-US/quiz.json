@@ -146,5 +146,12 @@
     "hintFirstChar": "Hint: it starts with <b>{{char}}</b>",
     "answer": "Answer: {{answer}}",
     "revealAnswer": "Show the answer"
+  },
+  "sttError": {
+    "micStartFailed": "We couldn't start the microphone. Please check permissions.",
+    "recordingFailed": "We couldn't process that recording. Please try again.",
+    "noResult": "We didn't catch that. Please try speaking again.",
+    "serverConnectFailed": "We couldn't reach the speech recognition server. Please try again shortly.",
+    "pronunciationServerConnectFailed": "We couldn't reach the pronunciation server. Please try again shortly."
   }
 }

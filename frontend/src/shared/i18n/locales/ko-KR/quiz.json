@@ -143,5 +143,12 @@
     "hintFirstChar": "힌트: 첫 글자는 <b>{{char}}</b>",
     "answer": "정답: {{answer}}",
     "revealAnswer": "정답 보기"
+  },
+  "sttError": {
+    "micStartFailed": "마이크를 시작할 수 없습니다. 권한을 확인해주세요.",
+    "recordingFailed": "녹음을 처리하지 못했습니다. 다시 시도해주세요.",
+    "noResult": "음성을 인식하지 못했습니다. 다시 말씀해주세요.",
+    "serverConnectFailed": "음성 인식 서버에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.",
+    "pronunciationServerConnectFailed": "발음 평가 서버에 연결하지 못했습니다. 잠시 후 다시 시도해주세요."
   }
 }

@@ -65,5 +65,13 @@
   },
   "healingBanner": {
     "title": "Today's message"
+  },
+  "errors": {
+    "invalidServerResponse": "The server sent back an unexpected response.",
+    "invalidUserResponse": "The server sent back unexpected account info.",
+    "networkUnavailable": "We couldn't reach the server. Please try again shortly.",
+    "requestFailed": "Something went wrong processing that request.",
+    "unknown": "Something went wrong.",
+    "dailyLimitFallback": "That's it for today. Let's pick back up tomorrow."
   }
 }

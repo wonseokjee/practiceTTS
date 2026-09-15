@@ -100,5 +100,17 @@
     "micHint": "Press the button and start speaking",
     "giveUpAria": "Stop training",
     "giveUp": "Stop training"
+  },
+  "sttError": {
+    "notSupported": "This browser doesn't support speech recognition. We recommend using Chrome.",
+    "startFailed": "We couldn't start speech recognition. Please check your microphone permission.",
+    "noResult": "We didn't catch that. Please try speaking again.",
+    "lowConfidence": "That wasn't clear (recognized at {{percent}}%). Please try speaking again.",
+    "noSpeech": "We didn't detect any speech. Please speak closer to the microphone.",
+    "audioCapture": "We couldn't find a microphone. Please check your microphone connection.",
+    "notAllowed": "Microphone access was denied. Please allow it in your browser settings.",
+    "network": "A network error occurred. Please check your connection.",
+    "serviceNotAllowed": "Speech recognition isn't available right now.",
+    "unknown": "Speech recognition error: {{error}}"
   }
 }
