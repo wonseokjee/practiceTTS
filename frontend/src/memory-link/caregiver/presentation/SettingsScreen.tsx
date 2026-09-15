@@ -7,6 +7,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../shared/AuthContext.js';
 import { ProfileScreen } from './ProfileScreen.js';
 import { AccountLinkScreen } from './AccountLinkScreen.js';
@@ -23,6 +24,7 @@ interface SettingsScreenProps {
 }
 
 export function SettingsScreen({ onBack, accountNotice }: SettingsScreenProps) {
+  const { t } = useTranslation('caregiver');
   const { logout } = useAuth();
   // 소셜 연결 복귀면 계정 화면으로 바로 들어가 결과 배너를 보여준다.
   const [section, setSection] = useState<Section>(
@@ -31,20 +33,20 @@ export function SettingsScreen({ onBack, accountNotice }: SettingsScreenProps) {
 
   if (section === 'patient') {
     return (
-      <ProfileScreen onBack={() => setSection('menu')} backLabel="설정" />
+      <ProfileScreen onBack={() => setSection('menu')} backLabel={t('settings.title')} />
     );
   }
   if (section === 'account') {
     return (
       <AccountLinkScreen
         onBack={() => setSection('menu')}
-        backLabel="설정"
+        backLabel={t('settings.title')}
         notice={accountNotice}
       />
     );
   }
   if (section === 'speech') {
-    return <SpeechConsentScreen onBack={() => setSection('menu')} backLabel="설정" />;
+    return <SpeechConsentScreen onBack={() => setSection('menu')} backLabel={t('settings.title')} />;
   }
 
   return (
@@ -53,39 +55,39 @@ export function SettingsScreen({ onBack, accountNotice }: SettingsScreenProps) {
         type="button"
         onClick={onBack}
         className="mb-4 flex items-center gap-1 text-sm text-muted-sage transition-colors hover:text-primary"
-        aria-label="목록으로 돌아가기"
+        aria-label={t('settings.backToListAria')}
       >
-        ← 목록으로
+        {t('settings.backToList')}
       </button>
 
       <header className="mb-6">
-        <h2 className="text-2xl font-bold text-primary">설정</h2>
+        <h2 className="text-2xl font-bold text-primary">{t('settings.title')}</h2>
       </header>
 
       <div className="flex flex-col gap-3">
         <SettingCard
-          title="환자 정보"
-          description="고향·직업·가족 등 어르신 정보 편집"
+          title={t('settings.patientInfoTitle')}
+          description={t('settings.patientInfoDesc')}
           onClick={() => setSection('patient')}
         />
         <SettingCard
-          title="계정"
-          description="카카오·구글 로그인 연결 관리"
+          title={t('settings.accountTitle')}
+          description={t('settings.accountDesc')}
           onClick={() => setSection('account')}
         />
         <SettingCard
-          title="음성 데이터 제공"
-          description="발화 저장 동의·삭제 (음성 인식 개선용)"
+          title={t('settings.speechTitle')}
+          description={t('settings.speechDesc')}
           onClick={() => setSection('speech')}
         />
-        <SettingCard title="로그아웃" onClick={logout} danger />
+        <SettingCard title={t('settings.logout')} onClick={logout} danger />
       </div>
 
       {/* 오픈소스 그림 출처 — 단어이해 픽토그램에 Microsoft Fluent Emoji(MIT) 사용.
           MIT는 앱 내 표기 의무가 없으나(라이선스 고지는 저장소 NOTICE로 충족),
           출처를 밝히는 것은 예의라 가볍게 노출한다. */}
       <footer className="mt-8 border-t border-line pt-4 text-center text-xs text-muted-sage">
-        일부 그림:{' '}
+        {t('settings.footerCredit')}{' '}
         <a
           href="https://github.com/microsoft/fluentui-emoji"
           target="_blank"

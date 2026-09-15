@@ -1,0 +1,53 @@
+{
+  "captureFlow": {
+    "next": "다음",
+    "nextAria": "다음 단계로 이동",
+    "prev": "이전",
+    "prevAria": "이전 단계로"
+  },
+  "moodStep": {
+    "title": "오늘 본인의 마음은 어떠셨나요?",
+    "subtitle": "1초 안에 가까운 표정을 골라주세요.",
+    "groupAria": "오늘의 마음 5단계"
+  },
+  "myDayStep": {
+    "title": "나의 하루",
+    "privacyCaption": "여기에 적은 답은 보호자 본인만 볼 수 있어요.",
+    "loadingQuestion": "질문을 불러오는 중입니다…",
+    "answerInputSrLabel": "보호자 자기 답변 입력",
+    "answerPlaceholder": "자유롭게 적어주세요 (선택)",
+    "answerAria": "나의 하루 답변",
+    "skip": "건너뛰기",
+    "skipAria": "이 단계 건너뛰기"
+  },
+  "skillLevel": {
+    "sectionAria": "스킬별 연습 눈높이",
+    "title": "연습 눈높이",
+    "subtitle": "스킬마다 지금 어느 난이도에서 연습 중인지예요. 잘하는 만큼 눈높이가 올라가고, 어려우면 부드럽게 내려가 늘 알맞은 난이도로 맞춰져요.",
+    "dotsAria": "{{label}} 눈높이 {{level}}단계 / {{max}}",
+    "excludedNote": "난이도를 단계로 나눌 수 있는 검사만 여기 나와요. ({{excluded}} 제외)",
+    "levelSuffix": "{{level}}단계"
+  },
+  "sessionCompletion": {
+    "sectionAria": "연습 마무리",
+    "title": "연습 마무리",
+    "subtitle": "시작한 연습 중 끝까지 마친 비율이에요. 중간에 그만둔 연습도 푼 문항까지는 기록에 남아 있어요.",
+    "summary": "최근 {{days}}일 · 시작 {{started}}회 중 {{completed}}회 완료",
+    "progressAria": "완료율 {{rate}}퍼센트",
+    "dropoffNote": "중간에 그만둔 연습은 평균 <b>{{items}}문항</b>까지 진행했어요. 자꾸 비슷한 지점에서 멈춘다면 그때쯤 힘들어진다는 뜻이에요.",
+    "streakDisclaimer": "환자 홈의 ‘연습한 날’은 한 문항이라도 푼 날을 세요. 여기 완료율과는 기준이 달라요."
+  },
+  "settings": {
+    "backToList": "← 목록으로",
+    "backToListAria": "목록으로 돌아가기",
+    "title": "설정",
+    "patientInfoTitle": "환자 정보",
+    "patientInfoDesc": "고향·직업·가족 등 어르신 정보 편집",
+    "accountTitle": "계정",
+    "accountDesc": "카카오·구글 로그인 연결 관리",
+    "speechTitle": "음성 데이터 제공",
+    "speechDesc": "발화 저장 동의·삭제 (음성 인식 개선용)",
+    "logout": "로그아웃",
+    "footerCredit": "일부 그림:"
+  }
+}

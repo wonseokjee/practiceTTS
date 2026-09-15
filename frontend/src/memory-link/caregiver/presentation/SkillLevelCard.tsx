@@ -6,6 +6,7 @@
 // 환자에겐 이 레벨을 노출하지 않는다(강등 비가시). 보호자에게만 담담히 보여준다.
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { quizApi } from '../../patient/quiz/infrastructure/QuizApi.js';
 import type { SkillLevels } from '../../patient/quiz/domain/QabResult.js';
 import {
@@ -26,12 +27,13 @@ type LoadState = 'loading' | 'ready' | 'error';
 
 /** 눈높이 5단계 점 표시(현재 레벨까지 세이지, 나머지 테두리). danger 색 없음. */
 function LevelDots({ level, label }: { level: number; label: string }) {
+  const { t } = useTranslation('caregiver');
   const clamped = Math.max(1, Math.min(MAX_LEVEL, level));
   return (
     <span
       className="flex items-center gap-1"
       role="img"
-      aria-label={`${label} 눈높이 ${clamped}단계 / ${MAX_LEVEL}`}
+      aria-label={t('skillLevel.dotsAria', { label, level: clamped, max: MAX_LEVEL })}
     >
       {Array.from({ length: MAX_LEVEL }, (_, i) => (
         <span
@@ -47,6 +49,7 @@ function LevelDots({ level, label }: { level: number; label: string }) {
 }
 
 export function SkillLevelCard({ fetchLevels }: SkillLevelCardProps) {
+  const { t } = useTranslation('caregiver');
   const [state, setState] = useState<LoadState>('loading');
   const [levels, setLevels] = useState<Record<string, number>>({});
 
@@ -73,12 +76,11 @@ export function SkillLevelCard({ fetchLevels }: SkillLevelCardProps) {
   return (
     <section
       className="mb-6 rounded-2xl border border-line-soft bg-white p-5"
-      aria-label="스킬별 연습 눈높이"
+      aria-label={t('skillLevel.sectionAria')}
     >
-      <h2 className="mb-1 text-base font-bold text-ink-sage">연습 눈높이</h2>
+      <h2 className="mb-1 text-base font-bold text-ink-sage">{t('skillLevel.title')}</h2>
       <p className="mb-4 text-sm text-muted-sage">
-        스킬마다 지금 어느 난이도에서 연습 중인지예요. 잘하는 만큼 눈높이가
-        올라가고, 어려우면 부드럽게 내려가 늘 알맞은 난이도로 맞춰져요.
+        {t('skillLevel.subtitle')}
       </p>
 
       {/*
@@ -96,8 +98,9 @@ export function SkillLevelCard({ fetchLevels }: SkillLevelCardProps) {
       */}
       {NON_LEVELED_SUBTESTS.length > 0 && (
         <p className="mb-4 text-sm text-muted-sage">
-          난이도를 단계로 나눌 수 있는 검사만 여기 나와요. (
-          {NON_LEVELED_SUBTESTS.map(subtestLabel).join(' · ')} 제외)
+          {t('skillLevel.excludedNote', {
+            excluded: NON_LEVELED_SUBTESTS.map(subtestLabel).join(' · '),
+          })}
         </p>
       )}
 
@@ -116,7 +119,7 @@ export function SkillLevelCard({ fetchLevels }: SkillLevelCardProps) {
               <span className="flex items-center gap-2">
                 <LevelDots level={lvl} label={label} />
                 <span className="w-14 text-right text-sm tabular-nums text-muted-sage">
-                  {lvl}단계
+                  {t('skillLevel.levelSuffix', { level: lvl })}
                 </span>
               </span>
             </li>

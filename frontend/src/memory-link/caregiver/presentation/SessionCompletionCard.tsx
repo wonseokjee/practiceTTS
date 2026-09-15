@@ -9,6 +9,7 @@
 // 칠하지 않는다 — 환자가 게을러서가 아니라 연습이 길거나 어려웠다는 신호다.
 
 import { useEffect, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { quizApi } from '../../patient/quiz/infrastructure/QuizApi.js';
 import type { SessionStats } from '../../patient/quiz/domain/QabResult.js';
 
@@ -25,6 +26,7 @@ type LoadState = 'loading' | 'ready' | 'error';
 export function SessionCompletionCard({
   fetchStats,
 }: SessionCompletionCardProps) {
+  const { t } = useTranslation('caregiver');
   const [state, setState] = useState<LoadState>('loading');
   const [stats, setStats] = useState<SessionStats | null>(null);
 
@@ -56,12 +58,11 @@ export function SessionCompletionCard({
   return (
     <section
       className="mb-6 rounded-2xl border border-line-soft bg-white p-5"
-      aria-label="연습 마무리"
+      aria-label={t('sessionCompletion.sectionAria')}
     >
-      <h2 className="mb-1 text-base font-bold text-ink-sage">연습 마무리</h2>
+      <h2 className="mb-1 text-base font-bold text-ink-sage">{t('sessionCompletion.title')}</h2>
       <p className="mb-4 text-sm text-muted-sage">
-        시작한 연습 중 끝까지 마친 비율이에요. 중간에 그만둔 연습도 푼 문항까지는
-        기록에 남아 있어요.
+        {t('sessionCompletion.subtitle')}
       </p>
 
       <div className="mb-3 flex items-baseline gap-2">
@@ -69,8 +70,11 @@ export function SessionCompletionCard({
           {rate}%
         </span>
         <span className="text-sm text-muted-sage">
-          최근 {WINDOW_DAYS}일 · 시작 {stats.started}회 중 {stats.completed}회
-          완료
+          {t('sessionCompletion.summary', {
+            days: WINDOW_DAYS,
+            started: stats.started,
+            completed: stats.completed,
+          })}
         </span>
       </div>
 
@@ -78,7 +82,7 @@ export function SessionCompletionCard({
       <div
         className="mb-3 h-2 w-full overflow-hidden rounded-full bg-[#EDEEEA]"
         role="img"
-        aria-label={`완료율 ${rate}퍼센트`}
+        aria-label={t('sessionCompletion.progressAria', { rate })}
       >
         <div
           className="h-full rounded-full bg-primary transition-[width] duration-[250ms] ease-in-out"
@@ -88,21 +92,20 @@ export function SessionCompletionCard({
 
       {stats.avgItemsBeforeDropoff !== null && (
         <p className="mb-2 text-sm text-muted-sage">
-          중간에 그만둔 연습은 평균{' '}
-          <span className="font-medium tabular-nums text-ink-sage">
-            {stats.avgItemsBeforeDropoff}문항
-          </span>
-          까지 진행했어요. 자꾸 비슷한 지점에서 멈춘다면 그때쯤 힘들어진다는
-          뜻이에요.
+          <Trans
+            t={t}
+            i18nKey="sessionCompletion.dropoffNote"
+            values={{ items: stats.avgItemsBeforeDropoff }}
+            components={{
+              b: <span className="font-medium tabular-nums text-ink-sage" />,
+            }}
+          />
         </p>
       )}
 
       {/* 스트릭과 기준이 다르다. 같은 화면에서 숫자가 어긋나 보이면 보호자가
           어느 쪽을 믿을지 몰라 한다 — 먼저 밝혀 둔다. */}
-      <p className="text-xs text-muted-sage">
-        환자 홈의 &lsquo;연습한 날&rsquo;은 한 문항이라도 푼 날을 세요. 여기
-        완료율과는 기준이 달라요.
-      </p>
+      <p className="text-xs text-muted-sage">{t('sessionCompletion.streakDisclaimer')}</p>
     </section>
   );
 }
