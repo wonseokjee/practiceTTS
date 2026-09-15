@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   FAMILY_RELATION_OPTIONS,
   FAMILY_RELATION_LABELS,
@@ -23,9 +24,11 @@ interface ProfileScreenProps {
  */
 export function ProfileScreen({
   onBack,
-  backLabel = '목록으로',
+  backLabel,
   embedded = false,
 }: ProfileScreenProps) {
+  const { t } = useTranslation('caregiver');
+  const label = backLabel ?? t('nav.listLabel');
   const { profile, isLoading, isSaving, error, save } = usePatientProfile();
 
   const [hometown, setHometown] = useState('');
@@ -70,7 +73,7 @@ export function ProfileScreen({
   if (isLoading) {
     return (
       <div className="flex min-h-[300px] items-center justify-center text-sm text-muted-sage">
-        불러오는 중...
+        {t('weeklyReport.loading')}
       </div>
     );
   }
@@ -82,18 +85,16 @@ export function ProfileScreen({
           type="button"
           onClick={onBack}
           className="mb-4 flex items-center gap-1 text-sm text-muted-sage transition-colors hover:text-primary"
-          aria-label={`${backLabel}(으)로 돌아가기`}
+          aria-label={t('nav.backAria', { label })}
         >
-          ← {backLabel}
+          ← {label}
         </button>
       )}
 
       <header className="mb-6">
-        <h2 className="text-2xl font-bold text-primary">환자 정보</h2>
+        <h2 className="text-2xl font-bold text-primary">{t('settings.patientInfoTitle')}</h2>
         <p className="mt-2 text-sm text-muted-sage">
-          가족과 추억의 장소를 등록하면, AI가 환자분의 이름·관계를 활용해 더 생생한
-          훈련 시나리오를 만들어 드려요. (실명은 안전하게 암호화되며 외부 AI에는
-          노출되지 않습니다.)
+          {t('profile.subtitle')}
         </p>
       </header>
 
@@ -108,24 +109,24 @@ export function ProfileScreen({
 
       {/* 기본 정보 */}
       <section className="mb-4 rounded-xl bg-white p-5">
-        <h3 className="mb-3 text-base font-medium text-ink-sage">기본 정보</h3>
+        <h3 className="mb-3 text-base font-medium text-ink-sage">{t('profile.basicInfoTitle')}</h3>
         <label className="mb-3 block">
-          <span className="mb-1 block text-xs font-medium text-muted-sage">고향</span>
+          <span className="mb-1 block text-xs font-medium text-muted-sage">{t('profile.hometownLabel')}</span>
           <input
             type="text"
             value={hometown}
             onChange={(e) => setHometown(e.target.value)}
-            placeholder="예: 강릉"
+            placeholder={t('profile.hometownPlaceholder')}
             className="w-full rounded-xl border border-line-strong bg-surface-soft p-3 text-sm text-ink-sage focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-muted-sage">직업</span>
+          <span className="mb-1 block text-xs font-medium text-muted-sage">{t('profile.occupationLabel')}</span>
           <input
             type="text"
             value={occupation}
             onChange={(e) => setOccupation(e.target.value)}
-            placeholder="예: 교사"
+            placeholder={t('profile.occupationPlaceholder')}
             className="w-full rounded-xl border border-line-strong bg-surface-soft p-3 text-sm text-ink-sage focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </label>
@@ -133,31 +134,31 @@ export function ProfileScreen({
 
       {/* 취미 */}
       <section className="mb-4 rounded-xl bg-white p-5">
-        <h3 className="mb-3 text-base font-medium text-ink-sage">취미</h3>
+        <h3 className="mb-3 text-base font-medium text-ink-sage">{t('profile.hobbiesTitle')}</h3>
         <ChipEditor
           items={hobbies}
           onChange={setHobbies}
-          placeholder="예: 등산 (입력 후 추가)"
-          label="취미 추가"
+          placeholder={t('profile.hobbiesPlaceholder')}
+          label={t('profile.hobbiesAddLabel')}
         />
       </section>
 
       {/* 의미있는 장소 */}
       <section className="mb-4 rounded-xl bg-white p-5">
         <h3 className="mb-3 text-base font-medium text-ink-sage">
-          의미 있는 장소
+          {t('profile.placesTitle')}
         </h3>
         <ChipEditor
           items={places}
           onChange={setPlaces}
-          placeholder="예: ○○공원 (입력 후 추가)"
-          label="의미 있는 장소 추가"
+          placeholder={t('profile.placesPlaceholder')}
+          label={t('profile.placesAddLabel')}
         />
       </section>
 
       {/* 가족 구성원 */}
       <section className="mb-4 rounded-xl bg-white p-5">
-        <h3 className="mb-3 text-base font-medium text-ink-sage">가족 구성원</h3>
+        <h3 className="mb-3 text-base font-medium text-ink-sage">{t('profile.familyTitle')}</h3>
         <FamilyEditor family={family} onChange={setFamily} />
       </section>
 
@@ -166,7 +167,7 @@ export function ProfileScreen({
           className="mb-3 text-center text-sm text-primary"
           role="status"
         >
-          저장되었습니다.
+          {t('profile.saved')}
         </p>
       )}
 
@@ -176,7 +177,7 @@ export function ProfileScreen({
         disabled={isSaving}
         className="w-full rounded-xl bg-primary px-8 py-3 text-base font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-disabled-surface"
       >
-        {isSaving ? '저장 중…' : '저장'}
+        {isSaving ? t('profile.saving') : t('profile.save')}
       </button>
     </div>
   );
@@ -193,6 +194,7 @@ interface ChipEditorProps {
 }
 
 function ChipEditor({ items, onChange, placeholder, label }: ChipEditorProps) {
+  const { t } = useTranslation('caregiver');
   const [draft, setDraft] = useState('');
 
   const add = () => {
@@ -225,7 +227,7 @@ function ChipEditor({ items, onChange, placeholder, label }: ChipEditorProps) {
           onClick={add}
           className="rounded-xl bg-primary-light px-4 text-sm font-medium text-primary transition-colors hover:bg-[#D9EAE3]"
         >
-          추가
+          {t('profile.add')}
         </button>
       </div>
       {items.length > 0 && (
@@ -240,7 +242,7 @@ function ChipEditor({ items, onChange, placeholder, label }: ChipEditorProps) {
                 type="button"
                 onClick={() => onChange(items.filter((i) => i !== item))}
                 className="text-muted-sage hover:text-accent-strong"
-                aria-label={`${item} 삭제`}
+                aria-label={t('profile.removeItemAria', { item })}
               >
                 ×
               </button>
@@ -260,6 +262,7 @@ interface FamilyEditorProps {
 }
 
 function FamilyEditor({ family, onChange }: FamilyEditorProps) {
+  const { t } = useTranslation('caregiver');
   const [relation, setRelation] = useState<FamilyRelation>('son');
   const [name, setName] = useState('');
   const [gender, setGender] = useState<Gender>('U');
@@ -279,7 +282,7 @@ function FamilyEditor({ family, onChange }: FamilyEditorProps) {
           value={relation}
           onChange={(e) => setRelation(e.target.value as FamilyRelation)}
           className="rounded-xl border border-line-strong bg-surface-soft p-3 text-sm text-ink-sage focus:border-primary focus:outline-none"
-          aria-label="관계 선택"
+          aria-label={t('profile.relationSelectAria')}
         >
           {FAMILY_RELATION_OPTIONS.map((r) => (
             <option key={r} value={r}>
@@ -297,26 +300,26 @@ function FamilyEditor({ family, onChange }: FamilyEditorProps) {
               add();
             }
           }}
-          placeholder="이름 (예: 민준)"
-          aria-label="가족 이름"
+          placeholder={t('profile.familyNamePlaceholder')}
+          aria-label={t('profile.familyNameAria')}
           className="min-w-[120px] flex-1 rounded-xl border border-line-strong bg-surface-soft p-3 text-sm text-ink-sage focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
         />
         <select
           value={gender}
           onChange={(e) => setGender(e.target.value as Gender)}
           className="rounded-xl border border-line-strong bg-surface-soft p-3 text-sm text-ink-sage focus:border-primary focus:outline-none"
-          aria-label="성별 선택"
+          aria-label={t('profile.genderSelectAria')}
         >
-          <option value="U">성별</option>
-          <option value="M">남</option>
-          <option value="F">여</option>
+          <option value="U">{t('profile.genderPlaceholderOption')}</option>
+          <option value="M">{t('profile.genderMale')}</option>
+          <option value="F">{t('profile.genderFemale')}</option>
         </select>
         <button
           type="button"
           onClick={add}
           className="rounded-xl bg-primary-light px-4 text-sm font-medium text-primary transition-colors hover:bg-[#D9EAE3]"
         >
-          추가
+          {t('profile.add')}
         </button>
       </div>
 
@@ -337,9 +340,9 @@ function FamilyEditor({ family, onChange }: FamilyEditorProps) {
                 type="button"
                 onClick={() => onChange(family.filter((_, i) => i !== idx))}
                 className="text-xs text-muted-sage underline hover:text-accent-strong"
-                aria-label={`${m.name} 삭제`}
+                aria-label={t('profile.removeItemAria', { item: m.name })}
               >
-                삭제
+                {t('profile.delete')}
               </button>
             </li>
           ))}

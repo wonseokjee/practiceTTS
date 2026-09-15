@@ -6,6 +6,7 @@
 // 검증: patientAnswers ≥ 1 OR photo (둘 다 없으면 "저장" 비활성)
 
 import { useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import type {
   DiaryQuestion,
   PatientCategory,
@@ -59,6 +60,7 @@ export function PatientDayStep({
   onSubmit,
   onRetryQuestions,
 }: PatientDayStepProps) {
+  const { t } = useTranslation('caregiver');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const nonEmptyAnswerCount = countNonEmptyAnswers(patientAnswers);
@@ -79,10 +81,10 @@ export function PatientDayStep({
           id="patient-step-heading"
           className="text-2xl font-bold text-primary"
         >
-          환자분의 하루
+          {t('patientDay.title')}
         </h2>
         <p className="mt-2 text-sm text-muted-sage">
-          내일 환자분이 풀 문제를 위해 함께 기록해주세요.
+          {t('patientDay.subtitle')}
         </p>
       </header>
 
@@ -103,8 +105,8 @@ export function PatientDayStep({
       <div className="mt-6 rounded-xl bg-white p-5">
         <div className="flex items-center justify-between">
           <h3 className="text-base font-medium text-ink-sage">
-            사진 첨부{' '}
-            <span className="text-xs font-normal text-muted-sage">(선택)</span>
+            {t('patientDay.photoTitle')}{' '}
+            <span className="text-xs font-normal text-muted-sage">{t('patientDay.optional')}</span>
           </h3>
           {photo && (
             <button
@@ -112,23 +114,22 @@ export function PatientDayStep({
               onClick={onClearPhoto}
               disabled={isSubmitting}
               className="text-xs text-muted-sage underline transition-colors hover:text-accent-strong disabled:opacity-50"
-              aria-label="첨부한 사진 제거"
+              aria-label={t('patientDay.removePhotoAria')}
             >
-              제거
+              {t('patientDay.removePhoto')}
             </button>
           )}
         </div>
 
         {/* 사진은 선택이지만, 첨부하면 더 풍부한 훈련 시나리오가 생성됨 */}
         <p className="mt-1 text-xs text-muted-sage">
-          사진이 없어도 시나리오를 만들 수 있어요. 다만 사진을 첨부하면 더 생생한
-          훈련 시나리오가 만들어집니다.
+          {t('patientDay.photoNote')}
         </p>
 
         {photoPreview ? (
           <img
             src={photoPreview}
-            alt="첨부된 사진 미리보기"
+            alt={t('patientDay.photoPreviewAlt')}
             className="mt-3 h-24 w-24 rounded-xl object-cover"
           />
         ) : (
@@ -137,12 +138,12 @@ export function PatientDayStep({
             onClick={() => fileInputRef.current?.click()}
             disabled={isSubmitting}
             className="mt-3 flex h-32 w-full flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-line-strong bg-canvas text-muted-sage transition-colors duration-[180ms] ease-out hover:border-primary hover:bg-primary-light disabled:opacity-50"
-            aria-label="사진 선택"
+            aria-label={t('patientDay.selectPhotoAria')}
           >
             <span className="text-2xl" aria-hidden="true">
               +
             </span>
-            <span className="text-sm">사진 선택</span>
+            <span className="text-sm">{t('patientDay.selectPhoto')}</span>
           </button>
         )}
 
@@ -151,7 +152,7 @@ export function PatientDayStep({
           type="file"
           accept="image/jpeg,image/png,image/webp"
           className="hidden"
-          aria-label="사진 파일 선택"
+          aria-label={t('patientDay.selectPhotoFileAria')}
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file) onSelectPhoto(file);
@@ -168,22 +169,22 @@ export function PatientDayStep({
           className="flex items-center gap-2 text-base font-medium text-[#7A4A20]"
         >
           <span aria-hidden="true">💌</span>
-          지금 듣고 싶은 한마디{' '}
-          <span className="text-xs font-normal text-[#9A7A50]">(선택)</span>
+          {t('patientDay.wishTitle')}{' '}
+          <span className="text-xs font-normal text-[#9A7A50]">{t('patientDay.optional')}</span>
         </label>
         <p className="mt-1 text-xs text-[#9A7A50]">
-          환자분이 따라 말하거나 빈칸으로 연습할 수 있어요.
+          {t('patientDay.wishNote')}
         </p>
         <textarea
           id="caregiver-wish"
           value={caregiverWishMessage}
           onChange={(e) => onChangeWishMessage(e.target.value)}
           disabled={isSubmitting}
-          placeholder="예: 오늘도 사랑해 우리 손녀"
+          placeholder={t('patientDay.wishPlaceholder')}
           maxLength={MAX_CAREGIVER_WISH_LENGTH}
           rows={2}
           className="mt-3 w-full resize-none rounded-xl border border-accent-line bg-white p-3 text-sm leading-relaxed text-ink-sage focus:border-accent-strong focus:outline-none focus:ring-1 focus:ring-accent-strong disabled:bg-[#F0F1F0]"
-          aria-label="지금 듣고 싶은 한마디"
+          aria-label={t('patientDay.wishAria')}
         />
         <div className="mt-1 text-right text-xs text-[#9A7A50]" aria-live="polite">
           <span className="font-medium tabular-nums">
@@ -200,7 +201,7 @@ export function PatientDayStep({
           aria-live="polite"
           role="status"
         >
-          답변 1개 이상 또는 사진 1장이 있어야 저장할 수 있어요.
+          {t('patientDay.canSubmitHint')}
         </p>
       )}
 
@@ -216,9 +217,9 @@ export function PatientDayStep({
               onClick={onRetryQuestions}
               disabled={isSubmitting}
               className="rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-accent-ink underline transition-colors hover:bg-accent-faint disabled:opacity-50"
-              aria-label="질문 다시 불러오기"
+              aria-label={t('patientDay.retryQuestionsAria')}
             >
-              질문 다시 불러오기
+              {t('patientDay.retryQuestions')}
             </button>
           )}
         </div>
@@ -230,9 +231,9 @@ export function PatientDayStep({
           onClick={onPrev}
           disabled={isSubmitting}
           className="rounded-xl px-5 py-3 text-sm font-medium text-muted-sage transition-colors duration-[180ms] ease-out hover:bg-primary-light disabled:opacity-50"
-          aria-label="이전 단계로"
+          aria-label={t('captureFlow.prevAria')}
         >
-          이전
+          {t('captureFlow.prev')}
         </button>
 
         <button
@@ -240,9 +241,9 @@ export function PatientDayStep({
           onClick={onSubmit}
           disabled={!canSubmit}
           className="rounded-xl bg-primary px-8 py-3 text-base font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-disabled-surface disabled:text-disabled-ink"
-          aria-label={isSubmitting ? '저장 중' : '오늘의 일기 저장'}
+          aria-label={isSubmitting ? t('patientDay.savingAria') : t('patientDay.saveAria')}
         >
-          {isSubmitting ? '저장 중…' : '저장'}
+          {isSubmitting ? t('patientDay.saving') : t('patientDay.save')}
         </button>
       </div>
     </section>
@@ -266,6 +267,7 @@ function PatientCategoryCard({
   onChange,
   disabled,
 }: PatientCategoryCardProps) {
+  const { t } = useTranslation('caregiver');
   const charCount = answerText.length;
 
   return (
@@ -286,18 +288,18 @@ function PatientCategoryCard({
       </div>
 
       <p className="mb-3 text-base font-medium text-ink-sage">
-        {question ? question.text : '질문을 불러오는 중입니다…'}
+        {question ? question.text : t('myDayStep.loadingQuestion')}
       </p>
 
       <textarea
         value={answerText}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled || !question}
-        placeholder="짧게라도 적어주세요"
+        placeholder={t('patientDay.answerPlaceholder')}
         maxLength={MAX_PATIENT_ANSWER_LENGTH}
         rows={3}
         className="w-full resize-none rounded-xl border border-line-strong bg-surface-soft p-3 text-sm leading-relaxed text-ink-sage focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:bg-[#F0F1F0]"
-        aria-label={`${meta.label} 카테고리 답변`}
+        aria-label={t('patientDay.categoryAnswerAria', { label: meta.label })}
       />
 
       <div className="mt-2 text-right text-xs text-muted-sage" aria-live="polite">

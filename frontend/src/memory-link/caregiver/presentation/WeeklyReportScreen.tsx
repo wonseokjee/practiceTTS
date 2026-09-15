@@ -14,6 +14,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   QAB_SUBTEST_ORDER,
   subtestLabel,
@@ -24,7 +25,7 @@ import type {
   QabTrendSeries,
   QabWeeklyPoint,
 } from '../../patient/quiz/domain/QabResult.js';
-import { withHonorific } from '../../shared/honorific.js';
+import { withHonorific, ELDER_HONORIFIC } from '../../shared/honorific.js';
 import { formatDate } from '../../../shared/i18n/formatDate.js';
 
 /** 약 3개월. 주간 변동이 커서 이 정도는 봐야 흐름이 보인다. */
@@ -45,40 +46,33 @@ function subtestKind(subtest: string): SubtestKind {
   return 'accuracy';
 }
 
-const HIT_LABEL: Record<SubtestKind, string> = {
-  reaction: '반응',
-  ddk: '통과',
-  speech: '정답',
-  accuracy: '정답',
-};
-const RATE_LABEL: Record<SubtestKind, string> = {
-  reaction: '반응률',
-  ddk: '통과율',
-  speech: '정답률',
-  accuracy: '정답률',
-};
+function hitLabelKey(kind: SubtestKind): string {
+  return `weeklyReport.hitLabel.${kind}`;
+}
+function rateLabelKey(kind: SubtestKind): string {
+  return `weeklyReport.rateLabel.${kind}`;
+}
 
 /** 검사마다 실제로 의미 있는 추가 지표 열. 없으면 null. */
 interface ExtraCol {
-  header: string;
+  headerKey: string;
   value: (p: QabWeeklyPoint) => number | string;
 }
 function extraCol(kind: SubtestKind): ExtraCol | null {
   switch (kind) {
     case 'reaction':
-      return { header: '평균(0~3)', value: (p) => p.avgScore ?? '-' };
+      return { headerKey: 'weeklyReport.extraHeader.reaction', value: (p) => p.avgScore ?? '-' };
     case 'ddk':
-      return { header: '평균 감지(회)', value: (p) => p.avgMetric ?? '-' };
+      return { headerKey: 'weeklyReport.extraHeader.ddk', value: (p) => p.avgMetric ?? '-' };
     case 'speech':
-      return { header: '발음(0~100)', value: (p) => p.avgScore ?? '-' };
+      return { headerKey: 'weeklyReport.extraHeader.speech', value: (p) => p.avgScore ?? '-' };
     default:
       return null;
   }
 }
 
 function formatWeek(iso: string): string {
-  const d = new Date(`${iso}T00:00:00`);
-  return `${d.getMonth() + 1}/${d.getDate()}`;
+  return formatDate(`${iso}T00:00:00`, { month: 'numeric', day: 'numeric' });
 }
 
 interface WeeklyReportScreenProps {
@@ -86,6 +80,7 @@ interface WeeklyReportScreenProps {
 }
 
 export function WeeklyReportScreen({ onBack }: WeeklyReportScreenProps) {
+  const { t } = useTranslation('caregiver');
   const { user } = useAuth();
   const [series, setSeries] = useState<QabTrendSeries[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -129,7 +124,7 @@ export function WeeklyReportScreen({ onBack }: WeeklyReportScreenProps) {
   ].sort();
   const periodLabel =
     allWeeks.length === 0
-      ? '기록 없음'
+      ? t('weeklyReport.noRecords')
       : `${formatWeek(allWeeks[0])} ~ ${formatWeek(allWeeks[allWeeks.length - 1])}`;
 
   return (
@@ -140,28 +135,28 @@ export function WeeklyReportScreen({ onBack }: WeeklyReportScreenProps) {
           onClick={onBack}
           className="min-h-[44px] text-sm text-primary hover:underline"
         >
-          ← 목록으로
+          {t('settings.backToList')}
         </button>
       </div>
 
       <article className="rounded-2xl border border-line bg-white p-6">
         <header className="mb-5 border-b border-line pb-4">
           <h1 className="text-xl font-bold text-ink">
-            언어·인지 검사 기록
+            {t('weeklyReport.title')}
           </h1>
           <dl className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 text-sm text-muted-sage sm:grid-cols-3">
             <div className="flex gap-2">
-              <dt>대상</dt>
+              <dt>{t('weeklyReport.subjectLabel')}</dt>
               <dd className="font-medium text-ink">
-                {withHonorific(user?.patientDisplayName, '어르신')}
+                {withHonorific(user?.patientDisplayName, ELDER_HONORIFIC)}
               </dd>
             </div>
             <div className="flex gap-2">
-              <dt>기간</dt>
+              <dt>{t('weeklyReport.periodLabel')}</dt>
               <dd className="font-medium text-ink">{periodLabel}</dd>
             </div>
             <div className="flex gap-2">
-              <dt>조회일</dt>
+              <dt>{t('weeklyReport.viewedAtLabel')}</dt>
               <dd className="font-medium text-ink">{viewedAt}</dd>
             </div>
           </dl>
@@ -169,27 +164,26 @@ export function WeeklyReportScreen({ onBack }: WeeklyReportScreenProps) {
 
         {failed && (
           <p role="alert" className="py-8 text-center text-sm text-danger">
-            기록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
+            {t('weeklyReport.loadFailed')}
           </p>
         )}
 
         {!failed && series === null && (
           <p className="py-8 text-center text-sm text-muted-sage">
-            불러오는 중...
+            {t('weeklyReport.loading')}
           </p>
         )}
 
         {!failed && series !== null && sorted.length === 0 && (
           <p className="py-8 text-center text-sm text-muted-sage">
-            아직 검사 기록이 없습니다. 환자 모드의 &lsquo;기본 검사&rsquo;를
-            진행하면 이곳에 쌓입니다.
+            {t('weeklyReport.emptyRecords')}
           </p>
         )}
 
         {sorted.length > 0 && (
           <>
             <p className="mb-4 text-sm text-muted-sage">
-              총 {totalItems}문항 · {allWeeks.length}주 기록
+              {t('weeklyReport.totalSummary', { total: totalItems, weeks: allWeeks.length })}
             </p>
 
             <div className="flex flex-col gap-5">
@@ -203,31 +197,31 @@ export function WeeklyReportScreen({ onBack }: WeeklyReportScreenProps) {
                     </h2>
                     <table className="w-full border-collapse text-sm">
                       <caption className="sr-only">
-                        {subtestLabel(s.subtest)} 주차별 기록
+                        {t('weeklyReport.tableCaption', { label: subtestLabel(s.subtest) })}
                       </caption>
                       <thead>
                         <tr className="border-b border-line text-left text-muted-sage">
                           <th scope="col" className="py-1.5 font-medium">
-                            주 시작
+                            {t('weeklyReport.weekStartHeader')}
                           </th>
                           <th scope="col" className="py-1.5 font-medium">
-                            {HIT_LABEL[kind]}
+                            {t(hitLabelKey(kind))}
                           </th>
                           <th scope="col" className="py-1.5 font-medium">
-                            문항
+                            {t('weeklyReport.itemsHeader')}
                           </th>
                           <th
                             scope="col"
                             className="py-1.5 text-right font-medium"
                           >
-                            {RATE_LABEL[kind]}
+                            {t(rateLabelKey(kind))}
                           </th>
                           {extra && (
                             <th
                               scope="col"
                               className="py-1.5 text-right font-medium"
                             >
-                              {extra.header}
+                              {t(extra.headerKey)}
                             </th>
                           )}
                         </tr>
@@ -263,37 +257,15 @@ export function WeeklyReportScreen({ onBack }: WeeklyReportScreenProps) {
             {/* 한계 고지 — 이게 없으면 의료진이 오독한다 */}
             <section className="mt-6 rounded-xl bg-canvas p-4">
               <h2 className="mb-1.5 text-sm font-semibold text-ink">
-                이 기록을 읽으실 때
+                {t('weeklyReport.limitationsTitle')}
               </h2>
               <ul className="flex list-disc flex-col gap-1 pl-4 text-xs leading-relaxed text-muted-sage">
-                <li>
-                  가정에서 보호자와 함께 진행한 자가 측정 기록입니다. 의료
-                  진단이나 표준화 검사 결과가 아닙니다.
-                </li>
-                <li>
-                  한 주의 문항 수가 적어(10~20문항) 주간 변동이 큽니다. 한 주의
-                  등락보다 여러 주의 흐름을 봐주시기 바랍니다.
-                </li>
-                <li>
-                  검사 환경(주변 소음, 기기, 시간대, 컨디션)이 매번 달라 같은
-                  조건의 비교가 아닙니다.
-                </li>
-                <li>
-                  &lsquo;의식 수준&rsquo;은 소리를 듣고 화면을 누르기까지의
-                  반응으로 0~3점을 매깁니다. 정답·오답이 아니라 반응 여부와
-                  속도를 봅니다.
-                </li>
-                <li>
-                  &lsquo;따라 말하기&rsquo;·&lsquo;소리 내어 읽기&rsquo;의
-                  &lsquo;발음&rsquo;은 음성 인식이 매긴 0~100점 근사치입니다.
-                  주변 소음·발음 습관에 민감하니 통과 여부와 함께 참고로만
-                  봐주세요.
-                </li>
-                <li>
-                  &lsquo;말운동(퍼터커)&rsquo;의 &lsquo;평균 감지&rsquo;는 정해진
-                  시간 동안 인식된 음절 반복 횟수입니다. 많을수록 말 움직임이
-                  빠른 편이며, &lsquo;통과&rsquo;는 목표 횟수를 넘겼는지입니다.
-                </li>
+                <li>{t('weeklyReport.limitation1')}</li>
+                <li>{t('weeklyReport.limitation2')}</li>
+                <li>{t('weeklyReport.limitation3')}</li>
+                <li>{t('weeklyReport.limitation4')}</li>
+                <li>{t('weeklyReport.limitation5')}</li>
+                <li>{t('weeklyReport.limitation6')}</li>
               </ul>
             </section>
           </>

@@ -5,6 +5,7 @@
 // 데이터가 없으면(아직 검사 전) 카드를 숨긴다 — 대시보드를 비우지 않게.
 
 import { useEffect, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import {
   QAB_SUBTEST_ORDER,
   subtestLabel,
@@ -73,6 +74,7 @@ function FoilKindLine({
 }: {
   foilKinds: NonNullable<QabSubtestSummary['foilKinds']>;
 }) {
+  const { t } = useTranslation('caregiver');
   const { semantic, phonological } = foilKinds;
   // 무관 오답은 세지 않는다. 어느 축의 어려움도 가리키지 않아, 넣으면 분모만
   // 키워 두 갈래의 대비를 흐린다.
@@ -82,16 +84,17 @@ function FoilKindLine({
   return (
     <p
       className="mt-2 text-sm leading-relaxed text-muted-sage"
-      title="소리가 닮은 그림은 눈높이 4단계부터 나와요. 그 아래에서는 고를 기회가 없어 0으로 보입니다."
+      title={t('qabProgress.foilNoteTitle')}
     >
-      고른 오답 {counted}개 중{' '}
-      <span className="font-semibold text-ink-sage">
-        뜻이 가까운 그림 {semantic}개
-      </span>
-      ,{' '}
-      <span className="font-semibold text-ink-sage">
-        소리가 닮은 그림 {phonological}개
-      </span>
+      <Trans
+        t={t}
+        i18nKey="qabProgress.foilLine"
+        values={{ count: counted, semantic, phonological }}
+        components={{
+          b: <span className="font-semibold text-ink-sage" />,
+          b2: <span className="font-semibold text-ink-sage" />,
+        }}
+      />
     </p>
   );
 }
@@ -102,6 +105,7 @@ export function QabProgressCard({
   fetchSummary,
   onOpenReport,
 }: QabProgressCardProps) {
+  const { t } = useTranslation('caregiver');
   const [state, setState] = useState<LoadState>('loading');
   const [items, setItems] = useState<QabSubtestSummary[]>([]);
   // 주차 추이. 실패해도 카드 전체를 죽이지 않는다 — 요약만으로도 쓸모가 있다.
@@ -145,16 +149,14 @@ export function QabProgressCard({
   return (
     <section
       className="mb-6 rounded-2xl border border-line-soft bg-white p-5"
-      aria-label="발화 검사 회복 추세"
+      aria-label={t('qabProgress.sectionAria')}
     >
-      <h2 className="mb-1 text-base font-bold text-ink-sage">발화 검사 진행</h2>
+      <h2 className="mb-1 text-base font-bold text-ink-sage">{t('qabProgress.title')}</h2>
       <p className="mb-4 text-sm text-muted-sage">
-        환자분이 푼 검사별 정답률이에요. 꾸준히 오르는지 지켜봐 주세요.
+        {t('qabProgress.subtitle')}
         <br />
         <span className="text-xs text-muted-sage">
-          &lsquo;반복 연습&rsquo; 표시가 붙은 항목은 같은 낱말을 다시 내는
-          과제예요. 정답률이 오르는 건 그 낱말에 익숙해진 것이라 회복 정도와는
-          다르게 봐 주세요.
+          {t('qabProgress.drillNote')}
         </span>
       </p>
 
@@ -164,7 +166,7 @@ export function QabProgressCard({
           onClick={onOpenReport}
           className="mb-4 min-h-[44px] text-sm font-medium text-primary hover:underline"
         >
-          주차별 기록 보기 →
+          {t('qabProgress.openReport')}
         </button>
       )}
 
@@ -172,12 +174,12 @@ export function QabProgressCard({
         {sorted.map((it) => {
           const label = subtestLabel(it.subtest);
           const assistedSuffix =
-            it.assisted > 0 ? ` · 도움 ${it.assisted}회` : '';
+            it.assisted > 0 ? t('qabProgress.assistedSuffix', { count: it.assisted }) : '';
           // 채점하지 못한 문항. 오답이 아니라 측정 실패라 정확도 분모 밖에
           // 있는데, 그러면 "몇 번 했는지"와 화면의 수가 어긋나 보인다.
           // 숨기면 그 어긋남이 설명되지 않고, 채점 실패가 계속돼도 아무도 모른다.
           const unscoredSuffix =
-            it.unscored > 0 ? ` · 못 잰 ${it.unscored}회` : '';
+            it.unscored > 0 ? t('qabProgress.unscoredSuffix', { count: it.unscored }) : '';
 
           /**
            * 도움이 직접 푼 것보다 많으면 이 비율은 **환자 수행을 대표하지 않는다.**
@@ -191,7 +193,7 @@ export function QabProgressCard({
            * 이 카드는 이미 `total === 0`일 때 비율을 안 그리고 "아직 직접 푼 기록
            * 없음"이라고 말한다. 같은 규칙을 한 칸 넓힌다.
            */
-          const 표본부족 = it.total > 0 && it.assisted > it.total;
+          const underSampled = it.total > 0 && it.assisted > it.total;
           return (
             <li key={it.subtest} className="flex flex-col gap-1">
               <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between">
@@ -200,9 +202,9 @@ export function QabProgressCard({
                   {IS_DRILL_BASED(it.subtest) ? (
                     <span
                       className="rounded-full bg-[#EDEEEA] px-2 py-0.5 text-xs font-normal text-muted-sage"
-                      title="같은 낱말을 반복해서 연습하는 과제예요. 정답률이 오르는 건 그 낱말에 익숙해진 것이라, 회복 정도로 읽지 말아 주세요."
+                      title={t('qabProgress.drillBadgeTitle')}
                     >
-                      반복 연습
+                      {t('qabProgress.drillBadge')}
                     </span>
                   ) : (
                     <WeeklyTrend series={trend.get(it.subtest)} label={label} />
@@ -210,28 +212,27 @@ export function QabProgressCard({
                 </span>
                 <span className="text-sm tabular-nums text-muted-sage">
                   {it.subtest === 'ddk' && it.maxMetric !== null ? (
-                    <>최고 {it.maxMetric}회 · </>
+                    <>{t('qabProgress.maxMetric', { count: it.maxMetric })}</>
                   ) : null}
-                  {표본부족 ? (
+                  {underSampled ? (
                     // 비율 대신 센 것을 그대로 말한다. 굵게 쓰는 것은 '몇 개를
                     // 직접 풀었나'이지 비율이 아니다.
-                    <>
-                      직접 푼{' '}
-                      <span className="font-bold text-primary">
-                        {it.total}문항
-                      </span>{' '}
-                      중 {it.correct}개 정답 · 도움{' '}
-                      <span className="font-bold text-muted-sage">
-                        {it.assisted}회
-                      </span>
-                    </>
+                    <Trans
+                      t={t}
+                      i18nKey="qabProgress.underSampled"
+                      values={{ total: it.total, correct: it.correct, assisted: it.assisted }}
+                      components={{
+                        b: <span className="font-bold text-primary" />,
+                        b2: <span className="font-bold text-muted-sage" />,
+                      }}
+                    />
                   ) : it.total > 0 ? (
                     <>
                       {IS_REACTION_BASED(it.subtest)
-                        ? '반응률'
+                        ? t('qabProgress.rateReaction')
                         : IS_DRILL_BASED(it.subtest)
-                          ? '연습 정답률'
-                          : '정답률'}{' '}
+                          ? t('qabProgress.rateDrill')
+                          : t('qabProgress.rateAccuracy')}{' '}
                       <span className="font-bold text-primary">
                         {it.accuracy}%
                       </span>{' '}
@@ -241,11 +242,11 @@ export function QabProgressCard({
                       {it.avgScore !== null && (
                         <>
                           {IS_REACTION_BASED(it.subtest)
-                            ? ' · 평균 '
-                            : ' · 발음 '}
+                            ? t('qabProgress.avgScoreReactionPrefix')
+                            : t('qabProgress.avgScorePronunciationPrefix')}
                           <span className="font-bold text-primary">
-                            {it.avgScore}점
-                            {IS_REACTION_BASED(it.subtest) ? ' / 3' : ''}
+                            {t('qabProgress.avgScorePoints', { score: it.avgScore })}
+                            {IS_REACTION_BASED(it.subtest) ? t('qabProgress.avgScoreOutOf3') : ''}
                           </span>
                         </>
                       )}
@@ -253,7 +254,7 @@ export function QabProgressCard({
                   ) : (
                     // 환자 직접 응답이 아직 없고 도움만 있는 경우.
                     <>
-                      아직 직접 푼 기록 없음{assistedSuffix}
+                      {t('qabProgress.noDirectRecord')}{assistedSuffix}
                       {unscoredSuffix}
                     </>
                   )}
@@ -264,14 +265,20 @@ export function QabProgressCard({
                 막대는 길이로만 말하는데 표본 크기를 담지 못해, 1/1이 7/28보다
                 좋아 보이는 착시를 만든다.
               */}
-              {it.total > 0 && !표본부족 && (
+              {it.total > 0 && !underSampled && (
                 <div
                   className="h-2 w-full overflow-hidden rounded-full bg-canvas-hover"
                   role="progressbar"
                   aria-valuenow={it.accuracy}
                   aria-valuemin={0}
                   aria-valuemax={100}
-                  aria-label={`${label} ${IS_REACTION_BASED(it.subtest) ? "반응률" : "정답률"} ${it.accuracy}%`}
+                  aria-label={t('qabProgress.barAria', {
+                    label,
+                    rateLabel: IS_REACTION_BASED(it.subtest)
+                      ? t('qabProgress.barAriaReaction')
+                      : t('qabProgress.barAriaAccuracy'),
+                    accuracy: it.accuracy,
+                  })}
                 >
                   <div
                     className="h-full rounded-full bg-primary transition-[width] duration-[250ms] ease-in-out"
@@ -319,15 +326,17 @@ function CueLevelLine({
   avgCueLevel: number;
   scored: number;
 }) {
-  const 남은도움 = Math.min(100, Math.max(0, (avgCueLevel / 4) * 100));
+  const { t } = useTranslation('caregiver');
+  const remainingHelpPercent = Math.min(100, Math.max(0, (avgCueLevel / 4) * 100));
   return (
     <div className="flex flex-col gap-1">
       <p className="text-xs text-muted-sage">
-        평균{' '}
-        <span className="font-bold tabular-nums text-[#7A4A20]">
-          {avgCueLevel}단계
-        </span>{' '}
-        도움 · {scored}문항
+        <Trans
+          t={t}
+          i18nKey="qabProgress.cueLevelLine"
+          values={{ level: avgCueLevel, scored }}
+          components={{ b: <span className="font-bold tabular-nums text-[#7A4A20]" /> }}
+        />
       </p>
       <div
         className="h-2 w-full overflow-hidden rounded-full bg-canvas-hover"
@@ -335,12 +344,12 @@ function CueLevelLine({
         aria-valuenow={avgCueLevel}
         aria-valuemin={0}
         aria-valuemax={4}
-        aria-label={`그림 이름대기 평균 ${avgCueLevel}단계 도움 (0에 가까울수록 스스로 함)`}
+        aria-label={t('qabProgress.cueLevelBarAria', { level: avgCueLevel })}
       >
         {/* 채운 쪽이 '스스로 한 만큼'이다. 도움이 줄면 막대가 자란다. */}
         <div
           className="h-full rounded-full bg-accent-strong transition-[width] duration-[250ms] ease-in-out"
-          style={{ width: `${100 - 남은도움}%` }}
+          style={{ width: `${100 - remainingHelpPercent}%` }}
         />
       </div>
     </div>
@@ -368,6 +377,7 @@ function WeeklyTrend({
   series: QabTrendSeries | undefined;
   label: string;
 }) {
+  const { t } = useTranslation('caregiver');
   if (series === undefined || series.points.length < 2) {
     return null;
   }
@@ -379,7 +389,7 @@ function WeeklyTrend({
     <span className="flex items-center gap-1.5">
       <QabSparkline
         values={values}
-        label={`${label} 최근 ${values.length}주 추이: ${values.join(', ')}%`}
+        label={t('qabProgress.trendAria', { label, weeks: values.length, values: values.join(', ') })}
       />
       {delta !== null && delta !== 0 && (
         <span className="text-xs tabular-nums text-muted-sage">

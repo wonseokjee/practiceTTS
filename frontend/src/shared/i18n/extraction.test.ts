@@ -17,6 +17,7 @@ const EXTRACTED_DIRS = [
   'memory-link/patient/presentation',
   'memory-link/shared/components',
   'memory-link/caregiver/presentation/components',
+  'memory-link/caregiver/presentation',
 ];
 
 /**
@@ -43,18 +44,6 @@ const EXTRACTED_FILES = [
   'memory-link/patient/infrastructure/SttService.ts',
   'memory-link/patient/quiz/infrastructure/ServerSttService.ts',
   'memory-link/patient/quiz/infrastructure/SpeechCaptureService.ts',
-  // caregiver/presentation 배치 A (15개 파일 중 5개 — 나머지는 배치 B·C)
-  'memory-link/caregiver/presentation/MoodCheckStep.tsx',
-  'memory-link/caregiver/presentation/MyDayStep.tsx',
-  'memory-link/caregiver/presentation/SkillLevelCard.tsx',
-  'memory-link/caregiver/presentation/SessionCompletionCard.tsx',
-  'memory-link/caregiver/presentation/SettingsScreen.tsx',
-  // caregiver/presentation 배치 B (5개 파일 — 나머지 5개는 배치 C)
-  'memory-link/caregiver/presentation/AccountLinkScreen.tsx',
-  'memory-link/caregiver/presentation/EntryListScreen.tsx',
-  'memory-link/caregiver/presentation/CaptureScreen.tsx',
-  'memory-link/caregiver/presentation/SpeechConsentScreen.tsx',
-  'memory-link/caregiver/presentation/CaregiverDashboard.tsx',
 ];
 
 const SRC = join(process.cwd(), 'src');
