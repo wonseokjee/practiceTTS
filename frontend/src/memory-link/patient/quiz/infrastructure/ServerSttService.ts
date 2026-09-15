@@ -12,6 +12,7 @@ import { WavRecorder } from './WavRecorder.js';
 import { QUIZ_RECORDING_LIMIT_MS } from './recordingLimits.js';
 import { API_BASE_URL, ML_TOKEN_KEY } from '../../../shared/MemoryLinkApi.js';
 import { DEFAULT_LOCALE } from '../../../../shared/domain/locale.js';
+import { i18n } from '../../../../shared/i18n/i18n.js';
 
 // ai-service를 브라우저가 직접 부르지 않는다. 그러면 그 경로만 인증을 걸 수 없어
 // 누구나 Azure 음성 할당량을 태울 수 있다. 백엔드 프록시를 거쳐 JWT로 막는다.
@@ -60,7 +61,7 @@ export class ServerSttService implements ISttService {
     this.startPromise = this.recorder.start().catch(() => {
       this.isRecording = false;
       this.startFailed = true;
-      this.onError?.('마이크를 시작할 수 없습니다. 권한을 확인해주세요.');
+      this.onError?.(i18n.t('sttError.micStartFailed', { ns: 'quiz' }));
     });
   }
 
@@ -90,7 +91,7 @@ export class ServerSttService implements ISttService {
     try {
       wav = await this.recorder.stop();
     } catch {
-      this.onError?.('녹음을 처리하지 못했습니다. 다시 시도해주세요.');
+      this.onError?.(i18n.t('sttError.recordingFailed', { ns: 'quiz' }));
       return;
     }
     if (this.cancelled) return; // 처리 중 이탈했으면 업로드하지 않는다.
@@ -123,15 +124,13 @@ export class ServerSttService implements ISttService {
       if (this.cancelled) return; // 응답 대기 중 이탈했으면 결과를 버린다.
       const transcript = (data.transcript ?? '').trim();
       if (transcript.length === 0) {
-        this.onError?.('음성을 인식하지 못했습니다. 다시 말씀해주세요.');
+        this.onError?.(i18n.t('sttError.noResult', { ns: 'quiz' }));
         return;
       }
       this.onResult?.({ transcript, confidence: data.confidence ?? 0 });
     } catch {
       if (this.cancelled) return; // 취소로 인한 abort는 오류로 알리지 않는다.
-      this.onError?.(
-        '음성 인식 서버에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.',
-      );
+      this.onError?.(i18n.t('sttError.serverConnectFailed', { ns: 'quiz' }));
     } finally {
       clearTimeout(timer);
       this.inflight = null;
