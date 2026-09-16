@@ -15,6 +15,7 @@
  */
 
 import type React from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface LocTouchButtonProps {
   isSelectable: boolean;
@@ -29,6 +30,7 @@ export function LocTouchButton({
   onActivate,
   buttonRef,
 }: LocTouchButtonProps) {
+  const { t } = useTranslation('assessments');
   return (
     <button
       ref={buttonRef}
@@ -55,7 +57,9 @@ export function LocTouchButton({
       // 클릭으로도 여기가 불리지만, 그때는 이미 영역 핸들러가 처리한 뒤라
       // 뷰모델의 중복 가드가 두 번째를 걸러낸다.
       onClick={isSelectable ? onActivate : undefined}
-      aria-label={isSelectable ? '여기를 터치하세요' : '음성 안내를 기다리세요'}
+      aria-label={
+        isSelectable ? t('loc.touchButton.touchAria') : t('loc.touchButton.waitAria')
+      }
       aria-disabled={!isSelectable}
     >
       {/* 아이콘 영역 — 버튼에 aria-label이 있으므로 아이콘은 장식으로 숨긴다 */}
@@ -63,13 +67,11 @@ export function LocTouchButton({
 
       {/* 안내 텍스트 */}
       <p className="text-2xl font-bold">
-        {isSelectable ? '여기를 터치하세요' : '잠시 기다려 주세요'}
+        {isSelectable ? t('loc.touchButton.touchLabel') : t('loc.touchButton.waitingLabel')}
       </p>
 
       {isSelectable && (
-        <p className="text-base opacity-75">
-          음성 지시를 들은 후 터치하세요
-        </p>
+        <p className="text-base opacity-75">{t('loc.touchButton.instructionHint')}</p>
       )}
     </button>
   );

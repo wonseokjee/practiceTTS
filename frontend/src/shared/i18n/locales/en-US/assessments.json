@@ -105,5 +105,22 @@
       "endSessionAria": "End assessment session",
       "endSessionButton": "End session"
     }
+  },
+  "loc": {
+    "audioIndicator": {
+      "ariaLabel": "Playing voice instructions",
+      "label": "Playing voice instructions..."
+    },
+    "progressBar": {
+      "remainingAria": "{{seconds}} seconds remaining",
+      "secondsUnit": "s"
+    },
+    "touchButton": {
+      "touchAria": "Touch here",
+      "waitAria": "Wait for the voice instructions",
+      "touchLabel": "Touch here",
+      "waitingLabel": "Please wait a moment",
+      "instructionHint": "Touch after you hear the instructions"
+    }
   }
 }
