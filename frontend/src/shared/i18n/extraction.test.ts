@@ -21,6 +21,7 @@ const EXTRACTED_DIRS = [
   'assessments/sentComp/presentation/components',
   'shared/hub',
   'memory-link/patient/practice/presentation',
+  'assessments/wordComp/presentation/components',
 ];
 
 /**

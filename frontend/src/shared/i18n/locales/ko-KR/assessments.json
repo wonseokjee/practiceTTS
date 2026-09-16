@@ -58,5 +58,38 @@
       "replayAria": "문장 다시 듣기",
       "replayButton": "다시 듣기"
     }
+  },
+  "wordComp": {
+    "audioPlayerBar": {
+      "playingLabel": "음성 재생 중...",
+      "playbackDoneLabel": "음성 재생 완료",
+      "instructionLabel": "단어를 듣고 그림을 선택하세요",
+      "replayAria": "다시 듣기",
+      "replayButton": "다시 듣기"
+    },
+    "imageChoiceCard": {
+      "selectAria": "{{word}} 선택"
+    },
+    "imageChoiceGrid": {
+      "groupAria": "선택지 이미지"
+    },
+    "sessionSummaryView": {
+      "resultTitle": "단어 이해 검사 결과",
+      "totalItemsSuffix": "/ {{total}}점",
+      "errorPatternTitle": "오답 패턴 분석 (총 {{count}}개 오답)",
+      "semanticErrorLabel": "의미 착어",
+      "semanticErrorDescription": "의미적으로 유사한 단어 선택",
+      "phonemicErrorLabel": "음운 착어",
+      "phonemicErrorDescription": "발음이 유사한 단어 선택",
+      "unrelatedErrorLabel": "무관 오답",
+      "unrelatedErrorDescription": "전혀 무관한 단어 선택",
+      "countRate": "{{count}}회 ({{pct}}%)",
+      "reactionStatsTitle": "반응 통계",
+      "avgReactionTimeValue": "{{seconds}}초",
+      "avgReactionTimeLabel": "평균 반응 시간",
+      "avgReplayCountValue": "{{count}}회",
+      "avgReplayCountLabel": "평균 재청취 횟수",
+      "nextAssessmentButton": "다음 검사로 이동"
+    }
   }
 }
