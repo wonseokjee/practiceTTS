@@ -121,6 +121,32 @@
       "touchLabel": "여기를 터치하세요",
       "waitingLabel": "잠시 기다려 주세요",
       "instructionHint": "음성 지시를 들은 후 터치하세요"
+    },
+    "screen": {
+      "trialLabel": "시도 {{n}}",
+      "scoreUnit": "{{score}}점",
+      "trialProgressAria": "시도 {{current}} / 3",
+      "title": "의식 수준(LOC) 검사",
+      "patientPrefix": "환자:",
+      "endSessionButton": "세션 종료",
+      "completedTitle": "검사 완료",
+      "finalScoreLabel": "최종 점수",
+      "trialResultsTitle": "시도별 결과",
+      "progressResultsTitle": "진행 결과",
+      "nextAssessmentButton": "다음 검사로 이동",
+      "idleTitle": "검사를 시작할까요?",
+      "idleHint1": "시작을 누르면 소리가 나와요.",
+      "idleHint2": "소리를 들은 뒤 화면을 터치해 주세요.",
+      "startButton": "검사 시작",
+      "listenTitle": "잘 들어보세요",
+      "listenHint": "소리가 끝나면 화면을 터치할 수 있어요.",
+      "touchNowLabel": "지금 화면을 터치하세요",
+      "interruptedTitle": "잠시 멈췄어요",
+      "interruptedHint1": "이번 문제는 다시 들려드릴게요.",
+      "interruptedHint2": "앞서 하신 것은 그대로 남아 있어요.",
+      "replayButton": "다시 듣기",
+      "confirmedTitle": "확인했어요",
+      "pleaseWaitLabel": "잠시만 기다려 주세요…"
     }
   }
 }

@@ -51,6 +51,11 @@ const EXTRACTED_FILES = [
   'memory-link/patient/infrastructure/SttService.ts',
   'memory-link/patient/quiz/infrastructure/ServerSttService.ts',
   'memory-link/patient/quiz/infrastructure/SpeechCaptureService.ts',
+  // assessments/loc/presentation은 LocScreen.tsx만 이번 배치 범위다.
+  // 같은 디렉터리의 useLocViewModel.ts·locSessionReducer.ts는 훨씬 큰
+  // 별도 과제(계획서 §1-2 "프론트 .ts 파일", 127개/675개)에 속해 있고
+  // 일부는 번역만으로 안 끝나는 재구현 대상이라 손대지 않았다.
+  'assessments/loc/presentation/LocScreen.tsx',
 ];
 
 const SRC = join(process.cwd(), 'src');

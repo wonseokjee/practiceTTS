@@ -121,6 +121,32 @@
       "touchLabel": "Touch here",
       "waitingLabel": "Please wait a moment",
       "instructionHint": "Touch after you hear the instructions"
+    },
+    "screen": {
+      "trialLabel": "Trial {{n}}",
+      "scoreUnit": "{{score}} pts",
+      "trialProgressAria": "Trial {{current}} of 3",
+      "title": "Level of consciousness (LOC) assessment",
+      "patientPrefix": "Patient:",
+      "endSessionButton": "End session",
+      "completedTitle": "Assessment complete",
+      "finalScoreLabel": "Final score",
+      "trialResultsTitle": "Results by trial",
+      "progressResultsTitle": "Results so far",
+      "nextAssessmentButton": "Go to next assessment",
+      "idleTitle": "Ready to start?",
+      "idleHint1": "You'll hear a sound when you press start.",
+      "idleHint2": "Touch the screen after you hear it.",
+      "startButton": "Start assessment",
+      "listenTitle": "Listen carefully",
+      "listenHint": "You can touch the screen once the sound ends.",
+      "touchNowLabel": "Touch the screen now",
+      "interruptedTitle": "We paused for a moment",
+      "interruptedHint1": "We'll play this one again.",
+      "interruptedHint2": "What you already did is still saved.",
+      "replayButton": "Replay",
+      "confirmedTitle": "Got it",
+      "pleaseWaitLabel": "Please wait a moment…"
     }
   }
 }
