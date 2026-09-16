@@ -17,13 +17,9 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { mkdirSync } from 'fs';
-import { extname } from 'path';
-import { v4 as uuidv4 } from 'uuid';
+import { memoryStorage } from 'multer';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { OnboardingGuard } from '../auth/onboarding.guard';
-import { resolveUploadDir } from '../common/upload-path';
 import { DailyCap, DailyCapGuard } from '../usage/daily-cap.guard';
 import type { User } from '../auth/entities/user.entity';
 import { MAX_PHOTO_SIZE_BYTES } from './constants/memory-entry.constants';
@@ -72,26 +68,11 @@ export class MemoryController {
   @DailyCap('memory')
   @UseInterceptors(
     FileInterceptor('photo', {
-      storage: diskStorage({
-        destination: (req, file, cb) => {
-          // 정적 서빙(main.ts)·읽기(FileStorageService)와 같은 디렉토리를 써야
-          // 업로드한 사진이 실제로 표시된다 → resolveUploadDir 공유.
-          const uploadDir = resolveUploadDir();
-          // multer diskStorage는 destination 디렉토리를 자동 생성하지 않는다.
-          // 디렉토리가 없으면 파일 쓰기가 ENOENT로 실패해 500이 되므로, 업로드
-          // 시점에 재귀적으로 보장한다(이미 있으면 no-op).
-          try {
-            mkdirSync(uploadDir, { recursive: true });
-            cb(null, uploadDir);
-          } catch (err) {
-            cb(err as Error, uploadDir);
-          }
-        },
-        filename: (req, file, cb) => {
-          const uniqueName = `${uuidv4()}${extname(file.originalname).toLowerCase()}`;
-          cb(null, uniqueName);
-        },
-      }),
+      // 버퍼로만 받는다 — 실제 영속화(로컬 디스크 또는 R2)는
+      // MemoryEntryService가 FileStorageService.save()로 명시적으로 한다.
+      // (PHOTO_STORAGE_DRIVER에 따라 저장 위치가 갈리므로, multer 단계에서
+      // 디스크에 직접 쓰면 R2 드라이버일 때 업로드가 두 곳에 남는다.)
+      storage: memoryStorage(),
     }),
   )
   async create(

@@ -102,9 +102,15 @@ describe('MemoryEntryService.create() — 3-step 트랜잭션 회귀', () => {
   };
 
   const fileStorageServiceMock: {
+    save: jest.Mock;
     getPublicUrl: jest.Mock;
-    delete?: jest.Mock;
+    delete: jest.Mock;
   } = {
+    // 실제로는 UUID를 생성하지만, 테스트에선 photo의 originalname을 그대로
+    // 돌려줘 어떤 photo가 저장됐는지 assertion에서 추적할 수 있게 한다.
+    save: jest.fn((_buffer: Buffer, originalname: string) =>
+      Promise.resolve(`stored-${originalname}`),
+    ),
     getPublicUrl: jest.fn((name: string) => `/uploads/memory-images/${name}`),
     delete: jest.fn(() => Promise.resolve(undefined)),
   };
@@ -187,10 +193,12 @@ describe('MemoryEntryService.create() — 3-step 트랜잭션 회귀', () => {
     } as CreateMemoryEntryDto;
   }
 
-  function buildPhoto(filename = 'abc.jpg'): Express.Multer.File {
+  // memoryStorage()를 쓰므로 실제 multer는 .filename을 설정하지 않는다 —
+  // 대신 .buffer를 주고, 저장(및 파일명 생성)은 FileStorageService.save()가 한다.
+  function buildPhoto(originalname = 'abc.jpg'): Express.Multer.File {
     return {
-      filename,
-      originalname: filename,
+      originalname,
+      buffer: Buffer.from(`fake-bytes-${originalname}`),
       mimetype: 'image/jpeg',
       size: 1024,
     } as Express.Multer.File;
@@ -315,7 +323,7 @@ describe('MemoryEntryService.create() — 3-step 트랜잭션 회귀', () => {
     ).rejects.toThrow('DB FK 위반');
 
     expect(fileStorageServiceMock.delete).toHaveBeenCalledWith(
-      'orphan-cleanup-target.jpg',
+      'stored-orphan-cleanup-target.jpg',
     );
   });
 
