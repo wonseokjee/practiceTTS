@@ -5,17 +5,20 @@
  * 음파 애니메이션으로 재생 중임을 시각적으로 표시한다.
  */
 
+import { useTranslation } from 'react-i18next';
+
 interface LocAudioIndicatorProps {
   isTtsPlaying: boolean;
 }
 
 export function LocAudioIndicator({ isTtsPlaying }: LocAudioIndicatorProps) {
+  const { t } = useTranslation('assessments');
   return (
     <div
       className={`flex flex-col items-center gap-3 ${isTtsPlaying ? '' : 'invisible'}`}
       role="status"
       aria-live="polite"
-      aria-label="음성 안내 재생 중"
+      aria-label={t('loc.audioIndicator.ariaLabel')}
     >
       {/* 음파 애니메이션 */}
       <div className="flex items-end gap-1 h-10">
@@ -33,7 +36,7 @@ export function LocAudioIndicator({ isTtsPlaying }: LocAudioIndicatorProps) {
       </div>
 
       <p className="text-primary font-semibold text-lg">
-        음성 안내 재생 중...
+        {t('loc.audioIndicator.label')}
       </p>
     </div>
   );

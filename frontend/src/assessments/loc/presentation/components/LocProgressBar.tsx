@@ -5,6 +5,8 @@
  * 10초 타임아웃을 시각적으로 표시한다.
  */
 
+import { useTranslation } from 'react-i18next';
+
 interface LocProgressBarProps {
   isActive: boolean;
   remainingSeconds: number;
@@ -16,6 +18,7 @@ export function LocProgressBar({
   remainingSeconds,
   totalSeconds = 10,
 }: LocProgressBarProps) {
+  const { t } = useTranslation('assessments');
   const progress = isActive ? (remainingSeconds / totalSeconds) * 100 : 100;
 
   // 남은 시간에 따른 색상 전환
@@ -30,13 +33,15 @@ export function LocProgressBar({
     <div
       className={`w-full flex flex-col items-center gap-2 ${isActive ? '' : 'invisible'}`}
       role="timer"
-      aria-label={`남은 시간 ${remainingSeconds}초`}
+      aria-label={t('loc.progressBar.remainingAria', { seconds: remainingSeconds })}
       aria-live="polite"
     >
       {/* 남은 시간 텍스트 */}
       <p className="text-2xl font-bold text-ink">
         {remainingSeconds}
-        <span className="text-base font-normal text-muted-sage ml-1">초</span>
+        <span className="text-base font-normal text-muted-sage ml-1">
+          {t('loc.progressBar.secondsUnit')}
+        </span>
       </p>
 
       {/* 진행 바 */}

@@ -105,5 +105,22 @@
       "endSessionAria": "검사 세션 종료",
       "endSessionButton": "세션 종료"
     }
+  },
+  "loc": {
+    "audioIndicator": {
+      "ariaLabel": "음성 안내 재생 중",
+      "label": "음성 안내 재생 중..."
+    },
+    "progressBar": {
+      "remainingAria": "남은 시간 {{seconds}}초",
+      "secondsUnit": "초"
+    },
+    "touchButton": {
+      "touchAria": "여기를 터치하세요",
+      "waitAria": "음성 안내를 기다리세요",
+      "touchLabel": "여기를 터치하세요",
+      "waitingLabel": "잠시 기다려 주세요",
+      "instructionHint": "음성 지시를 들은 후 터치하세요"
+    }
   }
 }
