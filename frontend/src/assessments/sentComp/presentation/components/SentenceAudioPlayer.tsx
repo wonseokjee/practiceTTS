@@ -7,6 +7,7 @@
  */
 
 import type React from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface SentenceAudioPlayerProps {
   /** 재생할 문장 텍스트 */
@@ -25,10 +26,11 @@ export const SentenceAudioPlayer: React.FC<SentenceAudioPlayerProps> = ({
   isReplayEnabled,
   onReplay,
 }) => {
+  const { t } = useTranslation('assessments');
   return (
     <div
       className="bg-white rounded-2xl shadow-sm border border-line p-6 flex flex-col items-center gap-4"
-      aria-label="문장 오디오 재생 영역"
+      aria-label={t('sentComp.sentenceAudioPlayer.regionAria')}
     >
       {/* 오디오 재생 상태 표시 */}
       <div className="flex items-center gap-3">
@@ -58,14 +60,16 @@ export const SentenceAudioPlayer: React.FC<SentenceAudioPlayerProps> = ({
           }`}
           aria-live="polite"
         >
-          {isPlaying ? '재생 중...' : '재생 완료'}
+          {isPlaying
+            ? t('sentComp.sentenceAudioPlayer.playingLabel')
+            : t('sentComp.sentenceAudioPlayer.playbackDoneLabel')}
         </span>
       </div>
 
       {/* 문장 표시 */}
       <p
         className="text-xl font-medium text-ink text-center leading-relaxed"
-        aria-label={`문장: ${sentence}`}
+        aria-label={t('sentComp.sentenceAudioPlayer.sentenceAria', { sentence })}
       >
         {sentence}
       </p>
@@ -80,9 +84,9 @@ export const SentenceAudioPlayer: React.FC<SentenceAudioPlayerProps> = ({
         }`}
         onClick={onReplay}
         disabled={!isReplayEnabled}
-        aria-label="문장 다시 듣기"
+        aria-label={t('sentComp.sentenceAudioPlayer.replayAria')}
       >
-        다시 듣기
+        {t('sentComp.sentenceAudioPlayer.replayButton')}
       </button>
     </div>
   );

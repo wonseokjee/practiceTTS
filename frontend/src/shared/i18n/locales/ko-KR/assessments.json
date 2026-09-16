@@ -1,0 +1,40 @@
+{
+  "sentComp": {
+    "choiceImageCard": {
+      "selectAria": "선택지 {{index}}: {{altText}}"
+    },
+    "imageChoiceGrid": {
+      "groupAria": "이미지 선택지"
+    },
+    "scoreResultPanel": {
+      "title": "검사 완료",
+      "totalScoreAria": "총점: {{score}}점",
+      "totalScoreLabel": "총점",
+      "pointsUnit": "점",
+      "correctCount": "{{correct}} / {{total}} 정답",
+      "byTypeTitle": "유형별 정답률",
+      "tableAria": "문장 유형별 정답률 표",
+      "typeHeader": "유형",
+      "correctOverTotalHeader": "정답 / 전체",
+      "accuracyHeader": "정답률",
+      "sentenceType": {
+        "reversible": "가역문(어순)",
+        "relativeClause": "관계절",
+        "embeddedClause": "내포절"
+      },
+      "detailStatsTitle": "세부 통계",
+      "avgReactionTimeLabel": "평균 반응 시간",
+      "avgReplayCountLabel": "평균 재청취 횟수",
+      "replayUnit": "회",
+      "nextAssessmentButton": "다음 검사로 이동"
+    },
+    "sentenceAudioPlayer": {
+      "regionAria": "문장 오디오 재생 영역",
+      "playingLabel": "재생 중...",
+      "playbackDoneLabel": "재생 완료",
+      "sentenceAria": "문장: {{sentence}}",
+      "replayAria": "문장 다시 듣기",
+      "replayButton": "다시 듣기"
+    }
+  }
+}

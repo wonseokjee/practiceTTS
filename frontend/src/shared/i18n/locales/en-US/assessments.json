@@ -1,0 +1,40 @@
+{
+  "sentComp": {
+    "choiceImageCard": {
+      "selectAria": "Choice {{index}}: {{altText}}"
+    },
+    "imageChoiceGrid": {
+      "groupAria": "Image choices"
+    },
+    "scoreResultPanel": {
+      "title": "Assessment complete",
+      "totalScoreAria": "Total score: {{score}} points",
+      "totalScoreLabel": "Total score",
+      "pointsUnit": "pts",
+      "correctCount": "{{correct}} / {{total}} correct",
+      "byTypeTitle": "Accuracy by type",
+      "tableAria": "Accuracy by sentence type table",
+      "typeHeader": "Type",
+      "correctOverTotalHeader": "Correct / total",
+      "accuracyHeader": "Accuracy",
+      "sentenceType": {
+        "reversible": "Reversible (word order)",
+        "relativeClause": "Relative clause",
+        "embeddedClause": "Embedded clause"
+      },
+      "detailStatsTitle": "Detailed stats",
+      "avgReactionTimeLabel": "Average reaction time",
+      "avgReplayCountLabel": "Average replay count",
+      "replayUnit": "times",
+      "nextAssessmentButton": "Go to next assessment"
+    },
+    "sentenceAudioPlayer": {
+      "regionAria": "Sentence audio playback area",
+      "playingLabel": "Playing...",
+      "playbackDoneLabel": "Playback done",
+      "sentenceAria": "Sentence: {{sentence}}",
+      "replayAria": "Replay the sentence",
+      "replayButton": "Replay"
+    }
+  }
+}
