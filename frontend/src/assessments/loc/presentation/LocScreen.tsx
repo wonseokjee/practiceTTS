@@ -17,6 +17,7 @@
  */
 
 import { useMemo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ConductLocTrialUseCase } from '../application/ConductLocTrialUseCase.js';
 import { FinishLocAssessmentUseCase } from '../application/FinishLocAssessmentUseCase.js';
 import { LocalStorageLocResultRepository } from '../infrastructure/LocalStorageLocResultRepository.js';
@@ -39,6 +40,7 @@ interface LocScreenProps {
 
 /** 시도 결과 행 컴포넌트 */
 function TrialResultRow({ result }: { result: LocTrialResponseDTO }) {
+  const { t } = useTranslation('assessments');
   const scoreColorClass =
     result.score === 3
       ? 'text-primary'
@@ -50,8 +52,12 @@ function TrialResultRow({ result }: { result: LocTrialResponseDTO }) {
 
   return (
     <div className="flex items-center justify-between py-2 border-b border-line">
-      <span className="text-muted-sage">시도 {result.trialNumber}</span>
+      <span className="text-muted-sage">
+        {t('loc.screen.trialLabel', { n: result.trialNumber })}
+      </span>
       <span className={`font-semibold ${scoreColorClass}`}>
+        {/* scoreLabel은 도메인(LocScorer.ts)이 만드는 한글 라벨 — 별도 용어
+            매핑 과제(1-3)라 여기서 옮기지 않는다. */}
         {result.scoreLabel}
         {result.latencyMs !== null && (
           <span className="text-muted-sage font-normal text-sm ml-2">
@@ -60,7 +66,7 @@ function TrialResultRow({ result }: { result: LocTrialResponseDTO }) {
         )}
       </span>
       <span className={`font-bold text-lg ${scoreColorClass}`}>
-        {result.score}점
+        {t('loc.screen.scoreUnit', { score: result.score })}
       </span>
     </div>
   );
@@ -68,9 +74,15 @@ function TrialResultRow({ result }: { result: LocTrialResponseDTO }) {
 
 /** 시도 진행 점 표시 (1/3, 2/3, 3/3) */
 function TrialDots({ current }: { current: number }) {
+  const { t } = useTranslation('assessments');
   return (
-    <div className="flex items-center gap-2" aria-label={`시도 ${current} / 3`}>
-      <span className="text-muted-sage font-medium">시도 {current} / 3</span>
+    <div
+      className="flex items-center gap-2"
+      aria-label={t('loc.screen.trialProgressAria', { current })}
+    >
+      <span className="text-muted-sage font-medium">
+        {t('loc.screen.trialProgressAria', { current })}
+      </span>
       <div className="flex gap-1.5">
         {[1, 2, 3].map((n) => (
           <div
@@ -87,6 +99,7 @@ function TrialDots({ current }: { current: number }) {
 }
 
 export function LocScreen({ onComplete, onProceed }: LocScreenProps) {
+  const { t } = useTranslation('assessments');
   // === 세션 컨텍스트 ===
   const { session, endSession } = useSessionContext();
   const sessionId = session?.sessionId ?? '';
@@ -163,11 +176,10 @@ export function LocScreen({ onComplete, onProceed }: LocScreenProps) {
       {/* 헤더 */}
       <header className="bg-white shadow-sm px-6 py-4 flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-bold text-ink">
-            의식 수준(LOC) 검사
-          </h1>
+          <h1 className="text-xl font-bold text-ink">{t('loc.screen.title')}</h1>
           <p className="text-sm text-muted-sage mt-1">
-            QAB 하위검사 1번 &nbsp;·&nbsp; 환자:{' '}
+            {t('hub.subtestSubtitle', { number: 1 })} &nbsp;·&nbsp;{' '}
+            {t('loc.screen.patientPrefix')}{' '}
             <span className="font-medium text-ink">{patientLabel}</span>
           </p>
         </div>
@@ -176,7 +188,7 @@ export function LocScreen({ onComplete, onProceed }: LocScreenProps) {
           className="text-xs text-muted-sage hover:text-danger transition-colors mt-1"
           onClick={endSession}
         >
-          세션 종료
+          {t('loc.screen.endSessionButton')}
         </button>
       </header>
 
@@ -186,11 +198,13 @@ export function LocScreen({ onComplete, onProceed }: LocScreenProps) {
           /* ===== 검사 완료 화면 ===== */
           <div className="flex flex-col items-center gap-6 py-8">
             <div className="text-6xl">✅</div>
-            <h2 className="text-2xl font-bold text-ink">검사 완료</h2>
+            <h2 className="text-2xl font-bold text-ink">{t('loc.screen.completedTitle')}</h2>
 
             {/* 최종 점수 */}
             <div className="bg-white rounded-2xl shadow-md p-6 w-full">
-              <p className="text-muted-sage text-sm text-center mb-2">최종 점수</p>
+              <p className="text-muted-sage text-sm text-center mb-2">
+                {t('loc.screen.finalScoreLabel')}
+              </p>
               <p className="text-5xl font-bold text-center text-primary">
                 {finalScore}
                 <span className="text-xl text-muted-sage font-normal"> / 3</span>
@@ -199,7 +213,9 @@ export function LocScreen({ onComplete, onProceed }: LocScreenProps) {
 
             {/* 시도별 결과 */}
             <div className="bg-white rounded-2xl shadow-md p-6 w-full">
-              <h3 className="font-semibold text-ink mb-3">시도별 결과</h3>
+              <h3 className="font-semibold text-ink mb-3">
+                {t('loc.screen.trialResultsTitle')}
+              </h3>
               {trialResults.map((result) => (
                 <TrialResultRow key={result.trialNumber} result={result} />
               ))}
@@ -214,7 +230,7 @@ export function LocScreen({ onComplete, onProceed }: LocScreenProps) {
                 onProceed?.();
               }}
             >
-              다음 검사로 이동
+              {t('loc.screen.nextAssessmentButton')}
             </button>
           </div>
         ) : (
@@ -240,12 +256,12 @@ export function LocScreen({ onComplete, onProceed }: LocScreenProps) {
                   <div className="text-6xl" aria-hidden="true">🎧</div>
                   <div>
                     <h2 className="text-2xl font-bold text-ink">
-                      검사를 시작할까요?
+                      {t('loc.screen.idleTitle')}
                     </h2>
                     <p className="mt-3 text-lg leading-relaxed text-muted-sage">
-                      시작을 누르면 소리가 나와요.
+                      {t('loc.screen.idleHint1')}
                       <br />
-                      소리를 들은 뒤 화면을 터치해 주세요.
+                      {t('loc.screen.idleHint2')}
                     </p>
                   </div>
                   <button
@@ -255,7 +271,7 @@ export function LocScreen({ onComplete, onProceed }: LocScreenProps) {
                       void actions.startAssessment();
                     }}
                   >
-                    검사 시작
+                    {t('loc.screen.startButton')}
                   </button>
                 </div>
               )}
@@ -265,10 +281,10 @@ export function LocScreen({ onComplete, onProceed }: LocScreenProps) {
                   <LocAudioIndicator isTtsPlaying={isTtsPlaying} />
                   <div>
                     <h2 className="text-2xl font-bold text-primary">
-                      잘 들어보세요
+                      {t('loc.screen.listenTitle')}
                     </h2>
                     <p className="mt-2 text-lg text-muted-sage">
-                      소리가 끝나면 화면을 터치할 수 있어요.
+                      {t('loc.screen.listenHint')}
                     </p>
                   </div>
                 </div>
@@ -283,7 +299,7 @@ export function LocScreen({ onComplete, onProceed }: LocScreenProps) {
                   onPointerDown={actions.handleAreaPointerDown}
                 >
                   <p className="text-center text-lg font-semibold text-primary">
-                    지금 화면을 터치하세요
+                    {t('loc.screen.touchNowLabel')}
                   </p>
                   <LocTouchButton
                     isSelectable={isButtonEnabled}
@@ -303,19 +319,19 @@ export function LocScreen({ onComplete, onProceed }: LocScreenProps) {
               {assessmentState === 'TRIAL_INTERRUPTED' && (
                 <div className="flex-1 flex flex-col items-center justify-center gap-5 text-center">
                   <h2 className="text-2xl font-bold text-primary">
-                    잠시 멈췄어요
+                    {t('loc.screen.interruptedTitle')}
                   </h2>
                   <p className="text-lg text-muted-sage">
-                    이번 문제는 다시 들려드릴게요.
+                    {t('loc.screen.interruptedHint1')}
                     <br />
-                    앞서 하신 것은 그대로 남아 있어요.
+                    {t('loc.screen.interruptedHint2')}
                   </p>
                   <button
                     type="button"
                     onClick={actions.resumeInterruptedTrial}
                     className="min-h-[56px] rounded-full bg-primary px-8 text-lg font-bold text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark"
                   >
-                    다시 듣기
+                    {t('loc.screen.replayButton')}
                   </button>
                 </div>
               )}
@@ -323,8 +339,10 @@ export function LocScreen({ onComplete, onProceed }: LocScreenProps) {
               {isProcessing && (
                 <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center">
                   <div className="text-6xl" aria-hidden="true">✓</div>
-                  <h2 className="text-2xl font-bold text-primary">확인했어요</h2>
-                  <p className="text-lg text-muted-sage">잠시만 기다려 주세요…</p>
+                  <h2 className="text-2xl font-bold text-primary">
+                    {t('loc.screen.confirmedTitle')}
+                  </h2>
+                  <p className="text-lg text-muted-sage">{t('loc.screen.pleaseWaitLabel')}</p>
                 </div>
               )}
             </div>
@@ -333,7 +351,7 @@ export function LocScreen({ onComplete, onProceed }: LocScreenProps) {
             {trialResults.length > 0 && (
               <div className="bg-white rounded-xl shadow-sm p-4">
                 <h3 className="font-semibold text-ink mb-2 text-sm">
-                  진행 결과
+                  {t('loc.screen.progressResultsTitle')}
                 </h3>
                 {trialResults.map((result) => (
                   <TrialResultRow key={result.trialNumber} result={result} />
