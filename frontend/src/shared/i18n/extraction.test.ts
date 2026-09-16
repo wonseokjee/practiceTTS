@@ -56,6 +56,10 @@ const EXTRACTED_FILES = [
   // 별도 과제(계획서 §1-2 "프론트 .ts 파일", 127개/675개)에 속해 있고
   // 일부는 번역만으로 안 끝나는 재구현 대상이라 손대지 않았다.
   'assessments/loc/presentation/LocScreen.tsx',
+  // 같은 이유로 sentComp/presentation도 SentCompScreen.tsx만 — 같은
+  // 디렉터리의 sentCompSessionReducer.ts·useSentCompViewModel.ts는
+  // "프론트 .ts 파일" 과제 몫이다.
+  'assessments/sentComp/presentation/SentCompScreen.tsx',
 ];
 
 const SRC = join(process.cwd(), 'src');

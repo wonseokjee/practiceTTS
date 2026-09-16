@@ -57,6 +57,19 @@
       "sentenceAria": "문장: {{sentence}}",
       "replayAria": "문장 다시 듣기",
       "replayButton": "다시 듣기"
+    },
+    "screen": {
+      "title": "문장 이해 (SentComp) 검사",
+      "patientPrefix": "환자:",
+      "endSessionButton": "세션 종료",
+      "scoringLabel": "채점 중...",
+      "errorTitle": "오류 발생",
+      "retryButton": "다시 시도",
+      "loadingItems": "문항을 불러오는 중...",
+      "preparingNextItem": "다음 문항 준비 중...",
+      "correctFeedback": "정답입니다!",
+      "incorrectFeedback": "오답입니다.",
+      "submittingLabel": "처리 중..."
     }
   },
   "wordComp": {

@@ -10,6 +10,7 @@
  * 이 컴포넌트는 순수한 렌더링만 담당한다.
  */
 
+import { useTranslation } from 'react-i18next';
 import { useSessionContext } from '../../../shared/session/SessionContext.js';
 import { useSentCompViewModel } from './useSentCompViewModel.js';
 import { SentenceAudioPlayer } from './components/SentenceAudioPlayer.js';
@@ -24,6 +25,7 @@ interface SentCompScreenProps {
 }
 
 export function SentCompScreen({ onComplete }: SentCompScreenProps) {
+  const { t } = useTranslation('assessments');
   const { session, endSession } = useSessionContext();
   const sessionId = session?.sessionId ?? '';
   const patientId = session?.patientId ?? '';
@@ -59,11 +61,9 @@ export function SentCompScreen({ onComplete }: SentCompScreenProps) {
       {/* 헤더 */}
       <header className="bg-white shadow-sm px-6 py-4 flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-bold text-ink">
-            문장 이해 (SentComp) 검사
-          </h1>
+          <h1 className="text-xl font-bold text-ink">{t('sentComp.screen.title')}</h1>
           <p className="text-sm text-muted-sage mt-1">
-            환자:{' '}
+            {t('sentComp.screen.patientPrefix')}{' '}
             <span className="font-medium text-ink">{patientLabel}</span>
           </p>
         </div>
@@ -72,7 +72,7 @@ export function SentCompScreen({ onComplete }: SentCompScreenProps) {
           className="text-xs text-muted-sage hover:text-danger transition-colors mt-1"
           onClick={endSession}
         >
-          세션 종료
+          {t('sentComp.screen.endSessionButton')}
         </button>
       </header>
 
@@ -90,7 +90,7 @@ export function SentCompScreen({ onComplete }: SentCompScreenProps) {
 
         {/* COMPLETED이지만 score 아직 미계산 */}
         {phase.type === 'COMPLETED' && score === null && (
-          <LoadingOverlay message="채점 중..." />
+          <LoadingOverlay message={t('sentComp.screen.scoringLabel')} />
         )}
 
         {/* ERROR 상태 */}
@@ -100,7 +100,7 @@ export function SentCompScreen({ onComplete }: SentCompScreenProps) {
               className="bg-danger/10 border border-danger/30 rounded-xl px-6 py-4 text-danger text-center w-full"
               role="alert"
             >
-              <p className="font-medium mb-1">오류 발생</p>
+              <p className="font-medium mb-1">{t('sentComp.screen.errorTitle')}</p>
               <p className="text-sm">{errorMessage ?? phase.message}</p>
             </div>
             <button
@@ -108,19 +108,19 @@ export function SentCompScreen({ onComplete }: SentCompScreenProps) {
               className="px-8 py-3 bg-primary hover:bg-primary-dark text-white font-medium rounded-xl transition-colors"
               onClick={actions.handleRetry}
             >
-              다시 시도
+              {t('sentComp.screen.retryButton')}
             </button>
           </div>
         )}
 
         {/* LOADING 상태 */}
         {phase.type === 'LOADING' && (
-          <LoadingOverlay message="문항을 불러오는 중..." />
+          <LoadingOverlay message={t('sentComp.screen.loadingItems')} />
         )}
 
         {/* TRANSITIONING 상태 */}
         {phase.type === 'TRANSITIONING' && (
-          <LoadingOverlay message="다음 문항 준비 중..." />
+          <LoadingOverlay message={t('sentComp.screen.preparingNextItem')} />
         )}
 
         {/* PLAYING / AWAITING / SUBMITTING / FEEDBACK 상태 */}
@@ -147,7 +147,9 @@ export function SentCompScreen({ onComplete }: SentCompScreenProps) {
                   role="status"
                   aria-live="assertive"
                 >
-                  {feedbackIsCorrect ? '정답입니다!' : '오답입니다.'}
+                  {feedbackIsCorrect
+                    ? t('sentComp.screen.correctFeedback')
+                    : t('sentComp.screen.incorrectFeedback')}
                 </div>
               )}
 
@@ -173,7 +175,7 @@ export function SentCompScreen({ onComplete }: SentCompScreenProps) {
                   className="text-center text-sm text-muted-sage py-2"
                   aria-live="polite"
                 >
-                  처리 중...
+                  {t('sentComp.screen.submittingLabel')}
                 </div>
               )}
             </>

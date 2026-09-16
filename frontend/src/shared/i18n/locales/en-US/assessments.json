@@ -57,6 +57,19 @@
       "sentenceAria": "Sentence: {{sentence}}",
       "replayAria": "Replay the sentence",
       "replayButton": "Replay"
+    },
+    "screen": {
+      "title": "Sentence comprehension (SentComp) assessment",
+      "patientPrefix": "Patient:",
+      "endSessionButton": "End session",
+      "scoringLabel": "Scoring...",
+      "errorTitle": "Something went wrong",
+      "retryButton": "Try again",
+      "loadingItems": "Loading item...",
+      "preparingNextItem": "Preparing the next item...",
+      "correctFeedback": "Correct!",
+      "incorrectFeedback": "Incorrect.",
+      "submittingLabel": "Submitting..."
     }
   },
   "wordComp": {
