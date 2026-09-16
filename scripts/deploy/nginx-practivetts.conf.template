@@ -1,0 +1,63 @@
+# practiveTTS nginx 설정 템플릿.
+#
+# frontend(VITE_API_URL이 절대 URL이라 프론트=API를 서브도메인으로 분리하는
+# 게 제일 간단 — 백엔드 라우트가 /api 같은 prefix 없이 루트에 바로 걸려
+# 있어서, 한 도메인 경로 기반 분기보다 서브도메인 분리가 코드 변경 없이 맞다)
+# ·backend를 각각 다른 서브도메인으로 서빙한다.
+#
+# 사용법: {{APP_DOMAIN}}·{{API_DOMAIN}}을 실제 값으로 바꾸고
+#   sudo cp nginx-practivetts.conf /etc/nginx/sites-available/practivetts
+#   sudo ln -s /etc/nginx/sites-available/practivetts /etc/nginx/sites-enabled/
+#   sudo nginx -t && sudo systemctl reload nginx
+# 그다음 03-nginx-and-tls.sh(또는 certbot --nginx)로 HTTPS 발급.
+#
+# DNS: {{APP_DOMAIN}}·{{API_DOMAIN}} 둘 다 A 레코드로 이 서버 IP를 가리켜야 함.
+#
+# 프론트 .env의 VITE_API_URL=https://{{API_DOMAIN}} 로 설정할 것.
+# 백엔드 .env의 TRUST_PROXY_HEADER=true 로 설정할 것 — nginx가 신뢰할 수
+# 있는 프록시이므로(X-Forwarded-For를 이 설정이 직접 채워 넘긴다), 안 켜면
+# 레이트리밋이 사용자별이 아니라 nginx IP 하나로 뭉쳐 오작동한다.
+
+# ── 프론트 (정적 빌드 서빙) ──────────────────────────────────────
+server {
+    listen 80;
+    listen [::]:80;
+    server_name {{APP_DOMAIN}};
+
+    root /opt/practivetts/frontend/dist;
+    index index.html;
+
+    # SPA — 없는 경로는 index.html로 (클라이언트 라우터가 처리)
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # 정적 자산은 오래 캐시 (파일명에 해시가 붙어 배포마다 바뀐다 — Vite 기본)
+    location ~* \.(?:js|css|woff2?|svg|png|jpg|jpeg|webp|ico)$ {
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+}
+
+# ── 백엔드 API (리버스 프록시) ───────────────────────────────────
+server {
+    listen 80;
+    listen [::]:80;
+    server_name {{API_DOMAIN}};
+
+    # 사진 업로드 상한(MAX_PHOTO_SIZE_BYTES=5MB, backend/src/memory/constants/
+    # memory-entry.constants.ts)보다 커야 한다 — nginx 기본값(1MB)이면 앱까지
+    # 가지도 못하고 413으로 막힌다.
+    client_max_body_size 8m;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}

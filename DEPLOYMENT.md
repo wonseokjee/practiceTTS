@@ -1,5 +1,25 @@
 # 배포
 
+## 첫 배포 — 서버 프로비저닝 스크립트
+
+Vultr(서울) 같은 빈 Ubuntu 22.04 VPS에 처음 올릴 때는 `scripts/deploy/`의
+스크립트를 순서대로 실행한다:
+
+1. `01-server-setup.sh` — Node.js 22·Python3·PostgreSQL·nginx·certbot·pm2
+   설치, 방화벽(ufw) 설정 (서버에서 1회)
+2. `03-nginx-and-tls.sh <app-domain> <api-domain>` — nginx 설정 + HTTPS
+   발급. 프론트(`VITE_API_URL`)와 백엔드를 서브도메인으로 분리한다 — 백엔드
+   라우트가 `/api` 같은 prefix 없이 루트에 바로 걸려 있어 경로 기반 분기보다
+   간단하다.
+3. `02-app-deploy.sh <git-repo-url> [branch]` — 코드 클론/풀, 빌드,
+   마이그레이션, pm2 기동. `.env` 3개(backend/ai-service/frontend)는 이
+   스크립트가 만들지 않으므로 `.env.example`을 참고해 서버에서 직접 채워야
+   한다. 재배포할 때도 이 스크립트를 다시 실행하면 된다(pm2가 있으면
+   reload, 없으면 최초 기동).
+
+세 스크립트 모두 아래 "배포 전 확인"·"스모크 체크리스트"를 대체하지 않는다
+— 런타임·앱 배치만 자동화할 뿐, 실제로 도는지 확인하는 건 여전히 사람이 한다.
+
 ## 현재 전제: 단일 인스턴스
 
 이 앱은 **인스턴스 하나**로 도는 것을 전제로 만들어져 있다. 성능이 부족해서가
