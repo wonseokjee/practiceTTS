@@ -4,6 +4,19 @@
     "loading": "Loading…",
     "retry": "Try again"
   },
+  "practiceScreen": {
+    "correctMessage": "That's right, it's {{phrase}}.",
+    "revealMessage": "This one is {{phrase}}.",
+    "retryMessage2": "Want to give it another try?",
+    "retryMessage3": "One more try?",
+    "doneTitle": "Practice done for today!",
+    "doneMessage1": "Thank you for practicing with us.",
+    "doneMessage2": "See you again tomorrow.",
+    "finishButton": "Finish",
+    "finishPracticeButton": "Finish practice",
+    "nextItemButton": "Next item",
+    "stopForTodayButton": "Stop for today"
+  },
   "soundCheck": {
     "title": "Let's check the sound",
     "introAssessment": "The assessment has questions you'll listen to.",

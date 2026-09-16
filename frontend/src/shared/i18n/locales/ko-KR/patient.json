@@ -4,6 +4,19 @@
     "loading": "불러오는 중...",
     "retry": "다시 시도"
   },
+  "practiceScreen": {
+    "correctMessage": "맞아요, {{phrase}}.",
+    "revealMessage": "이건 {{phrase}}.",
+    "retryMessage2": "다시 한번 해볼까요?",
+    "retryMessage3": "한 번만 더 해볼까요?",
+    "doneTitle": "오늘 연습 끝!",
+    "doneMessage1": "함께 해주셔서 고맙습니다.",
+    "doneMessage2": "내일 또 만나요.",
+    "finishButton": "마치기",
+    "finishPracticeButton": "연습 마치기",
+    "nextItemButton": "다음 문제",
+    "stopForTodayButton": "오늘은 그만하기"
+  },
   "soundCheck": {
     "title": "소리를 확인할게요",
     "introAssessment": "검사에는 듣고 답하는 문제가 있어요.",
