@@ -6,6 +6,7 @@
  */
 
 import type React from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ChoiceImage } from '../../domain/types.js';
 import { ChoiceImageCard } from './ChoiceImageCard.js';
 
@@ -26,10 +27,11 @@ export const ImageChoiceGrid: React.FC<ImageChoiceGridProps> = ({
   selectedIndex,
   onSelect,
 }) => {
+  const { t } = useTranslation('assessments');
   return (
     <div
       className="flex flex-row gap-4 w-full"
-      aria-label="이미지 선택지"
+      aria-label={t('sentComp.imageChoiceGrid.groupAria')}
       role="group"
     >
       {choices.map((choice, i) => {

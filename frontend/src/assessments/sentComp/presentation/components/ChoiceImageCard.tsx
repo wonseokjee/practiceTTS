@@ -7,6 +7,7 @@
  */
 
 import type React from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ChoiceImage } from '../../domain/types.js';
 
 interface ChoiceImageCardProps {
@@ -29,6 +30,7 @@ export const ChoiceImageCard: React.FC<ChoiceImageCardProps> = ({
   isSelectable,
   onSelect,
 }) => {
+  const { t } = useTranslation('assessments');
   const handleClick = () => {
     if (!isSelectable) return;
     onSelect(index);
@@ -44,7 +46,10 @@ export const ChoiceImageCard: React.FC<ChoiceImageCardProps> = ({
       `}
       onClick={handleClick}
       disabled={!isSelectable}
-      aria-label={`선택지 ${index + 1}: ${choice.altText}`}
+      aria-label={t('sentComp.choiceImageCard.selectAria', {
+        index: index + 1,
+        altText: choice.altText,
+      })}
       aria-pressed={isSelected}
     >
       {/* 이미지 */}

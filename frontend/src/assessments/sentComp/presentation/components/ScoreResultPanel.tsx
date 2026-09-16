@@ -6,6 +6,7 @@
  */
 
 import type React from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ScoreDTO } from '../../application/dtos.js';
 
 interface ScoreResultPanelProps {
@@ -15,11 +16,11 @@ interface ScoreResultPanelProps {
   onProceed: () => void;
 }
 
-/** 문장 유형 한국어 레이블 */
-const SENTENCE_TYPE_LABELS: Record<string, string> = {
-  reversible: '가역문(어순)',
-  'relative-clause': '관계절',
-  'embedded-clause': '내포절',
+/** 문장 유형 → i18n 키 이름 */
+const SENTENCE_TYPE_KEYS: Record<string, string> = {
+  reversible: 'reversible',
+  'relative-clause': 'relativeClause',
+  'embedded-clause': 'embeddedClause',
 };
 
 /** 정답률에 따른 색상 클래스 */
@@ -34,6 +35,7 @@ export const ScoreResultPanel: React.FC<ScoreResultPanelProps> = ({
   score,
   onProceed,
 }) => {
+  const { t } = useTranslation('assessments');
   const sentenceTypes = ['reversible', 'relative-clause', 'embedded-clause'];
 
   return (
@@ -43,39 +45,61 @@ export const ScoreResultPanel: React.FC<ScoreResultPanelProps> = ({
         <p className="text-4xl mb-2" aria-hidden="true">
           ✅
         </p>
-        <h2 className="text-2xl font-bold text-ink">검사 완료</h2>
+        <h2 className="text-2xl font-bold text-ink">
+          {t('sentComp.scoreResultPanel.title')}
+        </h2>
       </div>
 
       {/* 총점 카드 */}
       <div
         className="bg-white rounded-2xl shadow-md p-6 text-center"
-        aria-label={`총점: ${score.totalScore}점`}
+        aria-label={t('sentComp.scoreResultPanel.totalScoreAria', {
+          score: score.totalScore,
+        })}
       >
-        <p className="text-sm text-muted-sage mb-2">총점</p>
+        <p className="text-sm text-muted-sage mb-2">
+          {t('sentComp.scoreResultPanel.totalScoreLabel')}
+        </p>
         <p className="text-6xl font-bold text-primary">
           {score.totalScore}
-          <span className="text-2xl text-muted-sage font-normal">점</span>
+          <span className="text-2xl text-muted-sage font-normal">
+            {t('sentComp.scoreResultPanel.pointsUnit')}
+          </span>
         </p>
         <p className="text-sm text-muted-sage mt-2">
-          {score.correctCount} / {score.totalItems} 정답
+          {t('sentComp.scoreResultPanel.correctCount', {
+            correct: score.correctCount,
+            total: score.totalItems,
+          })}
         </p>
       </div>
 
       {/* 문장 유형별 정답률 테이블 */}
       <div className="bg-white rounded-2xl shadow-md p-6">
-        <h3 className="font-semibold text-ink mb-4">유형별 정답률</h3>
-        <table className="w-full" aria-label="문장 유형별 정답률 표">
+        <h3 className="font-semibold text-ink mb-4">
+          {t('sentComp.scoreResultPanel.byTypeTitle')}
+        </h3>
+        <table className="w-full" aria-label={t('sentComp.scoreResultPanel.tableAria')}>
           <thead>
             <tr className="text-left text-sm text-muted-sage border-b border-line">
-              <th className="pb-2 font-medium">유형</th>
-              <th className="pb-2 font-medium text-right">정답 / 전체</th>
-              <th className="pb-2 font-medium text-right">정답률</th>
+              <th className="pb-2 font-medium">
+                {t('sentComp.scoreResultPanel.typeHeader')}
+              </th>
+              <th className="pb-2 font-medium text-right">
+                {t('sentComp.scoreResultPanel.correctOverTotalHeader')}
+              </th>
+              <th className="pb-2 font-medium text-right">
+                {t('sentComp.scoreResultPanel.accuracyHeader')}
+              </th>
             </tr>
           </thead>
           <tbody>
             {sentenceTypes.map((sentenceType) => {
               const stats = score.byType[sentenceType];
-              const label = SENTENCE_TYPE_LABELS[sentenceType] ?? sentenceType;
+              const typeKey = SENTENCE_TYPE_KEYS[sentenceType] ?? sentenceType;
+              const label = t(`sentComp.scoreResultPanel.sentenceType.${typeKey}`, {
+                defaultValue: sentenceType,
+              });
 
               if (stats === undefined || stats.total === 0) {
                 return (
@@ -117,19 +141,26 @@ export const ScoreResultPanel: React.FC<ScoreResultPanelProps> = ({
 
       {/* 추가 통계 */}
       <div className="bg-white rounded-2xl shadow-md p-6 flex flex-col gap-3">
-        <h3 className="font-semibold text-ink mb-1">세부 통계</h3>
+        <h3 className="font-semibold text-ink mb-1">
+          {t('sentComp.scoreResultPanel.detailStatsTitle')}
+        </h3>
 
         <div className="flex justify-between items-center py-2 border-b border-line/60">
-          <span className="text-muted-sage text-sm">평균 반응 시간</span>
+          <span className="text-muted-sage text-sm">
+            {t('sentComp.scoreResultPanel.avgReactionTimeLabel')}
+          </span>
           <span className="font-medium text-ink">
             {Math.round(score.averageReactionTimeMs)} ms
           </span>
         </div>
 
         <div className="flex justify-between items-center py-2">
-          <span className="text-muted-sage text-sm">평균 재청취 횟수</span>
+          <span className="text-muted-sage text-sm">
+            {t('sentComp.scoreResultPanel.avgReplayCountLabel')}
+          </span>
           <span className="font-medium text-ink">
-            {score.averageReplayCount.toFixed(1)} 회
+            {score.averageReplayCount.toFixed(1)}{' '}
+            {t('sentComp.scoreResultPanel.replayUnit')}
           </span>
         </div>
       </div>
@@ -140,7 +171,7 @@ export const ScoreResultPanel: React.FC<ScoreResultPanelProps> = ({
         className="w-full bg-primary hover:bg-primary-dark text-white font-semibold py-4 rounded-2xl text-lg transition-colors active:scale-[0.98]"
         onClick={onProceed}
       >
-        다음 검사로 이동
+        {t('sentComp.scoreResultPanel.nextAssessmentButton')}
       </button>
     </div>
   );

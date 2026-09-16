@@ -18,6 +18,7 @@ const EXTRACTED_DIRS = [
   'memory-link/shared/components',
   'memory-link/caregiver/presentation/components',
   'memory-link/caregiver/presentation',
+  'assessments/sentComp/presentation/components',
 ];
 
 /**
