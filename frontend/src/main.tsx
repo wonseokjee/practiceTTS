@@ -17,6 +17,6 @@ function render() {
 // 쪽이 훨씬 나쁘다(빠진 키는 i18n.ts의 경고로 드러난다).
 initI18n()
   .catch((error: unknown) => {
-    console.error('[i18n] 초기화 실패 — 문구 없이 계속합니다', error)
+    console.error('[i18n] init failed — continuing without translated strings', error)
   })
   .finally(render)

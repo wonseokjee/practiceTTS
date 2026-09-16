@@ -73,5 +73,10 @@
     "requestFailed": "Something went wrong processing that request.",
     "unknown": "Something went wrong.",
     "dailyLimitFallback": "That's it for today. Let's pick back up tomorrow."
+  },
+  "app": {
+    "loading": "Loading...",
+    "caregiverOnlyAccess": "Only caregiver accounts can access this.",
+    "preparingAssessment": "Getting the assessment ready..."
   }
 }

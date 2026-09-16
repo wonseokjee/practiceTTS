@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   BrowserRouter,
   Routes,
@@ -34,6 +35,7 @@ interface CompletedAssessments {
 }
 
 function AssessmentContent() {
+  const { t } = useTranslation('common');
   const { session, startSession } = useSessionContext();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -60,7 +62,7 @@ function AssessmentContent() {
     useState<CompletedAssessments>({ sentComp: false, wordComp: false });
 
   const handleLocComplete = (resultId: string): void => {
-    console.log('LOC 검사 완료. 결과 ID:', resultId);
+    console.log('LOC assessment complete. Result ID:', resultId);
   };
 
   const handleLocProceed = (): void => {
@@ -114,7 +116,7 @@ function AssessmentContent() {
     if (effectivePatientId) {
       return (
         <div className="h-full bg-canvas flex items-center justify-center p-6">
-          <p className="text-muted-sage">검사를 준비하고 있어요...</p>
+          <p className="text-muted-sage">{t('app.preparingAssessment')}</p>
         </div>
       );
     }
@@ -152,12 +154,13 @@ function AssessmentContent() {
  * 보호자 전용 라우트: role이 caregiver가 아니면 접근 거부
  */
 function CaregiverRoute({ children }: { children: ReactNode }) {
+  const { t } = useTranslation('common');
   const { user, isLoading, isPatientMode } = useAuth();
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <span className="text-muted-sage">로딩 중...</span>
+        <span className="text-muted-sage">{t('app.loading')}</span>
       </div>
     );
   }
@@ -169,7 +172,7 @@ function CaregiverRoute({ children }: { children: ReactNode }) {
   if (user.role !== 'caregiver') {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-danger">보호자 계정으로만 접근할 수 있습니다.</p>
+        <p className="text-danger">{t('app.caregiverOnlyAccess')}</p>
       </div>
     );
   }
@@ -192,12 +195,13 @@ function CaregiverRoute({ children }: { children: ReactNode }) {
  * 이미 온보딩된 보호자는 대시보드로, 비로그인은 로그인으로.
  */
 function OnboardingRoute({ children }: { children: ReactNode }) {
+  const { t } = useTranslation('common');
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <span className="text-muted-sage">로딩 중...</span>
+        <span className="text-muted-sage">{t('app.loading')}</span>
       </div>
     );
   }
@@ -215,12 +219,13 @@ function OnboardingRoute({ children }: { children: ReactNode }) {
  * 환자 전용 라우트: 환자 본인(하위호환) 또는 환자 모드의 보호자만 허용
  */
 function PatientRoute({ children }: { children: ReactNode }) {
+  const { t } = useTranslation('common');
   const { user, isLoading, isPatientMode } = useAuth();
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <span className="text-muted-sage">로딩 중...</span>
+        <span className="text-muted-sage">{t('app.loading')}</span>
       </div>
     );
   }
@@ -251,12 +256,13 @@ function PatientRoute({ children }: { children: ReactNode }) {
  * "/" 경로: 로그인 상태와 역할에 따라 적절한 경로로 리다이렉트
  */
 function RootRedirect() {
+  const { t } = useTranslation('common');
   const { user, isLoading, isPatientMode } = useAuth();
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <span className="text-muted-sage">로딩 중...</span>
+        <span className="text-muted-sage">{t('app.loading')}</span>
       </div>
     );
   }
@@ -288,12 +294,13 @@ function RootRedirect() {
  * 이미 로그인된 상태로 /login 접근 시 역할에 따라 리다이렉트
  */
 function LoginRoute() {
+  const { t } = useTranslation('common');
   const { user, isLoading, isPatientMode } = useAuth();
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <span className="text-muted-sage">로딩 중...</span>
+        <span className="text-muted-sage">{t('app.loading')}</span>
       </div>
     );
   }
