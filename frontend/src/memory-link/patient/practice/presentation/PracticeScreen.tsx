@@ -20,6 +20,7 @@
 // 진행 중에도, 종료 화면에도 숫자를 두지 않는다.
 
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { PracticePlayable } from '../domain/Practice.js';
 import {
   usePracticeSession,
@@ -48,6 +49,8 @@ interface PracticeScreenProps {
  * 다른 것은 앞의 한마디뿐이다.
  */
 function messageFor(
+  t: (key: string, opts?: Record<string, unknown>) => string,
+  language: string,
   phase: 'answering' | 'revealed' | 'done',
   attemptNo: number,
   outcome: PracticeOutcome | null,
@@ -55,11 +58,15 @@ function messageFor(
 ): string | null {
   if (phase === 'revealed' && answerLabel !== null) {
     // 조사는 낱말의 받침을 보고 고른다. 그냥 이어붙이면 "칫솔예요"가 된다.
-    const quoted = `'${answerLabel}'${copulaSuffix(answerLabel)}`;
-    return outcome === 'correct' ? `맞아요, ${quoted}.` : `이건 ${quoted}.`;
+    // 한국어가 아니면 받침 규칙 자체가 없으니 붙이지 않는다.
+    const suffix = language.startsWith('ko') ? copulaSuffix(answerLabel) : '';
+    const phrase = `'${answerLabel}'${suffix}`;
+    return outcome === 'correct'
+      ? t('practiceScreen.correctMessage', { phrase })
+      : t('practiceScreen.revealMessage', { phrase });
   }
-  if (phase === 'answering' && attemptNo === 2) return '다시 한번 해볼까요?';
-  if (phase === 'answering' && attemptNo >= 3) return '한 번만 더 해볼까요?';
+  if (phase === 'answering' && attemptNo === 2) return t('practiceScreen.retryMessage2');
+  if (phase === 'answering' && attemptNo >= 3) return t('practiceScreen.retryMessage3');
   return null;
 }
 
@@ -130,6 +137,7 @@ function PracticeItemBody({
 }
 
 export function PracticeScreen({ onExit, deps }: PracticeScreenProps) {
+  const { t, i18n: i18nInstance } = useTranslation('patient');
   const [state, actions] = usePracticeSession(deps);
   const {
     phase,
@@ -143,7 +151,14 @@ export function PracticeScreen({ onExit, deps }: PracticeScreenProps) {
   } = state;
   const messageRef = useRef<HTMLDivElement>(null);
 
-  const message = messageFor(phase, attemptNo, outcome, correctAnswerLabel);
+  const message = messageFor(
+    t,
+    i18nInstance.language,
+    phase,
+    attemptNo,
+    outcome,
+    correctAnswerLabel,
+  );
 
   // 문구와 "다음 문제"를 화면 안으로 끌어온다.
   //
@@ -172,18 +187,18 @@ export function PracticeScreen({ onExit, deps }: PracticeScreenProps) {
         <span aria-hidden="true" className="text-6xl">
           🌿
         </span>
-        <h2 className="text-2xl font-bold text-ink-sage">오늘 연습 끝!</h2>
+        <h2 className="text-2xl font-bold text-ink-sage">{t('practiceScreen.doneTitle')}</h2>
         <p className="text-center text-lg leading-relaxed text-muted-sage">
-          함께 해주셔서 고맙습니다.
+          {t('practiceScreen.doneMessage1')}
           <br />
-          내일 또 만나요.
+          {t('practiceScreen.doneMessage2')}
         </p>
         <button
           type="button"
           onClick={onExit}
           className="min-h-[56px] w-full rounded-full bg-primary px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark"
         >
-          마치기
+          {t('practiceScreen.finishButton')}
         </button>
       </div>
     );
@@ -196,7 +211,9 @@ export function PracticeScreen({ onExit, deps }: PracticeScreenProps) {
 
   const isRevealed = phase === 'revealed';
   const isLastItem = currentIndex + 1 >= totalCount;
-  const advanceLabel = isLastItem ? '연습 마치기' : '다음 문제';
+  const advanceLabel = isLastItem
+    ? t('practiceScreen.finishPracticeButton')
+    : t('practiceScreen.nextItemButton');
 
   return (
     <div className="font-pretendard mx-auto w-full max-w-2xl px-4 py-6">
@@ -245,9 +262,9 @@ export function PracticeScreen({ onExit, deps }: PracticeScreenProps) {
           type="button"
           onClick={actions.endSession}
           className="mt-8 min-h-[48px] w-full text-base text-muted-sage underline underline-offset-4"
-          aria-label="오늘은 그만하기"
+          aria-label={t('practiceScreen.stopForTodayButton')}
         >
-          오늘은 그만하기
+          {t('practiceScreen.stopForTodayButton')}
         </button>
       )}
     </div>
