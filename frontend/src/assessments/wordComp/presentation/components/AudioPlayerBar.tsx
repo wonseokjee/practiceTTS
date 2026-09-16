@@ -6,6 +6,7 @@
  */
 
 import type React from 'react';
+import { useTranslation } from 'react-i18next';
 import { SpeakerIcon } from '../../../../shared/components/SpeakerIcon.js';
 
 interface AudioPlayerBarProps {
@@ -23,6 +24,7 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
   replayCount,
   onReplay,
 }) => {
+  const { t } = useTranslation('assessments');
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-line px-6 py-4 flex items-center justify-between gap-4">
       {/* 단어 표시 영역 */}
@@ -43,10 +45,12 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
 
         <div>
           <p className="text-xs text-muted-sage mb-0.5">
-            {isPlaying ? '음성 재생 중...' : '음성 재생 완료'}
+            {isPlaying
+              ? t('wordComp.audioPlayerBar.playingLabel')
+              : t('wordComp.audioPlayerBar.playbackDoneLabel')}
           </p>
           <p className="text-base font-semibold text-ink">
-            단어를 듣고 그림을 선택하세요
+            {t('wordComp.audioPlayerBar.instructionLabel')}
           </p>
         </div>
       </div>
@@ -64,7 +68,7 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
         `}
         disabled={!isReplayEnabled}
         onClick={onReplay}
-        aria-label="다시 듣기"
+        aria-label={t('wordComp.audioPlayerBar.replayAria')}
       >
         <svg
           className="w-4 h-4"
@@ -79,7 +83,10 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
             d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
           />
         </svg>
-        <span>다시 듣기{replayCount > 0 ? ` (${replayCount})` : ''}</span>
+        <span>
+          {t('wordComp.audioPlayerBar.replayButton')}
+          {replayCount > 0 ? ` (${replayCount})` : ''}
+        </span>
       </button>
     </div>
   );

@@ -5,6 +5,7 @@
  */
 
 import type React from 'react';
+import { useTranslation } from 'react-i18next';
 import type { WordComprehensionChoiceDTO } from '../../application/dtos/WordComprehensionChoiceDTO.js';
 import { ImageChoiceCard } from './ImageChoiceCard.js';
 
@@ -19,11 +20,12 @@ export const ImageChoiceGrid: React.FC<ImageChoiceGridProps> = ({
   isSelectable,
   onSelect,
 }) => {
+  const { t } = useTranslation('assessments');
   return (
     <div
       className="grid grid-cols-2 gap-3"
       role="group"
-      aria-label="선택지 이미지"
+      aria-label={t('wordComp.imageChoiceGrid.groupAria')}
     >
       {choices.map((choice) => (
         <ImageChoiceCard

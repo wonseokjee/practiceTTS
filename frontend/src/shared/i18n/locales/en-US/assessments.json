@@ -58,5 +58,38 @@
       "replayAria": "Replay the sentence",
       "replayButton": "Replay"
     }
+  },
+  "wordComp": {
+    "audioPlayerBar": {
+      "playingLabel": "Playing audio...",
+      "playbackDoneLabel": "Audio playback done",
+      "instructionLabel": "Listen to the word and choose the picture",
+      "replayAria": "Replay",
+      "replayButton": "Replay"
+    },
+    "imageChoiceCard": {
+      "selectAria": "Choose {{word}}"
+    },
+    "imageChoiceGrid": {
+      "groupAria": "Image choices"
+    },
+    "sessionSummaryView": {
+      "resultTitle": "Word comprehension result",
+      "totalItemsSuffix": "/ {{total}} pts",
+      "errorPatternTitle": "Error pattern analysis ({{count}} incorrect)",
+      "semanticErrorLabel": "Semantic error",
+      "semanticErrorDescription": "Chose a semantically related word",
+      "phonemicErrorLabel": "Phonemic error",
+      "phonemicErrorDescription": "Chose a phonetically similar word",
+      "unrelatedErrorLabel": "Unrelated error",
+      "unrelatedErrorDescription": "Chose a completely unrelated word",
+      "countRate": "{{count}} times ({{pct}}%)",
+      "reactionStatsTitle": "Reaction stats",
+      "avgReactionTimeValue": "{{seconds}}s",
+      "avgReactionTimeLabel": "Average reaction time",
+      "avgReplayCountValue": "{{count}} times",
+      "avgReplayCountLabel": "Average replay count",
+      "nextAssessmentButton": "Go to next assessment"
+    }
   }
 }

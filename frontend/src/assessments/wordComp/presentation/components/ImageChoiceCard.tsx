@@ -7,6 +7,7 @@
  */
 
 import type React from 'react';
+import { useTranslation } from 'react-i18next';
 import type { WordComprehensionChoiceDTO } from '../../application/dtos/WordComprehensionChoiceDTO.js';
 
 interface ImageChoiceCardProps {
@@ -20,6 +21,7 @@ export const ImageChoiceCard: React.FC<ImageChoiceCardProps> = ({
   isSelectable,
   onSelect,
 }) => {
+  const { t } = useTranslation('assessments');
   const handlePointerDown = (e: React.PointerEvent) => {
     if (!isSelectable) return;
     e.preventDefault(); // 스크롤 이벤트 충돌 방지
@@ -39,7 +41,7 @@ export const ImageChoiceCard: React.FC<ImageChoiceCardProps> = ({
       onPointerDown={handlePointerDown}
       disabled={!isSelectable}
       style={{ touchAction: 'none' }}
-      aria-label={`${choice.word} 선택`}
+      aria-label={t('wordComp.imageChoiceCard.selectAria', { word: choice.word })}
     >
       {/* 이미지 로드 실패 폴백 (z-index 0, img 아래) */}
       <div

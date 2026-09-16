@@ -5,6 +5,7 @@
  */
 
 import type React from 'react';
+import { useTranslation } from 'react-i18next';
 import type { SessionSummaryDTO } from '../../application/dtos/SessionSummaryDTO.js';
 
 interface SessionSummaryViewProps {
@@ -16,6 +17,7 @@ export const SessionSummaryView: React.FC<SessionSummaryViewProps> = ({
   summary,
   onProceed,
 }) => {
+  const { t } = useTranslation('assessments');
   const { totalScore, percentageScore, totalItems, distractorPattern, averageReactionTimeMs, averageReplayCount } = summary;
   const totalErrors = totalItems - totalScore;
 
@@ -23,9 +25,13 @@ export const SessionSummaryView: React.FC<SessionSummaryViewProps> = ({
     <div className="flex flex-col gap-6 py-4">
       {/* 총점 카드 */}
       <div className="bg-white rounded-2xl shadow-sm border border-line p-6 text-center">
-        <p className="text-sm text-muted-sage mb-1">단어 이해 검사 결과</p>
+        <p className="text-sm text-muted-sage mb-1">
+          {t('wordComp.sessionSummaryView.resultTitle')}
+        </p>
         <p className="text-5xl font-bold text-primary mb-1">{totalScore}</p>
-        <p className="text-muted-sage text-sm">/ {totalItems}점</p>
+        <p className="text-muted-sage text-sm">
+          {t('wordComp.sessionSummaryView.totalItemsSuffix', { total: totalItems })}
+        </p>
         <div className="mt-3">
           <span
             className={`inline-block px-4 py-1.5 rounded-full text-sm font-semibold ${
@@ -45,26 +51,26 @@ export const SessionSummaryView: React.FC<SessionSummaryViewProps> = ({
       {totalErrors > 0 && (
         <div className="bg-white rounded-2xl shadow-sm border border-line p-6">
           <h3 className="text-sm font-semibold text-muted-sage mb-4">
-            오답 패턴 분석 (총 {totalErrors}개 오답)
+            {t('wordComp.sessionSummaryView.errorPatternTitle', { count: totalErrors })}
           </h3>
           <div className="flex flex-col gap-3">
             <DistractorBar
-              label="의미 착어"
-              description="의미적으로 유사한 단어 선택"
+              label={t('wordComp.sessionSummaryView.semanticErrorLabel')}
+              description={t('wordComp.sessionSummaryView.semanticErrorDescription')}
               count={distractorPattern.semanticErrorCount}
               rate={distractorPattern.semanticErrorRate}
               color="blue"
             />
             <DistractorBar
-              label="음운 착어"
-              description="발음이 유사한 단어 선택"
+              label={t('wordComp.sessionSummaryView.phonemicErrorLabel')}
+              description={t('wordComp.sessionSummaryView.phonemicErrorDescription')}
               count={distractorPattern.phonemicErrorCount}
               rate={distractorPattern.phonemicErrorRate}
               color="orange"
             />
             <DistractorBar
-              label="무관 오답"
-              description="전혀 무관한 단어 선택"
+              label={t('wordComp.sessionSummaryView.unrelatedErrorLabel')}
+              description={t('wordComp.sessionSummaryView.unrelatedErrorDescription')}
               count={distractorPattern.unrelatedErrorCount}
               rate={distractorPattern.unrelatedErrorRate}
               color="red"
@@ -75,19 +81,29 @@ export const SessionSummaryView: React.FC<SessionSummaryViewProps> = ({
 
       {/* 반응 시간 / 재청취 통계 */}
       <div className="bg-white rounded-2xl shadow-sm border border-line p-6">
-        <h3 className="text-sm font-semibold text-muted-sage mb-4">반응 통계</h3>
+        <h3 className="text-sm font-semibold text-muted-sage mb-4">
+          {t('wordComp.sessionSummaryView.reactionStatsTitle')}
+        </h3>
         <div className="grid grid-cols-2 gap-4">
           <div className="text-center">
             <p className="text-2xl font-bold text-ink">
-              {(averageReactionTimeMs / 1000).toFixed(1)}초
+              {t('wordComp.sessionSummaryView.avgReactionTimeValue', {
+                seconds: (averageReactionTimeMs / 1000).toFixed(1),
+              })}
             </p>
-            <p className="text-xs text-muted-sage mt-1">평균 반응 시간</p>
+            <p className="text-xs text-muted-sage mt-1">
+              {t('wordComp.sessionSummaryView.avgReactionTimeLabel')}
+            </p>
           </div>
           <div className="text-center">
             <p className="text-2xl font-bold text-ink">
-              {averageReplayCount.toFixed(1)}회
+              {t('wordComp.sessionSummaryView.avgReplayCountValue', {
+                count: averageReplayCount.toFixed(1),
+              })}
             </p>
-            <p className="text-xs text-muted-sage mt-1">평균 재청취 횟수</p>
+            <p className="text-xs text-muted-sage mt-1">
+              {t('wordComp.sessionSummaryView.avgReplayCountLabel')}
+            </p>
           </div>
         </div>
       </div>
@@ -98,7 +114,7 @@ export const SessionSummaryView: React.FC<SessionSummaryViewProps> = ({
           className="w-full py-4 bg-primary hover:bg-primary-dark text-white font-semibold rounded-2xl transition-colors text-base"
           onClick={onProceed}
         >
-          다음 검사로 이동
+          {t('wordComp.sessionSummaryView.nextAssessmentButton')}
         </button>
       )}
     </div>
@@ -126,6 +142,7 @@ const DistractorBar: React.FC<DistractorBarProps> = ({
   rate,
   color,
 }) => {
+  const { t } = useTranslation('assessments');
   const colors = colorMap[color];
   const pct = Math.round(rate * 100);
 
@@ -137,7 +154,7 @@ const DistractorBar: React.FC<DistractorBarProps> = ({
           <span className="text-xs text-muted-sage ml-1.5">{description}</span>
         </div>
         <span className={`text-sm font-semibold ${colors.text}`}>
-          {count}회 ({pct}%)
+          {t('wordComp.sessionSummaryView.countRate', { count, pct })}
         </span>
       </div>
       <div className={`w-full ${colors.light} rounded-full h-2`}>
