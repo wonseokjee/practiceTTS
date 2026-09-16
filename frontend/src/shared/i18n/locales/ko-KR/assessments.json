@@ -90,6 +90,20 @@
       "avgReplayCountValue": "{{count}}회",
       "avgReplayCountLabel": "평균 재청취 횟수",
       "nextAssessmentButton": "다음 검사로 이동"
+    },
+    "screen": {
+      "noSessionMessage": "세션 정보가 없습니다. 검사를 다시 시작해주세요.",
+      "title": "단어 이해 검사",
+      "completedSubtitle": "검사 완료",
+      "patientLabel": "환자: {{name}}",
+      "loadingItems": "문항 불러오는 중...",
+      "aggregatingResults": "결과 집계 중...",
+      "errorTitle": "오류가 발생했습니다",
+      "retryButton": "다시 시도",
+      "loadingNextItem": "다음 문항으로 이동 중...",
+      "submittingLabel": "처리 중...",
+      "endSessionAria": "검사 세션 종료",
+      "endSessionButton": "세션 종료"
     }
   }
 }

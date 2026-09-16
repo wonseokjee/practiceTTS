@@ -90,6 +90,20 @@
       "avgReplayCountValue": "{{count}} times",
       "avgReplayCountLabel": "Average replay count",
       "nextAssessmentButton": "Go to next assessment"
+    },
+    "screen": {
+      "noSessionMessage": "No session info found. Please restart the assessment.",
+      "title": "Word comprehension assessment",
+      "completedSubtitle": "Assessment complete",
+      "patientLabel": "Patient: {{name}}",
+      "loadingItems": "Loading item...",
+      "aggregatingResults": "Tallying results...",
+      "errorTitle": "Something went wrong",
+      "retryButton": "Try again",
+      "loadingNextItem": "Moving to the next item...",
+      "submittingLabel": "Submitting...",
+      "endSessionAria": "End assessment session",
+      "endSessionButton": "End session"
     }
   }
 }

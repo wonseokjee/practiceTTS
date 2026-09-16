@@ -22,6 +22,7 @@ const EXTRACTED_DIRS = [
   'shared/hub',
   'memory-link/patient/practice/presentation',
   'assessments/wordComp/presentation/components',
+  'assessments/wordComp/presentation/screens',
 ];
 
 /**
