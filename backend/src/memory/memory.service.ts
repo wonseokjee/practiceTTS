@@ -79,8 +79,14 @@ export class MemoryEntryService implements IMemoryEntryService {
       );
     }
 
-    const photoUrl = photo
-      ? this.fileStorageService.getPublicUrl(photo.filename)
+    // 사진이 있으면 여기서 실제로 영속화한다(로컬 디스크 또는 R2 — 드라이버는
+    // FileStorageService가 고른다). multer는 memoryStorage라 버퍼만 들고 있고
+    // 아직 어디에도 저장되지 않은 상태다.
+    const photoFilename = photo
+      ? await this.fileStorageService.save(photo.buffer, photo.originalname)
+      : null;
+    const photoUrl = photoFilename
+      ? this.fileStorageService.getPublicUrl(photoFilename)
       : null;
 
     // (3) 단일 트랜잭션 내 5종 row 저장
@@ -120,8 +126,8 @@ export class MemoryEntryService implements IMemoryEntryService {
       savedNotes = result.notes;
     } catch (error) {
       // (4) 트랜잭션 실패 시 사진 cleanup (P1-N6=(a))
-      if (photo) {
-        await this.tryDeleteOrphanPhoto(photo.filename);
+      if (photoFilename) {
+        await this.tryDeleteOrphanPhoto(photoFilename);
       }
       throw error;
     }
@@ -151,7 +157,7 @@ export class MemoryEntryService implements IMemoryEntryService {
       const noteTexts = savedNotes.map((n) => n.answerText);
       const { locationTag, objectTags, maskedContext } =
         await this.runTagAndMaskBestEffort(
-          photo?.filename ?? null,
+          photoFilename,
           noteTexts,
           savedEntry.id,
           dto.patientId,

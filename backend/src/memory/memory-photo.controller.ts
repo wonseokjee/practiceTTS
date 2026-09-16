@@ -8,13 +8,12 @@ import {
   StreamableFile,
   UseGuards,
 } from '@nestjs/common';
-import { createReadStream } from 'fs';
-import { stat } from 'fs/promises';
-import { extname, join } from 'path';
+import { extname } from 'path';
+import type { Readable } from 'stream';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { OnboardingGuard } from '../auth/onboarding.guard';
 import type { User } from '../auth/entities/user.entity';
-import { resolveUploadDir } from '../common/upload-path';
+import { FileStorageService } from './services/file-storage.service';
 import { MemoryPhotoService } from './services/memory-photo.service';
 
 interface AuthenticatedRequest extends Request {
@@ -43,9 +42,10 @@ const CONTENT_TYPES: Record<string, string> = {
 @Controller('uploads/memory-images')
 @UseGuards(JwtAuthGuard, OnboardingGuard)
 export class MemoryPhotoController {
-  private readonly uploadDir = resolveUploadDir();
-
-  constructor(private readonly memoryPhotoService: MemoryPhotoService) {}
+  constructor(
+    private readonly memoryPhotoService: MemoryPhotoService,
+    private readonly fileStorageService: FileStorageService,
+  ) {}
 
   @Get(':filename')
   // 사용자별 인증 응답이다. 공유 캐시(프록시·CDN)에 올라가면 접근 통제가
@@ -63,22 +63,21 @@ export class MemoryPhotoController {
       req.user,
     );
 
-    const filePath = join(this.uploadDir, safeName);
-    // DB에는 있는데 디스크에 없는 경우(수동 삭제·볼륨 미마운트)를 500이 아닌
-    // 404로 돌려준다.
-    try {
-      await stat(filePath);
-    } catch {
-      throw new NotFoundException('사진을 찾을 수 없습니다.');
-    }
-
     const contentType = CONTENT_TYPES[extname(safeName).toLowerCase()];
     if (!contentType) {
       throw new NotFoundException('사진을 찾을 수 없습니다.');
     }
 
-    return new StreamableFile(createReadStream(filePath), {
-      type: contentType,
-    });
+    // DB에는 있는데 저장소(로컬 디스크 또는 R2)에 없는 경우(수동 삭제·볼륨
+    // 미마운트)를 500이 아닌 404로 돌려준다. 드라이버마다 "없음"의 에러
+    // 모양이 다르므로(ENOENT vs NoSuchKey) 종류를 가리지 않고 404로 묶는다.
+    let stream: Readable;
+    try {
+      stream = await this.fileStorageService.readStream(safeName);
+    } catch {
+      throw new NotFoundException('사진을 찾을 수 없습니다.');
+    }
+
+    return new StreamableFile(stream, { type: contentType });
   }
 }
