@@ -94,6 +94,12 @@ describe('R2PhotoStorageDriver', () => {
     await expect(driver.readAsBase64('missing.jpg')).rejects.toThrow();
   });
 
+  it('readStream도 Body가 없으면 throw한다 (컨트롤러가 404로 변환할 수 있게)', async () => {
+    sendMock.mockResolvedValue({});
+
+    await expect(driver.readStream('missing.jpg')).rejects.toThrow();
+  });
+
   it('readStream은 GetObjectCommand 응답의 Body를 그대로 돌려준다', async () => {
     const fakeReadable = { pipe: jest.fn() };
     sendMock.mockResolvedValue({ Body: fakeReadable });

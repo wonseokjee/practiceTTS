@@ -53,6 +53,9 @@ export class R2PhotoStorageDriver implements IPhotoStorageDriver {
     const result = await this.client.send(
       new GetObjectCommand({ Bucket: this.bucket, Key: filename }),
     );
+    if (!result.Body) {
+      throw new Error(`R2 오브젝트를 읽지 못했습니다: ${filename}`);
+    }
     // Node.js 런타임에서 GetObjectCommand의 Body는 Readable이다
     // (브라우저 런타임에서만 ReadableStream/Blob으로 갈라진다).
     return result.Body as Readable;

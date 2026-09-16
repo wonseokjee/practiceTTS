@@ -327,6 +327,24 @@ describe('MemoryEntryService.create() — 3-step 트랜잭션 회귀', () => {
     );
   });
 
+  it('케이스 6-1: 사진 저장 자체가 실패(디스크/R2 오류) → 예외 전파, DB 트랜잭션·cleanup 모두 미호출', async () => {
+    // Given — FileStorageService.save가 트랜잭션 시작 전에 실패
+    fileStorageServiceMock.save.mockRejectedValueOnce(
+      new Error('R2 PutObject 실패'),
+    );
+    const dto = buildDto();
+    const photo = buildPhoto('never-persisted.jpg');
+
+    // When / Then
+    await expect(
+      service.create(CAREGIVER_ID, dto, photo, { patientId: PATIENT_ID }),
+    ).rejects.toThrow('R2 PutObject 실패');
+
+    // 저장이 안 됐으니 트랜잭션도, cleanup도 시도할 게 없다.
+    expect(dataSourceMock.transaction).not.toHaveBeenCalled();
+    expect(fileStorageServiceMock.delete).not.toHaveBeenCalled();
+  });
+
   it('케이스 7 (보안 회귀): 응답 DTO에 mood/caregiverReflection 부재', async () => {
     // Given
     const dto = buildDto({
