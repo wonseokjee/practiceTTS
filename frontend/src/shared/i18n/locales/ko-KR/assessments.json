@@ -1,4 +1,26 @@
 {
+  "hub": {
+    "completedLabel": "완료",
+    "startButton": "시작하기",
+    "patientIdLabel": "환자 ID",
+    "endSessionButton": "세션 종료",
+    "title": "검사 선택",
+    "subtitle": "수행할 검사를 선택하세요",
+    "subtestSubtitle": "QAB 하위검사 {{number}}번",
+    "loc": {
+      "title": "의식 수준 (LOC)"
+    },
+    "sentComp": {
+      "title": "문장 이해",
+      "description": "복잡한 구문 이해력 평가"
+    },
+    "wordComp": {
+      "title": "단어 이해",
+      "description": "단어 수준의 청각적 이해 평가"
+    },
+    "allCompletedTitle": "모든 검사가 완료되었습니다.",
+    "allCompletedSubtitle": "세션을 종료해 주세요."
+  },
   "sentComp": {
     "choiceImageCard": {
       "selectAria": "선택지 {{index}}: {{altText}}"

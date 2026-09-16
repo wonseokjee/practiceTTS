@@ -1,4 +1,26 @@
 {
+  "hub": {
+    "completedLabel": "Done",
+    "startButton": "Start",
+    "patientIdLabel": "Patient ID",
+    "endSessionButton": "End session",
+    "title": "Select an assessment",
+    "subtitle": "Choose the assessment to run",
+    "subtestSubtitle": "QAB subtest {{number}}",
+    "loc": {
+      "title": "Level of consciousness (LOC)"
+    },
+    "sentComp": {
+      "title": "Sentence comprehension",
+      "description": "Assesses comprehension of complex sentence structures"
+    },
+    "wordComp": {
+      "title": "Word comprehension",
+      "description": "Assesses auditory comprehension at the word level"
+    },
+    "allCompletedTitle": "All assessments are complete.",
+    "allCompletedSubtitle": "Please end the session."
+  },
   "sentComp": {
     "choiceImageCard": {
       "selectAria": "Choice {{index}}: {{altText}}"
