@@ -19,6 +19,7 @@
  */
 
 import type React from 'react';
+import { useTranslation } from 'react-i18next';
 import type { SessionSummaryDTO } from '../../application/dtos/SessionSummaryDTO.js';
 import { useSessionContext } from '../../../../shared/session/SessionContext.js';
 import { LoadingOverlay } from '../../../../shared/components/LoadingOverlay.js';
@@ -35,6 +36,7 @@ interface WordComprehensionScreenProps {
 export const WordComprehensionScreen: React.FC<WordComprehensionScreenProps> = ({
   onComplete,
 }) => {
+  const { t } = useTranslation('assessments');
   const { session, endSession } = useSessionContext();
 
   // session이 없으면 patientId를 알 수 없으므로 에러 상태 표시
@@ -43,7 +45,7 @@ export const WordComprehensionScreen: React.FC<WordComprehensionScreenProps> = (
       <div className="h-full bg-canvas flex items-center justify-center">
         <div className="text-center px-4">
           <p className="text-danger font-medium mb-4">
-            세션 정보가 없습니다. 검사를 다시 시작해주세요.
+            {t('wordComp.screen.noSessionMessage')}
           </p>
         </div>
       </div>
@@ -77,6 +79,7 @@ const WordComprehensionScreenInner: React.FC<InnerProps> = ({
   onComplete,
   onEndSession,
 }) => {
+  const { t } = useTranslation('assessments');
   // 표시용 환자 이름 (없으면 식별자로 폴백)
   const patientLabel = patientName ?? patientId;
   const { viewState, actions } = useWordComprehensionViewModel(
@@ -102,7 +105,7 @@ const WordComprehensionScreenInner: React.FC<InnerProps> = ({
   if (phase.type === 'LOADING') {
     return (
       <div className="h-full bg-canvas flex items-center justify-center">
-        <LoadingOverlay message="문항 불러오는 중..." />
+        <LoadingOverlay message={t('wordComp.screen.loadingItems')} />
       </div>
     );
   }
@@ -114,17 +117,19 @@ const WordComprehensionScreenInner: React.FC<InnerProps> = ({
         <header className="bg-white border-b border-line px-4 py-3 flex items-center justify-between shadow-sm">
           <div>
             <h1 className="text-base font-semibold text-ink">
-              단어 이해 검사
+              {t('wordComp.screen.title')}
             </h1>
-            <p className="text-xs text-muted-sage">검사 완료</p>
+            <p className="text-xs text-muted-sage">{t('wordComp.screen.completedSubtitle')}</p>
           </div>
-          <span className="text-xs text-muted-sage">환자: {patientLabel}</span>
+          <span className="text-xs text-muted-sage">
+            {t('wordComp.screen.patientLabel', { name: patientLabel })}
+          </span>
         </header>
         <main className="flex-1 px-4 py-4 max-w-xl mx-auto w-full overflow-y-auto">
           {summary !== null ? (
             <SessionSummaryView summary={summary} onProceed={onComplete !== undefined ? () => onComplete(summary) : undefined} />
           ) : (
-            <LoadingOverlay message="결과 집계 중..." />
+            <LoadingOverlay message={t('wordComp.screen.aggregatingResults')} />
           )}
         </main>
       </div>
@@ -154,7 +159,7 @@ const WordComprehensionScreenInner: React.FC<InnerProps> = ({
               />
             </svg>
           </div>
-          <p className="text-ink font-medium mb-2">오류가 발생했습니다</p>
+          <p className="text-ink font-medium mb-2">{t('wordComp.screen.errorTitle')}</p>
           <p className="text-muted-sage text-sm mb-6">
             {errorMessage ?? phase.message}
           </p>
@@ -163,7 +168,7 @@ const WordComprehensionScreenInner: React.FC<InnerProps> = ({
             className="w-full py-3 bg-primary hover:bg-primary-dark text-white font-semibold rounded-xl transition-colors"
             onClick={onRetry}
           >
-            다시 시도
+            {t('wordComp.screen.retryButton')}
           </button>
         </div>
       </div>
@@ -181,7 +186,7 @@ const WordComprehensionScreenInner: React.FC<InnerProps> = ({
           onEndSession={onEndSession}
         />
         <main className="flex-1 px-4 py-4 max-w-xl mx-auto w-full flex items-center justify-center">
-          <LoadingOverlay message="다음 문항으로 이동 중..." />
+          <LoadingOverlay message={t('wordComp.screen.loadingNextItem')} />
         </main>
       </div>
     );
@@ -192,7 +197,7 @@ const WordComprehensionScreenInner: React.FC<InnerProps> = ({
   if (currentItem === null) {
     return (
       <div className="h-full bg-canvas flex items-center justify-center">
-        <LoadingOverlay message="문항 불러오는 중..." />
+        <LoadingOverlay message={t('wordComp.screen.loadingItems')} />
       </div>
     );
   }
@@ -239,7 +244,7 @@ const WordComprehensionScreenInner: React.FC<InnerProps> = ({
               className="w-4 h-4 border-2 border-[#c8e6d9] border-t-primary rounded-full animate-spin"
               aria-hidden="true"
             />
-            <span>처리 중...</span>
+            <span>{t('wordComp.screen.submittingLabel')}</span>
           </div>
         )}
       </main>
@@ -261,15 +266,17 @@ const AssessmentHeader: React.FC<AssessmentHeaderProps> = ({
   totalItems,
   onEndSession,
 }) => {
+  const { t } = useTranslation('assessments');
   return (
     <header className="bg-white border-b border-line px-4 py-3 shadow-sm">
       <div className="max-w-xl mx-auto flex items-center justify-between">
         <div>
           <h1 className="text-base font-semibold text-ink">
-            단어 이해 검사
+            {t('wordComp.screen.title')}
           </h1>
           <p className="text-xs text-muted-sage">
-            QAB 하위검사 3번 &nbsp;·&nbsp; 환자: {patientLabel}
+            {t('hub.subtestSubtitle', { number: 3 })} &nbsp;·&nbsp;{' '}
+            {t('wordComp.screen.patientLabel', { name: patientLabel })}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -280,9 +287,9 @@ const AssessmentHeader: React.FC<AssessmentHeaderProps> = ({
             type="button"
             className="px-3 py-1.5 text-xs text-muted-sage border border-line rounded-lg hover:bg-primary-light transition-colors"
             onClick={onEndSession}
-            aria-label="검사 세션 종료"
+            aria-label={t('wordComp.screen.endSessionAria')}
           >
-            세션 종료
+            {t('wordComp.screen.endSessionButton')}
           </button>
         </div>
       </div>
