@@ -6,6 +6,7 @@
  */
 
 import type React from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface AssessmentCardProps {
   title: string;
@@ -22,6 +23,7 @@ export function AssessmentCard({
   isCompleted,
   onStart,
 }: AssessmentCardProps): React.JSX.Element {
+  const { t } = useTranslation('assessments');
   return (
     <div
       className={`bg-white rounded-2xl shadow-sm border p-6 ${
@@ -34,7 +36,7 @@ export function AssessmentCard({
             <h3 className="text-base font-semibold text-ink">{title}</h3>
             {isCompleted && (
               <span className="text-xs font-medium text-primary bg-primary-light px-2 py-0.5 rounded-full">
-                완료
+                {t('hub.completedLabel')}
               </span>
             )}
           </div>
@@ -51,7 +53,7 @@ export function AssessmentCard({
         }`}
         onClick={isCompleted ? undefined : onStart}
       >
-        {isCompleted ? '완료' : '시작하기'}
+        {isCompleted ? t('hub.completedLabel') : t('hub.startButton')}
       </button>
     </div>
   );
