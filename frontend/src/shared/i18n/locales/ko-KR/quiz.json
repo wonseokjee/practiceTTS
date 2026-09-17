@@ -144,6 +144,10 @@
     "answer": "정답: {{answer}}",
     "revealAnswer": "정답 보기"
   },
+  "session": {
+    "notReadyError": "문제가 아직 준비되지 않았어요.",
+    "ddkCorrectLabel": "{{count}}회 이상"
+  },
   "sttError": {
     "micStartFailed": "마이크를 시작할 수 없습니다. 권한을 확인해주세요.",
     "recordingFailed": "녹음을 처리하지 못했습니다. 다시 시도해주세요.",

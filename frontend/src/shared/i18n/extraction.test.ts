@@ -63,6 +63,10 @@ const EXTRACTED_FILES = [
   // 디렉터리의 sentCompSessionReducer.ts·useSentCompViewModel.ts는
   // "프론트 .ts 파일" 과제 몫이다.
   'assessments/sentComp/presentation/SentCompScreen.tsx',
+  // 프론트 .ts 파일 과제(계획서 §1-2, 127개/675개) 중 "재구현 없이 단순
+  // 추출 가능"으로 분류된 첫 파일. 같은 디렉터리의 QuizApi.ts 등은
+  // 이번 배치 범위가 아니다.
+  'memory-link/patient/quiz/application/useMixedQuizSession.ts',
 ];
 
 const SRC = join(process.cwd(), 'src');

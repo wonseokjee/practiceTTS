@@ -10,6 +10,7 @@
 // ref를 사용하고, setState 업데이터는 순수하게 유지한다.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { shuffle } from '../../../../shared/domain/shuffle.js';
 import { enqueue as enqueueQabOutbox } from '../../../shared/QabOutbox.js';
 import { i18n } from '../../../../shared/i18n/i18n.js';
@@ -320,6 +321,7 @@ export function useMixedQuizSession(
   quizSetId: string,
   deps?: UseMixedQuizDeps,
 ): UseMixedQuizReturn {
+  const { t } = useTranslation('quiz');
   const apiRef = useRef<IQuizApi>(deps?.quizApi ?? quizApi);
   const pickWordRef = useRef(deps?.pickWordItems ?? pickWordItems);
   const pickSentRef = useRef(deps?.pickSentItems ?? pickSentItems);
@@ -561,7 +563,7 @@ export function useMixedQuizSession(
           ...INITIAL_STATE,
           phase: 'error',
           detail,
-          error: '문제가 아직 준비되지 않았어요.',
+          error: t('session.notReadyError'),
         });
         return;
       }
@@ -597,6 +599,7 @@ export function useMixedQuizSession(
     readingCount,
     spellCount,
     ddkCount,
+    t,
   ]);
 
   useEffect(() => {
@@ -687,7 +690,7 @@ export function useMixedQuizSession(
       const fresh = drawFor(subtest, level, targets.length, used);
       if (fresh.length < targets.length) {
         console.warn(
-          `[quiz] ${subtest} 레벨 ${level} 후보가 부족해 ${targets.length - fresh.length}문항은 이전 레벨로 남는다`,
+          `[quiz] not enough ${subtest} level ${level} candidates — ${targets.length - fresh.length} item(s) stay at the previous level`,
         );
       }
       for (let k = 0; k < fresh.length; k += 1) items[targets[k]] = fresh[k];
@@ -1017,12 +1020,12 @@ export function useMixedQuizSession(
       applyResult(
         {
           isCorrect: correct,
-          correctLabel: `${item.item.targetCount}회 이상`,
+          correctLabel: t('session.ddkCorrectLabel', { count: item.item.targetCount }),
         },
         null,
       );
     },
-    [applyResult],
+    [applyResult, t],
   );
 
   const skipCurrent = useCallback((): void => {
@@ -1052,7 +1055,7 @@ export function useMixedQuizSession(
         break;
       case 'ddk':
         subtest = 'ddk';
-        correctLabel = `${item.item.targetCount}회 이상`;
+        correctLabel = t('session.ddkCorrectLabel', { count: item.item.targetCount });
         break;
       default:
         return;
@@ -1069,7 +1072,7 @@ export function useMixedQuizSession(
       ...(subtest === 'naming' ? { cueLevel: CUE_GIVEN } : {}),
     });
     applyResult({ isCorrect: true, correctLabel }, null, true);
-  }, [applyResult]);
+  }, [applyResult, t]);
 
   // 점진 제출: 아직 안 보낸 결과(tail)만 백엔드에 저장한다. 세션 끝 1회가 아니라
   // 문항을 넘길 때마다 보내, 환자가 중도 이탈해도 그때까지의 결과·이탈 지점이
@@ -1122,7 +1125,7 @@ export function useMixedQuizSession(
       .catch((err) => {
         // 저장 실패는 환자 경험을 막지 않는다. 이 세션이 계속되면 다음
         // flush에서 이 tail이 그대로 다시 실린다(submittedCountRef 미변경).
-        console.warn('[quiz] QAB 결과 점진 저장 실패:', err);
+        console.warn('[quiz] failed to save QAB results incrementally:', err);
         // 화면 이탈로 이 훅이 언마운트되면 "다음 flush"가 영영 안 온다 —
         // 그게 이 시도의 마지막 기회일 수 있다. 재부팅 후에도 재시도되도록
         // 대기열에 durable하게 남긴다(R7, 계획 2-2A). 네트워크를 다시
