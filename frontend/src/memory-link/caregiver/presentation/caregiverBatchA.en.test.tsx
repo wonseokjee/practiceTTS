@@ -34,7 +34,7 @@ describe('보호자 화면 배치 A — 영어로 그린다', () => {
     await i18n.changeLanguage(DEFAULT_LOCALE);
   });
 
-  it('무드 체크 — 제목·안내·다음 버튼이 영어', () => {
+  it('무드 체크 — 제목·안내·다음 버튼·무드 라벨이 영어', () => {
     render(
       <MoodCheckStep mood={null} onSelectMood={() => {}} onNext={() => {}} error={null} />,
     );
@@ -43,9 +43,11 @@ describe('보호자 화면 배치 A — 영어로 그린다', () => {
     expect(
       screen.getByRole('button', { name: 'Go to next step' }),
     ).toBeInTheDocument();
-    // 무드 라벨(MOOD_VISUAL_TOKENS)은 도메인 데이터라 이번 배치 범위 밖 — 한글 그대로다.
+    // 무드 라벨(CaptureFlow.ts, 프론트 .ts 파일 과제)도 이 배치로 영어가 됐다.
     for (const token of MOOD_VISUAL_TOKENS) {
-      expect(screen.getByRole('radio', { name: token.ariaLabel })).toBeInTheDocument();
+      expect(
+        screen.getByRole('radio', { name: i18n.t(`caregiver:${token.labelKey}`) }),
+      ).toBeInTheDocument();
     }
   });
 

@@ -90,6 +90,7 @@ interface MoodButtonProps {
 }
 
 function MoodButton({ token, isSelected, onSelect }: MoodButtonProps) {
+  const { t } = useTranslation('caregiver');
   // 선택 상태에 따라 inline style로 색상 토큰을 직접 적용 (Tailwind arbitrary value 대신
   // — selectedBg/selectedBorder가 동적이므로 안전)
   const buttonStyle: React.CSSProperties = isSelected
@@ -98,13 +99,14 @@ function MoodButton({ token, isSelected, onSelect }: MoodButtonProps) {
         borderColor: token.selectedBorder,
       }
     : {};
+  const label = t(token.labelKey);
 
   return (
     <button
       type="button"
       role="radio"
       aria-checked={isSelected}
-      aria-label={token.ariaLabel}
+      aria-label={label}
       onClick={onSelect}
       className={`flex aspect-square w-full min-h-[88px] flex-col items-center justify-center gap-1 rounded-xl border-2 transition-all duration-[180ms] ease-out ${
         isSelected
@@ -116,7 +118,7 @@ function MoodButton({ token, isSelected, onSelect }: MoodButtonProps) {
       <span className="text-3xl sm:text-4xl" aria-hidden="true">
         {token.emoji}
       </span>
-      <span className="text-xs text-muted-sage sm:text-sm">{token.label}</span>
+      <span className="text-xs text-muted-sage sm:text-sm">{label}</span>
     </button>
   );
 }

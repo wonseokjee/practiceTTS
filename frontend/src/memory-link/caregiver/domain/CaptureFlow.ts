@@ -70,17 +70,19 @@ export interface CreateMemoryEntryRequest3Step {
  * 색은 CSS 변수로 적는다. 무드 5단계는 **런타임에 고르는** 값이라 Tailwind가
  * 정적으로 훑을 수 없고(클래스 이름이 소스에 안 나타난다), 그래서 인라인
  * `style`로 들어간다. 변수는 index.css의 `@theme`가 `:root`에 심는다.
+ *
+ * `label`은 문자열이 아니라 i18n 키(`caregiver:moodStep.levels.*`)를 담는다 —
+ * 도메인 계층은 로케일을 모른다. 화면 쪽에서 `t(token.labelKey)`로 옮긴다.
+ * 라벨과 aria-label이 항상 같은 문구라 키 하나로 겸한다.
  */
 export interface MoodVisualToken {
   level: MoodLevel;
   emoji: string;
-  label: string;
+  labelKey: string;
   /** 선택 시 배경 — CSS 색 값 */
   selectedBg: string;
   /** 선택 시 border — CSS 색 값 */
   selectedBorder: string;
-  /** aria-label용 의미 텍스트 */
-  ariaLabel: string;
 }
 
 export const MOOD_VISUAL_TOKENS: ReadonlyArray<MoodVisualToken> = Object.freeze(
@@ -88,60 +90,60 @@ export const MOOD_VISUAL_TOKENS: ReadonlyArray<MoodVisualToken> = Object.freeze(
     {
       level: 1,
       emoji: '😢',
-      label: '매우 힘들어요',
+      labelKey: 'moodStep.levels.level1',
       selectedBg: 'var(--color-accent-soft)',
       selectedBorder: 'var(--color-accent)',
-      ariaLabel: '매우 힘들어요',
     },
     {
       level: 2,
       emoji: '😐',
-      label: '조금 힘들어요',
+      labelKey: 'moodStep.levels.level2',
       selectedBg: 'var(--color-accent-faint)',
       selectedBorder: 'var(--color-accent-line)',
-      ariaLabel: '조금 힘들어요',
     },
     {
       level: 3,
       emoji: '🙂',
-      label: '보통이에요',
+      labelKey: 'moodStep.levels.level3',
       selectedBg: 'var(--color-canvas)',
       selectedBorder: 'var(--color-ink-sage)',
-      ariaLabel: '보통이에요',
     },
     {
       level: 4,
       emoji: '😊',
-      label: '좋아요',
+      labelKey: 'moodStep.levels.level4',
       selectedBg: 'var(--color-primary-light)',
       selectedBorder: 'var(--color-primary)',
-      ariaLabel: '좋아요',
     },
     {
       level: 5,
       emoji: '😍',
-      label: '매우 좋아요',
+      labelKey: 'moodStep.levels.level5',
       // 5단계 배경만 이름이 없다 — 여기서 한 번 쓰는 색이라 토큰을 만들지
       // 않았다. primary-light(#EBF4F0)보다 한 단계 진해 4↔5가 구분된다.
       selectedBg: '#D9EBE2',
       selectedBorder: 'var(--color-primary-dark)',
-      ariaLabel: '매우 좋아요',
     },
   ],
 );
 
-/** 카테고리별 표시 메타 — UI 라벨/아이콘 */
+/**
+ * 카테고리별 표시 메타 — UI 라벨/아이콘.
+ *
+ * `labelKey`는 `caregiver:patientDay.categories.*` — MoodVisualToken과 같은
+ * 이유로 도메인 계층엔 문자열이 아니라 키만 둔다.
+ */
 export interface PatientCategoryMeta {
   category: PatientCategory;
-  label: string;
+  labelKey: string;
   emoji: string;
 }
 
 export const PATIENT_CATEGORY_META: ReadonlyArray<PatientCategoryMeta> =
   Object.freeze([
-    { category: 'activity', label: '활동', emoji: '🏃' },
-    { category: 'moment', label: '순간', emoji: '✨' },
-    { category: 'context', label: '사람·장소·음식', emoji: '🍞' },
+    { category: 'activity', labelKey: 'patientDay.categories.activity', emoji: '🏃' },
+    { category: 'moment', labelKey: 'patientDay.categories.moment', emoji: '✨' },
+    { category: 'context', labelKey: 'patientDay.categories.context', emoji: '🍞' },
   ]);
 
 /** 텍스트 길이 제한 */

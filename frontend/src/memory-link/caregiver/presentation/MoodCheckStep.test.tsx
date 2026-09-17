@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MoodCheckStep } from './MoodCheckStep.js';
 import { MOOD_VISUAL_TOKENS } from '../domain/CaptureFlow.js';
+import { i18n } from '../../../shared/i18n/i18n.js';
 
 describe('MoodCheckStep', () => {
   function renderStep(overrides?: {
@@ -28,7 +29,7 @@ describe('MoodCheckStep', () => {
 
     for (const token of MOOD_VISUAL_TOKENS) {
       expect(
-        screen.getByRole('radio', { name: token.ariaLabel }),
+        screen.getByRole('radio', { name: i18n.t(`caregiver:${token.labelKey}`) }),
       ).toBeInTheDocument();
     }
   });
