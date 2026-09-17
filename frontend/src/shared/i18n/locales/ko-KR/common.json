@@ -81,5 +81,12 @@
   },
   "itemProgressBar": {
     "ariaLabel": "진행 {{current}} / {{total}}"
+  },
+  "patientSetup": {
+    "errorIdRequired": "환자 ID를 입력해주세요.",
+    "subtitle": "검사를 시작하기 전에 환자 정보를 입력해주세요.",
+    "idLabel": "환자 ID",
+    "idPlaceholder": "예: P-2026-001",
+    "startButton": "검사 시작"
   }
 }

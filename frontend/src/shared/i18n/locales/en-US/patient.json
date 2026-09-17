@@ -17,6 +17,11 @@
     "nextItemButton": "Next item",
     "stopForTodayButton": "Stop for today"
   },
+  "practiceItems": {
+    "imageChoicesAria": "Image choices",
+    "wordChoicesAria": "Word choices",
+    "selectChoiceAria": "Choose {{label}}"
+  },
   "soundCheck": {
     "title": "Let's check the sound",
     "introAssessment": "The assessment has questions you'll listen to.",

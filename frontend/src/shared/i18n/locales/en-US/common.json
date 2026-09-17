@@ -81,5 +81,12 @@
   },
   "itemProgressBar": {
     "ariaLabel": "Progress {{current}} / {{total}}"
+  },
+  "patientSetup": {
+    "errorIdRequired": "Please enter the patient ID.",
+    "subtitle": "Enter the patient's information before starting the assessment.",
+    "idLabel": "Patient ID",
+    "idPlaceholder": "e.g. P-2026-001",
+    "startButton": "Start assessment"
   }
 }

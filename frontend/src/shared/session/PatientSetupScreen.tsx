@@ -6,9 +6,11 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSessionContext } from './SessionContext.js';
 
 export function PatientSetupScreen() {
+  const { t } = useTranslation('common');
   const { startSession } = useSessionContext();
   const [patientId, setPatientId] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +19,7 @@ export function PatientSetupScreen() {
     e.preventDefault();
     const trimmed = patientId.trim();
     if (trimmed.length === 0) {
-      setError('환자 ID를 입력해주세요.');
+      setError(t('patientSetup.errorIdRequired'));
       return;
     }
     startSession(trimmed);
@@ -30,7 +32,7 @@ export function PatientSetupScreen() {
           practiveTTS
         </h1>
         <p className="text-sm text-muted-sage text-center mb-8">
-          검사를 시작하기 전에 환자 정보를 입력해주세요.
+          {t('patientSetup.subtitle')}
         </p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -39,7 +41,7 @@ export function PatientSetupScreen() {
               htmlFor="patientId"
               className="block text-sm font-medium text-ink mb-1"
             >
-              환자 ID
+              {t('patientSetup.idLabel')}
             </label>
             <input
               id="patientId"
@@ -49,7 +51,7 @@ export function PatientSetupScreen() {
                 setPatientId(e.target.value);
                 setError(null);
               }}
-              placeholder="예: P-2026-001"
+              placeholder={t('patientSetup.idPlaceholder')}
               className="w-full border border-line rounded-xl px-4 py-3 text-ink placeholder-muted-sage focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               autoComplete="off"
               autoFocus
@@ -63,7 +65,7 @@ export function PatientSetupScreen() {
             type="submit"
             className="w-full min-h-[48px] bg-primary hover:bg-primary-dark text-white font-semibold py-3 rounded-full text-base transition-colors mt-2"
           >
-            검사 시작
+            {t('patientSetup.startButton')}
           </button>
         </form>
       </div>

@@ -6,6 +6,7 @@
 //
 // 소리는 쓰지 않는다. 낱말을 읽어주면 그게 곧 정답이다.
 
+import { useTranslation } from 'react-i18next';
 import type { PracticeWordChoiceItem } from '../../domain/practiceWordChoice.js';
 
 interface WordChoiceItemProps {
@@ -25,6 +26,7 @@ export function WordChoiceItem({
   selectedChoiceId,
   onSelect,
 }: WordChoiceItemProps) {
+  const { t } = useTranslation('patient');
   return (
     <div className="flex flex-col gap-4">
       <p className="text-base text-muted-sage">{item.instruction}</p>
@@ -44,7 +46,11 @@ export function WordChoiceItem({
         </div>
       </div>
 
-      <div className="flex flex-col gap-3" role="group" aria-label="낱말 선택지">
+      <div
+        className="flex flex-col gap-3"
+        role="group"
+        aria-label={t('practiceItems.wordChoicesAria')}
+      >
         {item.choices.map((choice) => {
           const isChosen = selectedChoiceId === choice.choiceId;
 
@@ -66,7 +72,7 @@ export function WordChoiceItem({
               onClick={() => {
                 if (isSelectable) onSelect(choice.choiceId);
               }}
-              aria-label={`${choice.label} 선택`}
+              aria-label={t('practiceItems.selectChoiceAria', { label: choice.label })}
               className={`min-h-[56px] w-full rounded-2xl border-4 px-5 py-3 text-xl font-medium transition-all duration-150 disabled:cursor-default ${style} ${
                 isSelectable ? 'hover:border-muted-faint active:scale-[0.99]' : ''
               }`}

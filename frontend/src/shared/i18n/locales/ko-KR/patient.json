@@ -17,6 +17,11 @@
     "nextItemButton": "다음 문제",
     "stopForTodayButton": "오늘은 그만하기"
   },
+  "practiceItems": {
+    "imageChoicesAria": "그림 선택지",
+    "wordChoicesAria": "낱말 선택지",
+    "selectChoiceAria": "{{label}} 선택"
+  },
   "soundCheck": {
     "title": "소리를 확인할게요",
     "introAssessment": "검사에는 듣고 답하는 문제가 있어요.",

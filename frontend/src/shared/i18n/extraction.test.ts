@@ -26,6 +26,8 @@ const EXTRACTED_DIRS = [
   '.',
   'assessments/loc/presentation/components',
   'shared/components',
+  'shared/session',
+  'memory-link/patient/practice/presentation/components',
 ];
 
 /**
