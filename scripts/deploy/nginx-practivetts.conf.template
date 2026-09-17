@@ -50,6 +50,12 @@ server {
     # 가지도 못하고 413으로 막힌다.
     client_max_body_size 8m;
 
+    # 퀴즈 생성은 Gemini를 2회 연쇄 호출한다(생성 + 자기검증 critique 패스,
+    # ai-service/services/quiz_service.py) — nginx 기본 60s는 부하 시 정상
+    # 응답도 잘라낼 수 있어 넉넉히 잡는다.
+    proxy_connect_timeout 10s;
+    proxy_read_timeout 120s;
+
     location / {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;

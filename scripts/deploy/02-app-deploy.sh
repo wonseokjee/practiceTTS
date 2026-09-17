@@ -37,11 +37,14 @@ fi
 
 # .env 존재 확인 — 없으면 여기서 멈춘다(빈 값으로 기동하면 CRYPTO_SECRET_KEY
 # fail-closed 등으로 조용히 실패하거나, 최악의 경우 개발 기본값으로 뜬다).
+# 존재하면 권한도 소유자 전용으로 조여둔다(비밀값이라 다른 로컬 유저가
+# 읽을 수 있으면 안 된다 — umask 기본값은 보통 644라 그냥 두면 world-readable).
 for f in backend/.env ai-service/.env frontend/.env; do
   if [ ! -f "$APP_DIR/$f" ]; then
     echo "!! $APP_DIR/$f 가 없습니다. $f.example을 참고해 먼저 채워주세요." >&2
     exit 1
   fi
+  chmod 600 "$APP_DIR/$f"
 done
 
 echo "=== 2/6: backend 빌드 ==="

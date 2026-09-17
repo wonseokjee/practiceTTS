@@ -7,6 +7,13 @@
 #   chmod +x ~/deploy-scripts/*.sh
 #   ~/deploy-scripts/01-server-setup.sh
 #
+# 주의: 이 스크립트 자체를 `sudo bash 01-server-setup.sh`로 실행하지 말 것.
+# 스크립트 안에서 필요한 곳마다 개별적으로 sudo를 붙이는 이유가, pm2를 지금
+# 로그인한 유저 계정으로 띄우기 위해서다(pm2 상태는 $HOME/.pm2에 유저별로
+# 저장됨) — 스크립트 전체를 sudo로 돌리면 root의 $HOME 밑에 pm2가 뜨고,
+# 이후 02-app-deploy.sh를 일반 유저로 돌릴 때 서로 다른 pm2 인스턴스를
+# 보게 된다.
+#
 # 이 스크립트가 하는 일: OS 업데이트, Node.js 22 LTS, Python3(+venv),
 # PostgreSQL, nginx, certbot, pm2(+pm2-logrotate), ufw 방화벽.
 # 앱 코드 배포·pm2 기동은 02-app-deploy.sh가 한다(이 스크립트는 런타임만 깐다).

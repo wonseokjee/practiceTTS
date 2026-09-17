@@ -13,6 +13,19 @@ APP_DOMAIN="${1:?사용법: 03-nginx-and-tls.sh <app-domain> <api-domain>}"
 API_DOMAIN="${2:?사용법: 03-nginx-and-tls.sh <app-domain> <api-domain>}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# 도메인 인자는 bare domain이어야 한다(스킴·경로 없이). https:// 를 붙여
+# 넣으면 아래 sed의 / 구분자와 충돌해 알아보기 힘든 에러로 죽는다 — 여기서
+# 먼저 명확하게 막는다.
+for domain in "$APP_DOMAIN" "$API_DOMAIN"; do
+  case "$domain" in
+    */*|*:*)
+      echo "도메인 인자에 '/' 또는 ':'가 포함되어 있습니다: $domain" >&2
+      echo "스킴(https://)·경로 없이 bare domain만 넘기세요. 예: app.example.com" >&2
+      exit 1
+      ;;
+  esac
+done
+
 echo "=== nginx 설정 생성 (${APP_DOMAIN} / ${API_DOMAIN}) ==="
 sed \
   -e "s/{{APP_DOMAIN}}/${APP_DOMAIN}/g" \
