@@ -75,6 +75,11 @@ const EXTRACTED_FILES = [
   // memory-link/caregiver/presentation, 이미 추출된 디렉터리)가 t()로
   // 옮긴다.
   'memory-link/caregiver/domain/CaptureFlow.ts',
+  // 같은 과제 네 번째 파일 — 실측하니 리터럴이 0개였다(계획서 14개 추정은
+  // 순수 타입 정의 파일의 JSDoc 주석까지 센 값으로 보인다). 옮길 문자열이
+  // 없어 코드는 그대로 두고, 앞으로 한글 리터럴이 몰래 들어오지 않게
+  // 가드에만 등록한다.
+  'memory-link/patient/quiz/domain/MixedQuiz.ts',
 ];
 
 const SRC = join(process.cwd(), 'src');
