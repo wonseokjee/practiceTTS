@@ -147,6 +147,10 @@
     "answer": "Answer: {{answer}}",
     "revealAnswer": "Show the answer"
   },
+  "session": {
+    "notReadyError": "The items aren't ready yet.",
+    "ddkCorrectLabel": "{{count}} or more"
+  },
   "sttError": {
     "micStartFailed": "We couldn't start the microphone. Please check permissions.",
     "recordingFailed": "We couldn't process that recording. Please try again.",
