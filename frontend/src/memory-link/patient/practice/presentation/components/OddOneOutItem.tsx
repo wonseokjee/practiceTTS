@@ -6,6 +6,7 @@
 // 라벨은 화면에 쓰지 않는다. 낱말을 읽을 수 있으면 범주를 글자로 풀 수 있어
 // 그림으로 묶는 과제가 아니게 된다. 스크린리더용 이름으로만 남긴다.
 
+import { useTranslation } from 'react-i18next';
 import type { PracticeOddOneOutItem } from '../../domain/practiceOddOneOut.js';
 
 interface OddOneOutItemProps {
@@ -23,6 +24,7 @@ export function OddOneOutItem({
   selectedChoiceId,
   onSelect,
 }: OddOneOutItemProps) {
+  const { t } = useTranslation('patient');
   return (
     <div className="flex flex-col gap-4">
       <p className="text-base text-muted-sage">{item.instruction}</p>
@@ -42,7 +44,7 @@ export function OddOneOutItem({
       <div
         className="mx-auto grid w-full max-w-[440px] grid-cols-2 gap-3"
         role="group"
-        aria-label="그림 선택지"
+        aria-label={t('practiceItems.imageChoicesAria')}
       >
         {item.choices.map((choice) => {
           const isChosen = selectedChoiceId === choice.choiceId;
@@ -65,7 +67,7 @@ export function OddOneOutItem({
               onClick={() => {
                 if (isSelectable) onSelect(choice.choiceId);
               }}
-              aria-label={`${choice.label} 선택`}
+              aria-label={t('practiceItems.selectChoiceAria', { label: choice.label })}
               className={`relative aspect-square w-full overflow-hidden rounded-2xl border-4 bg-surface-dim transition-all duration-150 disabled:cursor-default ${ring} ${
                 isSelectable ? 'hover:border-muted-faint active:scale-[0.97]' : ''
               }`}
