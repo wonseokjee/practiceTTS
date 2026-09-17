@@ -311,5 +311,15 @@
     "analysisNeededNote": "AI가 기록하신 내용{{photoSuffix}}을 분석하면 시나리오를 생성할 수 있습니다",
     "photoSuffix": "과 사진",
     "wordsNeededNote": "목표 단어를 1개 이상 등록·저장하면 시나리오를 생성할 수 있어요"
+  },
+  "qabSubtestLabels": {
+    "loc": "의식 수준",
+    "word": "단어 이해",
+    "sentence": "문장 이해",
+    "naming": "그림 이름대기",
+    "repeat": "따라 말하기",
+    "reading": "소리 내어 읽기",
+    "spell": "글자 조합",
+    "ddk": "말운동(퍼터커)"
   }
 }

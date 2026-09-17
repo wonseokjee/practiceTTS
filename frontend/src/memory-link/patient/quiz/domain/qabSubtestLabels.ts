@@ -10,16 +10,26 @@
 
 import type { QabSubtest } from './QabResult.js';
 
-/** 검사 종류 → 보호자에게 보여줄 한글 이름. */
+/**
+ * 검사 종류 → 보호자에게 보여줄 이름의 i18n 키(`caregiver:qabSubtestLabels.*`).
+ *
+ * 값이 문자열이 아니라 키인 이유는 둘이다.
+ *  1. 도메인 계층은 로케일을 모른다 — 실제 문구는 화면 쪽이 `t()`로 옮긴다.
+ *  2. **en-US 값은 직역이 아니라 웰니스 어휘다**(전략 문서 §2 FTC 가드레일,
+ *     계획서 §1-3). 이 앱은 의료기기가 아니라 인지 활동 도구이므로, 영어
+ *     화면은 "검사(test)"·"의식 수준(level of consciousness)" 같은 임상
+ *     문구 대신 "activity"·"exercise"·"check" 같은 소비자용 표현을 쓴다.
+ *     한국어 값은 그대로 임상 표현을 쓴다(§1-3 표는 en 열만 바꾼다).
+ */
 export const QAB_SUBTEST_LABELS: Record<QabSubtest, string> = {
-  loc: '의식 수준',
-  word: '단어 이해',
-  sentence: '문장 이해',
-  naming: '그림 이름대기',
-  repeat: '따라 말하기',
-  reading: '소리 내어 읽기',
-  spell: '글자 조합',
-  ddk: '말운동(퍼터커)',
+  loc: 'qabSubtestLabels.loc',
+  word: 'qabSubtestLabels.word',
+  sentence: 'qabSubtestLabels.sentence',
+  naming: 'qabSubtestLabels.naming',
+  repeat: 'qabSubtestLabels.repeat',
+  reading: 'qabSubtestLabels.reading',
+  spell: 'qabSubtestLabels.spell',
+  ddk: 'qabSubtestLabels.ddk',
 };
 
 /**
@@ -74,7 +84,17 @@ export const LEVELED_SUBTESTS: readonly QabSubtest[] = QAB_SUBTEST_ORDER.filter(
   (s) => !NON_LEVELED_SUBTESTS.includes(s),
 );
 
-/** 라벨 조회 — 알 수 없는 값이 와도 화면이 깨지지 않게 키를 그대로 돌려준다. */
-export function subtestLabel(subtest: string): string {
-  return QAB_SUBTEST_LABELS[subtest as QabSubtest] ?? subtest;
+/**
+ * 라벨 조회 — 알 수 없는 값이 와도 화면이 깨지지 않게 키를 그대로 돌려준다.
+ *
+ * `t`를 파라미터로 받는다(PracticeScreen.tsx의 messageFor·
+ * useLocViewModel.ts의 mapErrorToMessage와 같은 선례) — 이 함수는 여러
+ * 컴포넌트가 공유하는 순수 함수라 자체적으로 훅을 쓸 수 없다.
+ */
+export function subtestLabel(
+  subtest: string,
+  t: (key: string) => string,
+): string {
+  const key = QAB_SUBTEST_LABELS[subtest as QabSubtest];
+  return key ? t(key) : subtest;
 }

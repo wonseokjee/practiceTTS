@@ -3,9 +3,9 @@
 //
 // 검증 포인트: 활성 로케일이 en-US면 영어 문구가 나오고 한글이 새지 않는다.
 //
-// QabProgressCard·WeeklyReportScreen은 subtestLabel()이 여전히 한국어를
-// 낸다(용어 매핑 레이어 1-3, 별도 과제) — 화면 껍데기만 영어인지 확인하고
-// 검사 이름 자체는 검사에서 뺀다.
+// QabProgressCard·WeeklyReportScreen의 subtestLabel()도 용어 매핑
+// 레이어(1-3)가 끝나 영어 웰니스 어휘를 낸다(예: 단어 이해 → Word
+// activity) — 직역이 아니라 FTC 가드레일에 따른 소비자용 표현이다.
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
@@ -102,10 +102,12 @@ describe('보호자 화면 배치 C — 영어로 그린다', () => {
     expect(screen.getByText('People, place, or food')).toBeInTheDocument();
   });
 
-  it('QAB 진행률 카드 — 제목·안내가 영어(검사 이름은 아직 한국어)', async () => {
+  it('QAB 진행률 카드 — 제목·안내·검사 이름(웰니스 어휘)이 영어', async () => {
     const fetchSummary = vi.fn().mockResolvedValue([summary({ assisted: 2 })]);
     render(<QabProgressCard fetchSummary={fetchSummary} />);
-    await waitFor(() => expect(screen.getByText('단어 이해')).toBeInTheDocument());
+    // subtestLabel('word')는 직역("Word comprehension")이 아니라
+    // 용어 매핑 레이어(1-3)가 정한 웰니스 어휘를 낸다.
+    await waitFor(() => expect(screen.getByText('Word activity')).toBeInTheDocument());
     expect(
       screen.getByText(
         /Accuracy by assessment for what your loved one has answered/,

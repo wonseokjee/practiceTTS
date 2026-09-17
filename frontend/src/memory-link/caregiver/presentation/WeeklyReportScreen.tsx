@@ -193,11 +193,11 @@ export function WeeklyReportScreen({ onBack }: WeeklyReportScreenProps) {
                 return (
                   <section key={s.subtest} className="break-inside-avoid">
                     <h2 className="mb-2 text-base font-semibold text-ink">
-                      {subtestLabel(s.subtest)}
+                      {subtestLabel(s.subtest, t)}
                     </h2>
                     <table className="w-full border-collapse text-sm">
                       <caption className="sr-only">
-                        {t('weeklyReport.tableCaption', { label: subtestLabel(s.subtest) })}
+                        {t('weeklyReport.tableCaption', { label: subtestLabel(s.subtest, t) })}
                       </caption>
                       <thead>
                         <tr className="border-b border-line text-left text-muted-sage">
