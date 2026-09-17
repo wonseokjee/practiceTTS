@@ -67,6 +67,9 @@ const EXTRACTED_FILES = [
   // 추출 가능"으로 분류된 첫 파일. 같은 디렉터리의 QuizApi.ts 등은
   // 이번 배치 범위가 아니다.
   'memory-link/patient/quiz/application/useMixedQuizSession.ts',
+  // 같은 과제 두 번째 파일. 같은 디렉터리의 locSessionReducer.ts는
+  // 이번 배치 범위가 아니다(리듀서 자체엔 문자열이 없다).
+  'assessments/loc/presentation/useLocViewModel.ts',
 ];
 
 const SRC = join(process.cwd(), 'src');

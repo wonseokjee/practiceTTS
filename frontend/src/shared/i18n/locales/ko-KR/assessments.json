@@ -160,6 +160,12 @@
       "replayButton": "다시 듣기",
       "confirmedTitle": "확인했어요",
       "pleaseWaitLabel": "잠시만 기다려 주세요…"
+    },
+    "errors": {
+      "ttsPlaybackFailed": "음성 안내 재생 실패. 기기 음량을 확인해주세요.",
+      "storageFailed": "저장 실패. 계속 진행합니다.",
+      "generic": "오류 발생. 다시 시도해주세요.",
+      "saveFailedKeepScore": "결과를 저장하지 못했습니다. 아래 점수를 기록해 주세요."
     }
   }
 }
