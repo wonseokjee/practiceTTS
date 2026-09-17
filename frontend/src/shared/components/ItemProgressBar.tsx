@@ -24,6 +24,8 @@
 // 접근성: role=progressbar + aria-valuenow/min/max.
 // "n / total"은 tabular-nums로 폭 흔들림 방지.
 
+import { useTranslation } from 'react-i18next';
+
 interface ItemProgressBarProps {
   /** 1-based 현재 문제 번호 */
   current: number;
@@ -32,6 +34,7 @@ interface ItemProgressBarProps {
 }
 
 export function ItemProgressBar({ current, total }: ItemProgressBarProps) {
+  const { t } = useTranslation('common');
   const safeTotal = total > 0 ? total : 1;
   const safeCurrent = Math.min(Math.max(current, 1), safeTotal);
   const percent = Math.round((safeCurrent / safeTotal) * 100);
@@ -44,7 +47,7 @@ export function ItemProgressBar({ current, total }: ItemProgressBarProps) {
         aria-valuenow={safeCurrent}
         aria-valuemin={1}
         aria-valuemax={safeTotal}
-        aria-label={`진행 ${safeCurrent} / ${safeTotal}`}
+        aria-label={t('itemProgressBar.ariaLabel', { current: safeCurrent, total: safeTotal })}
       >
         <div
           className="h-full rounded-full bg-primary transition-[width] duration-[250ms] ease-in-out"
