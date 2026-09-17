@@ -33,6 +33,7 @@ import {
   useState,
 } from 'react';
 import type React from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ConductLocTrialUseCase } from '../application/ConductLocTrialUseCase.js';
 import type { FinishLocAssessmentUseCase } from '../application/FinishLocAssessmentUseCase.js';
 import {
@@ -104,18 +105,21 @@ function getButtonBounds(element: HTMLButtonElement): {
 }
 
 /** 에러 코드를 사용자 메시지로 변환한다 */
-function mapErrorToMessage(error: unknown): string {
+function mapErrorToMessage(
+  error: unknown,
+  t: (key: string, opts?: Record<string, unknown>) => string,
+): string {
   if (error instanceof LocAssessmentError) {
     switch (error.code) {
       case LocAssessmentErrorCode.TTS_PLAYBACK_FAILED:
-        return '음성 안내 재생 실패. 기기 음량을 확인해주세요.';
+        return t('loc.errors.ttsPlaybackFailed');
       case LocAssessmentErrorCode.STORAGE_FAILED:
-        return '저장 실패. 계속 진행합니다.';
+        return t('loc.errors.storageFailed');
       default:
-        return '오류 발생. 다시 시도해주세요.';
+        return t('loc.errors.generic');
     }
   }
-  return '오류 발생. 다시 시도해주세요.';
+  return t('loc.errors.generic');
 }
 
 /** 터치 타임아웃: 10초 */
@@ -136,6 +140,7 @@ export function useLocViewModel(
   /** 터치 버튼 엘리먼트. 영역 판정을 위해 화면 쪽에서 연결한다. */
   touchButtonRef: React.RefObject<HTMLButtonElement | null>;
 } {
+  const { t } = useTranslation('assessments');
   const [assessmentState, dispatch] = useReducer(
     locSessionReducer,
     'IDLE' as LocAssessmentState,
@@ -248,7 +253,7 @@ export function useLocViewModel(
         setTrialResults((prev) => [...prev, responseDTO]);
         dispatch({ type: 'TRIAL_SUBMITTED' });
       } catch (err) {
-        setErrorMessage(mapErrorToMessage(err));
+        setErrorMessage(mapErrorToMessage(err, t));
         // 이미 끝낸 시도가 있으면 IDLE로 돌리지 않는다 — TTS 실패 경로(위)와
         // 같은 이유다. IDLE에서 다시 시작하면 accumulatedTrialsRef가
         // 비워져 이미 채점된 시도가 사라진다(TODO-118).
@@ -258,7 +263,7 @@ export function useLocViewModel(
         });
       }
     },
-    [],
+    [t],
   );
 
   /** 무응답 처리: touchTime=null로 시도를 제출한다 */
@@ -355,10 +360,10 @@ export function useLocViewModel(
           });
           setFinalScore(resultDTO.finalScore);
           dispatch({ type: 'ASSESSMENT_FINISHED' });
-          console.info('[LOC] 검사 완료', { finalScore: resultDTO.finalScore });
+          console.info('[LOC] assessment complete', { finalScore: resultDTO.finalScore });
           onCompleteRef.current(resultDTO.id);
         } catch (err) {
-          console.error('[LOC] 결과 저장 실패', { error: err });
+          console.error('[LOC] failed to save result', { error: err });
           // IDLE로 돌리면 안 된다. 화면은 "검사를 시작할까요?"가 되고,
           // 검사자가 안내대로 시작을 누르면 startAssessment가
           // accumulatedTrialsRef를 비워 **끝낸 시도가 전부 사라진다**.
@@ -367,9 +372,7 @@ export function useLocViewModel(
           // 점수는 저장과 무관하게 도메인에서 계산할 수 있으므로, 화면에
           // 남겨 검사자가 수기로 옮겨적을 수 있게 한다.
           setFinalScore(calculateFinalLocScore(allTrials));
-          setErrorMessage(
-            '결과를 저장하지 못했습니다. 아래 점수를 기록해 주세요.',
-          );
+          setErrorMessage(t('loc.errors.saveFailedKeepScore'));
           dispatch({ type: 'ASSESSMENT_FINISHED' });
         }
       })();
@@ -386,7 +389,7 @@ export function useLocViewModel(
     return () => {
       clearInterTrialTimeout();
     };
-  }, [assessmentState, clearInterTrialTimeout]);
+  }, [assessmentState, clearInterTrialTimeout, t]);
 
   /**
    * TTS_PLAYING 상태 진입 시 TTS 재생.
@@ -416,8 +419,8 @@ export function useLocViewModel(
         dispatch({ type: 'TTS_READY' });
       } catch (err) {
         if (isStale()) return;
-        console.error('[LOC] TTS 재생 실패', { trialNumber, error: err });
-        setErrorMessage(mapErrorToMessage(err));
+        console.error('[LOC] TTS playback failed', { trialNumber, error: err });
+        setErrorMessage(mapErrorToMessage(err, t));
         // 이미 끝낸 시도가 있으면 IDLE로 돌리지 않는다 — IDLE에서 다시
         // 시작하면 누적 시도가 초기화된다. 중단 화면에서 이어 듣게 한다.
         dispatch({
@@ -435,14 +438,14 @@ export function useLocViewModel(
     };
     // assessmentState가 TTS_PLAYING으로 바뀔 때만 실행
     // currentTrialNumber는 ref를 통해 최신값을 읽으므로 의존성에서 제외
-  }, [assessmentState]);
+  }, [assessmentState, t]);
 
   /** 검사 시작 */
   const startAssessment = useCallback(async () => {
     if (assessmentStateRef.current !== 'IDLE') {
       throw new LocAssessmentError(
         LocAssessmentErrorCode.ASSESSMENT_ALREADY_COMPLETE,
-        '검사가 이미 진행 중입니다.',
+        'Assessment is already in progress.',
       );
     }
 

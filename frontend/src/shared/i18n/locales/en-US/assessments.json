@@ -160,6 +160,12 @@
       "replayButton": "Replay",
       "confirmedTitle": "Got it",
       "pleaseWaitLabel": "Please wait a moment…"
+    },
+    "errors": {
+      "ttsPlaybackFailed": "Voice playback failed. Please check the device volume.",
+      "storageFailed": "Save failed. Continuing anyway.",
+      "generic": "Something went wrong. Please try again.",
+      "saveFailedKeepScore": "We couldn't save the result. Please write down the score below."
     }
   }
 }
