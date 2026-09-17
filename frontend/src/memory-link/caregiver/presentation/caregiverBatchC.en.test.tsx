@@ -70,7 +70,7 @@ describe('보호자 화면 배치 C — 영어로 그린다', () => {
     getById.mockReset();
   });
 
-  it('환자분의 하루 — 제목·안내·저장 힌트가 영어(카테고리 이름은 아직 한국어)', () => {
+  it('환자분의 하루 — 제목·안내·저장 힌트·카테고리 이름이 영어', () => {
     render(
       <PatientDayStep
         patientAnswers={{ activity: '', moment: '', context: '' }}
@@ -96,6 +96,10 @@ describe('보호자 화면 배치 C — 영어로 그린다', () => {
       screen.getByText('You need at least one answer or one photo to save.'),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: "Save today's entry" })).toBeDisabled();
+    // 카테고리 이름(CaptureFlow.ts, 프론트 .ts 파일 과제)도 이 배치로 영어가 됐다.
+    expect(screen.getByText('Activity')).toBeInTheDocument();
+    expect(screen.getByText('Moment')).toBeInTheDocument();
+    expect(screen.getByText('People, place, or food')).toBeInTheDocument();
   });
 
   it('QAB 진행률 카드 — 제목·안내가 영어(검사 이름은 아직 한국어)', async () => {

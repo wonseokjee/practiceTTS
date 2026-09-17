@@ -70,6 +70,11 @@ const EXTRACTED_FILES = [
   // 같은 과제 두 번째 파일. 같은 디렉터리의 locSessionReducer.ts는
   // 이번 배치 범위가 아니다(리듀서 자체엔 문자열이 없다).
   'assessments/loc/presentation/useLocViewModel.ts',
+  // 같은 과제 세 번째 파일. 도메인 계층이라 문자열 대신 i18n 키를 담아
+  // 두고(labelKey), 소비하는 MoodCheckStep.tsx·PatientDayStep.tsx(둘 다
+  // memory-link/caregiver/presentation, 이미 추출된 디렉터리)가 t()로
+  // 옮긴다.
+  'memory-link/caregiver/domain/CaptureFlow.ts',
 ];
 
 const SRC = join(process.cwd(), 'src');

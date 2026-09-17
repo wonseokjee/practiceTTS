@@ -8,7 +8,14 @@
   "moodStep": {
     "title": "How were you feeling today?",
     "subtitle": "Pick whichever face feels closest.",
-    "groupAria": "Today's mood, 5 levels"
+    "groupAria": "Today's mood, 5 levels",
+    "levels": {
+      "level1": "Very tough",
+      "level2": "A bit tough",
+      "level3": "Okay",
+      "level4": "Good",
+      "level5": "Very good"
+    }
   },
   "myDayStep": {
     "title": "My Day",
@@ -152,6 +159,11 @@
   "patientDay": {
     "title": "Your loved one's day",
     "subtitle": "Let's record this together for tomorrow's questions.",
+    "categories": {
+      "activity": "Activity",
+      "moment": "Moment",
+      "context": "People, place, or food"
+    },
     "photoTitle": "Attach a photo",
     "optional": "(optional)",
     "removePhotoAria": "Remove the attached photo",

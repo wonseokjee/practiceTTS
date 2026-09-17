@@ -8,7 +8,14 @@
   "moodStep": {
     "title": "오늘 본인의 마음은 어떠셨나요?",
     "subtitle": "1초 안에 가까운 표정을 골라주세요.",
-    "groupAria": "오늘의 마음 5단계"
+    "groupAria": "오늘의 마음 5단계",
+    "levels": {
+      "level1": "매우 힘들어요",
+      "level2": "조금 힘들어요",
+      "level3": "보통이에요",
+      "level4": "좋아요",
+      "level5": "매우 좋아요"
+    }
   },
   "myDayStep": {
     "title": "나의 하루",
@@ -152,6 +159,11 @@
   "patientDay": {
     "title": "환자분의 하루",
     "subtitle": "내일 환자분이 풀 문제를 위해 함께 기록해주세요.",
+    "categories": {
+      "activity": "활동",
+      "moment": "순간",
+      "context": "사람·장소·음식"
+    },
     "photoTitle": "사진 첨부",
     "optional": "(선택)",
     "removePhotoAria": "첨부한 사진 제거",

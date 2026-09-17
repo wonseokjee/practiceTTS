@@ -283,7 +283,7 @@ function PatientCategoryCard({
           id={`category-${meta.category}-label`}
           className="text-xs font-semibold uppercase tracking-wide text-primary"
         >
-          {meta.label}
+          {t(meta.labelKey)}
         </span>
       </div>
 
@@ -299,7 +299,7 @@ function PatientCategoryCard({
         maxLength={MAX_PATIENT_ANSWER_LENGTH}
         rows={3}
         className="w-full resize-none rounded-xl border border-line-strong bg-surface-soft p-3 text-sm leading-relaxed text-ink-sage focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:bg-[#F0F1F0]"
-        aria-label={t('patientDay.categoryAnswerAria', { label: meta.label })}
+        aria-label={t('patientDay.categoryAnswerAria', { label: t(meta.labelKey) })}
       />
 
       <div className="mt-2 text-right text-xs text-muted-sage" aria-live="polite">
