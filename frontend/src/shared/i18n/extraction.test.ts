@@ -25,6 +25,7 @@ const EXTRACTED_DIRS = [
   'assessments/wordComp/presentation/screens',
   '.',
   'assessments/loc/presentation/components',
+  'shared/components',
 ];
 
 /**

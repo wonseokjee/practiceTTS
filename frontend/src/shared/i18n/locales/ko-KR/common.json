@@ -78,5 +78,8 @@
     "loading": "로딩 중...",
     "caregiverOnlyAccess": "보호자 계정으로만 접근할 수 있습니다.",
     "preparingAssessment": "검사를 준비하고 있어요..."
+  },
+  "itemProgressBar": {
+    "ariaLabel": "진행 {{current}} / {{total}}"
   }
 }

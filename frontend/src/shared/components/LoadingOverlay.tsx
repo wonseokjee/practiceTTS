@@ -6,21 +6,22 @@
  */
 
 import type React from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface LoadingOverlayProps {
-  /** 로딩 중 표시할 텍스트. 기본값: '로딩 중...' */
+  /** 로딩 중 표시할 텍스트. 기본값: common:app.loading */
   message?: string;
 }
 
-export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
-  message = '로딩 중...',
-}) => {
+export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({ message }) => {
+  const { t } = useTranslation('common');
+  const resolvedMessage = message ?? t('app.loading');
   return (
     <div
       className="flex flex-col items-center justify-center gap-4 py-16"
       role="status"
       aria-live="polite"
-      aria-label={message}
+      aria-label={resolvedMessage}
     >
       {/* 회전 스피너 */}
       <div
@@ -29,7 +30,7 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
       />
 
       {/* 로딩 텍스트 */}
-      <p className="text-muted-sage text-base">{message}</p>
+      <p className="text-muted-sage text-base">{resolvedMessage}</p>
     </div>
   );
 };

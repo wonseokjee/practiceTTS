@@ -78,5 +78,8 @@
     "loading": "Loading...",
     "caregiverOnlyAccess": "Only caregiver accounts can access this.",
     "preparingAssessment": "Getting the assessment ready..."
+  },
+  "itemProgressBar": {
+    "ariaLabel": "Progress {{current}} / {{total}}"
   }
 }
