@@ -166,6 +166,13 @@
       "storageFailed": "Save failed. Continuing anyway.",
       "generic": "Something went wrong. Please try again.",
       "saveFailedKeepScore": "We couldn't save the result. Please write down the score below."
+    },
+    "scoreLabels": {
+      "normal": "Normal",
+      "mildDelay": "Mild delay",
+      "moderateDelay": "Moderate delay",
+      "noResponse": "No response",
+      "offTargetTouch": "Off-target touch"
     }
   }
 }

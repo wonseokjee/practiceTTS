@@ -61,15 +61,20 @@ export function calculateFinalLocScore(
   return Math.max(...trials.map((t) => t.score));
 }
 
+/**
+ * 점수 값에 대응하는 레이블 **키**다 — 도메인 계층은 로케일을 모른다.
+ * 문자열 자체는 `assessments:loc.scoreLabels.*`에 있고, 화면 쪽(LocScreen.tsx)이
+ * `t(`loc.scoreLabels.${scoreLabel}`)`로 옮긴다.
+ */
 export type LocScoreLabel =
-  | '정상'
-  | '경도 지연'
-  | '중도 지연'
-  | '무반응'
-  | '영역 외 터치';
+  | 'normal'
+  | 'mildDelay'
+  | 'moderateDelay'
+  | 'noResponse'
+  | 'offTargetTouch';
 
 /**
- * 점수 값을 한국어 레이블로 변환한다.
+ * 점수 값을 레이블 키로 변환한다.
  *
  * 0점은 성격이 다른 두 가지를 뭉친다 — **반응이 아예 없었던 것**과
  * **반응은 했지만 버튼 밖을 짚은 것**이다. 감별진단이 다르다:
@@ -92,16 +97,16 @@ export function getLocScoreLabel(
 ): LocScoreLabel {
   switch (score) {
     case 3:
-      return '정상';
+      return 'normal';
     case 2:
-      return '경도 지연';
+      return 'mildDelay';
     case 1:
-      return '중도 지연';
+      return 'moderateDelay';
     case 0:
       // 반응이 없었으면 영역 판정은 의미가 없다 — 무반응이 맞다.
       if (!trial || trial.latency === null) {
-        return '무반응';
+        return 'noResponse';
       }
-      return trial.touchInBounds ? '무반응' : '영역 외 터치';
+      return trial.touchInBounds ? 'noResponse' : 'offTargetTouch';
   }
 }

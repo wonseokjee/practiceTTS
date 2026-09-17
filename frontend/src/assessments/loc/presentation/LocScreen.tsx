@@ -56,9 +56,9 @@ function TrialResultRow({ result }: { result: LocTrialResponseDTO }) {
         {t('loc.screen.trialLabel', { n: result.trialNumber })}
       </span>
       <span className={`font-semibold ${scoreColorClass}`}>
-        {/* scoreLabel은 도메인(LocScorer.ts)이 만드는 한글 라벨 — 별도 용어
-            매핑 과제(1-3)라 여기서 옮기지 않는다. */}
-        {result.scoreLabel}
+        {/* result.scoreLabel은 도메인(LocScorer.ts)이 만드는 레이블 키다 —
+            문자열 자체는 여기(화면 쪽)에서 옮긴다. */}
+        {t(`loc.scoreLabels.${result.scoreLabel}`)}
         {result.latencyMs !== null && (
           <span className="text-muted-sage font-normal text-sm ml-2">
             ({Math.round(result.latencyMs)}ms)

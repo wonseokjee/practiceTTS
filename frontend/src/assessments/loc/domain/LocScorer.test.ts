@@ -90,13 +90,13 @@ describe('getLocScoreLabel — 0점의 두 경우 구분', () => {
     // 무반응(각성 저하)과 영역 외 터치(시공간·실행 문제)는 감별진단이 다르다.
     // Found by /qa on 2026-07-20
     expect(getLocScoreLabel(0, { latency: null, touchInBounds: false })).toBe(
-      '무반응',
+      'noResponse',
     );
   });
 
   it('반응했으나 버튼 밖이면 영역 외 터치', () => {
     expect(getLocScoreLabel(0, { latency: 4200, touchInBounds: false })).toBe(
-      '영역 외 터치',
+      'offTargetTouch',
     );
   });
 
@@ -104,18 +104,18 @@ describe('getLocScoreLabel — 0점의 두 경우 구분', () => {
     // 영역 안을 짚었는데 0점인 경우는 현재 채점 규칙상 생기지 않지만,
     // 규칙이 바뀌어도 '영역 외 터치'로 잘못 붙지는 않아야 한다.
     expect(getLocScoreLabel(0, { latency: 9000, touchInBounds: true })).toBe(
-      '무반응',
+      'noResponse',
     );
   });
 
   it('반응 정보를 생략하면 무반응', () => {
-    expect(getLocScoreLabel(0)).toBe('무반응');
+    expect(getLocScoreLabel(0)).toBe('noResponse');
   });
 
   it('0점이 아니면 영역 판정이 라벨을 바꾸지 않는다', () => {
     const outOfBounds = { latency: 1000, touchInBounds: false };
-    expect(getLocScoreLabel(3, outOfBounds)).toBe('정상');
-    expect(getLocScoreLabel(2, outOfBounds)).toBe('경도 지연');
-    expect(getLocScoreLabel(1, outOfBounds)).toBe('중도 지연');
+    expect(getLocScoreLabel(3, outOfBounds)).toBe('normal');
+    expect(getLocScoreLabel(2, outOfBounds)).toBe('mildDelay');
+    expect(getLocScoreLabel(1, outOfBounds)).toBe('moderateDelay');
   });
 });

@@ -6,7 +6,8 @@
 // 같은 방식).
 //
 // 검증 포인트: 활성 로케일이 en-US면 state별 문구가 영어로 나오고
-// 한글이 새지 않는다(scoreLabel은 도메인이 만드는 한글이라 제외).
+// 한글이 새지 않는다. result.scoreLabel은 도메인(LocScorer.ts)이 만드는
+// 레이블 키이며, 화면(TrialResultRow)이 t()로 영어 문구로 옮긴다.
 
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
@@ -111,7 +112,7 @@ describe('LOC 검사 메인 화면 — 영어로 그린다', () => {
             latencyMs: 1200,
             touchInBounds: true,
             score: 1,
-            scoreLabel: '경도 지연',
+            scoreLabel: 'mildDelay',
             isComplete: true,
           },
         ],
@@ -128,7 +129,7 @@ describe('LOC 검사 메인 화면 — 영어로 그린다', () => {
     expect(
       screen.getByRole('button', { name: 'Go to next assessment' }),
     ).toBeInTheDocument();
-    // scoreLabel은 도메인(LocScorer.ts)이 만드는 한글이라 검사에서 뺀다.
-    expect(container.textContent).toContain('경도 지연');
+    expect(screen.getByText('Mild delay')).toBeInTheDocument();
+    expect(container.textContent).not.toMatch(HANGUL);
   });
 });
