@@ -80,6 +80,12 @@ const EXTRACTED_FILES = [
   // 없어 코드는 그대로 두고, 앞으로 한글 리터럴이 몰래 들어오지 않게
   // 가드에만 등록한다.
   'memory-link/patient/quiz/domain/MixedQuiz.ts',
+  // 같은 과제 다섯 번째(마지막) 파일. LocScoreLabel을 문자열에서 키로
+  // 바꿨다 — 도메인 계층은 로케일을 모른다. 실제 t()는 LocScreen.tsx의
+  // TrialResultRow(이미 추출된 assessments/loc/presentation)가 한다.
+  // 같은 이유로 이전 배치(#211)에서 "용어 매핑 과제라 보류"로 남겨뒀던
+  // result.scoreLabel 렌더링도 이번에 함께 옮겼다.
+  'assessments/loc/domain/LocScorer.ts',
 ];
 
 const SRC = join(process.cwd(), 'src');

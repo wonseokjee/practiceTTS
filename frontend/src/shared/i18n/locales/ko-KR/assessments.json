@@ -166,6 +166,13 @@
       "storageFailed": "저장 실패. 계속 진행합니다.",
       "generic": "오류 발생. 다시 시도해주세요.",
       "saveFailedKeepScore": "결과를 저장하지 못했습니다. 아래 점수를 기록해 주세요."
+    },
+    "scoreLabels": {
+      "normal": "정상",
+      "mildDelay": "경도 지연",
+      "moderateDelay": "중도 지연",
+      "noResponse": "무반응",
+      "offTargetTouch": "영역 외 터치"
     }
   }
 }

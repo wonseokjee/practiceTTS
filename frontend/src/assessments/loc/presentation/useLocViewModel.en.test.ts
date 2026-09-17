@@ -39,7 +39,7 @@ function makeMockResponseDTO(overrides: Partial<LocTrialResponseDTO> = {}): LocT
     latencyMs: 1000,
     touchInBounds: true,
     score: 2,
-    scoreLabel: 'Mild delay',
+    scoreLabel: 'mildDelay',
     isComplete: false,
     ...overrides,
   };
