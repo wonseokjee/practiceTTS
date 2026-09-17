@@ -99,14 +99,14 @@ export function SkillLevelCard({ fetchLevels }: SkillLevelCardProps) {
       {NON_LEVELED_SUBTESTS.length > 0 && (
         <p className="mb-4 text-sm text-muted-sage">
           {t('skillLevel.excludedNote', {
-            excluded: NON_LEVELED_SUBTESTS.map(subtestLabel).join(' · '),
+            excluded: NON_LEVELED_SUBTESTS.map((s) => subtestLabel(s, t)).join(' · '),
           })}
         </p>
       )}
 
       <ul className="flex flex-col gap-3">
         {LEVELED_SUBTESTS.map((key) => {
-          const label = subtestLabel(key);
+          const label = subtestLabel(key, t);
           // 백엔드가 모든 스킬을 콜드스타트로 채워 보내므로 값은 항상 있다. 혹시
           // 누락되면 없는 레벨을 지어내지 않고 그 줄을 건너뛴다(조작 방지). 표시값은
           // 점·숫자·aria가 어긋나지 않게 한 번만 클램프한다.

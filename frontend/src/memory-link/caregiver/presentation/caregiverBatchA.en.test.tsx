@@ -3,9 +3,8 @@
 //
 // 검증 포인트: 활성 로케일이 en-US면 영어 문구가 나오고 한글이 새지 않는다.
 //
-// SkillLevelCard·SettingsScreen(설정 카드 라벨)은 subtestLabel()이 여전히
-// 한국어를 낸다(용어 매핑 레이어 1-3, 아직 별도 과제) — 이 컴포넌트들의
-// 껍데기 문구만 영어인지 확인하고, 검사 이름 자체는 한글 검사에서 뺀다.
+// SkillLevelCard의 subtestLabel()도 용어 매핑 레이어(1-3)가 끝나 영어
+// 웰니스 어휘를 낸다(예: 단어 이해 → Word activity).
 
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
@@ -72,7 +71,7 @@ describe('보호자 화면 배치 A — 영어로 그린다', () => {
     expect(container.textContent).not.toMatch(HANGUL);
   });
 
-  it('스킬 눈높이 — 제목·안내가 영어(검사 이름 자체는 아직 한국어)', async () => {
+  it('스킬 눈높이 — 제목·안내·검사 이름(웰니스 어휘)이 영어', async () => {
     render(
       <SkillLevelCard
         fetchLevels={() =>
@@ -88,6 +87,13 @@ describe('보호자 화면 배치 A — 영어로 그린다', () => {
       screen.getByText(/Shows what difficulty each skill is practicing at right now/),
     ).toBeInTheDocument();
     expect(screen.getByText('Level 4')).toBeInTheDocument();
+    // subtestLabel('word')는 직역이 아니라 용어 매핑 레이어(1-3)가 정한
+    // 웰니스 어휘를 낸다. loc·naming은 눈높이 목록 밖이라 제외 안내에 있다
+    // (NON_LEVELED_SUBTESTS 순서대로 "Alertness check · Picture naming exercise").
+    expect(screen.getByText('Word activity')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Alertness check.*Picture naming exercise/),
+    ).toBeInTheDocument();
   });
 
   it('완료율 카드 — 제목·요약·이탈 안내가 영어', async () => {

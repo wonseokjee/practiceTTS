@@ -17,6 +17,9 @@ import {
   pickReadingItems,
   pickRepeatItems,
 } from '../infrastructure/QabSpeechBank.js';
+import { i18n } from '../../../../shared/i18n/i18n.js';
+
+const t = (key: string) => i18n.t(`caregiver:${key}`);
 
 /**
  * 라벨 표는 타입이 전수를 강제하지만, **배열은 못 한다.**
@@ -41,15 +44,19 @@ describe('QAB 검사 라벨', () => {
     );
   });
 
-  it('모든 라벨이 한글이고 비어 있지 않다', () => {
-    for (const [key, label] of Object.entries(QAB_SUBTEST_LABELS)) {
-      expect(label.trim().length, `${key} 라벨이 비었다`).toBeGreaterThan(0);
-      expect(label, `${key}가 영문 키 그대로 노출된다`).not.toBe(key);
+  it('모든 항목이 caregiver:qabSubtestLabels.* i18n 키를 가리키고, 그 키가 실제로 번역된다', () => {
+    for (const [key, labelKey] of Object.entries(QAB_SUBTEST_LABELS)) {
+      expect(labelKey, `${key} 라벨 키가 비었다`).toMatch(/^qabSubtestLabels\./);
+      const translated = t(labelKey);
+      expect(translated, `${key}가 번역되지 않고 키 그대로 노출된다`).not.toBe(
+        labelKey,
+      );
+      expect(translated.trim().length, `${key} 번역이 비었다`).toBeGreaterThan(0);
     }
   });
 
   it('알 수 없는 값이 와도 화면이 깨지지 않는다', () => {
-    expect(subtestLabel('unknown_future_subtest')).toBe('unknown_future_subtest');
+    expect(subtestLabel('unknown_future_subtest', t)).toBe('unknown_future_subtest');
   });
 });
 

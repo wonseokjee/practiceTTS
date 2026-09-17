@@ -311,5 +311,15 @@
     "analysisNeededNote": "Once AI analyzes what you recorded{{photoSuffix}}, you'll be able to create a scenario",
     "photoSuffix": " and the photo",
     "wordsNeededNote": "Register and save at least one target word to create a scenario"
+  },
+  "qabSubtestLabels": {
+    "loc": "Alertness check",
+    "word": "Word activity",
+    "sentence": "Sentence activity",
+    "naming": "Picture naming exercise",
+    "repeat": "Repeat-after-me exercise",
+    "reading": "Reading aloud exercise",
+    "spell": "Word-building exercise",
+    "ddk": "Quick-repeat exercise"
   }
 }

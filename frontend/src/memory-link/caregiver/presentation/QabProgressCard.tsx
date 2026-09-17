@@ -172,7 +172,7 @@ export function QabProgressCard({
 
       <ul className="flex flex-col gap-3">
         {sorted.map((it) => {
-          const label = subtestLabel(it.subtest);
+          const label = subtestLabel(it.subtest, t);
           const assistedSuffix =
             it.assisted > 0 ? t('qabProgress.assistedSuffix', { count: it.assisted }) : '';
           // 채점하지 못한 문항. 오답이 아니라 측정 실패라 정확도 분모 밖에

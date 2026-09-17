@@ -7,6 +7,9 @@ import {
 } from '../../patient/quiz/domain/qabSubtestLabels.js';
 import { SkillLevelCard } from './SkillLevelCard.js';
 import type { SkillLevels } from '../../patient/quiz/domain/QabResult.js';
+import { i18n } from '../../../shared/i18n/i18n.js';
+
+const t = (key: string) => i18n.t(`caregiver:${key}`);
 
 const LEVELS: SkillLevels = {
   levels: {
@@ -29,7 +32,7 @@ describe('SkillLevelCard', () => {
     const 안내 = await findByText(/난이도를 단계로 나눌 수 있는 검사만/);
     // 이름을 하드코딩하지 않고 목록에서 끌어온다 — 목록이 바뀌면 문구도 따라 바뀐다.
     for (const key of NON_LEVELED_SUBTESTS) {
-      expect(안내.textContent).toContain(subtestLabel(key));
+      expect(안내.textContent).toContain(subtestLabel(key, t));
     }
   });
 

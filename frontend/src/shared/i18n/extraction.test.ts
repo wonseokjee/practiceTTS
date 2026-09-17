@@ -86,6 +86,12 @@ const EXTRACTED_FILES = [
   // 같은 이유로 이전 배치(#211)에서 "용어 매핑 과제라 보류"로 남겨뒀던
   // result.scoreLabel 렌더링도 이번에 함께 옮겼다.
   'assessments/loc/domain/LocScorer.ts',
+  // 계획서 §1-3 용어 매핑 레이어. QAB_SUBTEST_LABELS를 한글 문자열에서
+  // i18n 키(caregiver:qabSubtestLabels.*)로 바꿨다. en-US 값은 직역이
+  // 아니라 웰니스 어휘다(전략 문서 §2 FTC 가드레일) — "검사(test)" 대신
+  // "activity"/"exercise"/"check". 소비자는 memory-link/caregiver/
+  // presentation의 세 화면(이미 추출된 디렉터리)이다.
+  'memory-link/patient/quiz/domain/qabSubtestLabels.ts',
 ];
 
 const SRC = join(process.cwd(), 'src');
