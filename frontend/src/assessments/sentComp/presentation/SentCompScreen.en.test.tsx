@@ -83,7 +83,7 @@ describe('문장 이해 검사 메인 화면 — 영어로 그린다', () => {
     ).toBeInTheDocument();
     expect(container.textContent).toContain('Patient:');
     expect(container.textContent).toContain('Jane');
-    expect(screen.getByText('Loading item...')).toBeInTheDocument();
+    expect(screen.getByText('Loading item…')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'End session' })).toBeInTheDocument();
     expect(container.textContent).not.toMatch(HANGUL);
   });
@@ -129,7 +129,7 @@ describe('문장 이해 검사 메인 화면 — 영어로 그린다', () => {
       actions,
     });
     const { container } = render(<SentCompScreen />);
-    expect(screen.getByText('Scoring...')).toBeInTheDocument();
+    expect(screen.getByText('Scoring…')).toBeInTheDocument();
     expect(container.textContent).not.toMatch(HANGUL);
   });
 });

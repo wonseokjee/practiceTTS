@@ -7,8 +7,8 @@
     "emailLabel": "Email",
     "passwordLabel": "Password",
     "passwordPlaceholder": "Enter your password",
-    "submitLoginBusy": "Logging in...",
-    "submitRegisterBusy": "Signing up...",
+    "submitLoginBusy": "Logging in…",
+    "submitRegisterBusy": "Signing up…",
     "displayNameLabel": "My name (caregiver)",
     "displayNamePlaceholder": "Enter your name",
     "patientPinHint": "A 4-digit number you'll use to return after handing the device to your loved one.",
@@ -29,7 +29,7 @@
     "subtitle": "Before we start, tell us about the person you're caring for.",
     "patientPinHint": "A 4-digit number you'll use to return after handing the device to your loved one.",
     "errorPinInvalid": "Patient mode PIN must be 4 digits.",
-    "submitBusy": "Saving...",
+    "submitBusy": "Saving…",
     "submit": "Get started",
     "saveFailed": "We couldn't save that. Please try again shortly.",
     "mergeSectionTitle": "Already signed up another way?",
@@ -56,12 +56,12 @@
     "errorMismatch": "That PIN doesn't match. Please try again.",
     "cancel": "Cancel",
     "confirm": "Confirm",
-    "confirmBusy": "Confirming..."
+    "confirmBusy": "Confirming…"
   },
   "socialCallback": {
     "failed": "Login failed. Please try again.",
     "backToLogin": "Back to login",
-    "loading": "Logging in..."
+    "loading": "Logging in…"
   },
   "healingBanner": {
     "title": "Today's message"
@@ -75,9 +75,9 @@
     "dailyLimitFallback": "That's it for today. Let's pick back up tomorrow."
   },
   "app": {
-    "loading": "Loading...",
+    "loading": "Loading…",
     "caregiverOnlyAccess": "Only caregiver accounts can access this.",
-    "preparingAssessment": "Getting the assessment ready..."
+    "preparingAssessment": "Getting the assessment ready…"
   },
   "itemProgressBar": {
     "ariaLabel": "Progress {{current}} / {{total}}"

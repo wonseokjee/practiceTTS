@@ -86,7 +86,7 @@ describe('문장 이해 검사 컴포넌트 — 영어로 그린다', () => {
         onReplay={() => {}}
       />,
     );
-    expect(screen.getByText('Playing...')).toBeInTheDocument();
+    expect(screen.getByText('Playing…')).toBeInTheDocument();
     rerender(
       <SentenceAudioPlayer
         sentence="The dog is chasing the cat."

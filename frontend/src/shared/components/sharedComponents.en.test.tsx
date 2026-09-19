@@ -30,7 +30,7 @@ describe('shared/components — 영어로 그린다', () => {
 
   it('LoadingOverlay — message 미지정 시 기본 문구가 영어', () => {
     const { container } = render(<LoadingOverlay />);
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    expect(screen.getByText('Loading…')).toBeInTheDocument();
     expect(container.textContent).not.toMatch(HANGUL);
   });
 

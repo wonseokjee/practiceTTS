@@ -95,7 +95,7 @@ describe('App 라우트 가드 — 영어로 그린다', () => {
   it('인증 로딩 중 — 라우트 가드마다 로딩 문구가 영어', () => {
     useAuth.mockReturnValue({ user: null, isLoading: true, isPatientMode: false });
     const { container } = render(<App />);
-    expect(screen.getAllByText('Loading...').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Loading…').length).toBeGreaterThan(0);
     expect(container.textContent).not.toMatch(HANGUL);
   });
 
@@ -125,7 +125,7 @@ describe('App 라우트 가드 — 영어로 그린다', () => {
     });
     mockSession.session = null;
     const { container } = render(<App />);
-    expect(screen.getByText("Getting the assessment ready...")).toBeInTheDocument();
+    expect(screen.getByText("Getting the assessment ready…")).toBeInTheDocument();
     expect(container.textContent).not.toMatch(HANGUL);
   });
 });
