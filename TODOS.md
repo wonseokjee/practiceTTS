@@ -16,6 +16,7 @@ Vultr/Cloudflare 계정 → 도메인·DNS → `scripts/deploy/` 01→03→02→
 | **observe-unassisted-pair-before-cutover** | 공개 전환 전, 스테이징에서 보호자–환자 한 쌍을 도움 없이 쓰게 관찰 | `P1` |
 | **deploy-window-control** | 치료 시간대 배포 회피를 관습이 아닌 스크립트로 강제 | `P3` |
 | **measure-memory-limits** | pm2 `max_memory_restart`(backend 512M / ai 768M) 실측 조정 | `P2` |
+| **db-pool-config** | 커넥션 풀 크기·`query_timeout`을 장애 관찰 뒤 정한다 | `P3` |
 
 ### observe-unassisted-pair-before-cutover
 
@@ -59,6 +60,24 @@ Vultr/Cloudflare 계정 → 도메인·DNS → `scripts/deploy/` 01→03→02→
 **Effort:** S → CC+gstack S
 **Priority:** P2
 **Depends on:** 서버 기동
+
+### db-pool-config
+
+**What:** `backend/src/database/database.module.ts`에 없는 풀 크기·`query_timeout`·
+`connectionTimeoutMillis`를 무엇으로 할지 정하고 `useFactory` 반환 객체의 `extra`에 적용한다.
+
+**Why:** 지금은 pg 기본(최대 10, 쿼리 타임아웃 없음)이고 `SingleInstanceGuard`가 커넥션 1개를
+상시 점유해 실효 9개다. 응답이 아예 없는 DB에서는 앱 쿼리가 무한정 매달릴 수 있다.
+`/health`는 single-flight로 자기 방어를 했지만 앱 쿼리는 여전히 무방비다.
+
+**Context:** 2026-09-19 `/plan-eng-review`(PR #230·#232)에서 의도적으로 제외했다. `query_timeout`은
+pg 클라이언트 전역 설정이라 느린 정상 쿼리(문항 생성 등)를 끊을 수 있다 — **실측 근거를 먼저 모은다**
+(느린 쿼리 p99, 풀 대기 시간). 스테이징 관찰 중 `pm2 logs`의 `health DB check failed` 줄이 실제로
+나오는지도 단서다.
+
+**Effort:** S → CC+gstack S
+**Priority:** P3
+**Depends on:** 서버 기동 + 실측
 
 ## 다음 할 일 (2026-09-06 기준)
 
