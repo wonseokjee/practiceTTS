@@ -43,7 +43,11 @@ module.exports = {
       args: 'main:app --host 0.0.0.0 --port 8000 --workers 1',
       instances: 1,
       exec_mode: 'fork',
-      max_memory_restart: '1G',
+      // 2GB 박스 예산: backend 512M + ai 768M + PostgreSQL·nginx·OS. 합이 물리
+      // RAM에 가까우므로 01-server-setup.sh가 만든 swap 2GB가 피크를 흡수한다.
+      // 실측(pm2 monit) 후 여유가 확인되면 올릴 것 — 한도를 올리기 전에
+      // 서버에서 `free -m`으로 실제 사용량부터 볼 것.
+      max_memory_restart: '768M',
       min_uptime: '30s',
       max_restarts: 10,
     },
