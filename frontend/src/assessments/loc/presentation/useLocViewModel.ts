@@ -34,6 +34,7 @@ import {
 } from 'react';
 import type React from 'react';
 import { useTranslation } from 'react-i18next';
+import type { Translator } from '../../../shared/i18n/i18n.js';
 import type { ConductLocTrialUseCase } from '../application/ConductLocTrialUseCase.js';
 import type { FinishLocAssessmentUseCase } from '../application/FinishLocAssessmentUseCase.js';
 import {
@@ -107,7 +108,7 @@ function getButtonBounds(element: HTMLButtonElement): {
 /** 에러 코드를 사용자 메시지로 변환한다 */
 function mapErrorToMessage(
   error: unknown,
-  t: (key: string, opts?: Record<string, unknown>) => string,
+  t: Translator,
 ): string {
   if (error instanceof LocAssessmentError) {
     switch (error.code) {

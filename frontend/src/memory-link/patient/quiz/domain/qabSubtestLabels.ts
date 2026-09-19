@@ -9,6 +9,7 @@
 // 이제 `Record<QabSubtest, string>`이라 검사를 추가하고 라벨을 안 주면 **빌드가 깨진다.**
 
 import type { QabSubtest } from './QabResult.js';
+import type { Translator } from '../../../../shared/i18n/i18n.js';
 
 /**
  * 검사 종류 → 보호자에게 보여줄 이름의 i18n 키(`caregiver:qabSubtestLabels.*`).
@@ -93,7 +94,7 @@ export const LEVELED_SUBTESTS: readonly QabSubtest[] = QAB_SUBTEST_ORDER.filter(
  */
 export function subtestLabel(
   subtest: string,
-  t: (key: string) => string,
+  t: Translator,
 ): string {
   const key = QAB_SUBTEST_LABELS[subtest as QabSubtest];
   return key ? t(key) : subtest;

@@ -54,6 +54,9 @@ import { DEFAULT_LOCALE } from '../domain/locale.js';
 export const NAMESPACES = ['common', 'quiz', 'patient', 'caregiver', 'assessments'] as const;
 export type Namespace = (typeof NAMESPACES)[number];
 
+/** `t`를 인자로 받는 순수 함수용 최소 타입. i18next의 `TFunction<Ns>`는 네임스페이스 제네릭이 붙어 무겁다. */
+export type Translator = (key: string, opts?: Record<string, unknown>) => string;
+
 type ResourceModule = { default: Record<string, unknown> };
 
 /** `./locales/<로케일>/<네임스페이스>.json` — 지연(동적 import). */

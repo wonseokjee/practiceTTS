@@ -9,6 +9,7 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { Translator } from '../../shared/i18n/i18n.js';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext.js';
 import { API_BASE_URL, memoryLinkApi } from './MemoryLinkApi.js';
@@ -17,7 +18,7 @@ import { GoogleIcon, KakaoIcon } from './components/ProviderIcons.js';
 type MergeProvider = 'kakao' | 'google';
 
 /** 병합 콜백 실패(?mergeError=..) → 안내 문구. 백엔드 handleSocialCallback과 짝. */
-function parseMergeError(t: (key: string) => string, search: string): string | null {
+function parseMergeError(t: Translator, search: string): string | null {
   const e = new URLSearchParams(search).get('mergeError');
   if (!e) return null;
   if (e === 'notfound') {
