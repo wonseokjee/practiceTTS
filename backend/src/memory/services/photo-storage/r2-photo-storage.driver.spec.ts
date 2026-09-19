@@ -5,6 +5,7 @@ interface CapturedCommand {
 
 const sendMock = jest.fn<Promise<unknown>, [CapturedCommand]>();
 let lastClientConfig: Record<string, unknown> | undefined;
+let lastHandlerOptions: Record<string, unknown> | undefined;
 
 function capturedCommand(callIndex: number): CapturedCommand {
   const command: unknown = sendMock.mock.calls[callIndex][0];
@@ -33,6 +34,16 @@ jest.mock('@aws-sdk/client-s3', () => {
   };
 });
 
+// 타임아웃 값이 핸들러에 실제로 전달되는지 확인하기 위해 생성 인자를 가로챈다.
+jest.mock('@smithy/node-http-handler', () => ({
+  NodeHttpHandler: jest
+    .fn()
+    .mockImplementation((options: Record<string, unknown>) => {
+      lastHandlerOptions = options;
+      return { __handler: true };
+    }),
+}));
+
 import { R2PhotoStorageDriver } from './r2-photo-storage.driver';
 
 describe('R2PhotoStorageDriver', () => {
@@ -41,6 +52,7 @@ describe('R2PhotoStorageDriver', () => {
   beforeEach(() => {
     sendMock.mockReset();
     lastClientConfig = undefined;
+    lastHandlerOptions = undefined;
     driver = new R2PhotoStorageDriver({
       accountId: 'acc123',
       accessKeyId: 'key-id',
@@ -55,6 +67,14 @@ describe('R2PhotoStorageDriver', () => {
       endpoint: 'https://acc123.r2.cloudflarestorage.com',
       credentials: { accessKeyId: 'key-id', secretAccessKey: 'secret' },
     });
+  });
+
+  it('R2가 먹통이어도 요청이 무한정 걸리지 않도록 연결·요청 타임아웃을 건다', () => {
+    expect(lastHandlerOptions).toEqual({
+      connectionTimeout: 5000,
+      requestTimeout: 15000,
+    });
+    expect(lastClientConfig?.requestHandler).toEqual({ __handler: true });
   });
 
   it('save는 PutObjectCommand로 버킷·키·버퍼를 보낸다', async () => {

@@ -82,9 +82,8 @@ export class MemoryController {
       new ParseFilePipe({
         validators: [
           new MaxFileSizeValidator({ maxSize: MAX_PHOTO_SIZE_BYTES }),
-          // NestJS v11 FileTypeValidator는 file.buffer의 매직넘버를 검사하는데,
-          // diskStorage 사용 시 buffer가 undefined라 매번 검증이 실패한다.
-          // diskStorage에서는 매직넘버 검사를 건너뛰고 mimetype 문자열로 검증한다.
+          // NestJS v11 FileTypeValidator는 기본으로 file.buffer의 매직넘버를 검사한다.
+          // 매직넘버 검사는 건너뛰고 mimetype 문자열로만 검증한다(기존 동작 유지).
           new FileTypeValidator({
             fileType: /^image\/(jpeg|png|webp)$/,
             skipMagicNumbersValidation: true,

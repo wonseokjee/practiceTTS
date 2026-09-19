@@ -4,6 +4,7 @@ import {
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
+import { NodeHttpHandler } from '@smithy/node-http-handler';
 import type { Readable } from 'stream';
 import type { IPhotoStorageDriver } from './photo-storage-driver.interface';
 
@@ -36,6 +37,13 @@ export class R2PhotoStorageDriver implements IPhotoStorageDriver {
         accessKeyId: config.accessKeyId,
         secretAccessKey: config.secretAccessKey,
       },
+      // 기본 SDK 타임아웃은 사실상 없음 — R2가 지연/먹통이면 create() 요청이
+      // 보호자의 모바일 연결을 무한정 잡아먹는다. nginx proxy_read_timeout
+      // (120s, DEPLOYMENT.md)보다 짧게 잡아 사용자가 명확한 에러를 보게 한다.
+      requestHandler: new NodeHttpHandler({
+        connectionTimeout: 5000,
+        requestTimeout: 15000,
+      }),
     });
   }
 
