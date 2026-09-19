@@ -181,10 +181,13 @@ ENFORCE_SINGLE_INSTANCE=true
 pm2가 재시작 한도(`max_restarts: 10`)를 넘겨 포기하면 nginx가 조용히 502를 낸다 —
 아무도 모른다. 무료 외부 감시를 건다:
 
-- UptimeRobot(또는 동급)에서 `https://api.<domain>/` **HTTP 모니터**, 5분 간격,
-  이메일 알림. 이 경로는 인증 없이 200(`Hello World!`)을 준다.
-- 한계: 프로세스·nginx·TLS가 살아 있는지만 본다. **DB가 죽은 것은 못 잡는다**
-  (TODOS.md `health-endpoint-db-check`).
+- UptimeRobot(또는 동급)에서 `https://api.<domain>/health` **HTTP 모니터**, 5분 간격,
+  이메일 알림. 이 경로는 인증 없이 열려 있고, DB에 `SELECT 1`이 통하면 200
+  `{"status":"ok"}`, 실패하거나 3초 안에 응답이 없으면 503을 준다.
+- `GET /`(`Hello World!`)는 프로세스 생존만 본다 — DB가 죽어도 200이라 감시 대상으로
+  쓰지 않는다.
+- ai-service는 외부로 열려 있지 않아(nginx가 프록시하지 않음) 이 감시가 보지 못한다.
+  백엔드가 AI 호출에 실패하면 로그(`pm2 logs`)로 드러난다.
 - 인증서 만료 알림은 UptimeRobot의 SSL 만료 알림을 켠다(갱신은 03이 dry-run으로
   검증하지만 이중 안전장치).
 
