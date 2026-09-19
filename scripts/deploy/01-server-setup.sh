@@ -14,7 +14,7 @@
 # 이후 02-app-deploy.sh를 일반 유저로 돌릴 때 서로 다른 pm2 인스턴스를
 # 보게 된다.
 #
-# 이 스크립트가 하는 일: OS 업데이트, Node.js 22 LTS, Python3(+venv),
+# 이 스크립트가 하는 일: swap 2GB, OS 업데이트, Node.js 22 LTS, Python3(+venv),
 # PostgreSQL, nginx, certbot, pm2(+pm2-logrotate), ufw 방화벽.
 # 앱 코드 배포·pm2 기동은 02-app-deploy.sh가 한다(이 스크립트는 런타임만 깐다).
 #
@@ -24,14 +24,33 @@
 
 set -euo pipefail
 
-echo "=== 1/8: OS 패키지 업데이트 ==="
+echo "=== 1/9: swap 2GB ==="
+# 2GB RAM 박스에서 pm2 한도(backend 512M + ai-service 768M) + PostgreSQL +
+# nginx + 빌드(tsc/Vite)가 겹치면 물리 메모리를 넘는다. swap이 없으면 커널
+# OOM killer가 프로세스(대개 postgres나 백엔드)를 즉사시키므로, swap을 깔아
+# 순간 피크를 흡수한다. 이미 있으면 건너뛴다(멱등).
+# (pipefail 하에서 `| grep -q`는 SIGPIPE로 오판할 수 있어 변수로 받아 비교한다.)
+if [[ "$(swapon --show=NAME --noheadings)" != *"/swapfile"* ]]; then
+  sudo fallocate -l 2G /swapfile
+  sudo chmod 600 /swapfile
+  sudo mkswap /swapfile
+  sudo swapon /swapfile
+  grep -q '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+fi
+# swap은 피크 흡수용 안전망이지 상시 사용처가 아니다 — 여유가 있는 동안엔
+# 물리 메모리를 우선 쓰도록 swappiness를 낮춘다.
+echo 'vm.swappiness=10' | sudo tee /etc/sysctl.d/99-practivetts-swap.conf
+sudo sysctl -p /etc/sysctl.d/99-practivetts-swap.conf
+free -h
+
+echo "=== 2/9: OS 패키지 업데이트 ==="
 sudo apt-get update -y
 sudo apt-get upgrade -y
 
-echo "=== 2/8: 기본 빌드 도구 ==="
+echo "=== 3/9: 기본 빌드 도구 ==="
 sudo apt-get install -y build-essential curl git ca-certificates gnupg
 
-echo "=== 3/8: Node.js 22 LTS (NodeSource) ==="
+echo "=== 4/9: Node.js 22 LTS (NodeSource) ==="
 if ! command -v node >/dev/null 2>&1 || [ "$(node -v | cut -d. -f1 | tr -d v)" -lt 22 ]; then
   curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
   sudo apt-get install -y nodejs
@@ -39,7 +58,7 @@ fi
 node -v
 npm -v
 
-echo "=== 4/8: pm2 + pm2-logrotate ==="
+echo "=== 5/9: pm2 + pm2-logrotate ==="
 sudo npm install -g pm2
 # DEPLOYMENT.md 「로그 — pm2-logrotate」 절과 동일 설정. AllExceptionsFilter가
 # 4xx/5xx를 계속 로그에 남기므로 로테이션 없으면 디스크가 찬다.
@@ -48,11 +67,11 @@ pm2 set pm2-logrotate:max_size 10M
 pm2 set pm2-logrotate:retain 14
 pm2 set pm2-logrotate:compress true
 
-echo "=== 5/8: Python3 + venv (ai-service용) ==="
+echo "=== 6/9: Python3 + venv (ai-service용) ==="
 sudo apt-get install -y python3 python3-venv python3-pip
 python3 --version
 
-echo "=== 6/8: PostgreSQL ==="
+echo "=== 7/9: PostgreSQL ==="
 sudo apt-get install -y postgresql postgresql-contrib
 sudo systemctl enable postgresql
 sudo systemctl start postgresql
@@ -60,12 +79,12 @@ echo "PostgreSQL 기동됨. DB·유저 생성은 02-app-deploy.sh 또는 수동�
 echo "  sudo -u postgres psql -c \"CREATE USER practivetts WITH PASSWORD '<비밀번호>';\""
 echo "  sudo -u postgres psql -c \"CREATE DATABASE practivetts OWNER practivetts;\""
 
-echo "=== 7/8: nginx + certbot ==="
+echo "=== 8/9: nginx + certbot ==="
 sudo apt-get install -y nginx certbot python3-certbot-nginx
 sudo systemctl enable nginx
 sudo systemctl start nginx
 
-echo "=== 8/8: 방화벽(ufw) — 80/443/SSH만 연다 ==="
+echo "=== 9/9: 방화벽(ufw) — 80/443/SSH만 연다 ==="
 sudo ufw allow OpenSSH
 sudo ufw allow 'Nginx Full'
 sudo ufw --force enable
