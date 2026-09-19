@@ -40,6 +40,19 @@ sudo systemctl reload nginx
 echo "=== certbot으로 HTTPS 발급 ==="
 sudo certbot --nginx -d "$APP_DOMAIN" -d "$API_DOMAIN" --redirect
 
+echo "=== 인증서 자동 갱신 검증 ==="
+# 발급은 성공해도 갱신은 90일 뒤에야 처음 돌아서, 실패(80 포트 차단·nginx 설정
+# 문제 등)를 그때까지 아무도 모른다. 지금 스테이징 서버로 갱신 전 과정을 시험한다.
+if ! sudo certbot renew --dry-run; then
+  echo "!! certbot 갱신 dry-run 실패 — 90일 뒤 인증서가 만료됩니다. 위 에러를 먼저 해결하세요." >&2
+  exit 1
+fi
+# 갱신을 주기적으로 실행하는 타이머가 실제로 살아 있는지도 확인한다.
+if ! systemctl is-active --quiet certbot.timer; then
+  echo "!! certbot.timer가 비활성 상태입니다. 'sudo systemctl enable --now certbot.timer' 후 다시 확인하세요." >&2
+  exit 1
+fi
+
 echo "=== 완료 ==="
 echo "https://${APP_DOMAIN} / https://${API_DOMAIN} 확인해볼 것."
-echo "certbot이 갱신 타이머(systemd timer)를 자동 등록한다 — 별도 조치 불필요."
+echo "certbot 갱신 dry-run 통과 + certbot.timer 활성 확인됨."

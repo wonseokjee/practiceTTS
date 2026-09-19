@@ -75,10 +75,25 @@ if pm2 describe practivetts-backend >/dev/null 2>&1; then
   pm2 reload ecosystem.config.cjs
 else
   pm2 start ecosystem.config.cjs
-  pm2 save
-  # 서버 재부팅 시 pm2가 자동으로 다시 뜨게 — 최초 1회만 필요.
-  echo "최초 배포라면: 'pm2 startup'이 출력하는 sudo 명령을 한 번 실행해두세요."
 fi
+
+# 현재 프로세스 목록을 저장한다 — 재부팅 후 pm2가 이 목록을 복원한다.
+# 재배포 때마다 갱신해 둬야 나중에 앱이 추가/변경돼도 복원 목록이 어긋나지 않는다.
+pm2 save
+
+# 서버 재부팅 시 pm2가 자동으로 다시 뜨게 하는 systemd 유닛(pm2-<user>.service).
+# 안내만 하고 넘기면 리부팅 한 번에 앱이 영영 안 뜨므로 직접 설치하고,
+# 설치됐는지 확인한다. 이미 설치돼 있으면 건너뛴다(멱등).
+PM2_UNIT="pm2-$(whoami).service"
+if ! systemctl is-enabled "$PM2_UNIT" >/dev/null 2>&1; then
+  sudo env PATH="$PATH" pm2 startup systemd -u "$(whoami)" --hp "$HOME"
+fi
+if ! systemctl is-enabled "$PM2_UNIT" >/dev/null 2>&1; then
+  echo "!! $PM2_UNIT 이 활성화되지 않았습니다. 재부팅 시 앱이 자동 기동되지 않습니다." >&2
+  echo "   'pm2 startup'이 출력하는 sudo 명령을 수동으로 실행한 뒤 다시 돌려주세요." >&2
+  exit 1
+fi
+echo "재부팅 자동 기동 확인됨: $PM2_UNIT"
 
 pm2 status
 
