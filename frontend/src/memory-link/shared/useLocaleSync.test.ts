@@ -110,4 +110,33 @@ describe('useLocaleSync', () => {
     expect(d.fetchLocales).not.toHaveBeenCalled();
     expect(result.current).toBe('ko-KR');
   });
+
+  it('계정이 바뀌면 새 계정의 값이 올 때까지 이전 계정의 로케일을 쓰지 않는다', async () => {
+    let resolveSecond!: (v: LocaleSettings) => void;
+    const second = new Promise<LocaleSettings>((r) => {
+      resolveSecond = r;
+    });
+    const fetchLocales = vi
+      .fn<() => Promise<LocaleSettings>>()
+      .mockResolvedValueOnce({ patientLocale: 'en-US', caregiverLocale: 'en-US' })
+      .mockReturnValueOnce(second);
+    const d = deps({ fetchLocales });
+    const other: AuthUser = { ...CAREGIVER, id: 'c2' };
+
+    const { result, rerender } = renderHook(
+      ({ user }: { user: AuthUser }) => useLocaleSync(user, false, d),
+      { initialProps: { user: CAREGIVER } },
+    );
+    await waitFor(() => expect(result.current).toBe('en-US'));
+
+    rerender({ user: other });
+
+    // 두 번째 값이 아직 안 왔다 — 첫 계정의 en-US가 새 화면에 남으면 안 된다.
+    expect(fetchLocales).toHaveBeenCalledTimes(2);
+    expect(result.current).toBe('ko-KR');
+
+    // 새 계정의 값이 오면 그때는 그 값을 쓴다 — 가드가 영영 막는 게 아니다.
+    resolveSecond({ patientLocale: 'en-US', caregiverLocale: 'en-US' });
+    await waitFor(() => expect(result.current).toBe('en-US'));
+  });
 });
