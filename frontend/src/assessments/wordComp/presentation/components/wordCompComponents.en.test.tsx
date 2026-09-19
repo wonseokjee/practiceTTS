@@ -57,7 +57,7 @@ describe('단어 이해 검사 컴포넌트 — 영어로 그린다', () => {
         onReplay={() => {}}
       />,
     );
-    expect(screen.getByText('Playing audio...')).toBeInTheDocument();
+    expect(screen.getByText('Playing audio…')).toBeInTheDocument();
     expect(
       screen.getByText('Listen to the word and choose the picture'),
     ).toBeInTheDocument();

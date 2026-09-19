@@ -23,7 +23,7 @@ describe('LOC 검사 컴포넌트 — 영어로 그린다', () => {
   it('LocAudioIndicator — 상태 문구가 영어', () => {
     const { container } = render(<LocAudioIndicator isTtsPlaying={true} />);
     expect(screen.getByRole('status', { name: 'Playing voice instructions' })).toBeInTheDocument();
-    expect(screen.getByText('Playing voice instructions...')).toBeInTheDocument();
+    expect(screen.getByText('Playing voice instructions…')).toBeInTheDocument();
     expect(container.textContent).not.toMatch(HANGUL);
   });
 

@@ -52,7 +52,7 @@
     },
     "sentenceAudioPlayer": {
       "regionAria": "Sentence audio playback area",
-      "playingLabel": "Playing...",
+      "playingLabel": "Playing…",
       "playbackDoneLabel": "Playback done",
       "sentenceAria": "Sentence: {{sentence}}",
       "replayAria": "Replay the sentence",
@@ -62,19 +62,19 @@
       "title": "Sentence comprehension (SentComp) assessment",
       "patientPrefix": "Patient:",
       "endSessionButton": "End session",
-      "scoringLabel": "Scoring...",
+      "scoringLabel": "Scoring…",
       "errorTitle": "Something went wrong",
       "retryButton": "Try again",
-      "loadingItems": "Loading item...",
-      "preparingNextItem": "Preparing the next item...",
+      "loadingItems": "Loading item…",
+      "preparingNextItem": "Preparing the next item…",
       "correctFeedback": "Correct!",
       "incorrectFeedback": "Incorrect.",
-      "submittingLabel": "Submitting..."
+      "submittingLabel": "Submitting…"
     }
   },
   "wordComp": {
     "audioPlayerBar": {
-      "playingLabel": "Playing audio...",
+      "playingLabel": "Playing audio…",
       "playbackDoneLabel": "Audio playback done",
       "instructionLabel": "Listen to the word and choose the picture",
       "replayAria": "Replay",
@@ -109,12 +109,12 @@
       "title": "Word comprehension assessment",
       "completedSubtitle": "Assessment complete",
       "patientLabel": "Patient: {{name}}",
-      "loadingItems": "Loading item...",
-      "aggregatingResults": "Tallying results...",
+      "loadingItems": "Loading item…",
+      "aggregatingResults": "Tallying results…",
       "errorTitle": "Something went wrong",
       "retryButton": "Try again",
-      "loadingNextItem": "Moving to the next item...",
-      "submittingLabel": "Submitting...",
+      "loadingNextItem": "Moving to the next item…",
+      "submittingLabel": "Submitting…",
       "endSessionAria": "End assessment session",
       "endSessionButton": "End session"
     }
@@ -122,7 +122,7 @@
   "loc": {
     "audioIndicator": {
       "ariaLabel": "Playing voice instructions",
-      "label": "Playing voice instructions..."
+      "label": "Playing voice instructions…"
     },
     "progressBar": {
       "remainingAria": "{{seconds}} seconds remaining",
