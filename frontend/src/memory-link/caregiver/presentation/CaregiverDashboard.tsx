@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
+import type { Translator } from '../../../shared/i18n/i18n.js';
 import { useAuth } from '../../shared/AuthContext.js';
 import { DailyHealingBanner } from '../../shared/components/DailyHealingBanner.js';
 import { useCaptureFlow } from '../application/useCaptureFlow.js';
@@ -24,7 +25,7 @@ type DashboardView = 'list' | 'capture' | 'detail' | 'report' | 'settings';
  * 백엔드 handleSocialCallback이 리다이렉트에 실어 보내는 값과 짝을 맞춘다.
  */
 function parseLinkNotice(
-  t: (key: string, opts?: Record<string, unknown>) => string,
+  t: Translator,
   search: string,
 ): AccountLinkNotice | null {
   const params = new URLSearchParams(search);

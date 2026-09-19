@@ -21,6 +21,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { Translator } from '../../../../shared/i18n/i18n.js';
 import type { PracticePlayable } from '../domain/Practice.js';
 import {
   usePracticeSession,
@@ -49,7 +50,7 @@ interface PracticeScreenProps {
  * 다른 것은 앞의 한마디뿐이다.
  */
 function messageFor(
-  t: (key: string, opts?: Record<string, unknown>) => string,
+  t: Translator,
   language: string,
   phase: 'answering' | 'revealed' | 'done',
   attemptNo: number,
