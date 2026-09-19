@@ -10,7 +10,22 @@
 문장이해·이름대기 자산 확보(#149·#151, 사람이 사진을 직접 골라야 해 별도
 작업).
 
-### #150 1차 배치 — 글자조합 신규 단어 47개
+### 영어 웰니스 라벨 — 배포 전 법무·컴플라이언스 검토 (P2, 2026-09-19 /plan-eng-review 외부 의견)
+
+**What:** `caregiver.json`(en-US)의 `qabSubtestLabels.*`(Alertness check / Word activity /
+Picture naming exercise …)와 영어 UI 전반의 임상·의료기기 뉘앙스 문구를 영어 사용자에게 열기
+전에 법무/컴플라이언스가 검토한다.
+
+**Why:** 이 라벨은 "FDA 기기 분류 회피"(웰니스 포지셔닝, 전략 문서 §2 FTC 가드레일)의 실행
+수단이다. 엔지니어링이 정한 문구가 검토 없이 나가면 나중에 라벨 층을 다시 만들어야 할 수 있다.
+
+**Context:** 용어 매핑은 PR #220으로 들어갔고(사용자와 어휘 확인함), 계획서 §1-3에는 문구를 누가
+검증하는지 적혀 있지 않다. 지금 값은 `frontend/src/shared/i18n/locales/en-US/caregiver.json`의
+`qabSubtestLabels`. LOC 점수 라벨(정상/경도 지연 등)은 표준 임상 분류라 직역했는데, 이것도 같은
+검토 대상에 넣을지 함께 묻는다.
+
+**Effort:** S (검토 요청 문서 작성) · **Priority:** P2
+**Depends on:** 영어 사용자에게 문을 여는 시점(§0-5c, §16 M1) 이전에 끝나야 함
 
 47개 신규 단어(2음절 25 + 3~4음절 22)를 `qabWordPool.json`에 추가했다
 (116→163). 전부 Fluent Emoji Flat 원본, `scripts/build_wordcomp_fluent.py`의
