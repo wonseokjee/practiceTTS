@@ -5,19 +5,23 @@
 Vultr(서울) 같은 빈 Ubuntu 22.04 VPS에 처음 올릴 때는 `scripts/deploy/`의
 스크립트를 순서대로 실행한다:
 
-1. `01-server-setup.sh` — Node.js 22·Python3·PostgreSQL·nginx·certbot·pm2
-   설치, 방화벽(ufw) 설정 (서버에서 1회)
+1. `01-server-setup.sh` — swap 2GB, Node.js 22·Python3·PostgreSQL·nginx·certbot·pm2
+   설치, 방화벽(ufw) 설정 (서버에서 1회). 2GB 램에 pm2 한도(backend 512M +
+   ai-service 768M)·PostgreSQL·빌드가 겹치므로 swap이 피크를 흡수한다.
 2. `03-nginx-and-tls.sh <app-domain> <api-domain>` — nginx 설정 + HTTPS
-   발급. 프론트(`VITE_API_URL`)와 백엔드를 서브도메인으로 분리한다 — 백엔드
+   발급 + `certbot renew --dry-run`/`certbot.timer` 확인(실패하면 종료).
+   프론트(`VITE_API_URL`)와 백엔드를 서브도메인으로 분리한다 — 백엔드
    라우트가 `/api` 같은 prefix 없이 루트에 바로 걸려 있어 경로 기반 분기보다
    간단하다.
 3. `02-app-deploy.sh <git-repo-url> [branch]` — 코드 클론/풀, 빌드,
-   마이그레이션, pm2 기동. `.env` 3개(backend/ai-service/frontend)는 이
+   마이그레이션, pm2 기동, `pm2 save` + `pm2 startup`(재부팅 자동 기동,
+   활성 검증 실패 시 종료). `.env` 3개(backend/ai-service/frontend)는 이
    스크립트가 만들지 않으므로 `.env.example`을 참고해 서버에서 직접 채워야
    한다. 재배포할 때도 이 스크립트를 다시 실행하면 된다(pm2가 있으면
    reload, 없으면 최초 기동).
+4. `04-backup-setup.sh` — DB 백업 설치(아래 「DB 백업·복원」). 02 뒤에 실행.
 
-세 스크립트 모두 아래 "배포 전 확인"·"스모크 체크리스트"를 대체하지 않는다
+스크립트 모두 아래 "배포 전 확인"·"스모크 체크리스트"를 대체하지 않는다
 — 런타임·앱 배치만 자동화할 뿐, 실제로 도는지 확인하는 건 여전히 사람이 한다.
 
 ## 현재 전제: 단일 인스턴스
@@ -128,6 +132,62 @@ ENFORCE_SINGLE_INSTANCE=true
 - `SingleInstanceGuard`를 `AppModule` providers에서 제거한다
 - 이 문서의 "현재 전제"를 갱신한다
 
+## DB 백업·복원
+
+환자 회복 이력이 단일 VPS의 단일 디스크에만 있으므로 백업이 없으면 디스크
+장애 한 번에 전손이다. `04-backup-setup.sh`가 매일 03:30 KST에
+`backup-db.sh`(`pg_dump` → `pg_restore --list` 무결성 확인 → R2 업로드)를 cron에
+건다. 절차:
+
+1. **Cloudflare R2에 백업 전용 버킷** 생성(사진 버킷과 별개, 비공개).
+2. 그 버킷 하나에만 **Object Read & Write** 권한을 가진 **전용 API 토큰** 발급.
+   사진 버킷 키를 재사용하지 말 것 — 키 하나가 새거나 잘못 지워도 사진과
+   백업이 같이 날아가면 안 된다.
+3. 버킷 **Settings → Object lifecycle rules**에서 `daily/` 접두사 14일 뒤 삭제
+   (스크립트는 지우지 않는다).
+4. 선택: healthchecks.io 같은 "핑이 끊기면 알림" 서비스에 체크를 만들고 그 URL을
+   `BACKUP_PING_URL`에 넣는다 — cron이 조용히 죽는 것을 잡는 유일한 장치다.
+5. `04-backup-setup.sh`를 실행하면 `~/.practivetts-backup.env` 양식을 만들고
+   멈춘다. 값을 채워 **다시 실행**하면 테스트 백업 1회가 통과했을 때만 cron이
+   등록된다. 로그: `journalctl -t practivetts-backup`.
+
+**복원 리허설을 반드시 한 번 한다** — 백업은 복원돼 봐야 백업이다:
+
+```bash
+/opt/practivetts/scripts/deploy/restore-check.sh latest
+```
+
+임시 DB(`practivetts_restore_check`)에 복원해 테이블 수와 `users` 행 수를 출력하고
+지운다(운영 DB는 건드리지 않는다). 실제 장애 복원은 같은 덤프를 새 DB에
+`pg_restore --no-owner --dbname=<DB>`로 넣는다.
+
+⚠️ 덤프에는 **암호화된 가족 실명**이 들어 있다. `CRYPTO_SECRET_KEY`가 없으면
+백업만 있어도 복호화할 수 없다 — 아래 「시크릿 보관」.
+
+## 시크릿 보관
+
+`.env` 세 개(backend/ai-service/frontend)는 서버 한 대에만 있으면 서버와 함께
+사라진다. 특히 `CRYPTO_SECRET_KEY`를 잃으면 저장된 가족 실명을 **영구히**
+복호화할 수 없다.
+
+- 배포 직후 `.env` 세 개의 값을 **비밀번호 관리자**(1Password/Bitwarden 등)에
+  옮겨 둔다. R2 사진 키·`~/.practivetts-backup.env`의 백업 토큰도 같이.
+- **백업(pg_dump)과 다른 곳에 둔다.** 덤프와 키가 같은 저장소에 있으면 그
+  저장소가 유출될 때 실명이 한 번에 열린다.
+- 키를 바꾸는 일은 없다(바꾸면 기존 데이터 복호화 불가).
+
+## 가동 감시
+
+pm2가 재시작 한도(`max_restarts: 10`)를 넘겨 포기하면 nginx가 조용히 502를 낸다 —
+아무도 모른다. 무료 외부 감시를 건다:
+
+- UptimeRobot(또는 동급)에서 `https://api.<domain>/` **HTTP 모니터**, 5분 간격,
+  이메일 알림. 이 경로는 인증 없이 200(`Hello World!`)을 준다.
+- 한계: 프로세스·nginx·TLS가 살아 있는지만 본다. **DB가 죽은 것은 못 잡는다**
+  (TODOS.md `health-endpoint-db-check`).
+- 인증서 만료 알림은 UptimeRobot의 SSL 만료 알림을 켠다(갱신은 03이 dry-run으로
+  검증하지만 이중 안전장치).
+
 ## 로그 — pm2-logrotate
 
 `AllExceptionsFilter`(backend)가 4xx·5xx를 서버 로그에 남긴다(계획 §13 8-1) —
@@ -215,6 +275,9 @@ curl -s -o /tmp/qab.json -w '%{http_code}\n' -X POST "$API_BASE/quiz/qab-results
   구버전 프론트를 흉내낸 것이다.
 - **2단계(프론트) 뒤:** 실제 앱에서 문항 하나를 눌러 완료하고, 보호자 화면의
   추이 카드에 방금 그 시도가 반영되는지 — DB까지 실제로 갔는지 확인한다.
+- **첫 배포에서만:** ① `sudo reboot` 후 `pm2 status`에 두 프로세스가 자동으로 떠 있는지
+  ② `restore-check.sh latest`가 "복원 성공"을 내는지 ③ `free -h`에서 swap 2GB가
+  잡혀 있는지(이후 `pm2 monit`으로 실사용량을 보고 `max_memory_restart` 조정).
 - 어느 단계든 400/500이면 §"전역 예외 필터" 로그(`pm2 logs practivetts-backend`)에서
   `method·path·status`를 먼저 본다 — 필드명까지는 나오되 값은 안 나온다.
 

@@ -1,5 +1,78 @@
 # TODOS
 
+## 다음 할 일 — 첫 배포 (2026-09-19 기준)
+
+배포 인프라 엔지니어링 리뷰(2026-09-19) 결과. 서버·도메인·계정은 아직 없다. 코드 쪽 준비는
+끝났고(swap·pm2 startup·certbot dry-run·DB 백업·시크릿 보관 문서), 남은 건 **사람이 할 일**이다:
+Vultr/Cloudflare 계정 → 도메인·DNS → `scripts/deploy/` 01→03→02→04 → `.env` 3종 → 스모크.
+**순서 주의:** 공개 도메인 전환 전에 아래 「관찰」을 먼저 한다.
+
+> ※ 아래 「다음 할 일 (2026-09-06 기준)」 절의 #150 진행 상황은 낡았다 — #150은 116/116으로 끝났다(PR #190).
+
+### 남은 작업 (배포)
+
+| | 내용 | 우선순위 |
+|---|---|---|
+| **observe-unassisted-pair-before-cutover** | 공개 전환 전, 스테이징에서 보호자–환자 한 쌍을 도움 없이 쓰게 관찰 | `P1` |
+| **health-endpoint-db-check** | DB까지 확인하는 `/health` 엔드포인트 | `P2` |
+| **deploy-window-control** | 치료 시간대 배포 회피를 관습이 아닌 스크립트로 강제 | `P3` |
+| **measure-memory-limits** | pm2 `max_memory_restart`(backend 512M / ai 768M) 실측 조정 | `P2` |
+
+### observe-unassisted-pair-before-cutover
+
+**What:** 이미 만든 Vultr 서버를 스테이징으로 쓴다. 공개 도메인을 열기 **전에** 실제 보호자–환자 한 쌍이
+지시 없이 앱을 쓰는 것을 관찰한다. 특히 나쁜 날의 점수 하락 때 보호자가 추이 카드를 제대로 읽는지 본다.
+
+**Why:** 지금까지 도움 없는 실제 사용 쌍을 관찰한 적이 없다(오피스 아워, 2026-09-19). 문제가 있어도
+공개 뒤에 발견하면 첫 사용자 경험이 이미 나빠진 뒤다.
+
+**Context:** 배포 인프라가 가장 큰 위험이 아니라는 결론이다. 환자 화면에 음성 안내가 충분한지,
+보호자가 하락을 실패로 오해하지 않는지를 본다.
+
+**Effort:** S (human ~1일 준비 + 관찰) → CC+gstack S
+**Priority:** P1
+**Depends on:** 서버 기동 + 스모크 통과
+
+### health-endpoint-db-check
+
+**What:** `GET /health`가 DB에 `select 1`을 날려 결과를 준다. UptimeRobot 대상을 `/`에서 옮긴다.
+
+**Why:** 지금 감시 대상 `GET /`는 `Hello World!`만 준다 — DB가 죽어도 200이다.
+
+**Context:** `backend/src/app.controller.ts`. 인증 없이 열리므로 내부 정보를 노출하지 않는다(상태만).
+
+**Effort:** S → CC+gstack S (~15분)
+**Priority:** P2
+**Depends on:** 없음
+
+### deploy-window-control
+
+**What:** `02-app-deploy.sh`가 치료 시간대(예: 한국 09~21시)에 실행되면 확인 프롬프트를 띄우거나
+`--force` 없이는 멈추게 한다.
+
+**Why:** 단일 인스턴스라 배포 중 `pm2 reload`가 잠깐 요청을 끊는다. "치료 시간을 피한다"가 관습일 뿐
+스크립트가 강제하지 않는다.
+
+**Context:** `DEPLOYMENT.md` 「현재 전제: 단일 인스턴스」. 미국 사용자가 생기면 피할 시간이 없어
+`zero-downtime-multi-instance`가 근본 해결이다.
+
+**Effort:** S → CC+gstack S
+**Priority:** P3
+**Depends on:** 없음
+
+### measure-memory-limits
+
+**What:** 스테이징에서 `pm2 monit`·`free -m`으로 실사용량을 재고 `ecosystem.config.cjs`의
+`max_memory_restart`(768M은 추정치)와 PostgreSQL `shared_buffers`를 조정한다.
+
+**Why:** 2GB 램에 backend 512M + ai 768M + Postgres·nginx·OS. swap이 안전망일 뿐 상시 사용처는 아니다.
+
+**Context:** `01-server-setup.sh`가 swap 2GB·swappiness 10을 깐다.
+
+**Effort:** S → CC+gstack S
+**Priority:** P2
+**Depends on:** 서버 기동
+
 ## 다음 할 일 (2026-09-06 기준)
 
 **#150(글자조합 신규 단어) 1차 배치 47개 — 2음절 56→81, 3~4음절 43→65.**
