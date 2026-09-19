@@ -4,8 +4,8 @@
 - **선행**: [20260629_GlobalExpansion_plan.md](20260629_GlobalExpansion_plan.md) (전략·시장·규제 결정),
   [20260702_STT_tech_debt.md](20260702_STT_tech_debt.md) 부채 2 (다국어 채점기),
   [../asr/acoustic-scorer-plan.md](../asr/acoustic-scorer-plan.md) §2-(4)
-- **상태**: 실행 계획 (미착수). **§8의 질문 1~4는 2026-09-06 결정됨** — 각 절에 반영
-- **착수 조건(CEO 리뷰, 2026-09-12)**: 출시는 **한국이 먼저**다. Phase 0은 한국 출시 전, Phase 1(i18n)·Phase 3(영어 문항)은 **한국 코호트 수치가 기준을 넘은 뒤** — §13
+- **상태(2026-09-19 갱신)**: **진행 중.** Phase 0은 전부 main에 들어갔다(§15, PR #159~#178). Phase 1은 문자열 추출·용어 매핑이 PR #202~#220으로 상당히 진행됐다(프론트 `.tsx` 디렉터리 목록 완료, `.ts`는 단순 추출 5개 + QAB 라벨 용어 매핑 완료, 재구현 필요 7개·백엔드 `.ts`는 남음). **§8의 질문 1~4는 2026-09-06 결정됨** — 각 절에 반영
+- **착수 조건(CEO 리뷰, 2026-09-12)**: 출시는 **한국이 먼저**다. Phase 0은 한국 출시 전, Phase 1(i18n)·Phase 3(영어 문항)은 **한국 코호트 수치가 기준을 넘은 뒤** — §13. **2026-09-13 결정으로 이 게이트는 제거됐다**(영어판 바로 진행, 문항은 LLM 생성+검수). 문 여는 조건(0-5c 로케일 거부·T7)은 유지
 - **이 문서가 답하는 것**: "무엇을, 어떤 파일에서, 어떤 순서로"
 
 ---
@@ -1902,7 +1902,7 @@ M3                                  첫 미국 가입 + 10개월 ─▶ Stripe
 |--------|---------|-----|------|--------|----------|
 | CEO Review | `/plan-ceo-review` | Scope & strategy | 1 | ISSUES_OPEN (PLAN) | 6 proposals, 4 accepted, 2 deferred |
 | Codex Review | `/codex review` | Independent 2nd opinion | 0 | — | — |
-| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 2 | CLEAR (PLAN) | 7 issues, 0 critical gaps, mode: SCOPE_REDUCED |
+| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 3 | ISSUES_OPEN (PLAN) | 5 issues, 0 critical gaps, mode: FULL_REVIEW (2026-09-19) |
 | Design Review | `/plan-design-review` | UI/UX gaps | 1 | ISSUES_OPEN (FULL) | score: 4/10 → 8/10, 8 decisions |
 | DX Review | `/plan-devex-review` | Developer experience gaps | 0 | — | — |
 
@@ -1910,5 +1910,8 @@ M3                                  첫 미국 가입 + 10개월 ─▶ Stripe
 
 **VERDICT:** ENG CLEARED — **한국 출시 전 Phase 0 착수 가능**(§14-1 왼쪽 열, 작업 R1~R8). Phase 1(i18n)·Phase 3(영어 문항)과 언어 배관 다섯은 한국 코호트 `report:retention` 수치가 ③ 기준을 넘은 뒤(§13 OV-2A, §14 D2-A). CEO 미결 1건은 TODO로 추적되며 착수를 막지 않는다.
 
+**3차 엔지니어링 리뷰(2026-09-19, 전체 재검토) — 구현 진척 대비 검토.** 수용 5건: ① ~~`assessments/*` 뷰모델 훅도 §7-7 결정 B처럼 `localeRef`로 세션 고정~~ — **구현 중 철회(2026-09-19)**: `useMixedQuizSession`의 `localeRef`는 문항·채점 로케일을 고정할 뿐 UI 문구는 그쪽도 live `t()`이고, `assessments/*` 훅은 로케일 값을 아예 쓰지 않아 고정할 대상이 없다 ② 번역 함수 타입 별칭 하나로(인라인 5곳 중복) ③ 로딩 문구 말줄임표를 `…`로 통일(9키) ④ 이 문서의 상태 줄 갱신(위 머리말) ⑤ `useLocaleSync`에 계정 전환 테스트(`fetched.userId === userId` 가드가 무검증). 성능 발견 0건(`t` 참조 안정성은 react-i18next 소스로 확인). 외부 의견은 Codex 모델이 계정에서 안 돼 Claude 서브에이전트(`[single-model]`)로 돌았다 — 새 발견 1건(**영어 웰니스 라벨의 배포 전 법무 검토 단계가 계획에 없다** → TODOS), 과장 1건(§4 1-2 총계 — 표가 이미 재구현 파일을 태그했다, 현행 유지), 근거 없음 1건(`locale` 컬럼 표기 — §15가 이미 정리), 범위 밖 1건(미국 이중 로케일 가구 가정 — CEO 영역). 구현 태스크: T2 번역 타입 별칭(#225), T3 말줄임표(#227), T5 계정 전환 테스트(#228), T6 TODOS 항목·T4 상태 줄(이 PR). T1은 위 이유로 철회.
+
 **UNRESOLVED DECISIONS:**
+- 3차 리뷰 외부 의견 #4 — 이중 로케일 가구 모델이 미국 시장에도 맞는가(응답 없이 넘어감; 이 계획서의 범위 밖이라 CEO 리뷰 후보)
 - + 6 unresolved from prior reviews (CEO 1: 창립 기간 뒤 유료 층 모양 — TODOS `stripe-and-founding-sunset` · Design 5: §8-2의 10·11·13, §7-5 등 해당 Phase에서 답할 항목)
