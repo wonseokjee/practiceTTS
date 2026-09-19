@@ -48,11 +48,9 @@ function makeMockResponseDTO(overrides: Partial<LocTrialResponseDTO> = {}): LocT
 function makeMockResultDTO(overrides: Partial<LocAssessmentResultDTO> = {}): LocAssessmentResultDTO {
   return {
     id: 'result-1',
-    sessionId: 'test-session-id',
-    patientId: 'P001',
     finalScore: 2,
-    trials: [makeMockTrial()],
-    completedAt: '2026-01-01T00:00:00.000Z',
+    trials: [makeMockResponseDTO()],
+    totalDurationMs: 5000,
     ...overrides,
   };
 }
