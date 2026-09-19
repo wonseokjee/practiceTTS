@@ -14,7 +14,6 @@ Vultr/Cloudflare 계정 → 도메인·DNS → `scripts/deploy/` 01→03→02→
 | | 내용 | 우선순위 |
 |---|---|---|
 | **observe-unassisted-pair-before-cutover** | 공개 전환 전, 스테이징에서 보호자–환자 한 쌍을 도움 없이 쓰게 관찰 | `P1` |
-| **health-endpoint-db-check** | DB까지 확인하는 `/health` 엔드포인트 | `P2` |
 | **deploy-window-control** | 치료 시간대 배포 회피를 관습이 아닌 스크립트로 강제 | `P3` |
 | **measure-memory-limits** | pm2 `max_memory_restart`(backend 512M / ai 768M) 실측 조정 | `P2` |
 
@@ -32,18 +31,6 @@ Vultr/Cloudflare 계정 → 도메인·DNS → `scripts/deploy/` 01→03→02→
 **Effort:** S (human ~1일 준비 + 관찰) → CC+gstack S
 **Priority:** P1
 **Depends on:** 서버 기동 + 스모크 통과
-
-### health-endpoint-db-check
-
-**What:** `GET /health`가 DB에 `select 1`을 날려 결과를 준다. UptimeRobot 대상을 `/`에서 옮긴다.
-
-**Why:** 지금 감시 대상 `GET /`는 `Hello World!`만 준다 — DB가 죽어도 200이다.
-
-**Context:** `backend/src/app.controller.ts`. 인증 없이 열리므로 내부 정보를 노출하지 않는다(상태만).
-
-**Effort:** S → CC+gstack S (~15분)
-**Priority:** P2
-**Depends on:** 없음
 
 ### deploy-window-control
 
