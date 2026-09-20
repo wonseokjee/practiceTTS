@@ -216,9 +216,9 @@
     "genderFemale": "Female"
   },
   "qabProgress": {
-    "sectionAria": "Speech assessment recovery trend",
-    "title": "Speech assessment progress",
-    "subtitle": "Accuracy by assessment for what your loved one has answered. Watch for steady improvement.",
+    "sectionAria": "Speech activity progress trend",
+    "title": "Speech activity progress",
+    "subtitle": "Accuracy by activity for what your loved one has answered. Watch for steady improvement.",
     "drillNote": "Items marked ‘Repeated practice’ give the same word again on purpose. Rising accuracy there reflects familiarity with that word, not recovery — read it differently.",
     "openReport": "View weekly records →",
     "assistedSuffix": " · helped {{count}} times",
@@ -245,14 +245,14 @@
     "trendAria": "{{label}} trend over the last {{weeks}} weeks: {{values}}%"
   },
   "weeklyReport": {
-    "title": "Language & cognition assessment record",
+    "title": "Language & cognition activity record",
     "subjectLabel": "Patient",
     "periodLabel": "Period",
     "viewedAtLabel": "Viewed on",
     "noRecords": "No records",
     "loadFailed": "We couldn't load the record. Please try again shortly.",
     "loading": "Loading…",
-    "emptyRecords": "No assessment records yet. They'll build up once your loved one completes the ‘Standard assessment’ in patient mode.",
+    "emptyRecords": "No activity records yet. They'll build up once your loved one completes the ‘Standard activity’ in patient mode.",
     "totalSummary": "{{total}} items total · {{weeks}} weeks recorded",
     "hitLabel": {
       "reaction": "Responded",

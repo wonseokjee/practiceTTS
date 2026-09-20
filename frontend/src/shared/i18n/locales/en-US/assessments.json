@@ -4,21 +4,21 @@
     "startButton": "Start",
     "patientIdLabel": "Patient ID",
     "endSessionButton": "End session",
-    "title": "Select an assessment",
-    "subtitle": "Choose the assessment to run",
+    "title": "Select an activity",
+    "subtitle": "Choose the activity to start",
     "subtestSubtitle": "QAB subtest {{number}}",
     "loc": {
       "title": "Level of consciousness (LOC)"
     },
     "sentComp": {
       "title": "Sentence comprehension",
-      "description": "Assesses comprehension of complex sentence structures"
+      "description": "Practices understanding of complex sentence structures"
     },
     "wordComp": {
       "title": "Word comprehension",
-      "description": "Assesses auditory comprehension at the word level"
+      "description": "Practices listening comprehension at the word level"
     },
-    "allCompletedTitle": "All assessments are complete.",
+    "allCompletedTitle": "All activities are complete.",
     "allCompletedSubtitle": "Please end the session."
   },
   "sentComp": {
@@ -29,7 +29,7 @@
       "groupAria": "Image choices"
     },
     "scoreResultPanel": {
-      "title": "Assessment complete",
+      "title": "Activity complete",
       "totalScoreAria": "Total score: {{score}} points",
       "totalScoreLabel": "Total score",
       "pointsUnit": "pts",
@@ -48,7 +48,7 @@
       "avgReactionTimeLabel": "Average reaction time",
       "avgReplayCountLabel": "Average replay count",
       "replayUnit": "times",
-      "nextAssessmentButton": "Go to next assessment"
+      "nextAssessmentButton": "Go to next activity"
     },
     "sentenceAudioPlayer": {
       "regionAria": "Sentence audio playback area",
@@ -59,7 +59,7 @@
       "replayButton": "Replay"
     },
     "screen": {
-      "title": "Sentence comprehension (SentComp) assessment",
+      "title": "Sentence comprehension (SentComp) activity",
       "patientPrefix": "Patient:",
       "endSessionButton": "End session",
       "scoringLabel": "Scoring…",
@@ -102,12 +102,12 @@
       "avgReactionTimeLabel": "Average reaction time",
       "avgReplayCountValue": "{{count}} times",
       "avgReplayCountLabel": "Average replay count",
-      "nextAssessmentButton": "Go to next assessment"
+      "nextAssessmentButton": "Go to next activity"
     },
     "screen": {
-      "noSessionMessage": "No session info found. Please restart the assessment.",
-      "title": "Word comprehension assessment",
-      "completedSubtitle": "Assessment complete",
+      "noSessionMessage": "No session info found. Please restart the activity.",
+      "title": "Word comprehension activity",
+      "completedSubtitle": "Activity complete",
       "patientLabel": "Patient: {{name}}",
       "loadingItems": "Loading item…",
       "aggregatingResults": "Tallying results…",
@@ -115,7 +115,7 @@
       "retryButton": "Try again",
       "loadingNextItem": "Moving to the next item…",
       "submittingLabel": "Submitting…",
-      "endSessionAria": "End assessment session",
+      "endSessionAria": "End activity session",
       "endSessionButton": "End session"
     }
   },
@@ -139,18 +139,18 @@
       "trialLabel": "Trial {{n}}",
       "scoreUnit": "{{score}} pts",
       "trialProgressAria": "Trial {{current}} of 3",
-      "title": "Level of consciousness (LOC) assessment",
+      "title": "Alertness check (LOC)",
       "patientPrefix": "Patient:",
       "endSessionButton": "End session",
-      "completedTitle": "Assessment complete",
+      "completedTitle": "Activity complete",
       "finalScoreLabel": "Final score",
       "trialResultsTitle": "Results by trial",
       "progressResultsTitle": "Results so far",
-      "nextAssessmentButton": "Go to next assessment",
+      "nextAssessmentButton": "Go to next activity",
       "idleTitle": "Ready to start?",
       "idleHint1": "You'll hear a sound when you press start.",
       "idleHint2": "Touch the screen after you hear it.",
-      "startButton": "Start assessment",
+      "startButton": "Start activity",
       "listenTitle": "Listen carefully",
       "listenHint": "You can touch the screen once the sound ends.",
       "touchNowLabel": "Touch the screen now",

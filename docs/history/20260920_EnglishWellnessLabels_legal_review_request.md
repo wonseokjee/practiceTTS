@@ -19,22 +19,32 @@
 
 이 표가 실제로 지켜지는지 검증한 사람이 없다. 표 자체도 엔지니어링이 작성했다.
 
-## 2. 지금 영어 문자열 상태 — 계획서가 말한 것보다 덜 끝났다
+## 2. 영어 문자열 정리 상태 (2026-09-20)
 
-실행 계획 §1-3은 "`qabSubtestLabels` 하나만 갈아끼우면 된다"고 적었다. 그 라벨은 웰니스 어휘로
-들어갔다(PR #220). 그러나 **영어 로케일 전체를 훑으면 같은 계획서가 금지한 어휘가 그대로 남아 있다**
-(`frontend/src/shared/i18n/locales/en-US/`, 2026-09-20 기준 `grep -i`, 키 이름 포함 대략치).
+실행 계획 §1-3은 "`qabSubtestLabels` 하나만 갈아끼우면 된다"고 적었지만, 그 라벨만 웰니스 어휘로 들어갔고(PR #220)
+영어 로케일 나머지에는 같은 계획서가 금지한 어휘가 그대로 남아 있었다. 전략 문서 표에 근거가 있는
+`assessment`·`recovery`는 엔지니어링이 먼저 정리했다(`frontend/src/shared/i18n/locales/en-US/`).
 
-| 표현 | 대략 횟수 | 예 (파일:키) |
+| 바꾼 것 | 전 → 후 |
+|---|---|
+| `assessment` 계열 (~36곳 중 UI 값 전부) | assessment → activity (예: "Select an assessment" → "Select an activity", "Standard assessment" → "Standard activity") |
+| LOC 화면 제목 | "Level of consciousness (LOC) assessment" → "Alertness check (LOC)" (기존 `qabSubtestLabels.loc`와 통일) |
+| 검사 설명문 | "Assesses comprehension…" → "Practices understanding of…" |
+| 보호자 추이 화면 | "Speech assessment recovery trend" → "Speech activity progress trend" |
+
+**일부러 남긴 것 — 검토자 판단이 필요하다:**
+
+| 표현 | 위치 | 왜 남겼나 |
 |---|---|---|
-| `assess…` (assessment 등) | ~36 | `assessments.json` `title: "Select an assessment"`, `"Level of consciousness (LOC) assessment"`, `caregiver.json` `"Language & cognition assessment record"` |
-| `recover…` | 3 | `caregiver.json:219` `sectionAria: "Speech assessment recovery trend"`, `:222`·`:227`은 "not recovery"로 **부정형** |
-| `Patient` | ~34 | `"Patient ID"`, `"Patient: {{name}}"`, `"Patient mode PIN"` |
-| `diagnos…` | 1 | `caregiver.json:278` "It is not a medical diagnosis…" (**부정형 고지**) |
+| `Patient` (~34곳, "Patient mode PIN" 등) | 전반 | 전략 문서 표에 없는 제품 전반 용어. §4 질문 1 |
+| `Normal` / `Mild delay` / `Moderate delay` | `assessments.json` `scoreLabels` | 임상 등급 직역. §4 질문 2 |
+| `Alertness check` | `qabSubtestLabels.loc`, LOC 제목 | §4 질문 3 |
+| `recovery` 부정형 2곳 | `caregiver.json` `drillNote`·`drillBadgeTitle` ("not recovery") | 부정형 사용이 안전한가. §4 질문 5 |
+| `diagnos…` 부정형 1곳 | `caregiver.json` `limitation1` | 면책 고지. §4 질문 4 |
 
-한국어 표의 "검사·회복 → activity·progress" 매핑이 `qabSubtestLabels`에만 적용되고 나머지 화면(평가
-선택, 결과 패널, 보호자 리포트 제목)에는 적용되지 않았다. **이 부분은 검토 전에 엔지니어링이 먼저
-고칠 수도 있고(권장), 검토자에게 어디까지 고쳐야 하는지 묻는 것이 먼저일 수도 있다** — §4 질문 1.
+**한계:** 화면 문자열만 바꿨다. i18n 키 이름(`assessmentAria`, `nextAssessmentButton` 등)과 코드 식별자는
+그대로다(사용자에게 보이지 않는다). 영어 TTS 사전생성 음성 스크립트와 앱 밖 표면(앱스토어, 랜딩)은
+확인하지 않았다 — §4 질문 6.
 
 ## 3. 검토 대상 문구 (원문)
 
@@ -63,16 +73,16 @@
 `limitation1`: "This is a self-measured record done at home with a caregiver. It is not a medical
 diagnosis or a standardized test result." — 이미 면책 문구가 있다. 충분한지 묻는다.
 
-### 3-4. 화면 제목류 (§2 표의 남은 표현)
+### 3-4. 화면 제목류 (정리 후 현재 값)
 
-`Select an assessment`, `Assessment complete`, `Level of consciousness (LOC) assessment`,
-`Speech assessment recovery trend`, `Language & cognition assessment record`, `Standard assessment`.
+`Select an activity`, `Activity complete`, `Alertness check (LOC)`,
+`Speech activity progress trend`, `Language & cognition activity record`, `Standard activity`.
 
 ## 4. 검토자에게 묻는 것
 
-1. **범위:** §2·§3-4의 `assessment`/`recovery`/`Patient`를 웰니스 어휘로 바꿔야 하는가? 바꾼다면
-   대체어 후보를 정해 주면 엔지니어링이 적용한다(예: assessment→activity/check-in, recovery trend→progress
-   trend, Patient→"your loved one"/"person you support").
+1. **범위:** §2에서 엔지니어링이 바꾼 `assessment`→`activity`, `recovery trend`→`progress trend`가
+   적절한가? 남긴 `Patient`(~34곳)는 바꿔야 하는가? 바꾼다면 대체어를 정해 주면 적용한다
+   (예: "your loved one" / "person you support").
 2. **점수 등급 `Normal` / `Mild delay` / `Moderate delay`(§3-2):** 임상 등급 어휘를 그대로 쓰는 것이
    "진단·평가" 주장으로 읽힐 위험이 있는가? 대안(예: "On track" / "A bit slower" / "Needs more time")이
    필요한가?

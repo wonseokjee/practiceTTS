@@ -31,7 +31,7 @@ describe('환자 등록 화면 — 영어로 그린다', () => {
       screen.getByPlaceholderText('e.g. P-2026-001'),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Start assessment' }),
+      screen.getByRole('button', { name: 'Start activity' }),
     ).toBeInTheDocument();
     expect(container.textContent).not.toMatch(HANGUL);
   });
@@ -42,7 +42,7 @@ describe('환자 등록 화면 — 영어로 그린다', () => {
         <PatientSetupScreen />
       </SessionProvider>,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Start assessment' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start activity' }));
     expect(
       screen.getByText('Please enter the patient ID.'),
     ).toBeInTheDocument();

@@ -77,16 +77,16 @@
   "app": {
     "loading": "Loading…",
     "caregiverOnlyAccess": "Only caregiver accounts can access this.",
-    "preparingAssessment": "Getting the assessment ready…"
+    "preparingAssessment": "Getting the activity ready…"
   },
   "itemProgressBar": {
     "ariaLabel": "Progress {{current}} / {{total}}"
   },
   "patientSetup": {
     "errorIdRequired": "Please enter the patient ID.",
-    "subtitle": "Enter the patient's information before starting the assessment.",
+    "subtitle": "Enter the patient's information before starting the activity.",
     "idLabel": "Patient ID",
     "idPlaceholder": "e.g. P-2026-001",
-    "startButton": "Start assessment"
+    "startButton": "Start activity"
   }
 }

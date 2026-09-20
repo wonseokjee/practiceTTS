@@ -110,7 +110,7 @@ describe('보호자 화면 배치 C — 영어로 그린다', () => {
     await waitFor(() => expect(screen.getByText('Word activity')).toBeInTheDocument());
     expect(
       screen.getByText(
-        /Accuracy by assessment for what your loved one has answered/,
+        /Accuracy by activity for what your loved one has answered/,
       ),
     ).toBeInTheDocument();
     expect(screen.getByText(/helped 2 times/)).toBeInTheDocument();
@@ -145,7 +145,7 @@ describe('보호자 화면 배치 C — 영어로 그린다', () => {
     ]);
     render(<WeeklyReportScreen onBack={() => {}} />);
     expect(
-      await screen.findByText('Language & cognition assessment record'),
+      await screen.findByText('Language & cognition activity record'),
     ).toBeInTheDocument();
     expect(screen.getByText('Patient')).toBeInTheDocument();
     expect(screen.getByText('Reading this record')).toBeInTheDocument();
