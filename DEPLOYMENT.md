@@ -13,12 +13,15 @@ Vultr(서울) 같은 빈 Ubuntu 22.04 VPS에 처음 올릴 때는 `scripts/deplo
    프론트(`VITE_API_URL`)와 백엔드를 서브도메인으로 분리한다 — 백엔드
    라우트가 `/api` 같은 prefix 없이 루트에 바로 걸려 있어 경로 기반 분기보다
    간단하다.
-3. `02-app-deploy.sh <git-repo-url> [branch]` — 코드 클론/풀, 빌드,
+3. `02-app-deploy.sh [--force] <git-repo-url> [branch]` — 코드 클론/풀, 빌드,
    마이그레이션, pm2 기동, `pm2 save` + `pm2 startup`(재부팅 자동 기동,
    활성 검증 실패 시 종료). `.env` 3개(backend/ai-service/frontend)는 이
    스크립트가 만들지 않으므로 `.env.example`을 참고해 서버에서 직접 채워야
    한다. 재배포할 때도 이 스크립트를 다시 실행하면 된다(pm2가 있으면
-   reload, 없으면 최초 기동).
+   reload, 없으면 최초 기동). **치료 시간대(한국 09~21시)에 실행하면 아무것도
+   건드리지 않고 멈춘다** — 급한 핫픽스만 `--force`. 시간대는
+   `DEPLOY_WINDOW_TZ`/`DEPLOY_WINDOW_START`/`DEPLOY_WINDOW_END`로 조정하고,
+   가드 테스트는 `bash scripts/deploy/02-app-deploy.window.test.sh`.
 4. `04-backup-setup.sh` — DB 백업 설치(아래 「DB 백업·복원」). 02 뒤에 실행.
 
 스크립트 모두 아래 "배포 전 확인"·"스모크 체크리스트"를 대체하지 않는다
@@ -40,7 +43,7 @@ Vultr(서울) 같은 빈 Ubuntu 22.04 VPS에 처음 올릴 때는 `scripts/deplo
 - 재시작하면 레이트리밋 카운터가 초기화된다
 
 치료 시간이 정해진 임상 도구라면 그 시간을 피해 배포하는 것으로 충분할 수
-있다. 24시간 접근이 필요해지면 다중 인스턴스가 필요한데, 그 이유는 처리량이
+있다(`02-app-deploy.sh`가 스크립트로 강제한다). 24시간 접근이 필요해지면 다중 인스턴스가 필요한데, 그 이유는 처리량이
 아니라 **무중단**이다.
 
 ## 다중 인스턴스로 띄우면 깨지는 것

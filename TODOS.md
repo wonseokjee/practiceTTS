@@ -14,7 +14,6 @@ Vultr/Cloudflare 계정 → 도메인·DNS → `scripts/deploy/` 01→03→02→
 | | 내용 | 우선순위 |
 |---|---|---|
 | **observe-unassisted-pair-before-cutover** | 공개 전환 전, 스테이징에서 보호자–환자 한 쌍을 도움 없이 쓰게 관찰 | `P1` |
-| **deploy-window-control** | 치료 시간대 배포 회피를 관습이 아닌 스크립트로 강제 | `P3` |
 | **measure-memory-limits** | pm2 `max_memory_restart`(backend 512M / ai 768M) 실측 조정 | `P2` |
 | **db-pool-config** | 커넥션 풀 크기·`query_timeout`을 장애 관찰 뒤 정한다 | `P3` |
 
@@ -32,21 +31,6 @@ Vultr/Cloudflare 계정 → 도메인·DNS → `scripts/deploy/` 01→03→02→
 **Effort:** S (human ~1일 준비 + 관찰) → CC+gstack S
 **Priority:** P1
 **Depends on:** 서버 기동 + 스모크 통과
-
-### deploy-window-control
-
-**What:** `02-app-deploy.sh`가 치료 시간대(예: 한국 09~21시)에 실행되면 확인 프롬프트를 띄우거나
-`--force` 없이는 멈추게 한다.
-
-**Why:** 단일 인스턴스라 배포 중 `pm2 reload`가 잠깐 요청을 끊는다. "치료 시간을 피한다"가 관습일 뿐
-스크립트가 강제하지 않는다.
-
-**Context:** `DEPLOYMENT.md` 「현재 전제: 단일 인스턴스」. 미국 사용자가 생기면 피할 시간이 없어
-`zero-downtime-multi-instance`가 근본 해결이다.
-
-**Effort:** S → CC+gstack S
-**Priority:** P3
-**Depends on:** 없음
 
 ### measure-memory-limits
 
