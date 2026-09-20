@@ -15,6 +15,7 @@ Vultr/Cloudflare 계정 → 도메인·DNS → `scripts/deploy/` 01→03→02→
 |---|---|---|
 | **observe-unassisted-pair-before-cutover** | 공개 전환 전, 스테이징에서 보호자–환자 한 쌍을 도움 없이 쓰게 관찰 | `P1` |
 | **measure-memory-limits** | pm2 `max_memory_restart`(backend 512M / ai 768M) 실측 조정 | `P2` |
+| **ci-pipeline** | PR마다 backend jest·ai-service pytest·배포 스크립트 테스트를 자동 실행 | `P2` |
 | **db-pool-config** | 커넥션 풀 크기·`query_timeout`을 장애 관찰 뒤 정한다 | `P3` |
 
 ### observe-unassisted-pair-before-cutover
@@ -44,6 +45,21 @@ Vultr/Cloudflare 계정 → 도메인·DNS → `scripts/deploy/` 01→03→02→
 **Effort:** S → CC+gstack S
 **Priority:** P2
 **Depends on:** 서버 기동
+
+### ci-pipeline
+
+**What:** GitHub Actions로 PR마다 `backend` jest, `ai-service` pytest(venv), `bash scripts/deploy/tests/deploy-scripts.test.sh`,
+`npm run test:int`(Postgres 서비스 컨테이너)를 자동 실행한다.
+
+**Why:** 리포에 `.github/workflows`가 없어 모든 검증이 사람이 손으로 돌리는 것에 의존한다.
+특히 백업 스크립트는 깨져도 조용히 안 도는 종류라 회귀를 자동으로 잡아야 한다.
+
+**Context:** 배포 스크립트 테스트는 이미 커밋돼 있고 외부 의존 없이 돈다(스텁 사용). `test:int`는 Postgres와
+`.env.test`가 필요하다. `DEPLOYMENT.md` 「배포 전 확인」이 지금은 수동 체크리스트다.
+
+**Effort:** M (human ~1일) → CC+gstack S (~1시간)
+**Priority:** P2
+**Depends on:** 없음
 
 ### db-pool-config
 

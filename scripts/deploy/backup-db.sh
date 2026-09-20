@@ -7,7 +7,7 @@
 # 설정: ~/.practivetts-backup.env (chmod 600) — 04-backup-setup.sh가 양식을 만든다.
 #   BACKUP_R2_ACCOUNT_ID / BACKUP_R2_ACCESS_KEY_ID / BACKUP_R2_SECRET_ACCESS_KEY
 #   BACKUP_R2_BUCKET
-#   BACKUP_PING_URL   (선택) 성공 시 GET — healthchecks.io 등 "안 오면 알림" 서비스.
+#   BACKUP_PING_URL   성공 시 GET(04-backup-setup.sh는 필수로 요구한다) — healthchecks.io 등 "안 오면 알림" 서비스.
 #                     cron이 조용히 죽는 것을 잡는 유일한 장치다.
 # DB 접속 정보는 backend/.env의 DB_HOST/PORT/USERNAME/PASSWORD/DATABASE를 그대로 쓴다.
 #
@@ -20,9 +20,11 @@ APP_DIR="${APP_DIR:-/opt/practivetts}"
 BACKUP_ENV="${BACKUP_ENV:-$HOME/.practivetts-backup.env}"
 
 # .env는 source하지 않고 필요한 키만 뽑는다(값에 공백·특수문자가 있어도 안전).
+# 키가 없거나 값이 비어 있어도 빈 문자열을 돌려주고 실패하지 않는다(set -e·pipefail 하에서
+# grep 무매치가 스크립트를 소리 없이 죽이지 않도록 || true).
 get_env() {
   local file="$1" key="$2"
-  grep -E "^${key}=" "$file" | tail -1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'\$//"
+  grep -E "^${key}=" "$file" | tail -1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'\$//" || true
 }
 
 [ -f "$BACKUP_ENV" ] || { echo "!! $BACKUP_ENV 가 없습니다. 04-backup-setup.sh를 먼저 실행하세요." >&2; exit 1; }
@@ -32,16 +34,19 @@ R2_ACCOUNT_ID="$(get_env "$BACKUP_ENV" BACKUP_R2_ACCOUNT_ID)"
 R2_KEY_ID="$(get_env "$BACKUP_ENV" BACKUP_R2_ACCESS_KEY_ID)"
 R2_SECRET="$(get_env "$BACKUP_ENV" BACKUP_R2_SECRET_ACCESS_KEY)"
 R2_BUCKET="$(get_env "$BACKUP_ENV" BACKUP_R2_BUCKET)"
-PING_URL="$(get_env "$BACKUP_ENV" BACKUP_PING_URL || true)"
+PING_URL="$(get_env "$BACKUP_ENV" BACKUP_PING_URL)"
 for v in R2_ACCOUNT_ID R2_KEY_ID R2_SECRET R2_BUCKET; do
   [ -n "${!v}" ] || { echo "!! $BACKUP_ENV 에 BACKUP_${v} 값이 비어 있습니다." >&2; exit 1; }
 done
 
-export PGHOST="$(get_env "$APP_DIR/backend/.env" DB_HOST)"
-export PGPORT="$(get_env "$APP_DIR/backend/.env" DB_PORT)"
-export PGUSER="$(get_env "$APP_DIR/backend/.env" DB_USERNAME)"
-export PGPASSWORD="$(get_env "$APP_DIR/backend/.env" DB_PASSWORD)"
-DB_NAME="$(get_env "$APP_DIR/backend/.env" DB_DATABASE)"
+# 앱(backend/src/database/database.module.ts)과 같은 기본값 — .env가 비어 있어도 앱이 뜨는
+# 배포에서 백업만 다른 유저·DB로 접속하지 않도록 맞춘다. 앱 기본값을 바꾸면 여기도 바꿀 것.
+DB_ENV="$APP_DIR/backend/.env"
+export PGHOST="$(get_env "$DB_ENV" DB_HOST)"; PGHOST="${PGHOST:-localhost}"
+export PGPORT="$(get_env "$DB_ENV" DB_PORT)"; PGPORT="${PGPORT:-5432}"
+export PGUSER="$(get_env "$DB_ENV" DB_USERNAME)"; PGUSER="${PGUSER:-postgres}"
+export PGPASSWORD="$(get_env "$DB_ENV" DB_PASSWORD)"
+DB_NAME="$(get_env "$DB_ENV" DB_DATABASE)"; DB_NAME="${DB_NAME:-memorylink}"
 
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 KEY="daily/${DB_NAME}-${STAMP}.dump"

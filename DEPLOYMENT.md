@@ -148,8 +148,9 @@ ENFORCE_SINGLE_INSTANCE=true
    백업이 같이 날아가면 안 된다.
 3. 버킷 **Settings → Object lifecycle rules**에서 `daily/` 접두사 14일 뒤 삭제
    (스크립트는 지우지 않는다).
-4. 선택: healthchecks.io 같은 "핑이 끊기면 알림" 서비스에 체크를 만들고 그 URL을
-   `BACKUP_PING_URL`에 넣는다 — cron이 조용히 죽는 것을 잡는 유일한 장치다.
+4. healthchecks.io 같은 "핑이 끊기면 알림" 서비스에 체크를 만들고 그 URL을
+   `BACKUP_PING_URL`에 넣는다(**필수** — 비어 있으면 04가 멈춘다). cron이 조용히
+   죽는 것을 잡는 유일한 장치다.
 5. `04-backup-setup.sh`를 실행하면 `~/.practivetts-backup.env` 양식을 만들고
    멈춘다. 값을 채워 **다시 실행**하면 테스트 백업 1회가 통과했을 때만 cron이
    등록된다. 로그: `journalctl -t practivetts-backup`.
@@ -297,6 +298,9 @@ curl -s -o /tmp/qab.json -w '%{http_code}\n' -X POST "$API_BASE/quiz/qab-results
 # 환경변수 드리프트 (누락·잉여 양방향)
 cd backend && npx jest src/common/env-drift.spec.ts
 cd ai-service && python -m pytest tests/test_env_drift.py
+
+# 배포 스크립트(백업·설치·복원·pm2 startup 검증·ai 바인딩) 회귀 — 스텁 기반이라 서버 없이 돈다
+bash scripts/deploy/tests/deploy-scripts.test.sh
 
 # 마이그레이션이 빈 DB에서 완주하는지 + 엔티티-스키마 드리프트 0건인지
 # (R5: practivetts_test에 새로 만들어 검증한다 — 개발 DB를 손대지 않는다)

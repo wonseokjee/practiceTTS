@@ -40,7 +40,9 @@ module.exports = {
       script: 'venv/bin/uvicorn',
       // uvicorn --workers도 같은 이유로 1이어야 한다. TTS 캐시와
       // 레이트리밋이 프로세스 로컬이다.
-      args: 'main:app --host 0.0.0.0 --port 8000 --workers 1',
+      // 127.0.0.1 — 인증 없는 내부 서비스라 방화벽(ufw) 한 겹에만 맡기지 않는다.
+      // 백엔드는 같은 서버에서 localhost로 부른다(AI_SERVICE_URL 기본값).
+      args: 'main:app --host 127.0.0.1 --port 8000 --workers 1',
       instances: 1,
       exec_mode: 'fork',
       // 2GB 박스 예산: backend 512M + ai 768M + PostgreSQL·nginx·OS. 합이 물리
