@@ -87,6 +87,12 @@ Picture naming exercise …)와 영어 UI 전반의 임상·의료기기 뉘앙�
 `qabSubtestLabels`. LOC 점수 라벨(정상/경도 지연 등)은 표준 임상 분류라 직역했는데, 이것도 같은
 검토 대상에 넣을지 함께 묻는다.
 
+**Status (2026-09-20):** 검토 요청 문서 초안을 썼다 →
+[20260920_EnglishWellnessLabels_legal_review_request.md](docs/history/20260920_EnglishWellnessLabels_legal_review_request.md).
+**새로 드러난 것:** 웰니스 어휘 매핑은 `qabSubtestLabels`에만 적용됐고, 영어 로케일 전체에는
+`assessment` ~36곳·`recovery` 3곳·`Level of consciousness (LOC) assessment`·`Normal/Mild delay` 등
+금지 어휘가 남아 있다. 남은 일: 문서를 검토자에게 보내고 답을 받는다(사람).
+
 **Effort:** S (검토 요청 문서 작성) · **Priority:** P2
 **Depends on:** 영어 사용자에게 문을 여는 시점(§0-5c, §16 M1) 이전에 끝나야 함
 
