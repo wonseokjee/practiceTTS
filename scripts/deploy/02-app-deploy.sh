@@ -3,9 +3,16 @@
 # 이미 깔린 서버에서 실행한다. 첫 배포와 이후 재배포 둘 다 이 스크립트로.
 #
 # 사용법:
-#   ~/deploy-scripts/02-app-deploy.sh <git-repo-url> [branch]
+#   ~/deploy-scripts/02-app-deploy.sh [--force] <git-repo-url> [branch]
 # 예:
 #   ~/deploy-scripts/02-app-deploy.sh git@github.com:wonseokjee/practiceTTS.git main
+#
+# 치료 시간대 가드:
+#   단일 인스턴스라 pm2 reload가 잠깐 요청을 끊는다. 치료 시간대(기본 한국 09~21시,
+#   21시 정각부터는 허용)에 실행하면 아무것도 건드리지 않고 멈춘다. 급한 핫픽스만
+#   --force로 통과시킨다. 시간대는 환경변수로 조정한다:
+#     DEPLOY_WINDOW_TZ(기본 Asia/Seoul) DEPLOY_WINDOW_START(9) DEPLOY_WINDOW_END(21)
+#   (DEPLOY_NOW_HOUR는 테스트용 — 현재 시각(시)을 대신한다.)
 #
 # 전제:
 #   - /opt/practivetts에 클론할 권한(sudo mkdir + chown 필요할 수 있음)
@@ -18,7 +25,31 @@
 
 set -euo pipefail
 
-REPO_URL="${1:?사용법: 02-app-deploy.sh <git-repo-url> [branch]}"
+# --force는 위치와 무관하게 받는다. 나머지는 <git-repo-url> [branch] 그대로.
+FORCE=0
+ARGS=()
+for arg in "$@"; do
+  if [ "$arg" = "--force" ]; then FORCE=1; else ARGS+=("$arg"); fi
+done
+set -- "${ARGS[@]+"${ARGS[@]}"}"
+
+# 어떤 작업(git fetch, 빌드, 마이그레이션)보다 먼저 검사한다 — 막힐 때는 서버에 흔적이 없어야 한다.
+WINDOW_TZ="${DEPLOY_WINDOW_TZ:-Asia/Seoul}"
+WINDOW_START="${DEPLOY_WINDOW_START:-9}"
+WINDOW_END="${DEPLOY_WINDOW_END:-21}"
+NOW_HOUR="${DEPLOY_NOW_HOUR:-$(TZ="$WINDOW_TZ" date +%H)}"
+NOW_HOUR=$((10#$NOW_HOUR))
+if [ "$NOW_HOUR" -ge "$WINDOW_START" ] && [ "$NOW_HOUR" -lt "$WINDOW_END" ]; then
+  if [ "$FORCE" -eq 1 ]; then
+    echo "!! 치료 시간대(${WINDOW_TZ} ${WINDOW_START}~${WINDOW_END}시, 지금 ${NOW_HOUR}시)이지만 --force로 진행합니다." >&2
+  else
+    echo "!! 치료 시간대(${WINDOW_TZ} ${WINDOW_START}~${WINDOW_END}시, 지금 ${NOW_HOUR}시)입니다. 배포 중 pm2 reload가 요청을 끊습니다." >&2
+    echo "   시간대 밖에 다시 실행하거나, 급한 경우에만 --force를 붙이세요." >&2
+    exit 1
+  fi
+fi
+
+REPO_URL="${1:?사용법: 02-app-deploy.sh [--force] <git-repo-url> [branch]}"
 BRANCH="${2:-main}"
 APP_DIR="/opt/practivetts"
 
