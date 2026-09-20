@@ -24,7 +24,7 @@
   },
   "soundCheck": {
     "title": "Let's check the sound",
-    "introAssessment": "The assessment has questions you'll listen to.",
+    "introAssessment": "The activity has questions you'll listen to.",
     "introPractice": "Practice has questions you'll listen to.",
     "introSub": "Let's make sure the sound is working first.",
     "playing": "Playing…",
@@ -74,8 +74,8 @@
     "ariaLabel": "Choose how to practice",
     "quiz": "Quiz",
     "conversation": "Conversation",
-    "assessmentAria": "Standard assessment (no photos or diary, just the standard questions)",
-    "assessment": "Standard assessment"
+    "assessmentAria": "Standard activity (no photos or diary, just the standard questions)",
+    "assessment": "Standard activity"
   },
   "conversationList": {
     "title": "Training list",

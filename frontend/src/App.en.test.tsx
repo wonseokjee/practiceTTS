@@ -125,7 +125,7 @@ describe('App 라우트 가드 — 영어로 그린다', () => {
     });
     mockSession.session = null;
     const { container } = render(<App />);
-    expect(screen.getByText("Getting the assessment ready…")).toBeInTheDocument();
+    expect(screen.getByText("Getting the activity ready…")).toBeInTheDocument();
     expect(container.textContent).not.toMatch(HANGUL);
   });
 });

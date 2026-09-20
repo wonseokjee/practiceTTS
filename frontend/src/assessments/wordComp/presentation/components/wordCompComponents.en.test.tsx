@@ -106,7 +106,7 @@ describe('단어 이해 검사 컴포넌트 — 영어로 그린다', () => {
     expect(screen.getByText('Average reaction time')).toBeInTheDocument();
     expect(screen.getByText('Average replay count')).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Go to next assessment' }),
+      screen.getByRole('button', { name: 'Go to next activity' }),
     ).toBeInTheDocument();
     expect(container.textContent).not.toMatch(HANGUL);
   });

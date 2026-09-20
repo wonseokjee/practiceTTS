@@ -64,7 +64,7 @@ describe('단어 이해 검사 메인 화면 — 영어로 그린다', () => {
     useSessionContext.mockReturnValue({ session: null, endSession: vi.fn() });
     const { container } = render(<WordComprehensionScreen />);
     expect(
-      screen.getByText('No session info found. Please restart the assessment.'),
+      screen.getByText('No session info found. Please restart the activity.'),
     ).toBeInTheDocument();
     expect(container.textContent).not.toMatch(HANGUL);
   });
@@ -108,8 +108,8 @@ describe('단어 이해 검사 메인 화면 — 영어로 그린다', () => {
       actions,
     });
     const { container } = render(<WordComprehensionScreen />);
-    expect(screen.getByText('Word comprehension assessment')).toBeInTheDocument();
-    expect(screen.getByText('Assessment complete')).toBeInTheDocument();
+    expect(screen.getByText('Word comprehension activity')).toBeInTheDocument();
+    expect(screen.getByText('Activity complete')).toBeInTheDocument();
     expect(screen.getByText('Patient: Jane')).toBeInTheDocument();
     expect(screen.getByText('Tallying results…')).toBeInTheDocument();
     expect(container.textContent).not.toMatch(HANGUL);
@@ -131,7 +131,7 @@ describe('단어 이해 검사 메인 화면 — 영어로 그린다', () => {
     expect(container.textContent).toContain('Patient: Jane');
     expect(screen.getByText('Moving to the next item…')).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'End assessment session' }),
+      screen.getByRole('button', { name: 'End activity session' }),
     ).toHaveTextContent('End session');
     expect(container.textContent).not.toMatch(HANGUL);
   });

@@ -31,7 +31,7 @@ describe('검사 허브 화면 — 영어로 그린다', () => {
       <AssessmentCard
         title="Sentence comprehension"
         subtitle="QAB subtest 4"
-        description="Assesses comprehension of complex sentence structures"
+        description="Practices understanding of complex sentence structures"
         isCompleted={false}
         onStart={() => {}}
       />,
@@ -41,7 +41,7 @@ describe('검사 허브 화면 — 영어로 그린다', () => {
       <AssessmentCard
         title="Sentence comprehension"
         subtitle="QAB subtest 4"
-        description="Assesses comprehension of complex sentence structures"
+        description="Practices understanding of complex sentence structures"
         isCompleted={true}
         onStart={() => {}}
       />,
@@ -57,14 +57,14 @@ describe('검사 허브 화면 — 영어로 그린다', () => {
         onSelect={() => {}}
       />,
     );
-    expect(screen.getByText('Select an assessment')).toBeInTheDocument();
+    expect(screen.getByText('Select an activity')).toBeInTheDocument();
     expect(screen.getByText('Level of consciousness (LOC)')).toBeInTheDocument();
     expect(screen.getByText('QAB subtest 1')).toBeInTheDocument();
     expect(screen.getByText('Sentence comprehension')).toBeInTheDocument();
     expect(screen.getByText('QAB subtest 4')).toBeInTheDocument();
     expect(screen.getByText('Word comprehension')).toBeInTheDocument();
     expect(screen.getByText('QAB subtest 3')).toBeInTheDocument();
-    expect(screen.getByText('All assessments are complete.')).toBeInTheDocument();
+    expect(screen.getByText('All activities are complete.')).toBeInTheDocument();
     expect(container.textContent).not.toMatch(HANGUL);
   });
 });

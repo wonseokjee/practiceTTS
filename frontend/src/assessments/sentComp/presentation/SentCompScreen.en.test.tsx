@@ -79,7 +79,7 @@ describe('문장 이해 검사 메인 화면 — 영어로 그린다', () => {
     });
     const { container } = render(<SentCompScreen />);
     expect(
-      screen.getByText('Sentence comprehension (SentComp) assessment'),
+      screen.getByText('Sentence comprehension (SentComp) activity'),
     ).toBeInTheDocument();
     expect(container.textContent).toContain('Patient:');
     expect(container.textContent).toContain('Jane');

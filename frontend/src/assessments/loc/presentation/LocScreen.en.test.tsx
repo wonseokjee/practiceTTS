@@ -68,12 +68,12 @@ describe('LOC 검사 메인 화면 — 영어로 그린다', () => {
     });
     const { container } = render(<LocScreen />);
     expect(
-      screen.getByText('Level of consciousness (LOC) assessment'),
+      screen.getByText('Alertness check (LOC)'),
     ).toBeInTheDocument();
     expect(container.textContent).toContain('Patient:');
     expect(container.textContent).toContain('Jane');
     expect(screen.getByText('Ready to start?')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Start assessment' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start activity' })).toBeInTheDocument();
     expect(container.textContent).not.toMatch(HANGUL);
   });
 
@@ -121,13 +121,13 @@ describe('LOC 검사 메인 화면 — 영어로 그린다', () => {
       touchButtonRef: { current: null },
     });
     const { container } = render(<LocScreen />);
-    expect(screen.getByText('Assessment complete')).toBeInTheDocument();
+    expect(screen.getByText('Activity complete')).toBeInTheDocument();
     expect(screen.getByText('Final score')).toBeInTheDocument();
     expect(screen.getByText('Results by trial')).toBeInTheDocument();
     expect(screen.getByText('Trial 1')).toBeInTheDocument();
     expect(screen.getByText('1 pts')).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Go to next assessment' }),
+      screen.getByRole('button', { name: 'Go to next activity' }),
     ).toBeInTheDocument();
     expect(screen.getByText('Mild delay')).toBeInTheDocument();
     expect(container.textContent).not.toMatch(HANGUL);

@@ -104,13 +104,13 @@ describe('문장 이해 검사 컴포넌트 — 영어로 그린다', () => {
     const { container } = render(
       <ScoreResultPanel score={score()} onProceed={() => {}} />,
     );
-    expect(screen.getByText('Assessment complete')).toBeInTheDocument();
+    expect(screen.getByText('Activity complete')).toBeInTheDocument();
     expect(screen.getByText('Reversible (word order)')).toBeInTheDocument();
     expect(screen.getByText('Relative clause')).toBeInTheDocument();
     expect(screen.getByText('Embedded clause')).toBeInTheDocument();
     expect(screen.getByText('8 / 10 correct')).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Go to next assessment' }),
+      screen.getByRole('button', { name: 'Go to next activity' }),
     ).toBeInTheDocument();
     expect(container.textContent).not.toMatch(HANGUL);
   });

@@ -45,7 +45,7 @@ describe('환자 대시보드 화면(배치 A) — 영어로 그린다', () => {
     );
     await screen.findByRole('alert');
     expect(
-      screen.getByText(/The assessment has questions you'll listen to./),
+      screen.getByText(/The activity has questions you'll listen to./),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/This device couldn't play any sound./),
