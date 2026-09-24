@@ -46,6 +46,33 @@ HOP_SEC = 0.02
 """RMS 프로파일 해상도. 단어 경계를 20ms까지 본다."""
 
 
+def _decode_pcm(raw: bytes, sampwidth: int) -> np.ndarray:
+    """PCM 바이트를 int16 스케일의 float32로 편다.
+
+    **비트 깊이를 가정하면 안 된다.** 예전에는 int16을 하드코딩했는데,
+    VS01에 24비트 5개와 32비트 5개가 섞여 있었다(TS01에는 없던 포맷이다).
+    24비트는 표본이 3바이트라 `frombuffer(raw, int16)`이 "buffer size must be a
+    multiple of element size"로 터지고, 32비트는 표본 하나가 int16 두 개로 읽혀
+    **소리 대신 잡음이 되는데 예외는 안 난다** — 조용히 엉뚱한 경계를 잡는 쪽이
+    더 나쁘다.
+
+    스케일을 int16으로 맞추는 건 엄밀히는 불필요하다(`floor`가 프로파일의
+    10백분위라 상대 기준이다). 그래도 맞춰 둬야 파일 간 프로파일을 눈으로
+    비교할 때 헷갈리지 않는다.
+    """
+    if sampwidth == 2:
+        return np.frombuffer(raw, dtype="<i2").astype(np.float32)
+    if sampwidth == 4:
+        return np.frombuffer(raw, dtype="<i4").astype(np.float32) / 65536.0
+    if sampwidth == 1:
+        return (np.frombuffer(raw, dtype=np.uint8).astype(np.float32) - 128.0) * 256.0
+    if sampwidth == 3:
+        b = np.frombuffer(raw, dtype=np.uint8).reshape(-1, 3).astype(np.int32)
+        v = b[:, 0] | (b[:, 1] << 8) | (b[:, 2].astype(np.int8).astype(np.int32) << 16)
+        return v.astype(np.float32) / 256.0
+    raise ValueError(f"지원하지 않는 표본 폭: {sampwidth}바이트")
+
+
 def rms_profile(wav_path: Path, hop_sec: float = HOP_SEC) -> tuple[np.ndarray, float]:
     """부모 wav 전체의 RMS 프로파일을 만든다 → (프로파일, hop 초).
 
@@ -55,13 +82,14 @@ def rms_profile(wav_path: Path, hop_sec: float = HOP_SEC) -> tuple[np.ndarray, f
     with contextlib.closing(wave.open(str(wav_path), "rb")) as w:
         sr = w.getframerate()
         ch = w.getnchannels()
+        sw = w.getsampwidth()
         hop = max(1, int(sr * hop_sec))
         out: list[float] = []
         while True:
             raw = w.readframes(hop * 512)
             if not raw:
                 break
-            a = np.frombuffer(raw, dtype=np.int16).astype(np.float32)
+            a = _decode_pcm(raw, sw)
             if ch > 1:
                 a = a.reshape(-1, ch).mean(axis=1)
             n = (len(a) // hop) * hop
@@ -223,6 +251,30 @@ def main() -> int:
     by_parent: dict[str, list[dict]] = defaultdict(list)
     for r in rows:
         by_parent[r["parent_file_id"]].append(r)
+
+    # 부모 오디오를 파일명으로 찾는다 — `audio_root / fid`로 직접 이어붙이지 않는다.
+    # segments.jsonl은 parent_file_id를 **파일명만**(align_608의 file_id) 담는데,
+    # audio_root가 평평한지 매니페스트 구조를 그대로 재현한 중첩 폴더인지는
+    # 배치마다 다르다. TS01은 평평한 `wav/`라 우연히 맞았지만, VS01처럼 카테고리
+    # 하위 폴더가 있으면(`VS01_뇌신경장애/11.중풍/...`) `audio_root / fid`가
+    # 항상 실패해 **모든 부모가 "원본 없음"으로 건너뛰어지고 산출 0개로 조용히
+    # 끝난다.** 죽지 않고 통계만 0으로 나오니 원인 파악이 늦어진다.
+    # 한 번 훑어 파일명 → 실제 경로 색인을 만들면 평평·중첩 둘 다 된다.
+    audio_index: dict[str, Path] = {}
+    dup: set[str] = set()
+    for p in args.audio_root.rglob("*.wav"):
+        if p.name in audio_index:
+            dup.add(p.name)
+        else:
+            audio_index[p.name] = p
+    if dup:
+        # 같은 파일명이 서로 다른 카테고리 폴더에 있으면 어느 쪽인지 못 정한다.
+        # 조용히 하나를 고르면 엉뚱한 오디오로 재정렬하는 사고가 나므로 멈춘다.
+        raise SystemExit(
+            f"파일명이 여러 폴더에 중복된다({len(dup)}개, 예: {sorted(dup)[:3]}). "
+            "audio_root 아래에 같은 이름의 wav가 두 곳 이상 있다."
+        )
+    print(f"오디오 색인: {len(audio_index)}개 (audio_root 아래 재귀 탐색)")
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     out_path = args.out_dir / "segments.jsonl"
@@ -395,8 +447,8 @@ def main() -> int:
             if fid in done_parents:
                 skipped_done += 1
                 continue
-            src = args.audio_root / fid
-            if not src.exists():
+            src = audio_index.get(fid)
+            if src is None or not src.exists():
                 print(f"[{pi}/{len(by_parent)}] {fid} 원본 없음 — 건너뜀")
                 continue
 
