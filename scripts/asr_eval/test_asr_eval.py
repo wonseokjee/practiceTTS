@@ -808,3 +808,272 @@ def test_dev도_화자_단위로_분리된다():
         for i in range(len(pools)):
             for j in range(i + 1, len(pools)):
                 assert not (pools[i] & pools[j]), "split 간 화자가 겹친다"
+
+
+# ─── refine_segments: 부모 오디오가 중첩 폴더에 있어도 찾는다 (회귀) ─────────
+#
+# 실제 사고(2026-09-01, VS01): align_608은 audio_root / expected_audio_relpath로
+# 오디오를 찾는데 refine_segments는 audio_root / fid(파일명만)로 찾았다. TS01은
+# 평평한 wav/ 폴더라 우연히 맞았고, VS01(카테고리 하위 폴더)에서는 부모 253개가
+# 전부 "원본 없음 — 건너뜀"으로 넘어가 산출 0개로 **조용히** 끝났다.
+# 위 _run_refine은 오디오를 audio_root 바로 아래에만 둬서 이 사고를 못 잡는다.
+
+
+def _run_refine_layout(tmp_path: Path, rows: list[dict], audio_relpaths: list[str], monkeypatch):
+    """부모 오디오를 audio_root 아래 임의의 상대경로들에 두고 refine을 돌린다.
+
+    같은 파일명을 여러 상대경로에 둘 수도 있다(중복 검사용). 반환: (exit code, 산출 폴더).
+    """
+    import refine_segments as RS
+
+    seg_dir = tmp_path / "segs"
+    audio_root = tmp_path / "audio"
+    out_dir = tmp_path / "out"
+    seg_dir.mkdir(parents=True, exist_ok=True)
+    for rel in audio_relpaths:
+        fid = Path(rel).name
+        centers = [(r["start"] + r["end"]) / 2 for r in rows if r["parent_file_id"] == fid]
+        _write_wav(audio_root / rel, bursts=centers)
+    for r in rows:
+        _write_wav(seg_dir / r["segment_wav_relpath"], seconds=0.5)
+    (seg_dir / "segments.jsonl").write_text(
+        "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), encoding="utf-8"
+    )
+
+    def fake_cut(src, start, end, dst):
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_bytes(b"cut")
+        return True
+
+    monkeypatch.setattr(RS, "cut_wav", fake_cut)
+    monkeypatch.setattr(
+        sys, "argv",
+        ["refine_segments.py", "--segments", str(seg_dir / "segments.jsonl"),
+         "--audio-root", str(audio_root), "--out-dir", str(out_dir)],
+    )
+    return RS.main(), out_dir
+
+
+def test_중첩_audio_root에서도_부모를_찾는다(tmp_path, monkeypatch):
+    rows = [_seg("p1.wav", 0, "사과", 1.0)]
+    code, out_dir = _run_refine_layout(
+        tmp_path, rows, ["013.데이터/VS01/11.중풍/p1.wav"], monkeypatch
+    )
+    assert code == 0
+    assert len(_manifest(out_dir)) == 1, (
+        "부모 오디오가 하위 폴더에 있는데 '원본 없음'으로 건너뛰었다 — 산출 0개로 조용히 끝난다"
+    )
+
+
+def test_평평한_폴더와_중첩_폴더가_섞여도_둘_다_찾는다(tmp_path, monkeypatch):
+    rows = [_seg("flat.wav", 0, "사과", 1.0), _seg("deep.wav", 0, "바다", 1.0)]
+    code, out_dir = _run_refine_layout(
+        tmp_path, rows, ["flat.wav", "a/b/deep.wav"], monkeypatch
+    )
+    assert code == 0
+    assert {r["parent_file_id"] for r in _manifest(out_dir)} == {"flat.wav", "deep.wav"}
+
+
+def test_같은_파일명이_두_폴더에_있으면_멈춘다(tmp_path, monkeypatch):
+    # 조용히 하나를 고르면 엉뚱한 오디오로 재정렬한다 — 그게 더 나쁘다.
+    import pytest
+
+    rows = [_seg("dup.wav", 0, "사과", 1.0)]
+    with pytest.raises(SystemExit) as e:
+        _run_refine_layout(tmp_path, rows, ["cat1/dup.wav", "cat2/dup.wav"], monkeypatch)
+    assert "중복" in str(e.value)
+
+
+# ─── merge_segments: 배치를 병합 매니페스트에 합친다 ─────────────────────────
+#
+# 실측 검증(2026-09-01): 1~5차 배치를 이 스크립트로 순서대로 병합해
+# _segs_merged_all6.jsonl(3124줄)을 바이트 단위로 재현했다. 여기서는 그 규칙과
+# 안전장치를 고정한다.
+
+
+def _make_batch(seg_root: Path, batch: str, fids: list[str], with_wav: bool = True) -> None:
+    rows = [_seg(fid, 0, "사과", 1.0) for fid in fids]
+    for r in rows:
+        r["segment_wav_relpath"] = f"{Path(r['parent_file_id']).stem}/{Path(r['parent_file_id']).stem}_000.wav"
+        if with_wav:
+            _write_wav(seg_root / batch / r["segment_wav_relpath"], seconds=0.5)
+    (seg_root / batch).mkdir(parents=True, exist_ok=True)
+    (seg_root / batch / "segments.jsonl").write_text(
+        "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), encoding="utf-8"
+    )
+
+
+def _run_merge(monkeypatch, seg_root: Path, batch: str, out: Path, merged_in: Path | None = None):
+    import merge_segments as MS
+
+    argv = ["merge_segments.py", "--seg-root", str(seg_root), "--batch", batch,
+            "--merged-out", str(out)]
+    if merged_in:
+        argv += ["--merged-in", str(merged_in)]
+    monkeypatch.setattr(sys, "argv", argv)
+    MS.main()
+
+
+def test_병합은_배치_폴더명을_relpath_앞에_붙인다(tmp_path, monkeypatch):
+    _make_batch(tmp_path, "_segs_a_refined", ["p1.wav"])
+    _make_batch(tmp_path, "_segs_b_refined", ["p2.wav", "p3.wav"])
+    m1, m2 = tmp_path / "m1.jsonl", tmp_path / "m2.jsonl"
+    _run_merge(monkeypatch, tmp_path, "_segs_a_refined", m1)
+    _run_merge(monkeypatch, tmp_path, "_segs_b_refined", m2, merged_in=m1)
+
+    rows = [json.loads(l) for l in m2.read_text(encoding="utf-8").splitlines()]
+    assert [r["parent_file_id"] for r in rows] == ["p1.wav", "p2.wav", "p3.wav"], "순서·개수가 이어져야 한다"
+    assert rows[0]["segment_wav_relpath"] == "_segs_a_refined/p1/p1_000.wav"
+    assert rows[2]["segment_wav_relpath"] == "_segs_b_refined/p3/p3_000.wav"
+    for r in rows:  # 붙인 경로가 seg-root 기준으로 실재해야 prepare가 wav를 찾는다
+        assert (tmp_path / r["segment_wav_relpath"]).exists()
+
+
+def test_같은_배치를_두_번_합치면_멈추고_파일을_안_쓴다(tmp_path, monkeypatch):
+    import pytest
+
+    _make_batch(tmp_path, "_segs_a_refined", ["p1.wav"])
+    m1, m2 = tmp_path / "m1.jsonl", tmp_path / "m2.jsonl"
+    _run_merge(monkeypatch, tmp_path, "_segs_a_refined", m1)
+    with pytest.raises(SystemExit):
+        _run_merge(monkeypatch, tmp_path, "_segs_a_refined", m2, merged_in=m1)
+    assert not m2.exists()
+
+
+def test_wav가_없는_줄이_있으면_저장하지_않고_멈춘다(tmp_path, monkeypatch):
+    # 패키징이 이런 세그먼트를 조용히 건너뛰어 문장 1723개 중 16개만 남은 적이 있다.
+    import pytest
+
+    _make_batch(tmp_path, "_segs_a_refined", ["p1.wav"], with_wav=False)
+    out = tmp_path / "m.jsonl"
+    with pytest.raises(SystemExit):
+        _run_merge(monkeypatch, tmp_path, "_segs_a_refined", out)
+    assert not out.exists()
+
+
+# ─── extract_vs01_words: tar 안에 조각난 zip을 읽는다 ───────────────────────
+#
+# AI Hub 다운로드는 zip이 아니라 tar다. zip을 1 GiB씩 잘라 `...zip.part<오프셋>`
+# 멤버로 담는다. zipfile로 그냥 열면 끝의 EOCD가 우연히 찾아져 목록은 멀쩡한데
+# 파일을 꺼내는 순간 "Bad magic number"로 죽는다(조각 사이의 tar 헤더 때문에
+# 로컬 헤더 위치가 어긋난다). 74.8GB를 디스크에 다시 쓰지 않고 조각을 이어 붙인
+# 가상 파일로 읽는다 — 그 이어 붙이기가 맞는지를 고정한다.
+
+
+def _make_tar_of_zip_parts(tmp_path: Path, payload: dict[str, bytes], n_parts: int = 3,
+                           reverse: bool = False) -> Path:
+    import io
+    import tarfile
+    import zipfile
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for name, data in payload.items():
+            z.writestr(name, data)
+    blob = buf.getvalue()
+    cuts = [len(blob) * k // n_parts for k in range(n_parts + 1)]
+    tar_path = tmp_path / "vs01.tar"
+    with tarfile.open(tar_path, "w") as tf:
+        spans = list(zip(cuts, cuts[1:]))
+        for s, e in (spans[::-1] if reverse else spans):
+            ti = tarfile.TarInfo(f"013.데이터/VS01_뇌신경장애.zip.part{s}")   # 이름이 곧 논리 오프셋
+            ti.size = e - s
+            tf.addfile(ti, io.BytesIO(blob[s:e]))
+    return tar_path
+
+
+def test_tar_안_zip_조각을_이어_붙여_읽는다(tmp_path):
+    import os
+
+    import extract_vs01_words as EV
+
+    payload = {"11.중풍/a.wav": os.urandom(4000), "11.중풍/b.wav": b"B" * 6000, "12.뇌부상/c.wav": os.urandom(2500)}
+    tar_path = _make_tar_of_zip_parts(tmp_path, payload)
+    zf = EV.open_zip(tar_path)
+    assert sorted(zf.namelist()) == sorted(payload)
+    for name, data in payload.items():
+        assert zf.read(name) == data, f"{name}: 조각을 이어 붙인 결과가 원본과 다르다"
+
+
+def test_tar_안_조각_순서가_뒤섞여도_이름의_오프셋으로_읽는다(tmp_path):
+    # 조각 이름이 곧 논리 오프셋이다. tar 안의 물리적 순서에 기대면 순서가 어긋난 tar에서
+    # 조각이 엉뚱한 자리에 붙어 조용히 깨진 zip이 된다.
+    import os
+
+    import extract_vs01_words as EV
+
+    payload = {"a.wav": os.urandom(4000), "b.wav": b"B" * 6000}
+    zf = EV.open_zip(_make_tar_of_zip_parts(tmp_path, payload, reverse=True))
+    for name, data in payload.items():
+        assert zf.read(name) == data
+
+
+def test_평범한_zip은_그대로_연다(tmp_path):
+    import zipfile
+
+    import extract_vs01_words as EV
+
+    p = tmp_path / "plain.zip"
+    with zipfile.ZipFile(p, "w") as z:
+        z.writestr("a.wav", b"x" * 100)
+    assert EV.open_zip(p).read("a.wav") == b"x" * 100
+
+
+def test_조각이_연속이_아니면_멈춘다(tmp_path):
+    # 조각 하나가 빠진 채로 읽으면 조용히 깨진 zip을 읽게 된다.
+    import io
+    import tarfile
+
+    import pytest
+
+    import extract_vs01_words as EV
+
+    tar_path = tmp_path / "gap.tar"
+    with tarfile.open(tar_path, "w") as tf:
+        for s, size in ((0, 100), (5000, 100)):     # 100..5000 구간이 없다
+            ti = tarfile.TarInfo(f"x.zip.part{s}")
+            ti.size = size
+            tf.addfile(ti, io.BytesIO(b"z" * size))
+    with pytest.raises(SystemExit) as e:
+        EV.open_zip(tar_path)
+    assert "연속" in str(e.value)
+
+
+# ─── prune_vs01: 68GB를 지우는 도구 — 기본은 아무것도 안 지운다 ────────────
+
+
+def _prune_fixture(tmp_path: Path):
+    manifest = tmp_path / "manifest.jsonl"
+    rows = [
+        {"file_id": "w1.wav", "split": "val", "transcript": "사과 바나나 포도"},          # 단어
+        {"file_id": "w2.wav", "split": "val", "transcript": "거울 안경"},                  # 단어
+        {"file_id": "n1.wav", "split": "val", "transcript": "가다. 오다. 먹다. 자다."},    # 문장(문장부호 3개+)
+    ]
+    manifest.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), encoding="utf-8")
+    root = tmp_path / "vs01"
+    for name in ("w1.wav", "w2.wav", "n1.wav", "mystery.wav"):     # mystery는 매니페스트에 없다
+        p = root / "cat" / name
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(b"x" * 10)
+    return manifest, root
+
+
+def _run_prune(monkeypatch, manifest: Path, root: Path, *extra: str):
+    import prune_vs01 as PV
+
+    monkeypatch.setattr(sys, "argv", ["prune_vs01.py", "--root", str(root), "--manifest", str(manifest), *extra])
+    PV.main()
+
+
+def test_prune은_기본이_모의_실행이다(tmp_path, monkeypatch):
+    manifest, root = _prune_fixture(tmp_path)
+    _run_prune(monkeypatch, manifest, root)
+    assert sorted(p.name for p in root.rglob("*.wav")) == ["mystery.wav", "n1.wav", "w1.wav", "w2.wav"]
+
+
+def test_prune은_문장만_옮기고_단어와_낯선_파일은_남긴다(tmp_path, monkeypatch):
+    manifest, root = _prune_fixture(tmp_path)
+    moved = tmp_path / "dropped"
+    _run_prune(monkeypatch, manifest, root, "--apply", "--move-to", str(moved))
+    assert sorted(p.name for p in root.rglob("*.wav")) == ["mystery.wav", "w1.wav", "w2.wav"]
+    assert [p.name for p in moved.rglob("*.wav")] == ["n1.wav"], "문장은 지우지 않고 옮겨야 한다(되돌릴 수 있게)"
