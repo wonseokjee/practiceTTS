@@ -196,4 +196,38 @@ describe('report:retention', () => {
     expect(text).toContain('sessions_per_active_week_median=0.5  (1/2)');
     expect(text).toContain('2026-09-20');
   });
+
+  it('로케일 축 — 기본은 ko-KR만 세고, 미국 가구는 섞이지 않는다', async () => {
+    const id = randomUUID();
+    await ds.query(
+      `INSERT INTO users (id, role, display_name, created_at, timezone, week_start, locale)
+       VALUES ($1, 'patient', 'us-patient', '2026-09-21T01:00:00Z', 'Asia/Seoul', 1, 'en-US')`,
+      [id],
+    );
+    try {
+      const ko = await buildRetentionReport(ds, { now: NOW, weeks: 5 });
+      const en = await buildRetentionReport(ds, {
+        now: NOW,
+        weeks: 5,
+        locale: 'en-US',
+      });
+      const all = await buildRetentionReport(ds, {
+        now: NOW,
+        weeks: 5,
+        locale: null,
+      });
+
+      expect(ko.households).toBe(3);
+      expect(ko.locale).toBe('ko-KR');
+      expect(en.households).toBe(1);
+      expect(all.households).toBe(4);
+      // 미국 가구는 활동이 없어 W1 분모에는 들어가지만 분자에는 없다 — 섞이면 ko 수치가 떨어진다
+      expect(ko.metrics.patient_w1_retention).toMatchObject({
+        numerator: 2,
+        denominator: 2,
+      });
+    } finally {
+      await ds.query('DELETE FROM users WHERE id = $1', [id]);
+    }
+  });
 });
