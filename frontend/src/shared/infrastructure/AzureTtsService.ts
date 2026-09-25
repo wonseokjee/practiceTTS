@@ -11,7 +11,7 @@ import { API_BASE_URL, ML_TOKEN_KEY } from '../../memory-link/shared/MemoryLinkA
 // ai-service를 브라우저가 직접 부르지 않는다 — 그 경로만 인증을 걸 수 없어
 // 누구나 Azure 음성 할당량을 태울 수 있다. 백엔드 프록시를 거쳐 JWT로 막는다.
 
-/** 기본 음성 (따뜻한 여성, ai-service 기본과 동일). */
+/** 기본 음성 (따뜻한 여성, ai-service 기본과 동일). 로케일별 음성은 ttsVoices.ts. */
 const DEFAULT_VOICE = 'ko-KR-SunHiNeural';
 
 /**
