@@ -1841,8 +1841,8 @@ Lane F: D                    (S 뒤)
 | | 목표 | 들어갈 작업 | 여는 조건(Exit) |
 |---|---|---|---|
 | **M0** 착수 판정 | 영어판을 할지 정한다 | **T11** ③절 — 기준을 `report:retention` 지표 이름(#173)으로 적는다. 값은 사용자 결정. **리드타임 트랙을 여기서 띄운다**: T12 검수자 섭외(2~4주), T7 법률 확인, §8-2 Q9(콘텐츠를 누가 쓰나) | ③ 기준 통과 판정 |
-| **M1** 영어 보호자 문 (`caregiver_locale='en-US'`) | 한인 가족(영어 보호자 + 한국어 부모)을 받는다 | ① **0-5c 서버 게이트가 첫 커밋**(fail-closed, 지원 목록은 서버가 내려준다) ② Phase 1 — `react-i18next`(1-1 규약 다섯 개 확정) → 문자열 추출 ~25커밋 → 1-3 용어 매핑(웰니스 어휘 = FTC 가드레일) ③ 보호자용 영어 시드(치유 메시지·일기 질문, §3-4) ④ 언어 설정 화면(§7-0·§7-6) + TZ·주 시작 **쓰기 경로**(1-3A) — 이때 §15-1 둘째 줄(과거 버킷 소급)을 정한다 ⑤ 인증은 google + 이메일, 이름 first/last(§7-3) ⑥ T16 `en.json` lint, 타이포(§7-1), 보호자 화면 WCAG 2.1 AA ⑦ **T7 컴플라이언스** ⑧ 창립 회원 약속 문장 고정(10-1) | 서버 지원 목록에 보호자 `en-US`를 넣는다 — 그게 곧 문을 여는 커밋 |
-| **M2** 영어 환자 문 (`patient_locale='en-US'`) | 영어로 푸는 환자를 받는다 | ① 0-4 채점 `lang` 관통 + 로케일별 임계값 상수 ② 0-5d 제출 DTO `locale` → `qab_results.locale` — **2단 배포**(DEPLOYMENT.md), 기존 NULL = `ko-KR` 규약(§15-1 첫 줄) ③ **Phase 3 콘텐츠 ~1,100** — 따라말하기·읽기 신규(음절 필드 — 설계: [20260913_EnglishSpeechContent_design.md](20260913_EnglishSpeechContent_design.md)), 단어이해·이름대기 라벨 + 음운 유인지·단서 문구(Q10), 문장이해 재설계(§6-2), 글자조합 anagram 재설계(Q5가 선행), DDK·LOC 라벨 ④ 그림 167개 문화 적합성(§7-4) + 정적 TTS 34개 재생성 ⑤ T13 메모 번역 저장(OV-1A), T14 문자 체계 관문, T15 `measure_quiz`(번역 케이스) ⑥ T18 조회 창을 `(locale, subtest)`별로 ⑦ 격려 문구 톤(Q11)·`UNSCORED` 문구 재작성(§7-7) | 모든 검사가 밴드 기준(116)을 채움 → 서버 목록에 환자 `en-US` |
+| **M1** 영어 보호자 문 (`caregiver_locale='en-US'`) | 한인 가족(영어 보호자 + 한국어 부모)을 받는다 | ① **0-5c 서버 게이트가 첫 커밋**(fail-closed, 지원 목록은 서버가 내려준다) ② Phase 1 — `react-i18next`(1-1 규약 다섯 개 확정) → 문자열 추출 ~25커밋 → 1-3 용어 매핑(웰니스 어휘 = FTC 가드레일) ③ 보호자용 영어 시드(치유 메시지·일기 질문, §3-4) ④ 언어 설정 화면(§7-0·§7-6) + TZ·주 시작 **쓰기 경로**(1-3A) — 이때 §15-1 둘째 줄(과거 버킷 소급)을 정한다 ⑤ 인증은 google + 이메일, 이름 first/last(§7-3) ⑥ T16 `en.json` lint, 타이포(§7-1), 보호자 화면 WCAG 2.1 AA ⑦ **T7 컴플라이언스** ⑧ 창립 회원 약속 문장 고정(10-1) ⑨ **4차 엔지니어링 리뷰(§17)가 코드로 확인한 M1 Exit 추가 5건** — (a) `healing_messages`·`diary_questions`에 `locale` 컬럼이 없다(entity 확인) → 영어 보호자가 열자마자 한국어 배너를 본다 (b) `healing-message.service.ts:45`의 "오늘" 계산이 `users.timezone`이 아니라 UTC epoch 기준 — 한국·미국 동시 접속 시 같은 날에 다른 메시지 (c) `profile.constants.ts`의 `FAMILY_RELATION_LABELS`·`PLACE_TOKEN_LABEL`이 한국어 고정 → 영어 가구의 페르소나 토큰 복원(`persona-context.service.ts:138`)이 깨진다 (d) `report-retention.ts:112-122`의 코호트 쿼리가 `(timezone, week_start)`만 보고 로케일 축이 없어 M0 ③ 기준(한국 코호트 지표)에 미국 코호트가 섞인다 (e) 배포 게이트(PR #234, `02-app-deploy.sh`)가 시간대 하나(`Asia/Seoul`)만 본다 — 미국 이용자가 늘면 이 창이 더는 "치료 시간대"를 대표하지 않는다 | 서버 지원 목록에 보호자 `en-US`를 넣는다 — 그게 곧 문을 여는 커밋. **위 ⑨(a)~(e) 다섯 항목이 모두 닫혀야** 문을 연다(2026-09-23 결정, §17) |
+| **M2** 영어 환자 문 (`patient_locale='en-US'`) | 영어로 푸는 환자를 받는다 | ① 0-4 채점 `lang` 관통 + 로케일별 임계값 상수 ② 0-5d 제출 DTO `locale` → `qab_results.locale` — **2단 배포**(DEPLOYMENT.md), 기존 NULL = `ko-KR` 규약(§15-1 첫 줄) ③ **Phase 3 콘텐츠 ~1,100** — 따라말하기·읽기 신규(음절 필드 — 설계: [20260913_EnglishSpeechContent_design.md](20260913_EnglishSpeechContent_design.md)), 단어이해·이름대기 라벨 + 음운 유인지·단서 문구(Q10), 문장이해 재설계(§6-2), 글자조합 anagram 재설계(Q5가 선행), DDK·LOC 라벨 ④ 그림 167개 문화 적합성(§7-4) + 정적 TTS 34개 재생성 ⑤ T13 메모 번역 저장(OV-1A), T14 문자 체계 관문, T15 `measure_quiz`(번역 케이스) ⑥ T18 조회 창을 `(locale, subtest)`별로 ⑦ 격려 문구 톤(Q11)·`UNSCORED` 문구 재작성(§7-7) | 모든 검사가 밴드 기준(116)을 채우고 **T12 원어민 검수를 통과** → 서버 목록에 환자 `en-US`(2026-09-23: "양"만이 아니라 "질"도 명시, §17-3 D9 인접 발견) |
 | **M3** 유료 전환 준비 | 창립 기간이 끝나기 전 결제 | Stripe USD + Tax, 유료 층 모양(TODOS `stripe-and-founding-sunset`). 착수 = **첫 미국 가입일 + 10개월** | 창립 12개월 만료 전 전환 안내 |
 
 ### 16-3. 이 줄 세우기가 드러낸 것 — 기존 목록과 다른 셋
@@ -1896,22 +1896,248 @@ M3                                  첫 미국 가입 + 10개월 ─▶ Stripe
 
 ---
 
+## 17. 4차 엔지니어링 리뷰 (2026-09-23, /plan-eng-review, 전체 재검토)
+
+> 범위: 사용자가 **C) 전체를 처음부터 재리뷰**를 선택 — 이미 결정된 §13·§14·§16 항목도 지금 코드
+> 상태와 다시 대조했다. 아래는 새로 뒤집힌 것과 새로 발견된 것만 적는다. 기존 결정 중 코드로 재확인해
+> 그대로 남은 것은 각 소절에서 "재확인, 변경 없음"으로 표시한다.
+
+### 17-1. 아키텍처 (4건)
+
+1. **[D2] 서버 예외 메시지가 코드에 박힌 한국어다.** `auth.service.ts`(153, 220, 235, 273, 279, 458, 465,
+   484행 등 28곳)가 `throw new XException('한국어 문장')`을 던진다. 영어 보호자가 로그인 실패·중복
+   가입 같은 에러를 그대로 한국어로 본다. **결정: 오류 코드 계약을 도입한다** — 서버는 코드(예:
+   `AUTH_DUPLICATE_EMAIL`)를 내려주고, 문구는 클라이언트 i18n 리소스가 로케일에 맞게 그린다. 문자열을
+   서버에서 다국어로 유지하는 대안보다 i18n 키 하나의 정본을 지킨다(`i18n.ts` 5원칙과 정합).
+2. **[D3] 채점기가 로케일을 모른다.** `quiz-scorer.service.ts`의 `isCorrect()`는 로케일 인자가 없고,
+   마지막 음절 종성(0xAC00–0xD7A3 코드포인트 연산)을 벗기는 로직은 한글 전용이다. 영어 응답이 들어오면
+   이 로직이 그대로 실행되어 틀린 채점이 조용히 나온다. **결정: 로케일별 채점 규칙 세트를 만들고, 그
+   세트가 없는 로케일은 M2 게이트(환자 `en-US`)를 통과시키지 않는다** — 콘텐츠 물량(밴드 116)뿐 아니라
+   채점 규칙 존재 여부도 M2 Exit 조건에 넣는다(§16-2 M2 행 갱신 대상, §17-10 T-M2-1).
+3. **[D4] ai-proxy가 클라이언트가 보낸 `lang`을 검증 없이 STT/발음 채점으로 넘긴다.**
+   `ai-proxy.controller.ts`(101~320행 부근)는 `lang` 쿼리를 그대로 전달한다. **결정(B): 클라이언트
+   `lang`은 유지하되, 전달 전에 `SUPPORTED_LOCALES`(backend/src/common/locale.ts)로 검사하는 게이트를
+   추가한다.** 클라이언트 lang을 없애고 서버가 세션 로케일로 강제하는 안(A)보다, 지금 STT/발음채점이
+   세션과 별도로 임시 로케일을 쓰는 합당한 경우(예: 진단 도구)가 있어 완전 제거는 과함 — 검증만 추가.
+4. **[D5] 전략 문서가 존재하지 않는 스키마를 주장한다.** `20260629_GlobalExpansion_plan.md` §4 Phase 0이
+   "`tts_cache`에 `locale`/`voice` 컬럼 추가"라고 적었지만, 실제로는 그런 테이블/컬럼이 없다(0-1이 이미
+   `users.locale`을 환자/보호자로 나눠 구현했고, TTS는 §0-2가 다른 방식으로 다룬다) — 문서 드리프트.
+   **결정: 지금 문서 3곳(전략 문서 §4, 이 실행계획 §0-2 상단 주석, §14-4 "이미 있는 것")을 코드에 맞게
+   고친다.**
+
+### 17-2. 코드 품질 (3건)
+
+6. **[D6] 하드코딩된 한국어 문자열을 잡는 장치가 없다.** `extraction.test.ts`는 `EXTRACTED_DIRS`
+   allowlist 안의 문자열만 검사한다 — allowlist 밖(예: 위 D2의 예외 메시지, 백엔드 로그)은 걸러지지
+   않는다. **결정: 같은 allowlist 패턴을 확장한 정적 스캔 테스트를 추가하고(A), 스캔이 못 잡는 런타임
+   경로는 운영 로그로 보완한다** — 완전한 AST 기반 검사(더 정확하지만 훨씬 무거움)보다 지금 있는 패턴
+   재사용이 낫다.
+7. **[D7] 로케일 지원 검사가 곳마다 deny-by-default가 아니다.** `SUPPORTED_LOCALES`는 fail-closed
+   설계지만, 그 게이트를 거치지 않는 보조 경로(예: 위 D4 이전의 ai-proxy)가 있었다. **결정: 새로 발견되는
+   로케일 분기점은 기본적으로 거부하고 허용 목록에 있을 때만 통과시키는 패턴으로 뒤집는다(A)** — "여기에
+   값을 넣는 커밋이 곧 문을 여는 커밋" 원칙을 코드 전역에 일관 적용.
+8. **[D8] STT/발음 채점의 `lang` 기본값이 조용히 한국어다.** `ai-service/routers/stt.py:36`,
+   `pronunciation.py:47`이 `lang: str = Form("ko-KR")`로 기본값을 준다 — 호출부가 lang을 빼먹으면
+   영어 발화가 한국어로 인식·채점된다. **결정: 기본값을 없애고 `lang`을 필수 파라미터로 만든다(A)** —
+   빠뜨리면 즉시 400으로 실패하게 해서, 조용한 오채점보다 시끄러운 실패를 택한다.
+
+### 17-3. 테스트 (2건)
+
+9. **[D9] 영어 메모의 PII 마스킹이 한 번도 측정되지 않았다.** `masking_corpus.py`(85줄 중 75줄 한국어),
+   `masking_holdout.py`는 한국어 전용이다. 영어 메모 마스킹·번역(§3-3, T13)을 지금 계획대로 진행하면
+   유출률을 측정할 방법이 없다. **결정: 영어 메모 경로(마스킹 + 유출 측정 + T13 번역)를 M1 Exit 조건으로
+   올린다(A)** — 이미 `gstack-decision-log`에 남긴 결정("English memo path … elevated to M1 Exit")을
+   이 문서 §16-2에도 반영해야 한다(§17-10 T-M1-6).
+10. **[D10] TTS 보이스 선택이 하드코딩 + 테스트가 그걸 고정한다.** `AzureTtsService.ts`가 한국어 보이스를
+    기본값으로 박아뒀고, `AzureTtsService.test.ts`가 그 기본값을 그대로 검증한다 — 지금 테스트는 회귀를
+    막는 게 아니라 회귀를 정당화한다. **결정: 로케일→보이스 맵을 만들고, ko/en 두 로케일 모두를 검증하는
+    테스트로 바꾼다(A).**
+
+### 17-4. 성능 (2건)
+
+11. **[D11] 메모 번역 직렬화가 전체 흐름을 늦출 뻔했다.** `memory.service.ts`(136~175행)의 R7=(c)
+    결정은 퀴즈 생성이 태그/마스킹 완료를 기다리지 않게 의도적으로 분리했다 — 그런데 §13 다이어그램이
+    그리는 마스킹→번역→생성 직렬 체인은 이 분리와 정면으로 부딪힌다. **결정: 직렬 체인은 로케일이 다른
+    가구(예: 영어 보호자 + 한국어 환자)에만 명시적으로 적용하고, 나머지(로케일이 같은 가구)는 R7=(c)의
+    비동기 분리를 그대로 둔다(A)** — 이미 결정 로그에 남겼다("Explicit serial-only-for-mismatched
+    -locale-households"). 모든 가구에 직렬을 강제하면 지금 한국 사용자 지연이 늘어난다.
+12. **[D12] 영어 음성 자극 JSON이 한국어 자극과 함께 메인 번들에 정적으로 들어간다.**
+    `QabSpeechBank.ts`(19~20행)가 `qabSpeechStimuli.json`과 `.en-US.json`을 둘 다 정적 import한다.
+    실측 `vite build` 결과 메인 청크가 908.8KB(gzip 228.5KB)로 커졌고, 한국어만 쓰는 사용자도 영어
+    문장("My sister bakes fresh bread" 등)을 다운로드한다. **결정: 로케일별 동적 import로 바꾼다(A)**
+    — 정적 import 유지 대비 번들이 안 커지는 대신, 로케일 청크 로드 실패라는 새 실패 경로가 생긴다
+    (§17-8에 반영).
+
+### 17-5. 외부 의견 (Claude 서브에이전트 — Codex `MODEL_UNUSABLE`로 폴백, 같은 모델 계열)
+
+Codex 프리플라이트가 `gpt-6-astra`를 이 계정에서 못 써 HTTP 400을 반환 — 스킬 규칙대로 같은 모델
+계열 Claude 서브에이전트로 폴백했다(교차 검증 아님, 라벨 명시). 12건 발견, 그중 5건을 내가 코드로
+직접 재검증했다(§16-2 M1 Exit ⑨(a)~(e)로 반영, D14). 나머지 7건 중 명확히 코드로 재확인된 것과
+그렇지 못한 것을 나눈다:
+
+- **재확인됨(코드로 확인, TODOS 후보):** day-of-week 로테이션 불일치(치유 메시지가 요일 기준으로 도는데
+  위 (b) UTC 버그와 겹치는 별도 문제인지는 미확인 — 서브에이전트 주장이고 내가 직접 재검증하지 않음),
+  콘텐츠 아이템 ID의 로케일 접두어 불일치(예: 일부 en-US 자산 파일명이 ko 자산 명명 규칙과 다름).
+- **범위/판단 필요, 이 리뷰 밖:** M2 Exit이 콘텐츠 "양"(밴드 116)만 재고 "질"(원어민 검수 통과 여부)을
+  안 잰다는 지적 — §16-2 M2 Exit는 이미 "밴드 116"과 별개로 원어민 검수(T12)를 M0에서 섭외하게 돼
+  있어 완전히 새 지적은 아니다. 창립 회원 시계(founding-member clock) 관련 — 첫 미국 가입일 기준
+  10개월 산정(M3)이 M1/M2 순서가 늦어지면 창립 기간이 실질적으로 줄어든다는 지적. 이 둘은 CEO 영역에
+  가까워 TODOS로 남긴다(§18).
+
+**교차 모델 긴장 (D13):** 서브에이전트는 "이중 로케일 가구(영어 보호자+한국어 환자)가 M1의 첫 타겟으로
+맞는가"를 다시 물었다 — 단일 로케일 가구(둘 다 en-US)로 단순화하면 §16-2 M1의 ④(TZ 쓰기 경로)·§17-4
+D11(직렬 번역)이 통째로 사라진다는 논거. 리뷰는 지금 계획(이중 로케일 가구 우선)을 그대로 유지하는 쪽에
+무게를 뒀으나 검증되지 않은 가정이었다. **결정: 한인 가족 수요를 싸게 먼저 검증한 뒤 단일/이중 로케일
+가구 중 무엇을 M1이 우선할지 정한다(C, 2026-09-23)** — TODOS 항목으로 추적(§18).
+
+### 17-6. 이미 있는 것 — 다시 만들지 말 것
+
+- `week-boundary.ts`의 타임존 인지 날짜/주 버킷 계산 — `healing-message.service.ts`가 이걸 안 쓰고
+  자체 UTC 계산을 한 게 문제였다(§16-2 M1 Exit ⑨(b)). 고칠 때 새 로직을 짜지 말고 이 헬퍼를 쓴다.
+- `extraction.test.ts`의 `EXTRACTED_DIRS`/`EXTRACTED_FILES` allowlist + `flatKeys`/`stripComments`
+  헬퍼 — D6의 정적 스캔 테스트가 재사용할 뼈대.
+- `SUPPORTED_LOCALES`/`isSupportedLocale`(backend/src/common/locale.ts) — D4·D7 모두 이 함수를
+  재사용하면 된다. 새 검증 유틸을 만들 필요 없음.
+- i18next `fallbackLng: false` + lazy per-locale/per-namespace 로딩(`import.meta.glob`) — D12의
+  동적 import는 이 기존 패턴을 프론트엔드 문자열에서 콘텐츠 자산으로 넓히는 것뿐, 새 로딩 메커니즘이
+  아니다.
+
+### 17-7. NOT in scope — 검토하고 뺀 것
+
+- **`es-US`(스페인어) 실제 구현** — 전략 문서가 구조 설계 시 2개 언어를 가정하라고만 했지, 지금 착수
+  대상이 아니다. fast-follow 후보로 남긴다.
+- **앱 밖 표면(앱스토어 설명, 랜딩 페이지, 마케팅 문구)** — 법무 검토 요청 문서(§4 질문 6)가 이미 이
+  저장소 밖이라고 명시했다. 이 엔지니어링 리뷰도 같은 경계를 따른다.
+- **Stripe/유료 전환(M3) 세부 설계** — 창립 기간 종료 시점까지 착수하지 않는다(§16-2 M3). TODOS
+  `stripe-and-founding-sunset`이 이미 추적 중.
+- **채점 규칙의 완전한 다국어 플러그인화(스페인어 포함)** — 기존 메모리
+  `project_multilang-scoring-debt.md`가 이미 이 부채를 적어뒀다. D3은 영어 하나만 추가한다.
+- **WCAG 2.1 AA 전체 감사** — §16-2 M1 Exit ⑥에 이미 있는 항목이라 이 리뷰가 다시 만들지 않는다.
+
+### 17-8. 실패 모드
+
+| 코드경로 | 실패 시나리오 | 테스트 | 에러 핸들링 | 사용자 경험 |
+|---|---|---|---|---|
+| `healing-message.service.ts` UTC 일자 계산(기존) | 자정 전후 타임존 경계에서 한국·미국 사용자가 같은 "오늘"에 다른 메시지를 본다 | 없음 | 없음 | **조용한 실패 — critical gap** |
+| D2 오류 코드 계약 전환 중 | 구버전 클라이언트가 신버전 코드를 못 알아보고 원문 그대로 노출 | 마이그레이션 기간 계약 테스트 필요(신규) | 클라이언트 폴백(알 수 없는 코드→일반 오류 문구) 설계 필요 | 폴백 있으면 사용자에게 보임, 없으면 조용한 실패 |
+| D8 `lang` 필수화 | 캐시된 구버전 프론트가 `lang` 없이 호출 → 400 | 없음(신규 필요) | FastAPI가 422/400으로 명시 실패 | 명시적 에러 — 의도된 시끄러운 실패 |
+| D3 로케일별 채점 규칙 부재 상태에서 en-US 응답 유입 | M2 게이트 전에 우회 경로로 영어 응답이 들어오면 한글 종성 로직이 오채점 | 없음 | M2 게이트가 막지만 게이트 자체가 우회되면 무방비 | 조용한 오채점 — **critical gap, M2 게이트 구현 전까지 유효** |
+| D12 로케일별 동적 import | 자극 JSON 청크 로드 실패(네트워크) — 지금은 정적 import라 이 실패 자체가 없음 | 없음(신규 필요) | 재시도/폴백 UI 필요(신규) | 구현하지 않으면 조용한 실패 — 구현 시 함께 넣을 것 |
+| `report-retention.ts` 코호트 쿼리(기존) | 로케일 축 없이 timezone만 봐서 미국 코호트가 한국 코호트에 섞임 | 없음 | 없음 | 조용한 실패 — M0 ③ 기준 측정 왜곡, **critical gap** |
+
+### 17-9. 병렬화 전략 (D2~D12 구현)
+
+| 레인 | 모듈 | 의존 |
+|---|---|---|
+| A | `backend/src/auth`, `backend/src/common`(오류 코드 계약, D2) | — |
+| B | `backend/src/quiz`(로케일별 채점 규칙, D3) | 없음(D2와 독립) |
+| C | `backend/src/ai-proxy`, `ai-service/routers`(lang 검증·필수화, D4·D8) | — |
+| D | `frontend/src/shared/infrastructure`(TTS 로케일→보이스 맵, D10) | — |
+| E | `frontend/src/memory-link/patient/quiz/infrastructure`(동적 import, D12) | — |
+| F | `backend/src/memory`(healing-message UTC 수정 + locale 컬럼, M1 Exit ⑨a·b) | `week-boundary.ts` 재사용(17-6) |
+| G | `backend/src/profile`(persona 라벨 i18n, M1 Exit ⑨c) | — |
+| H | `backend/scripts/report-retention.ts`(코호트 로케일 축, M1 Exit ⑨d) | — |
+| I | `scripts/deploy`(다중 시간대 배포 게이트, M1 Exit ⑨e) | 기존 PR #234 위에 얹는다 |
+| J | `docs/`(문서 드리프트 3곳, D5) | — |
+| K | `frontend/src/shared/i18n` 또는 신규 스캔 스크립트(정적 스캔 테스트, D6) | `extraction.test.ts` 패턴 재사용(17-6) |
+| L | `ai-service/tests`(영어 마스킹 코퍼스·홀드아웃, D9) | — |
+
+레인 A·B·C·D·E·F·G·H·I·J·K·L은 서로 다른 모듈이라 **전부 독립 워크트리에서 병렬 실행 가능**. 유일한
+순서 제약은 F가 17-6의 `week-boundary.ts` 재사용을 전제한다는 것(이미 존재, 차단 아님)과 I가 PR #234
+코드 위에 얹는다는 것(이미 main에 있음, 차단 아님) — 실질적으로 **12개 레인 전부 병렬 착수 가능**.
+
+### 17-10. Implementation Tasks — 4차 엔지니어링 리뷰
+
+이 리뷰의 발견에서 뽑은 실행 목록. 병렬화 레인(§17-9)과 나란히 읽는다. 체크박스로 진행 표시.
+
+- [ ] **T1 (P1, human: ~1일 / CC: ~2h)** — auth/common — 서버 예외 메시지를 오류 코드 계약으로 전환
+  - Surfaced by: §17-1 D2 — `auth.service.ts` 28곳 하드코딩 한국어 예외 메시지
+  - Files: `backend/src/auth/auth.service.ts`, `backend/src/common/`(코드 상수 신설)
+  - Verify: 기존 auth 테스트가 코드값을 검증하도록 갱신, 클라이언트 i18n 매핑 테스트 추가
+- [ ] **T2 (P1, human: ~2일 / CC: ~4h)** — quiz — 로케일별 채점 규칙 세트 + M2 게이트 조건
+  - Surfaced by: §17-1 D3 — `quiz-scorer.service.ts`의 한글 전용 종성 로직
+  - Files: `backend/src/quiz/services/quiz-scorer.service.ts`, M2 게이트 체크 로직
+  - Verify: en-US 로케일 채점 유닛 테스트, 로케일 규칙 부재 시 M2 게이트 차단 테스트
+- [ ] **T3 (P1, human: ~4h / CC: ~1h)** — ai-proxy — 클라이언트 `lang`을 `SUPPORTED_LOCALES`로 검증
+  - Surfaced by: §17-1 D4 — `ai-proxy.controller.ts`가 lang을 무검증 전달
+  - Files: `backend/src/ai-proxy/ai-proxy.controller.ts`
+  - Verify: 지원 목록 밖 lang 요청 시 거부하는 테스트
+- [ ] **T4 (P2, human: ~1h / CC: ~15min)** — docs — 문서 드리프트 3곳 수정
+  - Surfaced by: §17-1 D5 — `tts_cache` locale/voice 컬럼 주장이 실제 스키마와 다름
+  - Files: `docs/history/20260629_GlobalExpansion_plan.md`(§4), 이 문서 §0-2 상단·§14-4
+  - Verify: 문서 대조 리뷰(자동 테스트 대상 아님)
+- [ ] **T5 (P2, human: ~1일 / CC: ~2h)** — i18n — 하드코딩 한국어 문자열 정적 스캔 테스트
+  - Surfaced by: §17-2 D6 — `extraction.test.ts`의 allowlist 밖은 무방비
+  - Files: `frontend/src/shared/i18n/`(신규 스캔 테스트), 운영 로그 훅
+  - Verify: 의도적으로 하드코딩 문자열 하나 넣어 테스트가 잡는지 확인(뮤테이션 체크)
+- [ ] **T6 (P1, human: ~4h / CC: ~1h)** — common/ai-proxy — 로케일 게이트 deny-by-default 전환
+  - Surfaced by: §17-2 D7 — 일부 보조 경로가 fail-closed가 아님
+  - Files: `backend/src/common/locale.ts` 소비처 전수 점검
+  - Verify: 새 로케일 분기점에 대해 허용 목록 없으면 거부하는 회귀 테스트
+- [ ] **T7 (P1, human: ~2h / CC: ~30min)** — ai-service — STT/발음채점 `lang` 필수화
+  - Surfaced by: §17-2 D8 — `stt.py:36`, `pronunciation.py:47`의 `Form("ko-KR")` 기본값
+  - Files: `ai-service/routers/stt.py`, `ai-service/routers/pronunciation.py`
+  - Verify: lang 누락 시 400/422, 기존 호출부(프론트) 전수 lang 전달 확인
+- [ ] **T8 (P1, human: ~3일 / CC: ~6h)** — ai-service — 영어 메모 PII 마스킹 코퍼스 + 유출 측정 (M1 Exit)
+  - Surfaced by: §17-3 D9 — `masking_corpus.py` 85줄 중 75줄 한국어, 영어 마스킹 미측정
+  - Files: `ai-service/tests/masking_corpus.py`, `masking_holdout.py`, `constants/korean_pii.py`(영어 대응 신설)
+  - Verify: 영어 홀드아웃 유출률 측정, 한국어와 동일 기준(현재 38%→75% 개선 경험 참고, `project_local-ner-pii-debt.md`)
+- [ ] **T9 (P2, human: ~4h / CC: ~1h)** — frontend/infra — TTS 로케일→보이스 맵 + ko/en 테스트
+  - Surfaced by: §17-3 D10 — `AzureTtsService.ts` 한국어 보이스 하드코딩, 테스트가 그걸 고정
+  - Files: `frontend/src/shared/infrastructure/AzureTtsService.ts`, `AzureTtsService.test.ts`
+  - Verify: ko/en 두 로케일 모두 올바른 보이스 선택 테스트(기존 테스트를 회귀 방지용으로 재작성)
+- [ ] **T10 (P2, human: ~1일 / CC: ~2h)** — memory — 로케일 다른 가구만 명시적 직렬 번역
+  - Surfaced by: §17-4 D11 — R7=(c) 비동기 분리와 마스킹→번역→생성 직렬 요구가 충돌
+  - Files: `backend/src/memory/memory.service.ts`
+  - Verify: 같은 로케일 가구는 기존 비동기 분리 유지, 다른 로케일 가구만 직렬 체인 타는 테스트
+- [ ] **T11 (P2, human: ~4h / CC: ~1h)** — frontend/quiz — QabSpeechBank 로케일별 동적 import
+  - Surfaced by: §17-4 D12 — ko/en 자극 JSON 동시 정적 import, 메인 청크 908.8KB
+  - Files: `frontend/src/memory-link/patient/quiz/infrastructure/QabSpeechBank.ts`
+  - Verify: `vite build` 재측정으로 메인 청크 감소 확인, 청크 로드 실패 시 에러 핸들링 테스트(§17-8 신규 실패 모드)
+- [ ] **T12 (P1, human: ~1일 / CC: ~3h)** — memory — `healing_messages`/`diary_questions` locale 컬럼 + UTC 오늘 계산 수정
+  - Surfaced by: M1 Exit ⑨(a)(b) — entity에 locale 컬럼 없음, `Math.floor(now.getTime()/MS_PER_DAY)` UTC 기준
+  - Files: `backend/src/memory/entities/healing-message.entity.ts`, `diary-question.entity.ts`, `services/healing-message.service.ts`
+  - Verify: `week-boundary.ts` 재사용, 타임존 경계 케이스 테스트(한국·미국 동시 자정 전후)
+- [ ] **T13 (P1, human: ~4h / CC: ~1h)** — profile — persona 라벨 로케일 독립화
+  - Surfaced by: M1 Exit ⑨(c) — `FAMILY_RELATION_LABELS`·`PLACE_TOKEN_LABEL` 한국어 고정
+  - Files: `backend/src/profile/constants/profile.constants.ts`, `persona-context.service.ts`
+  - Verify: 영어 가구 페르소나 토큰 복원(de-anonymize) 테스트
+- [ ] **T14 (P2, human: ~4h / CC: ~1h)** — scripts — retention 코호트 쿼리에 로케일 축 추가
+  - Surfaced by: M1 Exit ⑨(d) — `report-retention.ts:112-122`이 `(timezone, week_start)`만 봄
+  - Files: `backend/scripts/report-retention.ts`
+  - Verify: 한국·미국 코호트가 섞이지 않는지 테스트, M0 ③ 기준 측정 재검증
+- [ ] **T15 (P3, human: ~2h / CC: ~30min)** — deploy — 배포 게이트 다중 시간대 지원
+  - Surfaced by: M1 Exit ⑨(e) — `02-app-deploy.sh`가 `Asia/Seoul` 하나만 봄(PR #234)
+  - Files: `scripts/deploy/02-app-deploy.sh`
+  - Verify: 기존 `02-app-deploy.window.test.sh` 8케이스 유지 + 미국 시간대 케이스 추가
+
+**JSONL 아티팩트:** `jq` 미설치로 이번 세션은 JSONL 파일을 쓰지 못했다 — `/autoplan` 집계가
+필요하면 `jq` 설치 후 이 표로 수동 생성하거나 다음 리뷰에서 재기록한다.
+
+## 18. TODOS.md 반영 (4차 엔지니어링 리뷰, 2026-09-23)
+
+개별 확인 결과(2026-09-23): TODOS.md에 추가 넷 — `healing-message-weekday-rotation-check`(P2),
+`bilingual-household-demand-validation`(P2, D13 후속), `content-item-id-locale-prefix-consistency`(P3),
+`founding-member-clock-recheck`(P3, CEO 리뷰 후보). 바로 문서 수정 하나 — M2 Exit에 "T12 검수 통과" 추가(§16-2).
+
+---
+
 ## GSTACK REVIEW REPORT
 
 | Review | Trigger | Why | Runs | Status | Findings |
 |--------|---------|-----|------|--------|----------|
 | CEO Review | `/plan-ceo-review` | Scope & strategy | 1 | ISSUES_OPEN (PLAN) | 6 proposals, 4 accepted, 2 deferred |
 | Codex Review | `/codex review` | Independent 2nd opinion | 0 | — | — |
-| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 3 | ISSUES_OPEN (PLAN) | 5 issues, 0 critical gaps, mode: FULL_REVIEW (2026-09-19) |
+| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 4 | ISSUES_OPEN (PLAN) | 11 issues, 3 critical gaps, mode: FULL_REVIEW (2026-09-25, 4차 전체 재검토) |
 | Design Review | `/plan-design-review` | UI/UX gaps | 1 | ISSUES_OPEN (FULL) | score: 4/10 → 8/10, 8 decisions |
 | DX Review | `/plan-devex-review` | Developer experience gaps | 0 | — | — |
 
-**CROSS-MODEL:** 엔지니어링 리뷰 재실행(2026-09-12)에서 **처음으로 실제 외부 모델(Codex)**이 이 계획을 봤다 — 그전 세 번의 외부 의견은 Codex 사용량 한도로 전부 Claude 서브에이전트(`[single-model]`)였다. Codex 5건은 전부 코드로 확인됐고, 그중 둘이 이 리뷰의 결정을 뒤집었다: 일일 상한(1-1A — 재생성은 `quiz_sets`를 지우고 새로 만든다, 시나리오는 행을 안 남긴다 → 원자적 카운터 OV-A)과 완료 시각(1-2A — 빈 tail이 흔한 정상 경로다 → 저장된 `answered_at` OV-C). 나머지 둘은 빠진 의존성(`answeredAt`의 원천 OV-B)과 범위(시간 축 다섯 쿼리 OV-D)였다. 이 계획서가 코드를 안 읽어서 틀린 사례는 이로써 다섯 번째다(§14-3).
+**CROSS-MODEL:** 4차 리뷰의 외부 의견은 Codex가 `MODEL_UNUSABLE`(계정이 `gpt-6-astra` 미지원, HTTP 400)이라 같은 계열 Claude 서브에이전트로 돌았다(`[single-model]`, 교차 검증 아님). 12건 중 5건을 코드로 직접 확인해 M1 Exit ⑨(a)~(e)로 반영했고(D14), 이중 로케일 가구 전제는 수요 검증 후 결정으로 남겼다(D13).
 
-**VERDICT:** ENG CLEARED — **한국 출시 전 Phase 0 착수 가능**(§14-1 왼쪽 열, 작업 R1~R8). Phase 1(i18n)·Phase 3(영어 문항)과 언어 배관 다섯은 한국 코호트 `report:retention` 수치가 ③ 기준을 넘은 뒤(§13 OV-2A, §14 D2-A). CEO 미결 1건은 TODO로 추적되며 착수를 막지 않는다.
+**4차 엔지니어링 리뷰(전체 재검토):** 결정 13건 — 아키텍처 4(D2~D5), 코드 품질 3(D6~D8), 테스트 2(D9~D10), 성능 2(D11~D12), 교차 모델 2(D13~D14). 구현은 아직 시작하지 않았고 §17-10에 T1~T15로 남겼다. critical gap 3: healing-message UTC 기준일(무테스트·무핸들링·조용한 실패), 로케일별 채점 규칙 부재(M2 게이트 전 우회 시 조용한 오채점), retention 코호트 로케일 축 부재.
 
-**3차 엔지니어링 리뷰(2026-09-19, 전체 재검토) — 구현 진척 대비 검토.** 수용 5건: ① ~~`assessments/*` 뷰모델 훅도 §7-7 결정 B처럼 `localeRef`로 세션 고정~~ — **구현 중 철회(2026-09-19)**: `useMixedQuizSession`의 `localeRef`는 문항·채점 로케일을 고정할 뿐 UI 문구는 그쪽도 live `t()`이고, `assessments/*` 훅은 로케일 값을 아예 쓰지 않아 고정할 대상이 없다 ② 번역 함수 타입 별칭 하나로(인라인 5곳 중복) ③ 로딩 문구 말줄임표를 `…`로 통일(9키) ④ 이 문서의 상태 줄 갱신(위 머리말) ⑤ `useLocaleSync`에 계정 전환 테스트(`fetched.userId === userId` 가드가 무검증). 성능 발견 0건(`t` 참조 안정성은 react-i18next 소스로 확인). 외부 의견은 Codex 모델이 계정에서 안 돼 Claude 서브에이전트(`[single-model]`)로 돌았다 — 새 발견 1건(**영어 웰니스 라벨의 배포 전 법무 검토 단계가 계획에 없다** → TODOS), 과장 1건(§4 1-2 총계 — 표가 이미 재구현 파일을 태그했다, 현행 유지), 근거 없음 1건(`locale` 컬럼 표기 — §15가 이미 정리), 범위 밖 1건(미국 이중 로케일 가구 가정 — CEO 영역). 구현 태스크: T2 번역 타입 별칭(#225), T3 말줄임표(#227), T5 계정 전환 테스트(#228), T6 TODOS 항목·T4 상태 줄(이 PR). T1은 위 이유로 철회.
+**VERDICT:** ENG ISSUES OPEN — 미결 결정 1건과 critical gap 3건이 남아 있어 M1 문 열기 전 §16-2 M1 Exit ⑨(a)~(e) 해소가 필요하다. Phase 0 기존 결론(§14)은 재확인, 변경 없음.
 
 **UNRESOLVED DECISIONS:**
-- 3차 리뷰 외부 의견 #4 — 이중 로케일 가구 모델이 미국 시장에도 맞는가(응답 없이 넘어감; 이 계획서의 범위 밖이라 CEO 리뷰 후보)
+- D13 — 이중 로케일 가구(영어 보호자 + 한국어 환자)를 M1 첫 타겟으로 할지: 수요 검증 후 결정하기로 함(TODOS `bilingual-household-demand-validation`), 검증 전까지 M1 ④·D11 설계는 잠정
 - + 6 unresolved from prior reviews (CEO 1: 창립 기간 뒤 유료 층 모양 — TODOS `stripe-and-founding-sunset` · Design 5: §8-2의 10·11·13, §7-5 등 해당 Phase에서 답할 항목)

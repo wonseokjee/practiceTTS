@@ -79,6 +79,85 @@ pg 클라이언트 전역 설정이라 느린 정상 쿼리(문항 생성 등)�
 **Priority:** P3
 **Depends on:** 서버 기동 + 실측
 
+## 다음 할 일 — 영어판 준비 (4차 엔지니어링 리뷰, 2026-09-23 기준)
+
+전체 재검토(`/plan-eng-review`, [20260906_EnglishLocalization_execution_plan.md](docs/history/20260906_EnglishLocalization_execution_plan.md) §17) 결과. 아키텍처·코드품질·테스트·성능 12건은 그 문서 §17에 결정과 함께 남겼다(구현은 아직 시작 안 함). 여기 넷은 별도 TODO로 추적하기로 한 것.
+
+| | 내용 | 우선순위 |
+|---|---|---|
+| **healing-message-weekday-rotation-check** | 치유 메시지 요일 로테이션 불일치 조사 — UTC 버그 수정과 묶는다 | `P2` |
+| **bilingual-household-demand-validation** | 한인 가족(이중 로케일) 수요를 싸게 검증하는 구체 계획 수립·실행 | `P2` |
+| **content-item-id-locale-prefix-consistency** | en-US 콘텐츠 자산 파일명 규칙을 ko와 통일 | `P3` |
+| **founding-member-clock-recheck** | M1/M2 지연이 창립 회원 혜택 기간에 미치는 영향 재계산 (CEO 리뷰 후보) | `P3` |
+
+### healing-message-weekday-rotation-check
+
+**What:** `healing-message.service.ts`의 "오늘" 계산이 `users.timezone`이 아니라 UTC epoch
+기준이라는 버그(실행계획 §16-2 M1 Exit ⑨b, 이번 리뷰가 코드로 확인)를 고칠 때, 아웃사이드
+보이스(Claude 서브에이전트, Codex `MODEL_UNUSABLE`로 폴백)가 별도로 지적한 "요일 기준
+로테이션 불일치"도 같이 조사한다 — 같은 버그의 다른 증상인지 독립된 버그인지 이번 리뷰에서
+직접 재검증하지 않았다.
+
+**Why:** 확인 없이 넘어가면 UTC 수정 후에도 다른 로테이션 결함이 남아 "같은 날 두 사람이
+같은 메시지를 본다"는 설계 불변식이 계속 깨질 수 있다.
+
+**Context:** `healing-message.service.ts:28-50`(`getTodayMessage()`,
+`Math.floor(now.getTime() / MS_PER_DAY)`). 고칠 때 `week-boundary.ts`의 타임존 인지
+버킷 계산 헬퍼를 재사용한다(이미 다른 곳에서 쓰는 정석 패턴, 새로 짜지 않는다).
+
+**Effort:** S(조사) → 수정 규모는 조사 후 결정
+**Priority:** P2
+**Depends on:** 실행계획 §16-2 M1 Exit ⑨b(UTC 버그 수정) 착수 시점에 함께
+
+### bilingual-household-demand-validation
+
+**What:** 4차 엔지니어링 리뷰의 교차 모델 긴장(D13, 2026-09-23) — "한인 가족(영어 보호자 +
+한국어 환자, 이중 로케일 가구)이 M1의 첫 타겟으로 맞는가"를 두고 리뷰와 아웃사이드 보이스가
+갈렸다. 사용자는 "수요를 싸게 먼저 검증한 뒤 결정"을 택했으나, 검증 대상·방법·비용의 구체
+계획이 아직 없다.
+
+**Why:** 검증 없이 지금 계획대로 진행하면 M1이 틀린 가정 위에 설계될 위험이 있다 — 실행계획
+§16-2 M1 ④(TZ·주 시작 쓰기 경로)와 §17 D11(로케일 다른 가구만 명시적 직렬 번역)이 단일
+로케일 가구로 단순화할 경우 통째로 불필요해진다.
+
+**Context:** T12(원어민 검수자 섭외)와 비슷하게 M0 리드타임 트랙에서 병렬로 돌려야 하는
+작업이다(실행계획 §16 결정 변경 문단 참고). 검증 방법 예시(엔지니어링이 확정한 것은 아님):
+랜딩페이지 대기자 명단으로 "영어 보호자+한국어 환자" 조합 비율 측정, 인터뷰 소수 진행.
+
+**Effort:** M (설계 + 실행)
+**Priority:** P2
+**Depends on:** 없음 — M0에서 T7·T12와 함께 시작 가능
+
+### content-item-id-locale-prefix-consistency
+
+**What:** 일부 en-US 콘텐츠 자산 파일명이 ko 자산의 명명 규칙과 다르다(아웃사이드 보이스
+발견, 부분 검증 — 정확히 어느 파일이 어긋나는지는 이번 리뷰에서 특정하지 않았다).
+
+**Why:** 콘텐츠 파이프라인을 자동화하거나 향후 `es-US` 확장 시, 명명 규칙이 갈라져 있으면
+파싱·매칭 버그로 이어진다. 지금 자산이 적을 때 통일하는 게 나중 대량 리네이밍보다 싸다.
+
+**Context:** 착수 시 `frontend/src/assets/data/*.en-US.json` 전체를 대응하는 ko 파일과
+대조해 규칙을 확정해야 한다.
+
+**Effort:** S~M
+**Priority:** P3
+**Depends on:** 없음 — 실행계획 §16-2 M2 ③(영어 콘텐츠 ~1,100개 작성) 본격화 전에 끝내면 된다
+
+### founding-member-clock-recheck
+
+**What:** M1/M2 구현이 늘어질 경우, 첫 미국 가입일 기준 10개월로 정해진 유료 전환(M3) 시점이
+가까워져 창립 회원 혜택 기간이 실질적으로 축소되는지 재계산한다(아웃사이드 보이스 지적,
+미검증). 엔지니어링이 판단할 사안이 아니라 사업 결정 사항이다.
+
+**Why:** 엔지니어링 구현 순서(§17 D2~D12)가 사업 약속(창립 회원)에 직접 영향을 줄 수 있다.
+
+**Context:** 실행계획 §16-2 M3 참고. `/plan-ceo-review` 후보로 표시 — 다음 CEO 리뷰에서
+다룬다.
+
+**Effort:** S(재계산) — 사업 판단 자체는 별도
+**Priority:** P3
+**Depends on:** 없음, `/plan-ceo-review`에서 다룰 것
+
 ## 다음 할 일 (2026-09-06 기준)
 
 **#150(글자조합 신규 단어) 1차 배치 47개 — 2음절 56→81, 3~4음절 43→65.**
