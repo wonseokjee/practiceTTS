@@ -9,7 +9,7 @@
 
 | 순서 | 내용 | 메우는 공백 | 상태 |
 |---|---|---|---|
-| 0 | **asr-12th-vocab-holdout** — 12차 학습 + `eval_vocab_holdout_colab.ipynb` 실행, 대장에 판정 기록 | 낯선 단어 성능 | 준비 완료(#241), Colab 실행 대기 |
+| 0 | **asr-12th-vocab-holdout** — 12차 학습 + `eval_vocab_holdout_colab.ipynb` 실행, 대장에 판정 기록 | 낯선 단어 성능 | 준비 완료(#241, 효율 조정 후 약 3시간), Colab 실행 대기 |
 | 1 | **asr-target-word-verification** — 받아쓰기 대신 "목표 단어를 시도했나"를 확인하는 채점. 오판정률·오통과율 곡선 | 낯선 단어·오판정 | 설계 등록(대장 「목표 단어 검증 — 설계」) |
 | 2 | **asr-asymmetric-error-policy** — 주 지표를 오판정률·오통과율로 바꾸고, 확신이 낮으면 "틀렸어요" 대신 다시 말하기를 요청 | 오판정의 피해 | 1의 곡선이 나온 뒤 |
 | 3 | **asr-severity-breakdown** — 기존 예측을 화자 범주·화자별 기준 CER로 다시 집계(608에 중증도 라벨은 없다) | 중증 환자 성능 | 추론을 다시 돌릴 필요 없음 |
