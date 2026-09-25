@@ -62,7 +62,7 @@
 
 ### Phase 0 — 기반 (시장 무관, 선투자)
 - `react-i18next` 도입 + 전체 UI 문자열 키 추출 (`ko` 기본 + `en` 추가)
-- `tts_cache`에 `locale` / `voice` 컬럼 추가, 사전생성(pregenerated) 파이프라인 언어별 분기
+- ~~`tts_cache`에 `locale` / `voice` 컬럼 추가~~ — **DB 테이블이 없다**(2026-09-25 정정). TTS 캐시는 ai-service의 파일 캐시이고 키가 `sha256(voice|text)`라 언어 간 충돌이 없어 손댈 게 없다. 남은 일은 사전생성(pregenerated) 파이프라인의 언어별 분기
 - 용어 매핑 레이어: "검사/QAB/회복" → 영어판 웰니스 어휘
 
 ### Phase 1 — 영어 콘텐츠
