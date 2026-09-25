@@ -6,10 +6,11 @@
 //  - 영어 풀이 모자라도 한국어로 채우지 않는다(콘텐츠를 채우는 중이다)
 //  - 겹침 방지(exclude)가 접두 붙은 id로 동작한다
 
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import en from '../../../../assets/data/qabSpeechStimuli.en-US.json';
 import ko from '../../../../assets/data/qabSpeechStimuli.json';
 import {
+  ensureSpeechBank,
   pickDdkItems,
   pickReadingItems,
   pickRepeatItems,
@@ -18,6 +19,10 @@ import {
 } from './QabSpeechBank.js';
 
 const EN = { locale: 'en-US' };
+
+beforeAll(async () => {
+  await ensureSpeechBank('en-US');
+});
 const HANGUL = /[가-힣]/;
 const enSyllables = new Map(
   (en.repeatWords as { text: string; syllables: number }[]).map((w) => [
