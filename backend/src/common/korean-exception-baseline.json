@@ -1,0 +1,16 @@
+{
+  "auth/auth.controller.ts": 1,
+  "auth/effective-patient-id.util.ts": 2,
+  "auth/oauth-state.ts": 2,
+  "auth/onboarding.guard.ts": 1,
+  "events/events.service.ts": 2,
+  "memory/memory-photo.controller.ts": 2,
+  "memory/memory.service.ts": 10,
+  "memory/services/diary-question.service.ts": 1,
+  "memory/services/memory-photo.service.ts": 3,
+  "profile/profile.controller.ts": 1,
+  "profile/profile.service.ts": 6,
+  "quiz/quiz.controller.ts": 1,
+  "settings/locale-settings.service.ts": 3,
+  "training/training.service.ts": 13
+}
