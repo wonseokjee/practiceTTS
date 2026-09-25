@@ -1,6 +1,7 @@
 import { QuizQuestion } from '../entities/quiz-question.entity';
 import { QuizQuestionType } from '../constants/quiz-question-type';
-import { QuizScorerService } from './quiz-scorer.service';
+import { FILL_BLANK_RULES, QuizScorerService } from './quiz-scorer.service';
+import { SUPPORTED_LOCALES } from '../../common/locale';
 
 /**
  * QuizScorerService 도메인 순수 로직 단위 테스트 (R3 점수 / R4 빈칸 엄격도).
@@ -205,6 +206,41 @@ describe('QuizScorerService', () => {
 
     it('totalQuestions가 음수이면 0점을 반환해야 한다', () => {
       expect(scorer.toScore(3, -1)).toBe(0);
+    });
+  });
+
+  describe('로케일별 채점 규칙', () => {
+    it('ko-KR이 기본이다 — 끝 음절 받침은 여전히 무시한다', () => {
+      const q = buildQuestion('fill_blank', '사랑');
+      expect(scorer.isCorrect(q, '사라')).toBe(true);
+      expect(scorer.isCorrect(q, '사라', 'ko-KR')).toBe(true);
+    });
+
+    it('en-US는 한글 종성 규칙을 쓰지 않는다 — 한글이 섞여도 정확 일치만', () => {
+      const q = buildQuestion('fill_blank', '사랑');
+      expect(scorer.isCorrect(q, '사라', 'en-US')).toBe(false);
+      expect(scorer.isCorrect(q, '사랑', 'en-US')).toBe(true);
+    });
+
+    it('en-US: 대소문자·공백은 무시하고 철자가 다르면 오답', () => {
+      const q = buildQuestion('fill_blank', 'Ice Cream');
+      expect(scorer.isCorrect(q, 'ice  cream', 'en-US')).toBe(true);
+      expect(scorer.isCorrect(q, 'ice creem', 'en-US')).toBe(false);
+    });
+
+    it('규칙이 없는 로케일은 조용히 한국어 규칙으로 채점하지 않고 던진다', () => {
+      const q = buildQuestion('fill_blank', 'agua');
+      expect(() => scorer.isCorrect(q, 'agua', 'es-US')).toThrow(
+        /채점 규칙이 없는 로케일/,
+      );
+    });
+
+    it('M2 게이트: 서버 지원 목록의 환자 로케일은 전부 채점 규칙이 있다', () => {
+      // 환자 en-US 문을 여는 커밋(SUPPORTED_LOCALES.patient에 값 추가)이 채점 규칙 없이
+      // 들어가면 여기서 깨진다.
+      for (const locale of SUPPORTED_LOCALES.patient) {
+        expect(FILL_BLANK_RULES[locale]).toBeDefined();
+      }
     });
   });
 });

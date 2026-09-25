@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { QuizQuestion } from '../entities/quiz-question.entity';
 import { IQuizScorer } from '../interfaces/IQuizScorer';
+import { DEFAULT_LOCALE } from '../../common/locale';
 
 /** yes/no 정규화 매핑 — 긍정 표현 집합 (o/ㅇ 포함: O/X 토글 UI 대응) */
 const YES_TOKENS = new Set(['예', '네', '응', 'yes', 'y', 'true', 'o', 'ㅇ']);
@@ -22,6 +23,21 @@ const HANGUL_SYLLABLE_END = 0xd7a3;
 const HANGUL_JONGSEONG_COUNT = 28;
 
 /**
+ * 로케일별 채점 규칙. **여기에 없는 로케일은 채점하지 않고 던진다** — 한글 종성
+ * 규칙이 다른 언어 답안에 조용히 적용되는 것을 막는다. 서버 지원 목록
+ * (SUPPORTED_LOCALES.patient)의 모든 로케일은 이 표에 규칙이 있어야 하고,
+ * 테스트가 그것을 강제한다(환자 `en-US` 문을 여는 M2 Exit 조건).
+ */
+export interface FillBlankRule {
+  /** 끝 음절 받침을 무시할지 — 한국어 전용 관용 */
+  stripFinalCoda: boolean;
+}
+export const FILL_BLANK_RULES: Readonly<Record<string, FillBlankRule>> = {
+  'ko-KR': { stripFinalCoda: true },
+  'en-US': { stripFinalCoda: false },
+};
+
+/**
  * 채점기 구현체 (R3 점수 / R4 빈칸 엄격도).
  *
  * - multiple_choice: 공백 trim + 대소문자 무시 후 정확 일치.
@@ -33,7 +49,15 @@ const HANGUL_JONGSEONG_COUNT = 28;
  */
 @Injectable()
 export class QuizScorerService implements IQuizScorer {
-  isCorrect(question: QuizQuestion, userAnswer: string): boolean {
+  isCorrect(
+    question: QuizQuestion,
+    userAnswer: string,
+    locale: string = DEFAULT_LOCALE,
+  ): boolean {
+    const rule = FILL_BLANK_RULES[locale];
+    if (!rule) {
+      throw new Error(`채점 규칙이 없는 로케일: ${locale}`);
+    }
     switch (question.type) {
       case 'multiple_choice':
         return (
@@ -55,8 +79,8 @@ export class QuizScorerService implements IQuizScorer {
       case 'tile_arrange':
       case 'speech':
         return (
-          this.normalizeFillBlank(userAnswer) ===
-          this.normalizeFillBlank(question.correctAnswer)
+          this.normalizeFillBlank(userAnswer, rule) ===
+          this.normalizeFillBlank(question.correctAnswer, rule)
         );
       default:
         return false;
@@ -94,13 +118,15 @@ export class QuizScorerService implements IQuizScorer {
    *
    * 중간 음절의 받침은 보존하므로 서로 다른 단어가 과도하게 충돌하지 않는다.
    */
-  private normalizeFillBlank(value: string): string {
+  private normalizeFillBlank(value: string, rule: FillBlankRule): string {
     const chars = Array.from(value.replace(/\s+/g, ''));
     if (chars.length === 0) {
       return '';
     }
-    const lastIndex = chars.length - 1;
-    chars[lastIndex] = this.stripJongseong(chars[lastIndex]);
+    if (rule.stripFinalCoda) {
+      const lastIndex = chars.length - 1;
+      chars[lastIndex] = this.stripJongseong(chars[lastIndex]);
+    }
     return chars.join('').toLowerCase();
   }
 
