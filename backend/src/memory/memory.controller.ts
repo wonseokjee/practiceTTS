@@ -170,11 +170,13 @@ export class MemoryController {
    */
   @Get('diary-questions/today')
   async getTodayQuestion(
+    @Req() req: AuthenticatedRequest,
     @Query() query: DiaryQuestionQueryDto,
   ): Promise<DiaryQuestionResponseDto> {
     const question = await this.diaryQuestionService.getTodayQuestion(
       query.scope,
       query.category,
+      req.user.locale,
     );
     return toDiaryQuestionResponseDto(question);
   }
@@ -187,6 +189,10 @@ export class MemoryController {
   async getTodayHealingMessage(
     @Req() req: AuthenticatedRequest,
   ): Promise<{ id: string; text: string }> {
-    return this.healingMessageService.getTodayMessage(req.user.timezone);
+    return this.healingMessageService.getTodayMessage(
+      req.user.timezone,
+      undefined,
+      req.user.locale,
+    );
   }
 }

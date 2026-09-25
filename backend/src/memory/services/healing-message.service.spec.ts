@@ -97,4 +97,16 @@ describe('HealingMessageService', () => {
     repoMock.find.mockResolvedValue([msg('a', 0)]);
     await expect(service.getTodayMessage("x'; drop")).rejects.toThrow();
   });
+
+  it('요청 로케일의 풀만 조회한다 — 영어 사용자에게 한국어 배너를 내지 않는다', async () => {
+    repoMock.find.mockResolvedValue([]);
+
+    await expect(
+      service.getTodayMessage('America/New_York', new Date(), 'en-US'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+
+    expect(repoMock.find).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { isActive: true, locale: 'en-US' } }),
+    );
+  });
 });
