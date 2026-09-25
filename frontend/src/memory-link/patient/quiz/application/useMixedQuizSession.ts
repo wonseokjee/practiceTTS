@@ -69,6 +69,7 @@ import {
   pickRepeatItems,
   pickReadingItems,
   pickDdkItems,
+  ensureSpeechBank,
 } from '../infrastructure/QabSpeechBank.js';
 import type { PickSpeechOptions } from '../infrastructure/QabSpeechBank.js';
 import { toQuizErrorInfo } from './quizError.js';
@@ -394,6 +395,7 @@ export function useMixedQuizSession(
   const fetchAndApply = useCallback(async (): Promise<void> => {
     try {
       const detail = await apiRef.current.getSet(quizSetId);
+      await ensureSpeechBank(localeRef.current);
 
       // 적응형: 스킬별 현재 레벨을 읽어 문항 제시 난이도를 정한다. 조회 실패는
       // 비차단 — 기본 난이도(레벨 미지정)로 진행한다(레벨은 환자에게 비노출).

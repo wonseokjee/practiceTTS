@@ -17,7 +17,6 @@
 //     음절 수가 아니다. 문장은 단어 수(공백 기준).
 
 import koStimuli from '../../../../assets/data/qabSpeechStimuli.json';
-import enStimuli from '../../../../assets/data/qabSpeechStimuli.en-US.json';
 import { languageOf } from '../../../../shared/domain/locale.js';
 import { shuffle } from '../../../../shared/domain/shuffle.js';
 import type { DdkKind, LengthRange } from '../domain/difficultyRules.js';
@@ -68,7 +67,6 @@ interface SpeechBank {
 }
 
 const KO = koStimuli as KoStimuli;
-const EN = enStimuli as EnStimuli;
 
 const KO_BANK: SpeechBank = {
   idPrefix: '',
@@ -85,21 +83,43 @@ const KO_BANK: SpeechBank = {
 
 // 지시문은 i18n 1-2(문자열 추출) 때 환자 네임스페이스로 옮긴다 — 영어 문구는
 // 그때 톤(계획서 Q11, elderspeak 회피)과 함께 다시 본다.
-const EN_BANK: SpeechBank = {
-  idPrefix: `${EN.locale}:`,
-  words: EN.repeatWords,
-  repeatSentences: EN.repeatSentences.map((s) => s.text),
-  readingSentences: EN.readingSentences.map((s) => s.text),
-  ddk: EN.ddk,
-  instructions: {
-    repeat: 'Listen carefully, then say it back',
-    reading: 'Read this sentence out loud',
-    ddk: 'Say this sound again and again, as fast and clearly as you can',
-  },
-};
+function buildEnBank(en: EnStimuli): SpeechBank {
+  return {
+    idPrefix: `${en.locale}:`,
+    words: en.repeatWords,
+    repeatSentences: en.repeatSentences.map((s) => s.text),
+    readingSentences: en.readingSentences.map((s) => s.text),
+    ddk: en.ddk,
+    instructions: {
+      repeat: 'Listen carefully, then say it back',
+      reading: 'Read this sentence out loud',
+      ddk: 'Say this sound again and again, as fast and clearly as you can',
+    },
+  };
+}
+
+const isEnglish = (locale?: string): boolean =>
+  locale !== undefined && languageOf(locale) === 'en';
+
+/**
+ * 영어 자극은 메인 번들에 넣지 않고 세션이 영어로 시작할 때 처음 한 번 불러온다
+ * (한국어만 쓰는 사용자가 영어 문장 55KB를 받지 않게). pick*는 동기 함수라 **세션이
+ * 뽑기 전에 이걸 await해야 한다.** 실패하면 던져서 세션의 재시도 경로로 넘어간다.
+ */
+let enBank: SpeechBank | null = null;
+export async function ensureSpeechBank(locale?: string): Promise<void> {
+  if (!isEnglish(locale) || enBank !== null) return;
+  const mod = await import('../../../../assets/data/qabSpeechStimuli.en-US.json');
+  enBank = buildEnBank(mod.default as EnStimuli);
+}
 
 function bankFor(locale?: string): SpeechBank {
-  return locale !== undefined && languageOf(locale) === 'en' ? EN_BANK : KO_BANK;
+  if (!isEnglish(locale)) return KO_BANK;
+  // 영어 세션인데 안 불러왔으면 한국어 문항으로 대신하지 않고 터뜨린다.
+  if (enBank === null) {
+    throw new Error('영어 자극이 아직 로드되지 않았다 — ensureSpeechBank를 먼저 await');
+  }
+  return enBank;
 }
 
 function within(n: number, range: LengthRange | null): boolean {
