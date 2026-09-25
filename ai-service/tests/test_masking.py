@@ -204,3 +204,58 @@ class TestDegradedSignal:
         result = await service.mask_text("평범한 문장입니다", "entry-2")
 
         assert result.degraded is False
+
+
+# ── 영어(en-US) 메모 ───────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_english_phone_and_person_masked_before_gemini():
+    """영어 메모의 미국 전화·호칭 인명은 Gemini에 가기 전에 로컬에서 가려진다."""
+    service, llm = build_service([])
+    result = await service.mask_text(
+        "Call (212) 555-0123 and ask for Dr. Patel about my son Michael",
+        ENTRY_ID,
+        lang="en-US",
+    )
+    assert "555-0123" not in result.masked_text
+    assert "212" not in result.masked_text
+    assert "Patel" not in result.masked_text
+    assert "Michael" not in result.masked_text
+    # Gemini로 나간 프롬프트에도 원문이 없다
+    assert all("555-0123" not in p and "Patel" not in p for p in llm.prompts)
+
+
+@pytest.mark.asyncio
+async def test_english_years_and_amounts_untouched():
+    service, _ = build_service([])
+    text = "In 1953 we paid $1,500 for the car"
+    result = await service.mask_text(text, ENTRY_ID, lang="en-US")
+    assert result.masked_text == text
+
+
+@pytest.mark.asyncio
+async def test_english_labels_not_duplicated_across_layers():
+    """영어 계층과 한국 정규식이 각자 전화를 잡아도 같은 라벨을 두 번 쓰지 않는다."""
+    service, _ = build_service([])
+    result = await service.mask_text(
+        "Home (212) 555-0123 and mobile 010-1234-5678", ENTRY_ID, lang="en-US"
+    )
+    labels = [w for w in result.masked_text.split() if w.startswith("PHONE_")]
+    assert len(labels) == len(set(labels)) == 2
+
+
+@pytest.mark.asyncio
+async def test_unsupported_lang_rejected_not_defaulted_to_korean():
+    from services.masking_service import UnsupportedMaskingLangError
+
+    service, _ = build_service([])
+    with pytest.raises(UnsupportedMaskingLangError):
+        await service.mask_text("agua", ENTRY_ID, lang="es-US")
+
+
+@pytest.mark.asyncio
+async def test_korean_default_unchanged():
+    service, _ = build_service([])
+    result = await service.mask_text("연락처는 010-1234-5678이에요", ENTRY_ID)
+    assert "5678" not in result.masked_text

@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from dependencies import get_masking_service
 from domain.errors import GeminiApiError, ResidualPiiError, TextTooLongError
 from models.masking import MaskRequest, MaskResponse
-from services.masking_service import MaskingService
+from services.masking_service import MaskingService, UnsupportedMaskingLangError
 
 router = APIRouter(prefix="/mask", tags=["masking"])
 
@@ -27,6 +27,7 @@ async def mask_text(
         result = await service.mask_text(
             raw_text=body.raw_text,
             memory_entry_id=body.memory_entry_id,
+            lang=body.lang,
         )
         return MaskResponse(
             memory_entry_id=body.memory_entry_id,
@@ -34,6 +35,12 @@ async def mask_text(
             entity_count=result.entity_count,
             degraded=result.degraded,
         )
+
+    except UnsupportedMaskingLangError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"지원하지 않는 언어입니다: {exc}",
+        ) from exc
 
     except TextTooLongError as exc:
         raise HTTPException(
