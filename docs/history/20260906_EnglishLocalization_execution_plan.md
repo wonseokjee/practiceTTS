@@ -1349,23 +1349,23 @@ JSONL: `~/.gstack/projects/wonseokjee-practiceTTS/tasks-design-review-20260906-2
   - Surfaced by: Pass 4 — `unicode-range` 없음, 실측 2,346KB → 257KB (약 89% 감소)
   - Files: `frontend/index.html:9`
   - Verify: 브라우저 network 탭에서 woff2 전송 합계 확인
-- [ ] **T1 (P1, human: ~1d / CC: ~40min)** — db/migration — 환자·보호자 로케일 + 타임존 + 주 시작 요일을 **한** 마이그레이션에
+- [x] **T1 [#254] (P1, human: ~1d / CC: ~40min)** — db/migration — 환자·보호자 로케일 + 타임존 + 주 시작 요일을 **한** 마이그레이션에
   - Surfaced by: Pass 7 — 로케일이 하나면 다국어 가족에서 둘 중 하나가 못 읽는 화면을 받는다
   - Files: `qab-result.entity.ts`, `user.entity.ts`(§13 OV-6 정정), `database/migrations`
   - Verify: dev DB에서 소급 채우기 후 기존 행이 전부 `ko-KR`인지
-- [ ] **T2 (P1, human: ~2d / CC: ~1h)** — frontend/onboarding — 언어 설정 화면 (추론값 프리필 + 확인)
+- [x] **T2 [#253] (P1, human: ~2d / CC: ~1h)** — frontend/onboarding — 언어 설정 화면 (추론값 프리필 + 확인)
   - Surfaced by: Pass 1 — 처음 정하는 자리가 없어 구현자가 조용히 기본값을 박게 된다
   - Files: `OnboardingScreen.tsx`, `PatientSetupScreen.tsx`
   - Verify: 추론 실패 시 아무것도 선택 안 된 상태로 뜨는지
-- [ ] **T3 (P1, human: ~2h / CC: ~15min)** — frontend/css — `word-break`/`overflow-wrap` 로케일 분리
+- [x] **T3 [#243] (P1, human: ~2h / CC: ~15min)** — frontend/css — `word-break`/`overflow-wrap` 로케일 분리
   - Surfaced by: Pass 4 — TODO-008이 언어만 바꿔 돌아온다
   - Files: `frontend/src/index.css:136-137`
   - Verify: 실측 스케치를 en으로 열어 단어 중간 끊김 없음
-- [ ] **T4 (P1, human: ~1d / CC: ~30min)** — frontend/layout — 375px 헤더 9px 넘침
+- [x] **T4 [#255] (P1, human: ~1d / CC: ~30min)** — frontend/layout — 375px 헤더 9px 넘침
   - Surfaced by: Pass 6 — 실측 ko 368px → en 384px
   - Files: `CaregiverDashboard.tsx:149-167`
   - Verify: 375px에서 가로 스크롤 없음
-- [ ] **T5 (P2, human: ~4h / CC: ~20min)** — frontend/quiz — 세션 시작 시 로케일 고정 + 기록
+- [x] **T5 [#256] (P2, human: ~4h / CC: ~20min)** — frontend/quiz — 세션 시작 시 로케일 고정 + 기록
   - Surfaced by: Pass 2 — 한 세션에 두 채점기가 섞이면 점수가 무의미
   - Files: `useMixedQuizSession.ts`, `quiz.service.ts`
   - Verify: 세션 중 설정 변경 시 진행 중 세션의 `locale`이 안 바뀌는지
@@ -1373,7 +1373,7 @@ JSONL: `~/.gstack/projects/wonseokjee-practiceTTS/tasks-design-review-20260906-2
   - Surfaced by: Pass 2 — i18next 기본 폴백은 한국어 원문 노출
   - Files: `memory-link/shared`
   - Verify: 콘텐츠 미완 상태에서 en 전환이 막히는지
-- [ ] **T7 (P2, human: ~1d / CC: ~40min)** — test/layout — 의사 현지화 레이아웃 검사
+- [x] **T7 [#243] (P2, human: ~1d / CC: ~40min)** — test/layout — 의사 현지화 레이아웃 검사
   - Surfaced by: TODOS `pseudo-loc-layout-test`
   - Files: `frontend/src`
   - Verify: 지금 아는 위반(헤더)을 이 검사가 잡는지
@@ -1381,7 +1381,7 @@ JSONL: `~/.gstack/projects/wonseokjee-practiceTTS/tasks-design-review-20260906-2
   - Surfaced by: Pass 3 — FTC 포지셔닝 문구의 자리가 없었다
   - Files: `OnboardingScreen.tsx`
   - Verify: DESIGN.md 문구 규칙(FK 5학년·8단어·구동사 금지) 통과
-- [ ] **T9 (P3, human: ~2h / CC: ~10min)** — frontend/layout — 통계 카드 숫자 세로 정렬
+- [x] **T9 [#250] (P3, human: ~2h / CC: ~10min)** — frontend/layout — 통계 카드 숫자 세로 정렬
   - Surfaced by: Pass 6 — 영어에서 라벨 줄 수가 갈려 숫자가 어긋난다
   - Files: `QabProgressCard.tsx`
   - Verify: 라벨 1줄/2줄이 섞여도 숫자 baseline이 나란한지
@@ -1608,8 +1608,8 @@ Codex는 사용량 한도로 실패했다. 서브에이전트 12건 중 11건이
 
 **영어판 착수 판정 (한국 코호트 수치 뒤)**
 
-- [ ] **T11 (P1, human: ~반나절 / CC: ~30분)** — docs — 전략 문서에 킬 기준·유통·맞바꿈·창립 약속 문장(③)
-- [ ] **T12 (P1, 섭외 ~2-4주)** — people — 영어 검수자 섭외(②)
+- [x] **T11 [#252] (P1, human: ~반나절 / CC: ~30분)** — docs — 전략 문서에 킬 기준·유통·맞바꿈·창립 약속 문장(③)
+- [~] **T12 [#245 UTC·#247 locale 컬럼] (P1, 섭외 ~2-4주)** — people — 영어 검수자 섭외(②)
 
 **영어판 (게이트 통과 뒤)**
 
@@ -1843,7 +1843,7 @@ Lane F: D                    (S 뒤)
 | | 목표 | 들어갈 작업 | 여는 조건(Exit) |
 |---|---|---|---|
 | **M0** 착수 판정 | 영어판을 할지 정한다 | **T11** ③절 — 기준을 `report:retention` 지표 이름(#173)으로 적는다. 값은 사용자 결정. **리드타임 트랙을 여기서 띄운다**: T12 검수자 섭외(2~4주), T7 법률 확인, §8-2 Q9(콘텐츠를 누가 쓰나) | ③ 기준 통과 판정 |
-| **M1** 영어 보호자 문 (`caregiver_locale='en-US'`) | 한인 가족(영어 보호자 + 한국어 부모)을 받는다 | ① **0-5c 서버 게이트가 첫 커밋**(fail-closed, 지원 목록은 서버가 내려준다) ② Phase 1 — `react-i18next`(1-1 규약 다섯 개 확정) → 문자열 추출 ~25커밋 → 1-3 용어 매핑(웰니스 어휘 = FTC 가드레일) ③ 보호자용 영어 시드(치유 메시지·일기 질문, §3-4) ④ 언어 설정 화면(§7-0·§7-6) + TZ·주 시작 **쓰기 경로**(1-3A) — 이때 §15-1 둘째 줄(과거 버킷 소급)을 정한다 ⑤ 인증은 google + 이메일, 이름 first/last(§7-3) ⑥ T16 `en.json` lint, 타이포(§7-1), 보호자 화면 WCAG 2.1 AA ⑦ **T7 컴플라이언스** ⑧ 창립 회원 약속 문장 고정(10-1) ⑨ **4차 엔지니어링 리뷰(§17)가 코드로 확인한 M1 Exit 추가 5건** — (a) `healing_messages`·`diary_questions`에 `locale` 컬럼이 없다(entity 확인) → 영어 보호자가 열자마자 한국어 배너를 본다 (b) `healing-message.service.ts:45`의 "오늘" 계산이 `users.timezone`이 아니라 UTC epoch 기준 — 한국·미국 동시 접속 시 같은 날에 다른 메시지 (c) `profile.constants.ts`의 `FAMILY_RELATION_LABELS`·`PLACE_TOKEN_LABEL`이 한국어 고정 → 영어 가구의 페르소나 토큰 복원(`persona-context.service.ts:138`)이 깨진다 (d) `report-retention.ts:112-122`의 코호트 쿼리가 `(timezone, week_start)`만 보고 로케일 축이 없어 M0 ③ 기준(한국 코호트 지표)에 미국 코호트가 섞인다 (e) 배포 게이트(PR #234, `02-app-deploy.sh`)가 시간대 하나(`Asia/Seoul`)만 본다 — 미국 이용자가 늘면 이 창이 더는 "치료 시간대"를 대표하지 않는다 | 서버 지원 목록에 보호자 `en-US`를 넣는다 — 그게 곧 문을 여는 커밋. **위 ⑨(a)~(e) 다섯 항목이 모두 닫혀야** 문을 연다(2026-09-23 결정, §17) |
+| **M1** 영어 보호자 문 (`caregiver_locale='en-US'`) | 한인 가족(영어 보호자 + 한국어 부모)을 받는다 | ① **0-5c 서버 게이트가 첫 커밋**(fail-closed, 지원 목록은 서버가 내려준다) ② Phase 1 — `react-i18next`(1-1 규약 다섯 개 확정) → 문자열 추출 ~25커밋 → 1-3 용어 매핑(웰니스 어휘 = FTC 가드레일) ③ 보호자용 영어 시드(치유 메시지·일기 질문, §3-4) ④ 언어 설정 화면(§7-0·§7-6) + TZ·주 시작 **쓰기 경로**(1-3A) — 이때 §15-1 둘째 줄(과거 버킷 소급)을 정한다 ⑤ 인증은 google + 이메일, 이름 first/last(§7-3) ⑥ T16 `en.json` lint, 타이포(§7-1), 보호자 화면 WCAG 2.1 AA ⑦ **T7 컴플라이언스** ⑧ 창립 회원 약속 문장 고정(10-1) ⑨ **4차 엔지니어링 리뷰(§17)가 코드로 확인한 M1 Exit 추가 5건** — (a) `healing_messages`·`diary_questions`에 `locale` 컬럼이 없다(entity 확인) → 영어 보호자가 열자마자 한국어 배너를 본다 (b) `healing-message.service.ts:45`의 "오늘" 계산이 `users.timezone`이 아니라 UTC epoch 기준 — 한국·미국 동시 접속 시 같은 날에 다른 메시지 (c) ~~백엔드 `FAMILY_RELATION_LABELS`·`PLACE_TOKEN_LABEL` 한국어 고정~~ → **정정(2026-09-25):** 영어 보호자에게 실제로 보이는 건 프런트 `ProfileScreen`의 한국어 관계 라벨이었고 i18n으로 옮겼다(#249, 완료). 백엔드 토큰 라벨은 내부 값이라 영어 환자가 생기는 M2 항목 (d) `report-retention.ts:112-122`의 코호트 쿼리가 `(timezone, week_start)`만 보고 로케일 축이 없어 M0 ③ 기준(한국 코호트 지표)에 미국 코호트가 섞인다 (e) ~~배포 게이트가 서울 시간대만 본다~~ → **철회(2026-09-25):** 게이트가 지키는 건 한국어 환자의 치료 시간이라 M1(영어 보호자 + 한국 환자)에선 서울 기준이 맞다. 환자가 미국에 있는 M2에서 재판단 | 서버 지원 목록에 보호자 `en-US`를 넣는다 — 그게 곧 문을 여는 커밋. **위 ⑨(a)(b)(d)가 닫혀야**(모두 완료: #247·#245·#248) 문을 연다 — 2026-09-23 결정 당시 다섯 항목이었으나 (c)는 프런트 라벨로 정정·완료, (e)는 철회(§17-10 진행 현황) |
 | **M2** 영어 환자 문 (`patient_locale='en-US'`) | 영어로 푸는 환자를 받는다 | ① 0-4 채점 `lang` 관통 + 로케일별 임계값 상수 ② 0-5d 제출 DTO `locale` → `qab_results.locale` — **2단 배포**(DEPLOYMENT.md), 기존 NULL = `ko-KR` 규약(§15-1 첫 줄) ③ **Phase 3 콘텐츠 ~1,100** — 따라말하기·읽기 신규(음절 필드 — 설계: [20260913_EnglishSpeechContent_design.md](20260913_EnglishSpeechContent_design.md)), 단어이해·이름대기 라벨 + 음운 유인지·단서 문구(Q10), 문장이해 재설계(§6-2), 글자조합 anagram 재설계(Q5가 선행), DDK·LOC 라벨 ④ 그림 167개 문화 적합성(§7-4) + 정적 TTS 34개 재생성 ⑤ T13 메모 번역 저장(OV-1A), T14 문자 체계 관문, T15 `measure_quiz`(번역 케이스) ⑥ T18 조회 창을 `(locale, subtest)`별로 ⑦ 격려 문구 톤(Q11)·`UNSCORED` 문구 재작성(§7-7) | 모든 검사가 밴드 기준(116)을 채우고 **T12 원어민 검수를 통과** → 서버 목록에 환자 `en-US`(2026-09-23: "양"만이 아니라 "질"도 명시, §17-3 D9 인접 발견) |
 | **M3** 유료 전환 준비 | 창립 기간이 끝나기 전 결제 | Stripe USD + Tax, 유료 층 모양(TODOS `stripe-and-founding-sunset`). 착수 = **첫 미국 가입일 + 10개월** | 창립 12개월 만료 전 전환 안내 |
 
@@ -2080,7 +2080,7 @@ D11(직렬 번역)이 통째로 사라진다는 논거. 리뷰는 지금 계획(
   - Surfaced by: §17-2 D8 — `stt.py:36`, `pronunciation.py:47`의 `Form("ko-KR")` 기본값
   - Files: `ai-service/routers/stt.py`, `ai-service/routers/pronunciation.py`
   - Verify: lang 누락 시 400/422, 기존 호출부(프론트) 전수 lang 전달 확인
-- [ ] **T8 (P1, human: ~3일 / CC: ~6h)** — ai-service — 영어 메모 PII 마스킹 코퍼스 + 유출 측정 (M1 Exit)
+- [~] **T8 [#257 — 로컬 계층만] (P1, human: ~3일 / CC: ~6h)** — ai-service — 영어 메모 PII 마스킹 코퍼스 + 유출 측정 (M1 Exit)
   - Surfaced by: §17-3 D9 — `masking_corpus.py` 85줄 중 75줄 한국어, 영어 마스킹 미측정
   - Files: `ai-service/tests/masking_corpus.py`, `masking_holdout.py`, `constants/korean_pii.py`(영어 대응 신설)
   - Verify: 영어 홀드아웃 유출률 측정, 한국어와 동일 기준(현재 38%→75% 개선 경험 참고, `project_local-ner-pii-debt.md`)
@@ -2104,7 +2104,7 @@ D11(직렬 번역)이 통째로 사라진다는 논거. 리뷰는 지금 계획(
   - Surfaced by: M1 Exit ⑨(c) — `FAMILY_RELATION_LABELS`·`PLACE_TOKEN_LABEL` 한국어 고정
   - Files: `backend/src/profile/constants/profile.constants.ts`, `persona-context.service.ts`
   - Verify: 영어 가구 페르소나 토큰 복원(de-anonymize) 테스트
-- [ ] **T14 (P2, human: ~4h / CC: ~1h)** — scripts — retention 코호트 쿼리에 로케일 축 추가
+- [x] **T14 [#248] (P2, human: ~4h / CC: ~1h)** — scripts — retention 코호트 쿼리에 로케일 축 추가
   - Surfaced by: M1 Exit ⑨(d) — `report-retention.ts:112-122`이 `(timezone, week_start)`만 봄
   - Files: `backend/scripts/report-retention.ts`
   - Verify: 한국·미국 코호트가 섞이지 않는지 테스트, M0 ③ 기준 측정 재검증
@@ -2112,6 +2112,25 @@ D11(직렬 번역)이 통째로 사라진다는 논거. 리뷰는 지금 계획(
   - Surfaced by: M1 Exit ⑨(e) — `02-app-deploy.sh`가 `Asia/Seoul` 하나만 봄(PR #234)
   - Files: `scripts/deploy/02-app-deploy.sh`
   - Verify: 기존 `02-app-deploy.window.test.sh` 8케이스 유지 + 미국 시간대 케이스 추가
+
+**진행 현황 (2026-09-25, 구현 착수 후):**
+
+- 끝남: T1·T2·T3·T4·T5·T7·T9·T11·T14, T12(둘 다: 타임존 오늘 계산 #245, locale 컬럼 #247).
+- **T13 재정의(#249):** 이 리뷰가 "백엔드 페르소나 토큰 라벨이 한국어라 영어 가구가 깨진다"고 적었지만,
+  토큰은 내부 값이고 환자 화면에는 역치환 실명이 나간다 — 영어 **보호자**(M1)에게 보이는 한국어 관계
+  라벨은 프런트 `ProfileScreen`의 고정 상수였다. 그것을 i18n으로 옮겼다. 백엔드 토큰 라벨은 masking/
+  quiz/scenario 프롬프트와 얽혀 있고 영어 **환자**가 생기는 M2에서 다룬다 → M1 Exit ⑨(c)는 프런트
+  라벨로 정정, 백엔드 토큰 로케일 독립화는 M2 항목.
+- **T15 미착수·재검토:** 배포 게이트의 "치료 시간대"는 한국어 환자의 치료 시간(서울 09~21)이다. M1의
+  영어 보호자는 배포 시각과 무관하게 한국 환자의 시간에 영향을 받지 않으므로, 서울 기준을 유지하는 게
+  맞다. 환자가 미국에 있는 M2에서 다시 판단한다 → M1 Exit ⑨(e)는 철회.
+- **T6 코드 변경 없음:** 로케일이 서버로 들어오는 곳(설정 저장 `locale-settings.service`, STT·발음 프록시
+  #243)이 모두 `SUPPORTED_LOCALES`로 검사한다. 새 진입점이 생기면 같은 게이트를 쓴다.
+- **T8 부분:** 영어 로컬 PII 계층·코퍼스·홀드아웃·`/mask`의 `lang`(#257). 남은 것: (1) backend
+  `fastApiClient.mask` 호출부(`memory.service`·`quiz.service`)가 메모 로케일을 `lang`으로 보내게 배선하고
+  ai-service 기본값 제거 (2) **Gemini 포함 실제 유출률 실측**(앵커 없는 맨 이름).
+- **T10 미착수:** 로케일이 다른 가구의 메모 번역 파이프라인 자체가 아직 없다(§16-2 M2 ⑤ T13 번역 저장).
+  직렬화 규칙은 그 파이프라인을 만들 때 함께 적용한다.
 
 **JSONL 아티팩트:** `jq` 미설치로 이번 세션은 JSONL 파일을 쓰지 못했다 — `/autoplan` 집계가
 필요하면 `jq` 설치 후 이 표로 수동 생성하거나 다음 리뷰에서 재기록한다.
