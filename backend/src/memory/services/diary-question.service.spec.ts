@@ -59,7 +59,12 @@ describe('DiaryQuestionService', () => {
 
     // Then
     expect(diaryQuestionRepoMock.find).toHaveBeenCalledWith({
-      where: { scope: 'patient', category: 'activity', isActive: true },
+      where: {
+        scope: 'patient',
+        category: 'activity',
+        locale: 'ko-KR',
+        isActive: true,
+      },
     });
     expect(['q1', 'q2', 'q3']).toContain(result.id);
   });
@@ -94,7 +99,7 @@ describe('DiaryQuestionService', () => {
 
     // Then
     expect(diaryQuestionRepoMock.find).toHaveBeenCalledWith({
-      where: { scope: 'caregiver', isActive: true },
+      where: { scope: 'caregiver', locale: 'ko-KR', isActive: true },
     });
     expect(result.scope).toBe('caregiver');
   });
@@ -115,5 +120,17 @@ describe('DiaryQuestionService', () => {
     expect(result.activity).toBeDefined();
     expect(result.moment).toBeDefined();
     expect(result.context).toBeDefined();
+  });
+
+  it('요청 로케일의 풀만 조회한다 — 다른 언어 문항으로 대체하지 않는다', async () => {
+    diaryQuestionRepoMock.find.mockResolvedValue([]);
+
+    await expect(
+      service.getTodayQuestion('caregiver', undefined, 'en-US'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+
+    expect(diaryQuestionRepoMock.find).toHaveBeenCalledWith({
+      where: { scope: 'caregiver', locale: 'en-US', isActive: true },
+    });
   });
 });

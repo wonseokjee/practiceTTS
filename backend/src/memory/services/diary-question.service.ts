@@ -6,6 +6,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PatientNoteCategory } from '../../quiz/constants/patient-note-category';
+import { DEFAULT_LOCALE } from '../../common/locale';
 import { DiaryQuestion } from '../entities/diary-question.entity';
 
 /**
@@ -35,6 +36,7 @@ export class DiaryQuestionService {
   async getTodayQuestion(
     scope: 'caregiver' | 'patient',
     category?: PatientNoteCategory,
+    locale: string = DEFAULT_LOCALE,
   ): Promise<DiaryQuestion> {
     if (scope === 'patient' && !category) {
       throw new BadRequestException(
@@ -44,8 +46,8 @@ export class DiaryQuestionService {
 
     const where =
       scope === 'caregiver'
-        ? { scope, isActive: true }
-        : { scope, category, isActive: true };
+        ? { scope, locale, isActive: true }
+        : { scope, category, locale, isActive: true };
 
     const candidates = await this.diaryQuestionRepository.find({ where });
 
@@ -65,15 +67,17 @@ export class DiaryQuestionService {
    * - 어느 카테고리든 풀이 비어있으면 NotFoundException.
    * - 클라이언트가 Step3 진입 시 3개 질문을 한 번에 prefetch할 때 사용.
    */
-  async getRandomPatientQuestionsByCategory(): Promise<{
+  async getRandomPatientQuestionsByCategory(
+    locale: string = DEFAULT_LOCALE,
+  ): Promise<{
     activity: DiaryQuestion;
     moment: DiaryQuestion;
     context: DiaryQuestion;
   }> {
     const [activity, moment, context] = await Promise.all([
-      this.getTodayQuestion('patient', 'activity'),
-      this.getTodayQuestion('patient', 'moment'),
-      this.getTodayQuestion('patient', 'context'),
+      this.getTodayQuestion('patient', 'activity', locale),
+      this.getTodayQuestion('patient', 'moment', locale),
+      this.getTodayQuestion('patient', 'context', locale),
     ]);
     return { activity, moment, context };
   }
@@ -81,7 +85,9 @@ export class DiaryQuestionService {
   /**
    * 보호자 회고 질문 1개 랜덤 추출 (getTodayQuestion('caregiver')의 별칭).
    */
-  async getRandomCaregiverQuestion(): Promise<DiaryQuestion> {
-    return this.getTodayQuestion('caregiver');
+  async getRandomCaregiverQuestion(
+    locale: string = DEFAULT_LOCALE,
+  ): Promise<DiaryQuestion> {
+    return this.getTodayQuestion('caregiver', undefined, locale);
   }
 }

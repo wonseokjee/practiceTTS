@@ -14,7 +14,7 @@ import {
  * - 멱등 시드 안정 키: text
  */
 @Entity('healing_messages')
-@Index('IDX_healing_messages_active', ['isActive'])
+@Index('IDX_healing_messages_active', ['locale', 'isActive'])
 export class HealingMessage {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -22,6 +22,10 @@ export class HealingMessage {
   // 메시지 본문 (최대 300자)
   @Column({ type: 'varchar', length: 300 })
   text: string;
+
+  // 노출 대상 로케일(users.locale과 같은 값). 기존 행은 전부 ko-KR
+  @Column({ type: 'varchar', length: 8, default: 'ko-KR' })
+  locale: string;
 
   // 비활성 메시지는 회전 풀에서 제외
   @Column({ name: 'is_active', type: 'boolean', default: true })

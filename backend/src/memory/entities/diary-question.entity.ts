@@ -15,6 +15,7 @@ import {
  */
 @Entity('diary_questions')
 @Index('IDX_diary_questions_scope_cat_active', [
+  'locale',
   'scope',
   'category',
   'isActive',
@@ -22,6 +23,10 @@ import {
 export class DiaryQuestion {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  // 노출 대상 로케일(users.locale과 같은 값). 기존 행은 전부 ko-KR
+  @Column({ type: 'varchar', length: 8, default: 'ko-KR' })
+  locale: string;
 
   // 'caregiver' | 'patient' — VARCHAR(16), 애플리케이션 레벨 enum 검증
   @Column({ type: 'varchar', length: 16 })

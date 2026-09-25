@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { HealingMessage } from '../entities/healing-message.entity';
+import { DEFAULT_LOCALE } from '../../common/locale';
 import { assertTimezone, DEFAULT_TIMEZONE } from '../../common/week-boundary';
 
 /** 하루 길이(ms) — 날짜 인덱스 계산용 */
@@ -42,14 +43,16 @@ export class HealingMessageService {
    * 오늘의 메시지 1개 반환.
    * @param timezone 사용자 IANA 타임존(users.timezone)
    * @param now 테스트 주입용(기본 현재 시각)
+   * @param locale 사용자 로케일(users.locale) — 그 로케일의 풀만 쓴다
    * @throws NotFoundException 활성 메시지가 하나도 없을 때 (HEALING_POOL_EMPTY)
    */
   async getTodayMessage(
     timezone: string = DEFAULT_TIMEZONE,
     now: Date = new Date(),
+    locale: string = DEFAULT_LOCALE,
   ): Promise<{ id: string; text: string }> {
     const messages = await this.healingMessageRepository.find({
-      where: { isActive: true },
+      where: { isActive: true, locale },
       order: { orderIndex: 'ASC', createdAt: 'ASC' },
     });
 
