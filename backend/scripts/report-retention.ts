@@ -32,9 +32,11 @@
  * 실행:
  *   cd backend && npm run report:retention -- [--since=2026-10-01] [--weeks=8] [--json]
  *   --since : 이 날짜(UTC 0시) 이후 가입한 환자만. 출시 전 개발·시연 계정을 뺄 때.
+ *   --locale: 환자 로케일(기본 ko-KR). `all`이면 로케일 구분 없이 전부.
  * (DB 접속은 src/database/data-source.ts 의 env를 그대로 사용)
  */
 import { DataSource } from 'typeorm';
+import { DEFAULT_LOCALE } from '../src/common/locale';
 import {
   assertTimezone,
   assertWeekStart,
@@ -74,6 +76,8 @@ export interface RetentionReport {
   since: string | null;
   weeks: number;
   households: number;
+  /** 세는 환자 로케일. null = 로케일 구분 없이 전부. */
+  locale: string | null;
   cohorts: CohortRow[];
   metrics: Record<RetentionMetric, MetricValue>;
 }
@@ -84,7 +88,16 @@ export interface RetentionOptions {
   since?: Date | null;
   /** 코호트 표에 보일 W0..W(weeks) 칸 수. */
   weeks: number;
+  /**
+   * 환자 로케일(`users.locale`)로 코호트를 거른다. 생략하면 ko-KR — ③절 기준은
+   * 한국 코호트 수치라, 로케일 축 없이 세면 미국 가구가 섞여 판정이 흐려진다.
+   * null이면 로케일 구분 없이 전부 센다.
+   */
+  locale?: string | null;
 }
+
+const localeOf = (opts: RetentionOptions): string | null =>
+  opts.locale === undefined ? DEFAULT_LOCALE : opts.locale;
 
 interface Household {
   cohortWeek: string;
@@ -111,11 +124,13 @@ async function loadHouseholds(
     weekStart,
     (opts.since ?? new Date(0)).toISOString(),
     opts.now.toISOString(),
+    localeOf(opts),
   ];
   const patients = `
     SELECT u.id, ${wb('u.created_at')} AS cohort
     FROM users u
     WHERE u.role = 'patient' AND u.timezone = $1 AND u.week_start = $2
+      AND ($5::text IS NULL OR u.locale = $5)
       AND u.created_at >= $3::timestamptz AND u.created_at < $4::timestamptz`;
 
   const rows: { id: string; cohort_week: string; current_offset: number }[] =
@@ -214,8 +229,10 @@ export async function buildRetentionReport(
   opts: RetentionOptions,
 ): Promise<RetentionReport> {
   const combos: { timezone: string; week_start: number }[] = await ds.query(
-    `SELECT DISTINCT timezone, week_start FROM users WHERE role = 'patient'
+    `SELECT DISTINCT timezone, week_start FROM users
+     WHERE role = 'patient' AND ($1::text IS NULL OR locale = $1)
      ORDER BY 1, 2`,
+    [localeOf(opts)],
   );
 
   const all: Household[] = [];
@@ -278,6 +295,7 @@ export async function buildRetentionReport(
     since: opts.since ? opts.since.toISOString() : null,
     weeks: opts.weeks,
     households: all.length,
+    locale: localeOf(opts),
     cohorts,
     metrics,
   };
@@ -291,7 +309,7 @@ export function formatRetentionReport(r: RetentionReport): string {
     `W${n}`.padStart(4),
   ).join(' ');
   const lines = [
-    `코호트 유지율 — 기준 ${r.now}, 가입 ${r.since ?? '(전체)'} 이후, 가구 ${r.households}`,
+    `코호트 유지율 — 기준 ${r.now}, 가입 ${r.since ?? '(전체)'} 이후, 로케일 ${r.locale ?? '(전체)'}, 가구 ${r.households}`,
     '',
     `가입 주       가구 | 환자 ${weeks} | 보호자 ${weeks}`,
     ...r.cohorts.map(
@@ -319,6 +337,7 @@ function parseArgs(argv: string[]): {
   since: Date | null;
   weeks: number;
   json: boolean;
+  locale: string | null;
 } {
   const get = (key: string) =>
     argv.find((a) => a.startsWith(`--${key}=`))?.split('=')[1];
@@ -331,7 +350,13 @@ function parseArgs(argv: string[]): {
   if (!Number.isInteger(weeks) || weeks < 1 || weeks > 52) {
     throw new Error(`--weeks는 1~52 정수: ${get('weeks')}`);
   }
-  return { since, weeks, json: argv.includes('--json') };
+  const localeArg = get('locale') ?? DEFAULT_LOCALE;
+  return {
+    since,
+    weeks,
+    json: argv.includes('--json'),
+    locale: localeArg === 'all' ? null : localeArg,
+  };
 }
 
 async function main(): Promise<void> {
@@ -345,6 +370,7 @@ async function main(): Promise<void> {
       now: new Date(),
       since: args.since,
       weeks: args.weeks,
+      locale: args.locale,
     });
     console.log(
       args.json
