@@ -132,7 +132,8 @@
 - SSML의 `xml:lang`을 voice 코드에서 파생시킨다(`en-US-AriaNeural` → `en-US`).
   지금은 영어 음성을 화이트리스트에 넣어도 SSML이 ko-KR이라 발음이 깨진다.
 - 화이트리스트는 유지한다(인젝션/SSRF 차단 목적). 언어별로 나눠 담는다.
-- **캐시는 손대지 않아도 된다** — `_cache_path(text, voice)`라 언어 간 충돌이 없다.
+- **캐시는 손대지 않아도 된다** — ai-service **파일 캐시**(`TtsService._cache_path`, 키 `sha256(voice|text)`)라 언어 간 충돌이 없다. `tts_cache` DB 테이블은 없다(전략 문서 §4·CLAUDE.md의 옛 서술은 정정 대상, 2026-09-25).
+- 프런트 `AzureTtsService.ts` 기본 음성은 로케일→음성 맵(`ttsVoices.ts`)과 `createTtsService(locale)`로 풀었다(#250). 서버에 영어 음성·말속도를 넣는 일은 M2.
 
 ### 0-3. STT 언어 기본값을 호출부로 올린다 (커밋 1개) — **PR #164 대기**(§15, D2-A 수정)
 
@@ -1689,6 +1690,7 @@ Codex 사용량 한도가 풀려 **처음으로 실제 외부 모델**이 이 �
 | 테스트 이름 분리 | 기본 Jest `testRegex: ".*\\.spec\\.ts$"`가 `.int-spec.ts`를 제외 |
 | fail-closed 가드 모양 | `CryptoService`의 `onModuleInit` throw |
 | 로컬 저장 예외 처리 | `LocalStorage*Repository` 셋의 try/catch(재전송 큐로는 못 씀 — 대기/보냄 상태 없음) |
+| TTS 캐시 | ai-service 파일 캐시 `TtsService._cache_path(text, voice)` — DB `tts_cache` 테이블은 없다 |
 | 검사 쪽 시각 재료 | `WordComprehensionSession.startedAt`, 반응시간 값 객체 |
 
 ### 14-5. NOT in scope — 검토하고 뺀 것
