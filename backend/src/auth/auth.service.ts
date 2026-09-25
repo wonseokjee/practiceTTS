@@ -32,6 +32,7 @@ import {
   SocialIdentity,
   SocialProviderName,
 } from './entities/social-identity.entity';
+import { AUTH_ERRORS } from '../common/error-codes';
 import type { SocialProfile } from './social-profile';
 
 /**
@@ -150,7 +151,7 @@ export class AuthService {
       });
     } catch (err) {
       if (this.isUniqueViolation(err)) {
-        throw new ConflictException('이미 사용 중인 이메일입니다.');
+        throw new ConflictException(AUTH_ERRORS.EMAIL_TAKEN);
       }
       throw err;
     }
@@ -174,33 +175,25 @@ export class AuthService {
       .getOne();
 
     if (!user) {
-      throw new UnauthorizedException(
-        '이메일 또는 비밀번호가 올바르지 않습니다.',
-      );
+      throw new UnauthorizedException(AUTH_ERRORS.INVALID_CREDENTIALS);
     }
 
     // 로그인 불가 계정(환자/무비번 sentinel)은 bcrypt 비교 전에 명시적으로 거부.
     // bcrypt가 비정상 해시에 대해 throw하여 500이 되는 것을 방지(explicit > clever).
     if (!this.canLogin(user)) {
-      throw new UnauthorizedException(
-        '이메일 또는 비밀번호가 올바르지 않습니다.',
-      );
+      throw new UnauthorizedException(AUTH_ERRORS.INVALID_CREDENTIALS);
     }
 
     // canLogin이 null·sentinel을 이미 거른다. 타입 좁히기용 방어.
     if (!user.passwordHash) {
-      throw new UnauthorizedException(
-        '이메일 또는 비밀번호가 올바르지 않습니다.',
-      );
+      throw new UnauthorizedException(AUTH_ERRORS.INVALID_CREDENTIALS);
     }
     const isPasswordValid = await bcrypt.compare(
       dto.password,
       user.passwordHash,
     );
     if (!isPasswordValid) {
-      throw new UnauthorizedException(
-        '이메일 또는 비밀번호가 올바르지 않습니다.',
-      );
+      throw new UnauthorizedException(AUTH_ERRORS.INVALID_CREDENTIALS);
     }
 
     const accessToken = this.issueToken(user);
@@ -217,7 +210,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('유효하지 않은 인증 토큰입니다.');
+      throw new UnauthorizedException(AUTH_ERRORS.INVALID_TOKEN);
     }
 
     return user;
@@ -232,7 +225,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new NotFoundException('사용자를 찾을 수 없습니다.');
+      throw new NotFoundException(AUTH_ERRORS.USER_NOT_FOUND);
     }
 
     const linkedProviders = await this.listLinkedProviders(userId);
@@ -255,6 +248,7 @@ export class AuthService {
       throw new HttpException(
         {
           statusCode: HttpStatus.TOO_MANY_REQUESTS,
+          code: 'AUTH_RATE_LIMITED',
           message: `잠시 후 다시 시도해주세요. (${retryAfterSec}초)`,
           retryAfterSec,
         },
@@ -270,13 +264,13 @@ export class AuthService {
 
     if (!user || !user.patientModePinHash) {
       // PIN 미설정 계정(환자 등) — 검증 대상 아님
-      throw new UnauthorizedException('PIN이 설정되어 있지 않습니다.');
+      throw new UnauthorizedException(AUTH_ERRORS.PIN_NOT_SET);
     }
 
     const ok = await bcrypt.compare(pin, user.patientModePinHash);
     if (!ok) {
       this.registerPinFailure(userId, now);
-      throw new UnauthorizedException('PIN이 일치하지 않습니다.');
+      throw new UnauthorizedException(AUTH_ERRORS.PIN_MISMATCH);
     }
 
     this.pinAttempts.delete(userId);
@@ -455,14 +449,14 @@ export class AuthService {
     const entry = this.oneTimeCodes.get(code);
     this.oneTimeCodes.delete(code); // 1회용: 조회 즉시 폐기
     if (!entry || Date.now() > entry.expiresAt) {
-      throw new UnauthorizedException('만료되었거나 유효하지 않은 코드입니다.');
+      throw new UnauthorizedException(AUTH_ERRORS.CODE_EXPIRED_OR_INVALID);
     }
     const user = await this.userRepository.findOne({
       where: { id: entry.userId },
       relations: { patient: true },
     });
     if (!user) {
-      throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
+      throw new UnauthorizedException(AUTH_ERRORS.USER_NOT_FOUND);
     }
     const linkedProviders = await this.listLinkedProviders(user.id);
     return {
@@ -481,15 +475,15 @@ export class AuthService {
   ): Promise<UserResponse> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
-      throw new NotFoundException('사용자를 찾을 수 없습니다.');
+      throw new NotFoundException(AUTH_ERRORS.USER_NOT_FOUND);
     }
     // 온보딩(환자 연결)은 보호자만. therapist 등 다른 역할이 patient_id=null이라고
     // 환자 레코드를 만들어 붙이지 못하게 막는다.
     if (user.role !== 'caregiver') {
-      throw new ForbiddenException('보호자 계정만 온보딩할 수 있습니다.');
+      throw new ForbiddenException(AUTH_ERRORS.ONBOARDING_CAREGIVER_ONLY);
     }
     if (user.patientId !== null) {
-      throw new ConflictException('이미 온보딩이 완료되었습니다.');
+      throw new ConflictException(AUTH_ERRORS.ONBOARDING_ALREADY_DONE);
     }
 
     const patientModePinHash = await bcrypt.hash(dto.patientModePin, 10);
@@ -507,7 +501,7 @@ export class AuthService {
         { patientId, patientModePinHash },
       );
       if (res.affected !== 1) {
-        throw new ConflictException('이미 온보딩이 완료되었습니다.');
+        throw new ConflictException(AUTH_ERRORS.ONBOARDING_ALREADY_DONE);
       }
       return repo.findOne({
         where: { id: userId },
@@ -652,13 +646,13 @@ export class AuthService {
     });
     if (existing) {
       if (existing.userId === userId) return; // 이미 연결됨(멱등)
-      throw new ConflictException('이미 다른 계정에 연결된 소셜 계정입니다.');
+      throw new ConflictException(AUTH_ERRORS.SOCIAL_LINKED_ELSEWHERE);
     }
     const sameProvider = await this.identityRepository.findOne({
       where: { userId, provider: profile.provider },
     });
     if (sameProvider) {
-      throw new ConflictException('이미 이 제공자가 연결되어 있습니다.');
+      throw new ConflictException(AUTH_ERRORS.PROVIDER_ALREADY_LINKED);
     }
     try {
       await this.identityRepository.save(
@@ -672,7 +666,7 @@ export class AuthService {
     } catch (err) {
       // 사전 체크 이후의 경합(유니크 위반)은 연결 충돌로 수렴.
       if (this.isUniqueViolation(err)) {
-        throw new ConflictException('이미 연결된 소셜 계정입니다.');
+        throw new ConflictException(AUTH_ERRORS.SOCIAL_ALREADY_LINKED);
       }
       throw err;
     }
@@ -705,7 +699,7 @@ export class AuthService {
         .where('user.id = :id', { id: userId })
         .getOne();
       if (!user) {
-        throw new NotFoundException('사용자를 찾을 수 없습니다.');
+        throw new NotFoundException(AUTH_ERRORS.USER_NOT_FOUND);
       }
       const hasPassword = this.canLogin(user);
 
@@ -713,12 +707,12 @@ export class AuthService {
       const rows = await idRepo.find({ where: { userId } });
       const target = rows.find((r) => r.provider === provider);
       if (!target) {
-        throw new NotFoundException('연결되지 않은 제공자입니다.');
+        throw new NotFoundException(AUTH_ERRORS.PROVIDER_NOT_LINKED);
       }
 
       // 마지막 로그인 수단(비번 없음 + 소셜 신원 1개)은 해제 불가.
       if (rows.length === 1 && !hasPassword) {
-        throw new ForbiddenException('마지막 로그인 수단은 해제할 수 없어요.');
+        throw new ForbiddenException(AUTH_ERRORS.LAST_LOGIN_METHOD);
       }
 
       await idRepo.delete({ userId, provider });
@@ -772,25 +766,21 @@ export class AuthService {
       profile,
     );
     if (!target) {
-      throw new NotFoundException('그 로그인으로 가입된 기존 계정이 없습니다.');
+      throw new NotFoundException(AUTH_ERRORS.MERGE_SOURCE_NOT_FOUND);
     }
     if (target.id === sourceUserId) {
-      throw new ConflictException(
-        '같은 계정입니다. 기존 계정의 다른 로그인 방법을 선택하세요.',
-      );
+      throw new ConflictException(AUTH_ERRORS.MERGE_SAME_ACCOUNT);
     }
 
     const source = await this.userRepository.findOne({
       where: { id: sourceUserId },
     });
     if (!source) {
-      throw new NotFoundException('현재 계정을 찾을 수 없습니다.');
+      throw new NotFoundException(AUTH_ERRORS.CURRENT_USER_NOT_FOUND);
     }
     // 데이터 있는 계정은 자동 병합 대상이 아니다(사후 데이터 통합은 범위 밖).
     if (source.patientId !== null) {
-      throw new ConflictException(
-        '이미 어르신 정보가 등록된 계정은 자동 병합할 수 없습니다.',
-      );
+      throw new ConflictException(AUTH_ERRORS.MERGE_HAS_PATIENT);
     }
 
     await this.dataSource.transaction(async (manager) => {
@@ -804,9 +794,7 @@ export class AuthService {
         where: { id: sourceUserId },
       });
       if (freshSource && freshSource.patientId !== null) {
-        throw new ConflictException(
-          '이미 어르신 정보가 등록된 계정은 자동 병합할 수 없습니다.',
-        );
+        throw new ConflictException(AUTH_ERRORS.MERGE_HAS_PATIENT);
       }
 
       const targetIds = await idRepo.find({ where: { userId: target.id } });
@@ -819,9 +807,7 @@ export class AuthService {
       // 충돌이 없어 정상 진행된다.
       const conflict = sourceIds.find((si) => targetProviders.has(si.provider));
       if (conflict) {
-        throw new ConflictException(
-          '기존 계정에 이미 같은 종류의 로그인이 있어 합칠 수 없습니다.',
-        );
+        throw new ConflictException(AUTH_ERRORS.MERGE_PROVIDER_CONFLICT);
       }
 
       // 충돌이 없으므로 소스 신원을 모두 대상으로 이전한다.
