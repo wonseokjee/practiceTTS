@@ -184,7 +184,9 @@ export class MemoryController {
    * 오늘의 치유 메시지 1개 (Pattern 2). 환자·보호자 공통, 날짜 기반 결정적 회전.
    */
   @Get('healing-messages/today')
-  async getTodayHealingMessage(): Promise<{ id: string; text: string }> {
-    return this.healingMessageService.getTodayMessage();
+  async getTodayHealingMessage(
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{ id: string; text: string }> {
+    return this.healingMessageService.getTodayMessage(req.user.timezone);
   }
 }
