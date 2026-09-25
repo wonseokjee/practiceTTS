@@ -15,6 +15,7 @@
 | 3 | **asr-severity-breakdown** — 기존 예측을 화자 범주·화자별 기준 CER로 다시 집계(608에 중증도 라벨은 없다) | 중증 환자 성능 | 추론을 다시 돌릴 필요 없음 |
 | 4 | **asr-app-audio-collection** — `observe-unassisted-pair-before-cutover` 때 동의받고 녹음 + 보호자 판정 저장(200~300개) | 실제 앱 오디오·실제 착어 | 동의·PII 정책 먼저(#235 법무 흐름) |
 | 5 | **asr-personalization** — 환자별 소형 어댑터. [`personalization-design.md`](docs/asr/personalization-design.md) | 개인차 | 4에서 데이터가 모인 뒤 |
+| — | **speech-scorer-near-word-leak** — 앱 채점기가 사탕←사자·가위←거위 같은 가까운 다른 단어를 정답으로 친다(음운 근접 foil 47%). 1의 실험에서 현행 방식 오통과율이 나오면 고칠지 정한다 | ASR과 무관한 오통과 | 1과 함께 |
 | — | **qab-vocab-608-overlap-bonus** — QAB 단어 선정에 608 어휘 겹침을 가산점으로(치료 목적이 우선) | 낯선 단어 | P3, 0의 결과를 보고 결정 |
 
 **원칙.** 대화 모드는 자유 발화 평가셋이 생길 때까지 ASR 결과를 **점수에 쓰지 않고
