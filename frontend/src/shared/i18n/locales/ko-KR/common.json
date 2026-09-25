@@ -72,7 +72,32 @@
     "networkUnavailable": "서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.",
     "requestFailed": "요청 처리 중 오류가 발생했습니다.",
     "unknown": "알 수 없는 오류가 발생했습니다.",
-    "dailyLimitFallback": "오늘은 여기까지예요. 내일 다시 이어서 해요."
+    "dailyLimitFallback": "오늘은 여기까지예요. 내일 다시 이어서 해요.",
+    "server": {
+      "AUTH_EMAIL_TAKEN": "이미 사용 중인 이메일입니다.",
+      "AUTH_INVALID_CREDENTIALS": "이메일 또는 비밀번호가 올바르지 않습니다.",
+      "AUTH_INVALID_TOKEN": "유효하지 않은 인증 토큰입니다.",
+      "AUTH_USER_NOT_FOUND": "사용자를 찾을 수 없습니다.",
+      "AUTH_PIN_NOT_SET": "PIN이 설정되어 있지 않습니다.",
+      "AUTH_PIN_MISMATCH": "PIN이 일치하지 않습니다.",
+      "AUTH_CODE_EXPIRED_OR_INVALID": "만료되었거나 유효하지 않은 코드입니다.",
+      "AUTH_ONBOARDING_CAREGIVER_ONLY": "보호자 계정만 온보딩할 수 있습니다.",
+      "AUTH_ONBOARDING_ALREADY_DONE": "이미 온보딩이 완료되었습니다.",
+      "AUTH_SOCIAL_LINKED_ELSEWHERE": "이미 다른 계정에 연결된 소셜 계정입니다.",
+      "AUTH_PROVIDER_ALREADY_LINKED": "이미 이 제공자가 연결되어 있습니다.",
+      "AUTH_SOCIAL_ALREADY_LINKED": "이미 연결된 소셜 계정입니다.",
+      "AUTH_PROVIDER_NOT_LINKED": "연결되지 않은 제공자입니다.",
+      "AUTH_LAST_LOGIN_METHOD": "마지막 로그인 수단은 해제할 수 없어요.",
+      "AUTH_MERGE_SOURCE_NOT_FOUND": "그 로그인으로 가입된 기존 계정이 없습니다.",
+      "AUTH_MERGE_SAME_ACCOUNT": "같은 계정입니다. 기존 계정의 다른 로그인 방법을 선택하세요.",
+      "AUTH_CURRENT_USER_NOT_FOUND": "현재 계정을 찾을 수 없습니다.",
+      "AUTH_MERGE_HAS_PATIENT": "이미 어르신 정보가 등록된 계정은 자동 병합할 수 없습니다.",
+      "AUTH_MERGE_PROVIDER_CONFLICT": "기존 계정에 이미 같은 종류의 로그인이 있어 합칠 수 없습니다.",
+      "AUTH_RATE_LIMITED": "잠시 후 다시 시도해주세요. ({{retryAfterSec}}초)",
+      "HEALING_POOL_EMPTY": "오늘의 메시지를 찾을 수 없습니다.",
+      "QUESTION_POOL_EMPTY": "해당 조건에 활성화된 질문이 없습니다.",
+      "LANG_UNSUPPORTED": "지원하지 않는 언어입니다."
+    }
   },
   "app": {
     "loading": "로딩 중...",

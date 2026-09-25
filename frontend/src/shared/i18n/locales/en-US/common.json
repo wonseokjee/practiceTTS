@@ -72,7 +72,32 @@
     "networkUnavailable": "We couldn't reach the server. Please try again shortly.",
     "requestFailed": "Something went wrong processing that request.",
     "unknown": "Something went wrong.",
-    "dailyLimitFallback": "That's it for today. Let's pick back up tomorrow."
+    "dailyLimitFallback": "That's it for today. Let's pick back up tomorrow.",
+    "server": {
+      "AUTH_EMAIL_TAKEN": "This email is already in use.",
+      "AUTH_INVALID_CREDENTIALS": "The email or password is incorrect.",
+      "AUTH_INVALID_TOKEN": "Your sign-in session is no longer valid. Please sign in again.",
+      "AUTH_USER_NOT_FOUND": "We could not find that user.",
+      "AUTH_PIN_NOT_SET": "No PIN has been set.",
+      "AUTH_PIN_MISMATCH": "That PIN does not match.",
+      "AUTH_CODE_EXPIRED_OR_INVALID": "This code has expired or is not valid.",
+      "AUTH_ONBOARDING_CAREGIVER_ONLY": "Only caregiver accounts can complete onboarding.",
+      "AUTH_ONBOARDING_ALREADY_DONE": "Onboarding is already complete.",
+      "AUTH_SOCIAL_LINKED_ELSEWHERE": "This social account is already linked to another account.",
+      "AUTH_PROVIDER_ALREADY_LINKED": "This sign-in method is already linked.",
+      "AUTH_SOCIAL_ALREADY_LINKED": "This social account is already linked.",
+      "AUTH_PROVIDER_NOT_LINKED": "This sign-in method is not linked.",
+      "AUTH_LAST_LOGIN_METHOD": "You cannot remove your last sign-in method.",
+      "AUTH_MERGE_SOURCE_NOT_FOUND": "No existing account uses that sign-in.",
+      "AUTH_MERGE_SAME_ACCOUNT": "That is the same account. Choose a different sign-in method from the existing account.",
+      "AUTH_CURRENT_USER_NOT_FOUND": "We could not find your current account.",
+      "AUTH_MERGE_HAS_PATIENT": "An account that already has a patient profile cannot be merged automatically.",
+      "AUTH_MERGE_PROVIDER_CONFLICT": "The existing account already has this kind of sign-in, so the accounts cannot be merged.",
+      "AUTH_RATE_LIMITED": "Please try again in {{retryAfterSec}} seconds.",
+      "HEALING_POOL_EMPTY": "We could not find today's message.",
+      "QUESTION_POOL_EMPTY": "There is no active question for this selection.",
+      "LANG_UNSUPPORTED": "This language is not supported."
+    }
   },
   "app": {
     "loading": "Loading…",
