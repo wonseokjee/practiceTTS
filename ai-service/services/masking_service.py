@@ -12,6 +12,7 @@ import re
 
 from domain.entities import MaskingResult
 from domain.errors import GeminiApiError, ResidualPiiError, TextTooLongError
+from constants.english_pii import detect_english_pii
 from constants.korean_pii import detect_korean_pii
 from interfaces.llm_client import ILlmClient
 from interfaces.masking_store import IMaskingStore
@@ -35,6 +36,14 @@ _PERSONA_TOKEN_PATTERN = re.compile(r"\[[^\[\]\n]{1,30}\]")
 # 있다("서울시 Place_1 역삼동"). 그 값은 원문에 없어 최종 치환에 실패하고 잔존
 # 검사에 걸린다. 라벨을 포함한 감지 결과는 무시한다(이미 익명화된 값).
 _EXISTING_LABEL_PATTERN = re.compile(r"(?:Family_[MFX]|Place|PHONE|SSN|EMAIL)_\d+")
+
+# 마스킹을 지원하는 메모 언어. 여기 없는 언어는 조용히 한국어 규칙으로 처리하지 않고 거부한다.
+_SUPPORTED_LANGS = frozenset({"ko-KR", "en-US"})
+
+
+class UnsupportedMaskingLangError(ValueError):
+    """마스킹 규칙이 없는 언어."""
+
 
 # 정규식 패턴: 1차 마스킹 대상
 #
@@ -116,12 +125,14 @@ class MaskingService:
         self,
         raw_text: str,
         memory_entry_id: str,
+        lang: str = "ko-KR",
     ) -> MaskingResult:
         """원본 텍스트를 마스킹하여 MaskingResult 반환.
 
         Args:
             raw_text: 원본 에피소드 텍스트
             memory_entry_id: entity_map 저장 키 (UUID)
+            lang: 메모 언어(ko-KR|en-US). 그 밖은 UnsupportedMaskingLangError
 
         Returns:
             MaskingResult (masked_text, entity_count). entity_map 미포함.
@@ -130,6 +141,9 @@ class MaskingService:
             TextTooLongError: 텍스트 5000자 초과
             ResidualPiiError: 마스킹 후 원본 식별자 잔존
         """
+        if lang not in _SUPPORTED_LANGS:
+            raise UnsupportedMaskingLangError(lang)
+
         # 1. 텍스트 길이 검증
         if len(raw_text) > _MAX_TEXT_LENGTH:
             raise TextTooLongError(
@@ -142,14 +156,26 @@ class MaskingService:
         # 2-1. 이미 익명화된 페르소나 토큰을 보호 대상으로 수집
         persona_tokens = set(_PERSONA_TOKEN_PATTERN.findall(raw_text))
 
+        # 2-2. 영어는 미국 전화·SSN·호칭/관계어 인명·기관·주소를 **한국 정규식보다 먼저**
+        #      통째로 잡는다. 한국 규칙이 먼저 돌면 뒤 7자리만 가려져 지역번호가 남는다.
+        text_in = raw_text
+        if lang == "en-US":
+            text_in = self._apply_english_pii_masking(
+                raw_text, entity_map, persona_tokens
+            )
+
         # 3. 정규식 1차 마스킹 (전화번호, 주민번호, 이메일) — Gemini 전에 치환
-        text_after_regex = self._apply_regex_masking(raw_text, entity_map)
+        text_after_regex = self._apply_regex_masking(text_in, entity_map)
 
         # 3-1. 한국어 사전 마스킹 (호칭 인명·기관명·광역지명) — Gemini 전에 치환.
         #      감지를 외부에 의뢰하지 않고 여기서 확실한 것부터 가려, 원문이
         #      Gemini로 새는 양을 줄인다.
-        text_after_korean = self._apply_korean_pii_masking(
-            text_after_regex, entity_map, persona_tokens
+        text_after_korean = (
+            text_after_regex
+            if lang == "en-US"
+            else self._apply_korean_pii_masking(
+                text_after_regex, entity_map, persona_tokens
+            )
         )
 
         # 4. Gemini 3차 마스킹 (사전 필터가 못 잡은 나머지 이름·장소명)
@@ -192,7 +218,11 @@ class MaskingService:
         통해 외부 LLM으로 나간다(마스킹이 사후 라벨링에 그친다). 정규식으로 확실히
         잡을 수 있는 PII는 Gemini에 보내기 **전에** 실제로 치환해야 한다.
         """
-        counters: dict[str, int] = {name: 0 for name in _PATTERNS}
+        # 영어 계층이 먼저 PHONE_1·SSN_1을 부여했을 수 있어 그 다음 번호부터 이어간다.
+        counters: dict[str, int] = {
+            name: self._max_label_index(entity_map, f"{name.upper()}_")
+            for name in _PATTERNS
+        }
         masked = text
 
         for pattern_name, pattern in _PATTERNS.items():
@@ -251,6 +281,35 @@ class MaskingService:
         return any(
             original in token or token in original for token in persona_tokens
         )
+
+    def _apply_english_pii_masking(
+        self,
+        text: str,
+        entity_map: dict[str, str],
+        persona_tokens: set[str],
+    ) -> str:
+        """영어 로컬 PII를 감지·치환한다(한국어 사전 계층의 영어판). 전화·SSN은 PHONE_n·SSN_n."""
+        detected = detect_english_pii(text)
+        if not detected:
+            return text
+
+        counters = {"phone": 0, "ssn": 0}
+        people_places = []
+        for original, kind in detected:
+            if original in entity_map:
+                continue
+            if kind in counters:
+                counters[kind] += 1
+                entity_map[original] = f"{kind.upper()}_{counters[kind]}"
+            else:
+                people_places.append({"original": original, "type": kind})
+        self._assign_labels(people_places, entity_map, persona_tokens)
+
+        masked = text
+        for original in sorted(entity_map.keys(), key=len, reverse=True):
+            if original in {o for o, _ in detected}:
+                masked = masked.replace(original, entity_map[original])
+        return masked
 
     def _apply_korean_pii_masking(
         self,
