@@ -24,7 +24,7 @@ import { aiServiceHeaders } from '../common/ai-service-auth';
 import { RateLimit, RateLimitGuard } from '../common/rate-limit.guard';
 import { EffectivePatientId } from '../auth/decorators/effective-patient-id.decorator';
 import { SpeechDataService } from '../speech-data/speech-data.service';
-import { DEFAULT_LOCALE } from '../common/locale';
+import { isSupportedLocale } from '../common/locale';
 
 /** JwtAuthGuard가 주입한 사용자. 레이트리밋 키로 쓴다. */
 interface AuthenticatedRequest {
@@ -142,6 +142,13 @@ export class AiProxyController {
         .json({ message: '오디오 파일이 필요합니다.' });
       return;
     }
+    if (!body.lang || !isSupportedLocale('patient', body.lang)) {
+      res.status(HttpStatus.BAD_REQUEST).json({
+        message: '지원하지 않는 언어입니다.',
+        code: 'LANG_UNSUPPORTED',
+      });
+      return;
+    }
 
     // 라벨 = 정답 후보 첫 항목(과제 목표 단어). 후보가 없으면(자유 인식) 라벨이
     // 없어 보존 대상이 아니다. 실제 보존은 인식 결과(가설)를 함께 남기려고
@@ -158,7 +165,7 @@ export class AiProxyController {
       }),
       audio.originalname || 'speech.wav',
     );
-    form.append('lang', body.lang ?? DEFAULT_LOCALE);
+    form.append('lang', body.lang);
 
     // candidates는 phrase hint다. 빠뜨리면 인식 정확도가 눈에 띄게 떨어지므로
     // 반드시 그대로 넘긴다(폼 필드가 하나면 문자열, 여럿이면 배열로 온다).
@@ -233,6 +240,13 @@ export class AiProxyController {
         .json({ message: '오디오 파일이 필요합니다.' });
       return;
     }
+    if (!body.lang || !isSupportedLocale('patient', body.lang)) {
+      res.status(HttpStatus.BAD_REQUEST).json({
+        message: '지원하지 않는 언어입니다.',
+        code: 'LANG_UNSUPPORTED',
+      });
+      return;
+    }
     const reference = (body.reference_text ?? '').trim();
     if (reference.length === 0) {
       res
@@ -249,7 +263,7 @@ export class AiProxyController {
       }),
       audio.originalname || 'speech.wav',
     );
-    form.append('lang', body.lang ?? DEFAULT_LOCALE);
+    form.append('lang', body.lang);
     form.append('reference_text', reference);
 
     try {
