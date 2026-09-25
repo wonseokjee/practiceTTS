@@ -12,17 +12,6 @@ export type FamilyRelation =
   | 'friend'
   | 'other';
 
-export const FAMILY_RELATION_LABELS: Record<FamilyRelation, string> = {
-  spouse: '배우자',
-  son: '아들',
-  daughter: '딸',
-  grandson: '손자',
-  granddaughter: '손녀',
-  sibling: '형제자매',
-  friend: '친구',
-  other: '기타',
-};
-
 export const FAMILY_RELATION_OPTIONS: FamilyRelation[] = [
   'spouse',
   'son',

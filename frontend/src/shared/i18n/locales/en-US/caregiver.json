@@ -208,6 +208,16 @@
     "delete": "Delete",
     "removeItemAria": "Remove {{item}}",
     "relationSelectAria": "Choose relationship",
+    "relation": {
+      "spouse": "Spouse",
+      "son": "Son",
+      "daughter": "Daughter",
+      "grandson": "Grandson",
+      "granddaughter": "Granddaughter",
+      "sibling": "Sibling",
+      "friend": "Friend",
+      "other": "Other"
+    },
     "familyNamePlaceholder": "Name (e.g. Alex)",
     "familyNameAria": "Family member's name",
     "genderSelectAria": "Choose gender",

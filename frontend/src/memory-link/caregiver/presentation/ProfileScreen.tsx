@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   FAMILY_RELATION_OPTIONS,
-  FAMILY_RELATION_LABELS,
   type FamilyMemberInput,
   type FamilyRelation,
   type Gender,
@@ -286,7 +285,7 @@ function FamilyEditor({ family, onChange }: FamilyEditorProps) {
         >
           {FAMILY_RELATION_OPTIONS.map((r) => (
             <option key={r} value={r}>
-              {FAMILY_RELATION_LABELS[r]}
+              {t(`profile.relation.${r}`)}
             </option>
           ))}
         </select>
@@ -332,7 +331,7 @@ function FamilyEditor({ family, onChange }: FamilyEditorProps) {
             >
               <span className="text-ink-sage">
                 <span className="font-medium text-primary">
-                  {FAMILY_RELATION_LABELS[m.relation]}
+                  {t(`profile.relation.${m.relation}`)}
                 </span>{' '}
                 · {m.name}
               </span>
