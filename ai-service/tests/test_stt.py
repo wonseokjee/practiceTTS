@@ -92,3 +92,16 @@ def test_stt_empty_audio_returns_400():
         assert resp.status_code == 400
     finally:
         main.app.dependency_overrides.clear()
+
+
+def test_stt_missing_lang_returns_422():
+    # 기본값 ko-KR이 있으면 영어 발화가 한국어로 조용히 인식된다 — 빠뜨리면 실패해야 한다.
+    client = _client_with(SttService(FakeEngine(SttResult("x", 0.0, []))))
+    try:
+        resp = client.post(
+            "/stt",
+            files={"audio": ("a.wav", b"RIFF....WAVE", "audio/wav")},
+        )
+        assert resp.status_code == 422
+    finally:
+        main.app.dependency_overrides.clear()

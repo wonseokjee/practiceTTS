@@ -44,7 +44,7 @@ async def assess(
     request: Request,
     audio: UploadFile = File(...),
     reference_text: str = Form(...),
-    lang: str = Form("ko-KR"),
+    lang: str = Form(...),
     service: PronunciationService = Depends(get_pronunciation_service),
     rate_limiter: SlidingWindowRateLimiter = Depends(get_pronunciation_rate_limiter),
 ) -> PronunciationResponse:
@@ -52,7 +52,7 @@ async def assess(
 
     - audio: WAV(PCM 16kHz mono) 파일
     - reference_text: 환자가 말하도록 제시된 목표 단어/문장(정답)
-    - lang: 언어 코드 (기본 ko-KR)
+    - lang: 언어 코드 (필수 — 기본값 없음, 빠뜨리면 422)
     """
     # 평가 엔진 폭주로 Azure 할당량을 소진시키는 것을 막는다(직접 노출 방어).
     if not rate_limiter.allow(client_key(request)):

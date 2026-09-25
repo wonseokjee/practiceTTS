@@ -33,7 +33,7 @@ MAX_AUDIO_BYTES = 4 * 1024 * 1024  # 4MB
 async def recognize(
     request: Request,
     audio: UploadFile = File(...),
-    lang: str = Form("ko-KR"),
+    lang: str = Form(...),
     candidates: list[str] = Form(default=[]),
     service: SttService = Depends(get_stt_service),
     rate_limiter: SlidingWindowRateLimiter = Depends(get_stt_rate_limiter),
@@ -41,7 +41,7 @@ async def recognize(
     """WAV 오디오를 받아 (정답 후보 phrase hint와 함께) 인식한다.
 
     - audio: WAV(PCM 16kHz mono) 파일
-    - lang: 언어 코드 (기본 ko-KR)
+    - lang: 언어 코드 (필수 — 기본값 없음, 빠뜨리면 422)
     - candidates: 정답 후보(phrase hint). 없으면 자유 인식.
     """
     # STT 엔진 폭주로 Azure 할당량을 소진시키는 것을 막는다(직접 노출 방어).
