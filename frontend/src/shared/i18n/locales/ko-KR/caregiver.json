@@ -208,6 +208,16 @@
     "delete": "삭제",
     "removeItemAria": "{{item}} 삭제",
     "relationSelectAria": "관계 선택",
+    "relation": {
+      "spouse": "배우자",
+      "son": "아들",
+      "daughter": "딸",
+      "grandson": "손자",
+      "granddaughter": "손녀",
+      "sibling": "형제자매",
+      "friend": "친구",
+      "other": "기타"
+    },
     "familyNamePlaceholder": "이름 (예: 민준)",
     "familyNameAria": "가족 이름",
     "genderSelectAria": "성별 선택",
