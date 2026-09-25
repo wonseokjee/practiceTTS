@@ -1077,3 +1077,75 @@ def test_prune은_문장만_옮기고_단어와_낯선_파일은_남긴다(tmp_p
     _run_prune(monkeypatch, manifest, root, "--apply", "--move-to", str(moved))
     assert sorted(p.name for p in root.rglob("*.wav")) == ["mystery.wav", "w1.wav", "w2.wav"]
     assert [p.name for p in moved.rglob("*.wav")] == ["n1.wav"], "문장은 지우지 않고 옮겨야 한다(되돌릴 수 있게)"
+
+
+# ─── build_vocab_holdout: 단어를 학습에서 완전히 빼고 홀드아웃셋을 만든다 ─────
+
+
+def _holdout_fixture(tmp_path: Path):
+    """train·dev·test에 단어 3종(a·b·c)을 섞어 둔다. b만 홀드아웃한다.
+
+    prepare_colab_trainset.py가 내는 **패키지 스키마**({audio, text, task_type})를
+    쓴다 — _seg()는 정렬 단계(align_608/refine_segments) 스키마라 다르다.
+    """
+    src = tmp_path / "src"
+    rows_by_split = {
+        "train": [("t1.wav", "a"), ("t2.wav", "b"), ("t3.wav", "c")],
+        "dev": [("d1.wav", "b")],
+        "test": [("e1.wav", "b"), ("e2.wav", "c")],
+    }
+    for split, pairs in rows_by_split.items():
+        rows = [{"audio": f"wav/{fid}", "text": word, "task_type": "wordlist"} for fid, word in pairs]
+        src.mkdir(parents=True, exist_ok=True)
+        (src / f"{split}.jsonl").write_text(
+            "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), encoding="utf-8"
+        )
+        for r in rows:
+            _write_wav(src / r["audio"], seconds=0.3)
+    return src
+
+
+def _run_holdout(monkeypatch, src: Path, out: Path, *extra: str):
+    import build_vocab_holdout as H
+
+    monkeypatch.setattr(sys, "argv", ["build_vocab_holdout.py", "--src", str(src), "--out", str(out), "--words", "b", *extra])
+    H.main()
+
+
+def test_홀드아웃_단어는_세_스플릿_모두에서_빠진다(tmp_path, monkeypatch):
+    src = _holdout_fixture(tmp_path)
+    out = tmp_path / "out"
+    _run_holdout(monkeypatch, src, out)
+
+    for split, want in (("train", {"a", "c"}), ("dev", set()), ("test", {"c"})):
+        rows = [json.loads(l) for l in (out / f"{split}.jsonl").read_text(encoding="utf-8").splitlines()]
+        assert {r["text"] for r in rows} == want, f"{split}에 홀드아웃 단어가 남았다"
+
+
+def test_홀드아웃_평가셋이_원래_스플릿을_보존한다(tmp_path, monkeypatch):
+    src = _holdout_fixture(tmp_path)
+    out = tmp_path / "out"
+    _run_holdout(monkeypatch, src, out)
+
+    rows = [json.loads(l) for l in (out / "holdout_eval.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert {r["text"] for r in rows} == {"b"}
+    by_split = {r["orig_split"] for r in rows}
+    assert by_split == {"train", "dev", "test"}, "b가 나온 스플릿 셋이 홀드아웃셋에 그대로 남아야 한다"
+    assert len(rows) == 3  # t2 + d1 + e1
+
+
+def test_wav는_전부_재사용되고_손실이_없다(tmp_path, monkeypatch):
+    src = _holdout_fixture(tmp_path)
+    out = tmp_path / "out"
+    _run_holdout(monkeypatch, src, out)
+
+    src_wavs = {p.name for p in src.rglob("*.wav")}
+    out_wavs = {p.name for p in out.rglob("*.wav")}
+    assert out_wavs == src_wavs, "패키지가 참조하는 wav가 새 폴더에 하나라도 없으면 학습이 조용히 그 세그먼트를 건너뛴다"
+
+
+def test_dry_run은_아무것도_안_쓴다(tmp_path, monkeypatch):
+    src = _holdout_fixture(tmp_path)
+    out = tmp_path / "out"
+    _run_holdout(monkeypatch, src, out, "--dry-run")
+    assert not out.exists()
