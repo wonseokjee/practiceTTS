@@ -1817,6 +1817,63 @@ describe('QuizService', () => {
       });
     });
 
+    describe('채점기 버전·채점 불가 이유(M33)', () => {
+      const save = async (result: Record<string, unknown>) => {
+        skillLevelRepo.find.mockResolvedValue([]);
+        qabResultRepo.save.mockResolvedValue([]);
+        await service.saveQabResults(PATIENT_ID, {
+          sessionToken: SESSION_TOKEN,
+          results: [
+            {
+              subtest: 'naming',
+              itemRef: 'naming_qw_001',
+              isCorrect: false,
+              ...result,
+            },
+          ],
+        } as SubmitQabResultsDto);
+        // 한 테스트에서 여러 번 부를 수 있어 **마지막** 호출을 읽는다(mock 호출은 누적된다).
+        const calls = qabResultRepo.create.mock.calls;
+        return calls[calls.length - 1][0] as Record<string, unknown>;
+      };
+
+      it('클라이언트가 보낸 채점기 버전을 그대로 남긴다', async () => {
+        expect(await save({ scorerVersion: 'azure-pa-nbr-v1' })).toMatchObject({
+          scorerVersion: 'azure-pa-nbr-v1',
+        });
+      });
+
+      it('안 보내면 NULL이다 — 서버가 v1로 채우지 않는다(컬럼 이전과 같은 뜻)', async () => {
+        // NULL은 "모름"이 아니라 그 시절의 유일한 채점기(azure-pa-v1)다. 서버 상수로 채우면
+        // 옛 클라이언트의 행이 새 채점기로 기록된 것처럼 보일 수 있다.
+        expect(await save({})).toMatchObject({
+          scorerVersion: null,
+          unscoredReason: null,
+        });
+      });
+
+      it('채점 불가면 이유를 남기고, 채점된 행이면 이유를 지운다', async () => {
+        // 채점된 행에 이유가 붙으면 "채점됐는데 못 잰 이유가 있는 행"이 생겨 unscored 집계와
+        // 어긋난다 — 클라이언트가 실수로 보내도 서버가 지운다(score와 같은 규약).
+        expect(
+          await save({ unscored: true, unscoredReason: 'ambiguous' }),
+        ).toMatchObject({ unscored: true, unscoredReason: 'ambiguous' });
+        expect(
+          await save({ unscored: false, unscoredReason: 'ambiguous' }),
+        ).toMatchObject({ unscored: false, unscoredReason: null });
+        expect(await save({ unscoredReason: 'no_score' })).toMatchObject({
+          unscoredReason: null,
+        });
+      });
+
+      it('이유를 모르는 옛 클라이언트의 채점 불가는 이유가 NULL이다', async () => {
+        expect(await save({ unscored: true })).toMatchObject({
+          unscored: true,
+          unscoredReason: null,
+        });
+      });
+    });
+
     it('세부 점수를 안 보내던 클라이언트도 그대로 동작한다', async () => {
       skillLevelRepo.find.mockResolvedValue([]);
       qabResultRepo.save.mockResolvedValue([]);
@@ -2556,12 +2613,14 @@ describe('QuizService', () => {
       expect(source.match(/\br\.created_at\b/g) ?? []).toEqual([]);
     });
 
-    it('시간 축 11곳이 전부 answered_at이다', () => {
+    it('시간 축 12곳이 전부 answered_at이다', () => {
       // 개수를 고정한다 — 쿼리를 지우거나 새로 붙이면 여기서 한 번 멈춰
       // 시간 축을 다시 확인하게 한다.
       //   10 = 읽기 다섯 쿼리(활동일·재출제·세션 분모·주간 추이·요약 lastAt)
       //   +1 = 완료 마커의 completedAt(세션에서 마지막으로 푼 시각, OV-C)
-      expect(source.match(/\br\.answered_at\b/g)).toHaveLength(11);
+      //   +1 = 요약의 scorerChangedAt(새 채점기가 처음 쓰인 시각, M33). 전환 시점은 서버가
+      //        받은 시각이 아니라 **푼 시각**이어야 한다 — 늦게 재전송된 결과가 전환을 늦추면 안 된다.
+      expect(source.match(/\br\.answered_at\b/g)).toHaveLength(12);
     });
   });
 
@@ -2841,6 +2900,10 @@ describe('QuizService', () => {
           foilKinds: null,
           avgCueLevel: null,
           cueScored: 0,
+          // 채점기 버전 컬럼이 없는 행은 모호 0건 · 버전 목록 비어 있음 · 전환 없음이다(M33).
+          unscoredAmbiguous: 0,
+          scorerVersions: [],
+          scorerChangedAt: null,
         },
         {
           subtest: 'ddk',
@@ -2856,6 +2919,9 @@ describe('QuizService', () => {
           foilKinds: null,
           avgCueLevel: null,
           cueScored: 0,
+          unscoredAmbiguous: 0,
+          scorerVersions: [],
+          scorerChangedAt: null,
         },
       ]);
     });
@@ -2905,6 +2971,93 @@ describe('QuizService', () => {
             s.includes('NOT r.assisted AND NOT r.unscored'),
         ),
       ).toBe(true);
+    });
+
+    describe('채점기 버전·모호(M33)', () => {
+      const summaryFor = async (row: Record<string, unknown>) => {
+        const qb = {
+          select: specMock().mockReturnThis(),
+          addSelect: specMock().mockReturnThis(),
+          where: specMock().mockReturnThis(),
+          groupBy: specMock().mockReturnThis(),
+          getRawMany: specMock().mockResolvedValue([
+            {
+              subtest: 'naming',
+              total: '10',
+              correct: '7',
+              assisted: '0',
+              unscored: '3',
+              avgMetric: null,
+              maxMetric: null,
+              avgScore: null,
+              lastAt: new Date('2026-09-30T00:00:00.000Z'),
+              ...row,
+            },
+          ]),
+        };
+        qabResultRepo.createQueryBuilder.mockReturnValue(qb);
+        const res = await service.getQabSummary(PATIENT_ID);
+        return { item: res.items[0], qb };
+      };
+
+      it('모호로 못 가른 문항 수와 채점기 버전·전환 시각을 내려보낸다', async () => {
+        const { item } = await summaryFor({
+          unscoredAmbiguous: '2',
+          scorerVersions: ['azure-pa-v1', 'azure-pa-nbr-v1'],
+          scorerChangedAt: new Date('2026-09-28T01:00:00.000Z'),
+        });
+        expect(item).toMatchObject({
+          unscored: 3,
+          unscoredAmbiguous: 2, // unscored의 부분집합 — 나머지 1은 채점 서버에 못 닿은 쪽
+          scorerVersions: ['azure-pa-nbr-v1', 'azure-pa-v1'], // 정렬해서 내려보낸다
+          scorerChangedAt: '2026-09-28T01:00:00.000Z',
+        });
+      });
+
+      it('전환이 없으면 scorerChangedAt은 null이고 버전은 하나다', async () => {
+        const { item } = await summaryFor({
+          unscoredAmbiguous: '0',
+          scorerVersions: ['azure-pa-v1'],
+          scorerChangedAt: null,
+        });
+        expect(item.scorerVersions).toEqual(['azure-pa-v1']);
+        expect(item.scorerChangedAt).toBeNull();
+        expect(item.unscoredAmbiguous).toBe(0);
+      });
+
+      it('컬럼이 없는 행(구 쿼리 결과)도 NaN·undefined를 내지 않는다', async () => {
+        // 실 DB는 항상 주지만, 없으면 Number(undefined)가 NaN이 되어 JSON에서 조용히 null이 된다.
+        const { item } = await summaryFor({});
+        expect(item.unscoredAmbiguous).toBe(0);
+        expect(item.scorerVersions).toEqual([]);
+        expect(item.scorerChangedAt).toBeNull();
+      });
+
+      it('SQL이 NULL 버전을 v1로 해석하고 모호만 센다', async () => {
+        const { qb } = await summaryFor({});
+        const selects = qb.addSelect.mock.calls.map((c) => String(c[0]));
+        expect(
+          selects.some(
+            (q) =>
+              q.includes('ARRAY_AGG(DISTINCT') &&
+              q.includes("COALESCE(r.scorer_version, 'azure-pa-v1')"),
+          ),
+        ).toBe(true);
+        // 'r.unscored'는 'r.unscored_reason'의 부분 문자열이라 includes로는 못 가른다 —
+        // "채점 불가 AND 이유가 모호" 조합을 정확히 확인한다.
+        expect(
+          selects.some((q) =>
+            /r\.unscored AND r\.unscored_reason = 'ambiguous'/.test(q),
+          ),
+        ).toBe(true);
+        expect(
+          selects.some(
+            (q) =>
+              q.includes('MIN(r.answered_at) FILTER') &&
+              q.includes("<> 'azure-pa-v1'"),
+          ),
+        ).toBe(true);
+      });
     });
 
     it('데이터가 없으면 빈 배열', async () => {

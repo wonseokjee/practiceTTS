@@ -19,6 +19,12 @@ import {
 } from 'class-validator';
 import { QAB_SUBTESTS, type QabSubtest } from '../constants/qab-subtest';
 import { QAB_FOIL_KINDS, type QabFoilKind } from '../constants/qab-foil-kind';
+import {
+  QAB_SCORER_VERSIONS,
+  QAB_UNSCORED_REASONS,
+  type QabScorerVersion,
+  type QabUnscoredReason,
+} from '../constants/qab-scorer';
 
 /**
  * `levels`의 키가 알려진 검사이고 값이 1~5 정수인지 본다.
@@ -75,6 +81,23 @@ export class QabResultItemDto {
   @IsOptional()
   @IsBoolean()
   unscored?: boolean;
+
+  /**
+   * 채점 불가의 이유(M33). `unscored`가 true일 때만 저장한다(아니면 서버가 지운다).
+   * 안 보내면 NULL — 이유를 모르는 옛 클라이언트다.
+   */
+  @IsOptional()
+  @IsIn(QAB_UNSCORED_REASONS)
+  unscoredReason?: QabUnscoredReason;
+
+  /**
+   * 이 문항을 채점한 채점기 버전(M33). 안 보내면 NULL = `azure-pa-v1`(옛 클라이언트).
+   * 관측값이라 그대로 저장한다 — 채점·레벨 판정에는 안 쓴다. 목록 밖의 값은 거부한다
+   * (`foilKind`와 같은 방식).
+   */
+  @IsOptional()
+  @IsIn(QAB_SCORER_VERSIONS)
+  scorerVersion?: QabScorerVersion;
 
   // 이름대기에서 몇 단계까지 단서를 받았나(E18). 없으면 단서 개념이 없는 검사다.
   //   0 무단서 · 1 의미 · (2 문장 완성 — 미구현) · 3 음소 · 4 통과
