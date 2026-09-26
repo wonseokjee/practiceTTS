@@ -222,8 +222,8 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
           isSelectable={canAnswer}
           showFeedback={showFeedback}
           isCorrect={showFeedback ? (lastResult?.isCorrect ?? null) : null}
-          onSubmit={(transcript, azure, cueLevel) =>
-            actions.submitNaming(transcript, azure, cueLevel)
+          onSubmit={(transcript, azure, cueLevel, scoring) =>
+            actions.submitNaming(transcript, azure, cueLevel, scoring)
           }
           onSkip={actions.skipCurrent}
           onOverride={actions.overrideSpeechVerdict}

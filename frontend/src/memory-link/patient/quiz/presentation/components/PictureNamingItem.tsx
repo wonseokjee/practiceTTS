@@ -15,6 +15,12 @@
 // 사람이 주면 기준이 달라져 기록이 사람을 재게 된다. 누른 것 자체가 "막혔다"는
 // 신호라 측정에 필요한 값이기도 하다.
 //
+// **이웃 비교 채점**(`VITE_ENABLE_NEIGHBOR_SCORING`, 한국어, 이웃 목록이 있는 낱말). 같은 녹음을 목표뿐
+// 아니라 소리가 가까운 다른 단어와 후보 없이 인식한 결과로도 채점해, 가까운 다른 단어를 말했을 때
+// 정답으로 치지 않는다. 가르지 못하면 오답이 아니라 **모호**라서 "한 번만 더"를 청한다(문항당 1회,
+// 단서는 그대로, 도움으로 기록하지 않는다). 다시 말했는데도 못 가리면 채점 불가로 남긴다.
+// 판정은 domain/neighborScoring.ts가 한다 — 여기는 재시도 화면과 제출만 맡는다.
+//
 // 채점 경로: repeat/reading과 동일하게 서버 발음 평가(/pronunciation)를 쓴다.
 // 예전엔 자유 STT 전사를 목표어와 문자열 매칭했는데, 단어 수준 구음장애 발화는
 // STT가 매우 불신뢰(608 실측 CER ≈ 0.70)라 맞게 말해도 오답 처리되는 문제가 있었다.
@@ -35,6 +41,14 @@ import {
 import { useTTS } from '../../../../../shared/hooks/useTTS.js';
 import { createTtsService } from '../../../../../shared/infrastructure/ttsFactory.js';
 import type { AzurePronunciationScores } from '../../domain/pronunciationScore.js';
+import {
+  SCORER_VERSION_V1,
+  resolveNamingAttempt,
+  type CompetitorInfo,
+  type NamingScoring,
+} from '../../domain/neighborScoring.js';
+import { neighborsFor } from '../../infrastructure/neighborManifest.js';
+import { isNeighborScoringEnabled } from '../../../../shared/featureFlags.js';
 import type { QabNamingItem } from '../../domain/MixedQuiz.js';
 
 interface PictureNamingItemProps {
@@ -49,6 +63,8 @@ interface PictureNamingItemProps {
     azure: AzurePronunciationScores | null,
     /** 몇 단계까지 단서를 받고 답했나(E18). */
     cueLevel: number,
+    /** 이웃 비교 채점 정보. 이웃 비교를 안 쓰는 경로(플래그 꺼짐)에서는 아예 넘기지 않는다. */
+    scoring?: NamingScoring,
   ) => void;
   /** 보호자 통과 처리(도움받음). 없으면 목표 이름 제출로 폴백. */
   onSkip?: () => void;
@@ -75,11 +91,21 @@ export function PictureNamingItem({
   onSkip,
   onOverride,
 }: PictureNamingItemProps) {
-  const { t } = useTranslation('quiz');
+  const { t, i18n } = useTranslation('quiz');
   const [status, setStatus] = useState<NamingStatus>('idle');
   const [transcript, setTranscript] = useState<string>('');
   const [azure, setAzure] = useState<AzurePronunciationScores | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>('');
+  /**
+   * 이웃 비교의 경쟁자 결과. `undefined` = 요청 안 함, `null` = 요청했는데 못 얻음(SpeechCaptureResult 참고).
+   */
+  const [competitors, setCompetitors] = useState<CompetitorInfo | null | undefined>(undefined);
+  /**
+   * 이 문항에서 이미 "한 번 더"를 청한 횟수. 재시도는 문항당 1회다(MAX_AMBIGUOUS_RETRIES).
+   * 재시도를 청한 직후의 안내 문구는 이 값에서 **파생**한다(아래 렌더) — 청한 뒤 `idle`로 돌아오는 길이
+   * 재시도 분기뿐이라, 따로 상태를 두면 지우는 자리와 어긋날 여지만 생긴다.
+   */
+  const [ambiguousRetries, setAmbiguousRetries] = useState(0);
   /**
    * 지금까지 받은 단서. **지우지 않고 쌓는다** — 1단계를 받고 2단계로 갔는데
    * 앞의 것이 사라지면 환자가 방금 들은 말을 기억해야 해서, 이름대기에
@@ -87,6 +113,13 @@ export function PictureNamingItem({
    */
   const [cues, setCues] = useState<Cue[]>([]);
   const cueLevel = cues.length === 0 ? CUE_NONE : cues[cues.length - 1].level;
+
+  // 이웃 비교를 쓸 수 있는 문항인가: 플래그 + 한국어 + 이웃 목록에 있는 낱말. 하나라도 아니면 이전 채점이다.
+  const neighborScoringOn = isNeighborScoringEnabled();
+  const neighbors = useMemo(
+    () => (neighborScoringOn ? neighborsFor(item.targetWord, i18n.language) : null),
+    [neighborScoringOn, item.targetWord, i18n.language],
+  );
 
   const ttsService = useMemo(() => createTtsService(), []);
   const { speak } = useTTS(ttsService);
@@ -100,6 +133,7 @@ export function PictureNamingItem({
     stt.onResult = (result) => {
       setTranscript(result.transcript);
       setAzure(result.azure);
+      setCompetitors(result.competitors);
       setStatus('recognized');
     };
     stt.onError = (message) => {
@@ -120,7 +154,12 @@ export function PictureNamingItem({
     setErrorMessage('');
     setStatus('listening');
     // 정답 이름을 발음 평가 기준(reference) 겸 STT 폴백 phrase hint로 전달.
-    stt.start(item.targetWord);
+    // 이웃 비교를 쓰면 이웃 단어도 넘긴다 — 아니면 예전과 똑같은 호출이다(인자 하나).
+    if (neighbors) {
+      stt.start(item.targetWord, { neighbors });
+    } else {
+      stt.start(item.targetWord);
+    }
   };
 
   // 서버 STT는 자동 종료되지 않으므로 사용자가 발화 종료를 알린다(→ 인식 실행).
@@ -132,7 +171,36 @@ export function PictureNamingItem({
 
   const handleSubmitTranscript = (): void => {
     if (transcript.trim().length === 0) return;
-    onSubmit(transcript.trim(), azure, cueLevel);
+    const text = transcript.trim();
+
+    if (!neighbors) {
+      // 이전 채점. 플래그가 켜져 있는데 이 낱말에 이웃 목록이 없으면(영어·목록 누락) 버전을 v1로 명시해
+      // 드러나게 한다 — 안 그러면 "켰는데 왜 안 바뀌지"가 NULL 속에 묻힌다. 플래그가 꺼져 있으면 인자를 안 넘긴다.
+      if (neighborScoringOn) {
+        onSubmit(text, azure, cueLevel, { scorerVersion: SCORER_VERSION_V1 });
+      } else {
+        onSubmit(text, azure, cueLevel);
+      }
+      return;
+    }
+
+    const outcome = resolveNamingAttempt({
+      azure,
+      transcript: text,
+      targetWord: item.targetWord,
+      competitors,
+      ambiguousRetries,
+    });
+    if (outcome.kind === 'retry') {
+      // 가까운 다른 단어와 가르지 못했다 — 오답이 아니라 "한 번만 더"다. 단서(cues)는 그대로 둔다.
+      setAmbiguousRetries((n) => n + 1);
+      setTranscript('');
+      setAzure(null);
+      setCompetitors(undefined);
+      setStatus('idle');
+      return;
+    }
+    onSubmit(text, azure, cueLevel, outcome.scoring);
   };
 
   // 사다리를 한 칸 오른다. 줄 수 없는 칸(범주 없는 자극의 의미 단서)은
@@ -270,6 +338,11 @@ export function PictureNamingItem({
       {!showFeedback && status === 'processing' && (
         <p className="text-base text-primary" role="status">
           {t('item.recognizing')}
+        </p>
+      )}
+      {!showFeedback && ambiguousRetries > 0 && status === 'idle' && (
+        <p className="text-lg text-primary" role="status">
+          {t('naming.retryAmbiguous')}
         </p>
       )}
       {!showFeedback && status === 'error' && errorMessage.length > 0 && (

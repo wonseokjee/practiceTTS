@@ -19,7 +19,11 @@ import type {
 } from '../domain/MixedQuiz.js';
 import type { QuizSetDetail } from '../domain/Quiz.js';
 import type { QabResultInput } from '../domain/QabResult.js';
-import type { AzurePronunciationScores } from '../domain/pronunciationScore.js';
+import {
+  UNSCORED,
+  evaluateFromAzure,
+  type AzurePronunciationScores,
+} from '../domain/pronunciationScore.js';
 
 const QUIZ_SET_ID = 'set-1';
 
@@ -2298,5 +2302,147 @@ describe('세션 로케일 — 발화 추출기에 넘긴다(영어판 M2 ②, �
     for (const pick of Object.values(picks)) {
       expect(pick.mock.calls[0][2]).toMatchObject({ locale: DEFAULT_LOCALE });
     }
+  });
+});
+
+// ── 이웃 비교 채점의 기록(계획 PR 5) ─────────────────────────────────────────
+//
+// 컴포넌트가 재시도와 판정을 마치고 `scoring`을 넘기면, 훅은 그 판정을 그대로 기록하고 채점기
+// 버전·다시 말하게 한 횟수·채점 불가의 이유를 결과 행에 싣는다. 넘기지 않으면 예전과 똑같다.
+
+describe('useMixedQuizSession — 이름대기 이웃 비교 기록', () => {
+  const PASSED = evaluateFromAzure(PASS, '사과', 'word');
+
+  /** 이름대기 한 문항을 제출하고 서버로 나간 결과 행을 돌려준다. */
+  async function submitAndCollect(
+    submit: (
+      actions: ReturnType<typeof useMixedQuizSession>[1],
+    ) => void,
+  ) {
+    const submitQabResults = vi.fn().mockResolvedValue({ saved: 1 });
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi({ submitQabResults }),
+        pickWordItems: () => [],
+        generateSessionToken: () => 'tok-1',
+        dailyCount: 0,
+        wordCount: 0,
+        ...ISOLATED,
+        pickNamingItems: () => makeNamingItems(),
+        namingCount: 1,
+      }),
+    );
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+    act(() => submit(result.current[1]));
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    return {
+      result,
+      row: () => {
+        act(() => result.current[1].next());
+        return waitFor(() => expect(result.current[0].phase).toBe('result')).then(
+          () => submitQabResults.mock.calls[0][1][0] as QabResultInput,
+        );
+      },
+    };
+  }
+
+  it('scoring을 안 넘기면 예전과 똑같다 — 새 필드가 하나도 안 실린다', async () => {
+    const { row } = await submitAndCollect((a) => a.submitNaming('사과요', PASS));
+    const r = await row();
+    expect(r).toMatchObject({ subtest: 'naming', isCorrect: true, score: 90 });
+    for (const key of ['scorerVersion', 'ambiguousRetries', 'unscoredReason']) {
+      expect(r).not.toHaveProperty(key);
+    }
+  });
+
+  it('이웃 비교로 정답이면 판정을 그대로 기록하고 버전·재시도 횟수(0)를 싣는다', async () => {
+    const { row, result } = await submitAndCollect((a) =>
+      a.submitNaming('사과', PASS, 0, {
+        scorerVersion: 'azure-pa-nbr-v1',
+        assessment: PASSED,
+        ambiguousRetries: 0,
+      }),
+    );
+    expect(result.current[0].lastResult?.isCorrect).toBe(true);
+    const r = await row();
+    expect(r).toMatchObject({
+      isCorrect: true,
+      score: 90,
+      scorerVersion: 'azure-pa-nbr-v1',
+      ambiguousRetries: 0, // 0이지 생략이 아니다 — 이웃 비교를 거쳤고 안 시켰다
+    });
+    expect(r).not.toHaveProperty('unscoredReason');
+  });
+
+  it('재시도 후에도 못 가른 시도는 채점 불가(모호)로 기록한다 — 오답이 아니다', async () => {
+    const { row, result } = await submitAndCollect((a) =>
+      a.submitNaming('사과', PASS, 0, {
+        scorerVersion: 'azure-pa-nbr-v1',
+        assessment: UNSCORED,
+        unscoredReason: 'ambiguous',
+        ambiguousRetries: 1,
+      }),
+    );
+    expect(result.current[0].lastResult?.isCorrect).toBeNull(); // 채점 불가는 정답도 오답도 아니다
+    const r = await row();
+    expect(r).toMatchObject({
+      unscored: true,
+      isCorrect: false, // unscored 규약 — 값에 뜻이 없다
+      unscoredReason: 'ambiguous',
+      scorerVersion: 'azure-pa-nbr-v1',
+      ambiguousRetries: 1,
+    });
+    // 채점 불가 행에는 점수가 없다
+    expect(r).not.toHaveProperty('score');
+  });
+
+  it('다시 말하게 했다는 사실은 도움이 아니다 — assisted가 붙지 않고 단서 단계가 그대로다', async () => {
+    const { row } = await submitAndCollect((a) =>
+      a.submitNaming('사과', PASS, 0, {
+        scorerVersion: 'azure-pa-nbr-v1',
+        assessment: PASSED,
+        ambiguousRetries: 1,
+      }),
+    );
+    const r = await row();
+    expect(r).toMatchObject({ cueLevel: 0, ambiguousRetries: 1 });
+    expect(r).not.toHaveProperty('assisted');
+  });
+
+  it('채점 불가 이유는 채점 불가일 때만 남는다 — 채점된 행에 이유가 붙으면 버린다', async () => {
+    const { row } = await submitAndCollect((a) =>
+      a.submitNaming('사과', PASS, 0, {
+        scorerVersion: 'azure-pa-nbr-v1',
+        assessment: PASSED,
+        unscoredReason: 'ambiguous', // 실수로 붙어 와도
+        ambiguousRetries: 0,
+      }),
+    );
+    expect(await row()).not.toHaveProperty('unscoredReason');
+  });
+
+  it('판정 없이 버전만 넘기면(이웃 목록이 없는 낱말) 이전 채점으로 채점하고 버전 v1만 찍는다', async () => {
+    const { row } = await submitAndCollect((a) =>
+      a.submitNaming('사과', PASS, 0, { scorerVersion: 'azure-pa-v1' }),
+    );
+    const r = await row();
+    expect(r).toMatchObject({ isCorrect: true, score: 90, scorerVersion: 'azure-pa-v1' });
+    expect(r).not.toHaveProperty('ambiguousRetries'); // 이웃 비교를 안 거쳤다 — 0이 아니라 생략
+  });
+
+  it('보호자가 채점 불가를 정정하면 이유가 사라지고 버전은 남는다', async () => {
+    const { row, result } = await submitAndCollect((a) =>
+      a.submitNaming('사과', PASS, 0, {
+        scorerVersion: 'azure-pa-nbr-v1',
+        assessment: UNSCORED,
+        unscoredReason: 'ambiguous',
+        ambiguousRetries: 1,
+      }),
+    );
+    act(() => result.current[1].overrideSpeechVerdict(true));
+    const r = await row();
+    expect(r).toMatchObject({ isCorrect: true, scorerVersion: 'azure-pa-nbr-v1', ambiguousRetries: 1 });
+    expect(r).not.toHaveProperty('unscored');
+    expect(r).not.toHaveProperty('unscoredReason');
   });
 });

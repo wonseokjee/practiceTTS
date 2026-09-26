@@ -3,6 +3,8 @@
 // 백엔드: POST /quiz/qab-results, GET /quiz/qab-summary
 // 환자가 푼 QAB 문항 결과를 저장하고, 보호자가 검사별 회복 추세를 본다.
 
+import type { ScorerVersion, UnscoredReason } from './neighborScoring.js';
+
 /** QAB 검사 하위 종류 */
 export type QabSubtest =
   | 'word'
@@ -32,6 +34,22 @@ export interface QabResultInput {
    * 정확도 분모·발음 평균·레벨링 윈도우에서 모두 제외한다.
    */
   unscored?: boolean;
+  /**
+   * 채점 불가의 이유. `unscored`가 true일 때만 의미가 있다(서버가 아니면 지운다).
+   * `no_score` = 채점 서버에 못 닿았거나 인식 결과가 없다, `ambiguous` = 재시도까지 했지만 목표와
+   * 가까운 다른 단어를 못 가렸다. 이웃 비교로 채점한 시도에서만 보낸다.
+   */
+  unscoredReason?: UnscoredReason;
+  /**
+   * 이 문항을 채점한 채점기 버전. 안 보내면 서버가 NULL로 남기고 그건 `azure-pa-v1`이다.
+   * 점수는 채점기에 묶여서, 진전 추이는 같은 버전 안에서만 잇는다.
+   */
+  scorerVersion?: ScorerVersion;
+  /**
+   * 이웃 비교에서 **다시 말하게 한 횟수**(이름대기만). 안 거친 시도는 **생략**한다 — 0과 다르다.
+   * 1차 모호율("한 번 더"를 얼마나 자주 듣나)의 분자·분모가 이 값이다.
+   */
+  ambiguousRetries?: number;
 
   /**
    * 이름대기에서 **몇 단계까지 단서를 받고 답했나**(E18).

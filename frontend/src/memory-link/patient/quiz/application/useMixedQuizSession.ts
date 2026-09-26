@@ -32,6 +32,7 @@ import {
   type SpeechAssessment,
   type AzurePronunciationScores,
 } from '../domain/pronunciationScore.js';
+import type { NamingScoring } from '../domain/neighborScoring.js';
 import { isDdkPass } from '../domain/ddkScore.js';
 import {
   stampAnswered,
@@ -140,6 +141,8 @@ export interface UseMixedQuizActions {
     azure?: AzurePronunciationScores | null,
     /** 몇 단계까지 단서를 받고 답했나(E18). 생략하면 무단서. */
     cueLevel?: number,
+    /** 이웃 비교 채점 정보(계획 PR 5). 생략하면 이전 채점 그대로다. */
+    scoring?: NamingScoring,
   ) => void;
   /** QAB 따라말하기/소리내어읽기 음성 제출. azure 점수 있으면 음소 채점, 없으면 WER 폴백. */
   submitSpeech: (
@@ -916,6 +919,11 @@ export function useMixedQuizSession(
       azure: AzurePronunciationScores | null = null,
       /** 몇 단계까지 단서를 받고 답했나(E18). 0이면 무단서. */
       cueLevel: number = CUE_NONE,
+      /**
+       * 이웃 비교 채점 정보. 판정(`assessment`)이 있으면 그대로 기록하고, 없으면 이전 채점으로 채점하되
+       * 채점기 버전만 찍는다. 안 넘기면 예전과 똑같다(버전 NULL = azure-pa-v1).
+       */
+      scoring?: NamingScoring,
     ): void => {
       if (phaseRef.current !== 'answering') return;
       const item = itemsRef.current[indexRef.current];
@@ -924,7 +932,9 @@ export function useMixedQuizSession(
       // 음소 점수로만 채점한다. 없으면 채점 불가 — 예전의 문자열 근접도
       // (isNameMatch) 폴백은 없앴다. 단어 STT는 실측 CER 0.70이라 그 폴백이
       // 실제로는 "STT가 알아들었나"를 재고 있었다.
-      applySpeechAssessment(evaluateFromAzure(azure, transcript, 'word'), {
+      const assessment =
+        scoring?.assessment ?? evaluateFromAzure(azure, transcript, 'word');
+      applySpeechAssessment(assessment, {
         subtest: 'naming',
         itemRef: item.item.itemId,
         correctLabel: item.item.targetWord,
@@ -935,6 +945,15 @@ export function useMixedQuizSession(
           // 무단서 정답과 같은 값에 섞인다.
           ...(cueLevel >= CUE_SEMANTIC ? { assisted: true } : {}),
           ...observed(item.item),
+          // 이웃 비교를 거친 시도의 기록 — 채점기 버전, 다시 말하게 한 횟수, 채점 불가의 이유.
+          // 이유는 채점 불가일 때만 남긴다(서버도 지운다).
+          ...(scoring ? { scorerVersion: scoring.scorerVersion } : {}),
+          ...(scoring?.ambiguousRetries !== undefined
+            ? { ambiguousRetries: scoring.ambiguousRetries }
+            : {}),
+          ...(scoring?.unscoredReason && !assessment.scored
+            ? { unscoredReason: scoring.unscoredReason }
+            : {}),
         },
       });
     },
@@ -1247,6 +1266,8 @@ export function useMixedQuizSession(
     // 들어간다. 점수(score)는 여전히 없다 — 사람은 정오답을 말했지 0~100점을
     // 말한 게 아니다.
     delete last.unscored;
+    // 사람이 판정을 냈으니 채점 불가의 이유는 뜻이 없다(서버도 지우지만 로그를 일관되게 둔다).
+    delete last.unscoredReason;
     // 로그의 마지막 항목도 함께 뒤집는다 — 점수·연속오답이 정정을 반영하게.
     // (안 고치면 정정된 정답인데도 연속오답으로 남아 피로 탈출이 잘못 발동.)
     const log = recentCorrectRef.current;

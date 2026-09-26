@@ -146,3 +146,83 @@ export function evaluateNamingWithNeighbors(input: {
     ? { kind: 'assessed', assessment: base }
     : { kind: 'ambiguous' };
 }
+
+// ─── 한 번의 시도를 어떻게 마무리할까 — 재시도 정책 ─────────────────────────
+//
+// 모호는 오답이 아니라서 **한 번 더 말해 달라고 청한다.** 재시도는 문항당 1회다 — 고령·실어증
+// 환자에게 같은 것을 여러 번 청하면 피로가 크다. 다시 말했는데도 못 가리면 채점 불가로 남긴다.
+// 이미 있는 1급 상태라 정확도 분모·발음 평균·레벨링 윈도우에서 빠지고, 보호자 카드에 "못 잰 N회"로
+// 보이고, 보호자 정정 버튼도 붙는다(음향 채점 계획 5절).
+//
+// 재시도는 **도움이 아니다**(사용자 결정, 설계 11절). 틀려서가 아니라 채점기가 확신하지 못해서 다시
+// 묻는 것이므로 `assisted`를 붙이지 않고 단서 단계(`cueLevel`)도 그대로다.
+
+/** 문항당 다시 말하게 하는 최대 횟수. */
+export const MAX_AMBIGUOUS_RETRIES = 1;
+
+/** 채점 불가의 이유. 백엔드 `QAB_UNSCORED_REASONS`와 같은 값이어야 한다(목록 밖은 400). */
+export type UnscoredReason = 'no_score' | 'ambiguous';
+
+/**
+ * 이름대기 한 시도를 채점한 정보 — 컴포넌트가 세션 훅에 넘긴다.
+ *
+ * `assessment`가 있으면 훅은 다시 채점하지 않고 그대로 기록한다(이웃 비교로 이미 판정했다).
+ * 없으면(이웃 목록이 없는 낱말) 훅이 이전 채점(`evaluateFromAzure`)으로 채점하고, 이 객체는
+ * **채점기 버전을 찍는 데만** 쓰인다.
+ */
+export interface NamingScoring {
+  scorerVersion: ScorerVersion;
+  assessment?: SpeechAssessment;
+  /** `assessment`가 채점 불가일 때만 의미가 있다. */
+  unscoredReason?: UnscoredReason;
+  /**
+   * 다시 말하게 한 횟수. **이웃 비교를 거친 시도에만** 있다 — 안 거친 시도와 "안 시킨 시도(0)"를
+   * 가르려고 없는 것을 0으로 채우지 않는다(백엔드 `ambiguous_retries`의 NULL과 0).
+   */
+  ambiguousRetries?: number;
+}
+
+export type NamingAttemptOutcome =
+  | { kind: 'retry' }
+  | { kind: 'submit'; scoring: NamingScoring };
+
+/**
+ * 이웃 비교로 판정하고, 모호면 재시도를 청할지 채점 불가로 마무리할지 정한다.
+ *
+ * @param ambiguousRetries 이 문항에서 이미 다시 말하게 한 횟수(0부터).
+ */
+export function resolveNamingAttempt(input: {
+  azure: AzurePronunciationScores | null;
+  transcript: string;
+  targetWord: string;
+  competitors: CompetitorInfo | null | undefined;
+  ambiguousRetries: number;
+}): NamingAttemptOutcome {
+  const { ambiguousRetries, ...rest } = input;
+  const verdict = evaluateNamingWithNeighbors(rest);
+
+  if (verdict.kind === 'ambiguous') {
+    if (ambiguousRetries < MAX_AMBIGUOUS_RETRIES) return { kind: 'retry' };
+    // 다시 말했는데도 못 가렸다 — 오답이 아니라 채점 불가다.
+    return {
+      kind: 'submit',
+      scoring: {
+        scorerVersion: SCORER_VERSION_NEIGHBOR,
+        assessment: UNSCORED,
+        unscoredReason: 'ambiguous',
+        ambiguousRetries,
+      },
+    };
+  }
+
+  const { assessment } = verdict;
+  return {
+    kind: 'submit',
+    scoring: {
+      scorerVersion: SCORER_VERSION_NEIGHBOR,
+      assessment,
+      ...(assessment.scored ? {} : { unscoredReason: 'no_score' as const }),
+      ambiguousRetries,
+    },
+  };
+}
