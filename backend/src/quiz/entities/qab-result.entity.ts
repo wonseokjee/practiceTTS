@@ -134,6 +134,20 @@ export class QabResult {
   scorerVersion: QabScorerVersion | null;
 
   /**
+   * 이웃 비교에서 **다시 말하게 한 횟수**(M34). 0 = 다시 말하게 하지 않았다, 1 = 1차에 모호해서
+   * 한 번 다시 말하게 했다(그 결과가 이 행이다).
+   *
+   * **NULL과 0은 다르다.** NULL은 이웃 비교를 거치지 않은 행(이전 채점기·이름대기 밖·이웃 목록에
+   * 없는 낱말)이고, 0으로 채우면 그런 행이 모호율의 분모에 섞여 비율이 낮게 나온다. 이름대기
+   * 밖의 행에서는 서버가 지운다(`cue_level`과 같은 이유).
+   *
+   * 최종 결과만 저장되므로 이 값이 없으면 1차 모호율("한 번 더"를 얼마나 자주 듣나)을 잴 수 없다.
+   * 관측값이라 채점에 쓰지 않는다.
+   */
+  @Column({ name: 'ambiguous_retries', type: 'smallint', nullable: true })
+  ambiguousRetries: number | null;
+
+  /**
    * 틀렸을 때 고른 오답의 갈래 — 단어이해(word)에만 값이 있다.
    *
    *  - semantic      같은 의미 범주 오답('사과'에 대한 '바나나')

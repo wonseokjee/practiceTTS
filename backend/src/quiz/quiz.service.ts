@@ -248,6 +248,16 @@ export interface QabSubtestSummary {
    * 화면이 "채점 방식이 바뀌었어요(날짜)"를 그릴 때 쓴다.
    */
   scorerChangedAt: string | null;
+  /**
+   * 이웃 비교를 거친 시도 수(`ambiguous_retries`가 NULL이 아닌 행). 1차 모호율의 분모다.
+   * 채점 불가·도움받음도 센다 — 환자가 "한 번 더"를 들었는지는 그 결과와 무관하다.
+   */
+  neighborAttempts: number;
+  /**
+   * 그중 1차에 모호해서 다시 말하게 한 수. `neighborRetried / neighborAttempts`가 1차 모호율이다
+   * (설계 채택 기준 ≤ 15%). 재시도 후에도 못 가른 것은 `unscoredAmbiguous`다.
+   */
+  neighborRetried: number;
   /** 수치 지표 평균(ddk 등). 없으면 null */
   avgMetric: number | null;
   /** 수치 지표 최고값(ddk 최고 횟수 등). 없으면 null */
@@ -1275,6 +1285,9 @@ export class QuizService {
         // 클라이언트가 낸 채점기 버전을 그대로 남긴다. 안 보내면 NULL = azure-pa-v1이다.
         // 서버 상수로 채우면 옛 클라이언트의 행이 새 채점기로 기록된 것처럼 보인다.
         scorerVersion: r.scorerVersion ?? null,
+        // 이름대기만 보낸다. 다른 검사에서 오면 뜻이 없으므로 떨군다 — cueLevel과 같은 이유다.
+        ambiguousRetries:
+          r.subtest === 'naming' ? (r.ambiguousRetries ?? null) : null,
         // 단서를 한 칸이라도 받았으면 assisted도 참이다(E18). 기존 통계가
         // `NOT r.assisted`로 거르고 있어 그 뜻을 유지해야 마이그레이션이 무해하다.
         // 클라이언트가 assisted만 보내던 시절의 요청도 그대로 동작한다.
@@ -1731,6 +1744,15 @@ export class QuizService {
         `ARRAY_AGG(DISTINCT COALESCE(r.scorer_version, '${QAB_LEGACY_SCORER_VERSION}'))`,
         'scorerVersions',
       )
+      // 이웃 비교를 거친 시도와 그중 다시 말하게 한 것 — NULL(거치지 않음)과 0(안 다시 시킴)을 가른다.
+      .addSelect(
+        'COUNT(*) FILTER (WHERE r.ambiguous_retries IS NOT NULL)',
+        'neighborAttempts',
+      )
+      .addSelect(
+        'COUNT(*) FILTER (WHERE r.ambiguous_retries >= 1)',
+        'neighborRetried',
+      )
       .addSelect(
         `MIN(r.answered_at) FILTER (WHERE COALESCE(r.scorer_version, '${QAB_LEGACY_SCORER_VERSION}') <> '${QAB_LEGACY_SCORER_VERSION}')`,
         'scorerChangedAt',
@@ -1772,6 +1794,8 @@ export class QuizService {
         assisted: string;
         unscored: string;
         unscoredAmbiguous: string;
+        neighborAttempts: string;
+        neighborRetried: string;
         scorerVersions: string[] | null;
         scorerChangedAt: Date | string | null;
         avgMetric: string | null;
@@ -1792,6 +1816,8 @@ export class QuizService {
       const unscored = Number(row.unscored);
       // `?? 0` — 실 DB는 항상 컬럼을 주지만 없으면 Number(undefined)가 NaN이 되어 API로 샌다.
       const unscoredAmbiguous = Number(row.unscoredAmbiguous ?? 0);
+      const neighborAttempts = Number(row.neighborAttempts ?? 0);
+      const neighborRetried = Number(row.neighborRetried ?? 0);
       const scorerVersions = [...(row.scorerVersions ?? [])].sort();
       const scorerChangedAt =
         row.scorerChangedAt === null || row.scorerChangedAt === undefined
@@ -1838,6 +1864,8 @@ export class QuizService {
         assisted,
         unscored,
         unscoredAmbiguous,
+        neighborAttempts,
+        neighborRetried,
         scorerVersions,
         scorerChangedAt,
         avgMetric,
