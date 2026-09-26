@@ -11,7 +11,7 @@
 |---|---|---|---|
 | 0 | **asr-12th-vocab-holdout** — 12차 학습 + `eval_vocab_holdout_colab.ipynb` 실행, 대장에 판정 기록 | 낯선 단어 성능 | 준비 완료(#241, 효율 조정 후 약 3시간), Colab 실행 대기 |
 | 1 | **asr-target-word-verification** — 받아쓰기 대신 "목표 단어를 시도했나"를 확인하는 채점. 오판정률·오통과율 곡선 | 낯선 단어·오판정 | 설계 등록(대장 「목표 단어 검증 — 설계」) |
-| 2 | **asr-asymmetric-error-policy** — 주 지표를 오판정률·오통과율로 바꾸고, 확신이 낮으면 "틀렸어요" 대신 다시 말하기를 요청. **첫 구체형: 이웃 비교 채점**([설계](docs/history/20260926_NeighborScoring_design.md)) — **팔 C 채택**(앱 이웃 3 + 후보 없는 STT 전사): 오통과 35.7%→**3.5%**(95% 상한 5.4%)·모호 13.0%·오판정 6.8% 불변. 부분 명칭(목표의 60% 이상)은 통과 — 결과 본 뒤 사용자 결정. 이름대기·ko-KR만 적용(따라말하기·영어는 v1 유지). [구현 계획](docs/history/20260926_NeighborScoring_implementation_plan.md) PR 1~6 | 오판정의 피해 · 근접 단어 오통과 | 계획 완료(2026-09-26), PR 1~5a 완료(5-0 포함), 다음 PR 5b(보호자 표시) → PR 6(스테이징 관찰) |
+| 2 | **asr-asymmetric-error-policy** — 주 지표를 오판정률·오통과율로 바꾸고, 확신이 낮으면 "틀렸어요" 대신 다시 말하기를 요청. **첫 구체형: 이웃 비교 채점**([설계](docs/history/20260926_NeighborScoring_design.md)) — **팔 C 채택**(앱 이웃 3 + 후보 없는 STT 전사): 오통과 35.7%→**3.5%**(95% 상한 5.4%)·모호 13.0%·오판정 6.8% 불변. 부분 명칭(목표의 60% 이상)은 통과 — 결과 본 뒤 사용자 결정. 이름대기·ko-KR만 적용(따라말하기·영어는 v1 유지). [구현 계획](docs/history/20260926_NeighborScoring_implementation_plan.md) PR 1~6 | 오판정의 피해 · 근접 단어 오통과 | 계획 완료(2026-09-26), PR 1~5b 완료. 남은 것: PR 6(스테이징에서 플래그를 켜고 관찰 — 사람 몫) |
 | 3 | **asr-severity-breakdown** — 기존 예측을 화자 범주·화자별 기준 CER로 다시 집계(608에 중증도 라벨은 없다) | 중증 환자 성능 | 추론을 다시 돌릴 필요 없음 |
 | 4 | **asr-app-audio-collection** — `observe-unassisted-pair-before-cutover` 때 동의받고 녹음 + 보호자 판정 저장(200~300개) | 실제 앱 오디오·실제 착어 | 동의·PII 정책 먼저(#235 법무 흐름) |
 | 5 | **asr-personalization** — 환자별 소형 어댑터. [`personalization-design.md`](docs/asr/personalization-design.md) | 개인차 | 4에서 데이터가 모인 뒤 |

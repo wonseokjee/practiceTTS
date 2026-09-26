@@ -252,7 +252,8 @@
     "cueLevelBarAria": "Picture naming average help level {{level}} (closer to 0 means more independent)",
     "foilNoteTitle": "Sound-alike pictures only start appearing from level 4. Below that, there's no chance to pick one, so it shows as 0.",
     "foilLine": "Of {{count}} wrong answers chosen, <b>{{semantic}} meaning-related pictures</b>, <b2>{{phonological}} sound-alike pictures</b2>",
-    "trendAria": "{{label}} trend over the last {{weeks}} weeks: {{values}}%"
+    "trendAria": "{{label}} trend over the last {{weeks}} weeks: {{values}}%",
+    "scorerChangedNote": "How answers are checked changed on {{date}}, so accuracy from before and after that date can't be compared directly."
   },
   "weeklyReport": {
     "title": "Language & cognition activity record",
