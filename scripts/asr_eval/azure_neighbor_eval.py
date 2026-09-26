@@ -22,8 +22,10 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import time
+import unicodedata
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -62,22 +64,52 @@ def decide(target_res: dict | None, comp_res: list[dict | None], m: float = 0.0)
     return "pass" if all(t >= s + m for s in scores) else "ambiguous"
 
 
-def plan(rows: list[dict], foils: dict, vocab: list[str], arm: str) -> tuple[list[dict], list[dict]]:
-    """양성·음성 사례 목록. 각 사례 = {audio, _wav, said, target, comps}."""
-    def comps(t: str) -> list[str]:
-        c = N.neighbors(t, vocab)
+def norm_transcript(t: str | None) -> str:
+    """STT 전사 정규화 — NFC, 문장부호 제거, 공백 정리."""
+    t = unicodedata.normalize("NFC", t or "")
+    t = re.sub(r"[^\w\s]", " ", t)
+    return re.sub(r"\s+", " ", t).strip()
+
+
+def stt_competitor(transcript: str | None, target: str) -> str | None:
+    """설계 8절 — 비었거나, 목표와 같거나, 포함관계면 경쟁자로 안 쓴다."""
+    t = norm_transcript(transcript)
+    if not t:
+        return None
+    a, b = t.replace(" ", ""), target.replace(" ", "")
+    if a == b or N.is_containment(a, b):
+        return None
+    return t
+
+
+def plan(rows: list[dict], foils: dict, vocab: list[str], arm: str,
+         stt: dict[str, str] | None = None) -> tuple[list[dict], list[dict]]:
+    """양성·음성 사례 목록. 각 사례 = {audio, _wav, said, target, comps}.
+
+    arm: A=앱 어휘 이웃 3 · B=A+초성 비단어 2 · C=A+STT 전사 · S=STT 전사만
+    """
+    if arm in ("C", "S") and stt is None:
+        raise ValueError("팔 C·S에는 STT 전사가 필요하다")
+
+    def comps(t: str, audio: str) -> list[str]:
+        c = [] if arm == "S" else N.neighbors(t, vocab)
         if arm == "B":
             c = c + N.onset_pseudowords(t, vocab)
+        if arm in ("C", "S"):
+            x = stt_competitor(stt.get(audio), t)
+            if x is not None and x not in c:
+                c = c + [x]
         return c
 
     pos, neg = [], []
     for r in rows:
         a = r["text"].strip()
-        pos.append({"audio": r["audio"], "_wav": r["_wav"], "said": a, "target": a, "comps": comps(a)})
+        pos.append({"audio": r["audio"], "_wav": r["_wav"], "said": a, "target": a,
+                    "comps": comps(a, r["audio"])})
         for f in foils[a]["foils"]:
             if f["counts_for_fa"]:
                 neg.append({"audio": r["audio"], "_wav": r["_wav"], "said": a, "target": f["foil"],
-                            "comps": comps(f["foil"])})
+                            "comps": comps(f["foil"], r["audio"])})
     return pos, neg
 
 
@@ -144,6 +176,8 @@ def main() -> int:
     ap.add_argument("--cache", type=Path, default=None, help="기본: <split 폴더>/_azure_pa_foil_cache.jsonl(쌍 캐시 공유)")
     ap.add_argument("--pos-cache", type=Path, default=None)
     ap.add_argument("--arms", default="A,B")
+    ap.add_argument("--stt-cache", type=Path, default=None,
+                    help="팔 C·S용 후보 목록 없는 STT 전사. 기본: <split 폴더>/_azure_stt_cache.jsonl")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--estimate-only", action="store_true")
     ap.add_argument("--yes", action="store_true")
@@ -165,7 +199,15 @@ def main() -> int:
     sc = Scores(AE.load_cache(pos_path), FE.load_pair_cache(cache_path),
                 {r["audio"]: r["text"].strip() for r in rows})
     arms = [a.strip() for a in args.arms.split(",") if a.strip()]
-    plans = {a: plan(rows, foils, vocab, a) for a in arms}
+    stt = None
+    if any(a in ("C", "S") for a in arms):
+        stt_path = args.stt_cache or args.split.parent / "_azure_stt_cache.jsonl"
+        stt = {a: d.get("text", "") for a, d in AE.load_cache(stt_path).items()}
+        missing = [r["audio"] for r in rows if r["audio"] not in stt]
+        if missing:
+            print(f"STT 전사가 없는 행 {len(missing)}개 — azure_eval.py --mode stt 를 먼저", file=sys.stderr)
+            return 2
+    plans = {a: plan(rows, foils, vocab, a, stt) for a in arms}
 
     def todo_all():
         out, seen = [], set()
@@ -230,7 +272,8 @@ def main() -> int:
 
     report = {}
     for a, (pos, neg) in plans.items():
-        print(f"\n══ 팔 {a} — 이웃 {'앱 어휘 3' if a == 'A' else '앱 어휘 3 + 초성 비단어 2'} ══")
+        desc = {"A": "앱 어휘 3", "B": "앱 어휘 3 + 초성 비단어 2", "C": "앱 어휘 3 + STT 전사", "S": "STT 전사만"}[a]
+        print(f"\n══ 팔 {a} — 이웃 {desc} ══")
         print(f"  양성 {len(pos)} · 음성 {len(neg)} · 음성 중 '말한 단어가 이웃 목록에 있음' "
               f"{sum(c['said'] in c['comps'] for c in neg) / max(1, len(neg)):.1%}")
         for m in (0.0, 5.0):
