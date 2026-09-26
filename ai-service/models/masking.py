@@ -7,9 +7,8 @@ class MaskRequest(BaseModel):
 
     raw_text: str  # 원본 텍스트 (보호자 입력 에피소드)
     memory_entry_id: str  # entity_map 저장 키로 사용
-    # 메모 언어(보호자 로케일). 기본 ko-KR — 호출부 배선(backend fastApiClient.mask)은
-    # 영어 문이 열릴 때 lang을 항상 보내도록 바꾸고 이 기본값을 없앤다(§17 D8).
-    lang: str = "ko-KR"
+    # 메모 언어(쓴 보호자의 users.locale). 기본값 없음 — 빠뜨리면 422(§17 D8).
+    lang: str
 
 
 class MaskResponse(BaseModel):

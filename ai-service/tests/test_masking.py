@@ -259,3 +259,12 @@ async def test_korean_default_unchanged():
     service, _ = build_service([])
     result = await service.mask_text("연락처는 010-1234-5678이에요", ENTRY_ID)
     assert "5678" not in result.masked_text
+
+
+def test_mask_endpoint_requires_lang():
+    """lang을 빠뜨리면 422 — 조용히 한국어 규칙으로 마스킹하지 않는다."""
+    from models.masking import MaskRequest
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        MaskRequest(raw_text="x", memory_entry_id=ENTRY_ID)
