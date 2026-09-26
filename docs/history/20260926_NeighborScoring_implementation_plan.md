@@ -133,6 +133,30 @@ useMixedQuizSession.submitNaming → qab_results
 
 ### PR 4 — 프론트 도메인: 판정
 
+> **구현됨(2026-09-26).** 계획에서 달라지거나 더해진 것:
+>
+> - 판정은 `pronunciationScore.ts`가 아니라 **새 파일 `domain/neighborScoring.ts`**에 뒀다. 규칙이 한 곳에 있어야 한다는
+>   원칙은 그대로이고(그 파일이 단일 진실), 이미 큰 채점 파일에 경쟁자 타입·변형 판정을 더 얹지 않으려는 분리다.
+>   `evaluateFromAzure`·`UNSCORED`를 그대로 가져다 쓴다.
+> - `evaluateNamingWithNeighbors`는 `NamingVerdict = { kind: 'assessed', assessment } | { kind: 'ambiguous' }`를 돌려준다.
+>   인식 요청 여부 인자는 없다 — 이웃 비교는 항상 인식 결과를 경쟁자로 함께 요청하므로, 인식 호출 실패·응답 누락은
+>   언제나 채점 불가다.
+> - `SpeechCaptureService`는 이웃을 **생성자가 아니라 `start(referenceText, { neighbors })`로** 받는다. 목표가 이미 시작
+>   때마다 정해지는 값이고 이웃은 그 목표에서 나오므로, 인스턴스에 이전 문항의 이웃이 남는 사고를 구조로 막는다(테스트로 고정).
+> - 결과의 `competitors`는 **세 상태**다. `undefined` = 요청 안 함(이전 채점), `null` = 요청했는데 경쟁자 결과를 못 얻음
+>   (옛 서버·인식 폴백), 객체 = 서버 결과. 요청한 시도는 실패해도 이웃 비교 채점기의 시도로 기록돼야 해서(`scorer_version`)
+>   앞의 둘을 갈라야 한다. PR 5는 `competitors !== undefined`로 경로를 고른다.
+> - 판정 골든 벡터(`scripts/asr_eval/golden/neighbor_decisions.json`)는 `speechScoreGolden`과 같은 방식이다 — **TS가 정본**,
+>   입력은 테스트 코드에 두고 출력만 얼린다. Python 재현본은 호출 실패·건너뜀·응답 누락을 모델링하지 못해 그 5개 사례는
+>   TS만 고정한다(`pythonModelled: false`).
+> - **골든 벡터가 실측 코드의 불일치를 잡았다.** `azure_neighbor_eval.is_accepted_variant`가 공백만 정규화해서 앱(NFC·문장부호
+>   제거)과 어긋나 있었다(예: "나 무!" ← 통나무). 실측 파이프라인은 전사를 미리 정규화해 결과가 같았고, 캐시로 다시 돌려
+>   **0단계 수치가 그대로**(팔 A 20.9%·팔 C 3.5%/13.0%·팔 S 5.2%)임을 확인한 뒤 앱에 맞췄다.
+> - `nameMatch.ts`의 `PARTIAL_MIN_RATIO`를 export했다(값 복사 없음). 플래그 `isNeighborScoringEnabled()`(`VITE_ENABLE_NEIGHBOR_SCORING`)와
+>   `.env.example` 항목을 더했다. **아직 아무도 이 판정·옵션을 부르지 않는다** — PR 5에서 붙는다.
+> - 채점 불가의 이유(`ambiguous` vs `no_score`)는 이 PR의 판정 결과에 싣지 않는다. 2차 모호를 채점 불가로 낼 때의 사유는
+>   제출하는 쪽(PR 5)이 붙인다.
+
 - `pronunciationScore.ts`:
   - `isAcceptedNamingVariant(said, target)` — 목표를 품는 말 · 부분 명칭(연속 부분, 길이 ≥ 60%).
     60%는 `nameMatch.ts`의 `PARTIAL_MIN_RATIO`를 **export해서 가져다** 쓴다(지금은 모듈 내부 상수다. 값을 복사하지 않는다).

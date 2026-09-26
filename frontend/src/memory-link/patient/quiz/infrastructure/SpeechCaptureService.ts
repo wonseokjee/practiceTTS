@@ -10,6 +10,10 @@
 
 import type { SttResult } from '../../domain/TrainingSession.js';
 import type { AzurePronunciationScores } from '../domain/pronunciationScore.js';
+import type {
+  CompetitorInfo,
+  CompetitorScore,
+} from '../domain/neighborScoring.js';
 import { WebSpeechSttService } from '../../infrastructure/SttService.js';
 import { WavRecorder } from './WavRecorder.js';
 import { QUIZ_RECORDING_LIMIT_MS } from './recordingLimits.js';
@@ -22,12 +26,33 @@ export interface SpeechCaptureResult {
   transcript: string;
   confidence: number;
   azure: AzurePronunciationScores | null;
+  /**
+   * 이웃 비교 채점의 경쟁자 결과.
+   *
+   *  - `undefined`: 경쟁자 모드를 요청하지 않았다(이전 채점 그대로)
+   *  - `null`: 요청했는데 경쟁자 결과를 못 얻었다(옛 서버 · 인식 폴백). 호출한 쪽이 채점 불가로 다룬다
+   *  - 객체: 서버가 돌려준 경쟁자 점수
+   *
+   * `undefined`와 `null`을 가르는 이유: 이웃 비교를 **요청한 시도**는 실패해도 그 채점기의 시도로
+   * 기록돼야 한다(`scorer_version`). 요청하지 않은 시도와 섞으면 버전 표시가 거짓이 된다.
+   */
+  competitors?: CompetitorInfo | null;
+}
+
+/** 녹음 시작 옵션. */
+export interface SpeechCaptureStartOptions {
+  /**
+   * 이웃 비교 채점에 쓸 이웃 단어(목표와 소리가 가까운 앱 단어). 비어 있지 않으면 경쟁자 모드다 —
+   * 같은 녹음을 이 단어들과 후보 없이 인식한 결과로도 채점하도록 서버에 요청한다.
+   * 없거나 비면 예전과 같은 요청이다.
+   */
+  neighbors?: readonly string[];
 }
 
 /** 발화 캡처 서비스 공통 인터페이스. */
 export interface ISpeechCaptureService {
   /** 녹음 시작. referenceText는 정답(목표) 텍스트 — 발음 평가 기준 + phrase hint. */
-  start(referenceText: string): void;
+  start(referenceText: string, options?: SpeechCaptureStartOptions): void;
   /** 녹음 종료 → 평가/인식 실행. */
   stop(): void;
   /** 취소 — 업로드/평가 없이 마이크를 해제하고 진행 중 요청을 중단한다.
@@ -49,6 +74,40 @@ interface RawPronunciation {
   completeness_score?: number;
   pronunciation_score?: number;
   prosody_score?: number | null;
+  // 경쟁자 모드에서만 온다(ai-service response_model_exclude_unset)
+  competitor_scores?: {
+    text: string;
+    source: 'neighbor' | 'stt';
+    accuracy_score: number;
+    recognized_text: string;
+    status: 'ok' | 'no_match' | 'error';
+  }[];
+  stt_transcript?: string | null;
+  stt_status?: 'ok' | 'empty' | 'error' | null;
+  competitors_skipped?: 'target_below_pass' | 'no_match' | null;
+}
+
+/**
+ * 경쟁자 모드 응답을 정리한다. 경쟁자 모드에서는 서버가 `stt_status`를 **항상** 싣는다 —
+ * 없으면 서버가 경쟁자 모드를 모르는 것(옛 서버)이라 null이다.
+ */
+export function parseCompetitorInfo(data: RawPronunciation): CompetitorInfo | null {
+  if (!('stt_status' in data)) return null;
+  const scores: CompetitorScore[] | null = data.competitor_scores
+    ? data.competitor_scores.map((c) => ({
+        text: c.text,
+        source: c.source,
+        accuracyScore: c.accuracy_score,
+        recognizedText: c.recognized_text,
+        status: c.status,
+      }))
+    : null;
+  return {
+    scores,
+    sttTranscript: data.stt_transcript ?? null,
+    sttStatus: data.stt_status ?? null,
+    skipped: data.competitors_skipped ?? null,
+  };
 }
 
 /**
@@ -69,6 +128,7 @@ export class ServerPronunciationService implements ISpeechCaptureService {
   });
   private readonly lang: string;
   private referenceText = '';
+  private neighbors: readonly string[] = [];
   private isRecording = false;
   private startPromise: Promise<void> | null = null;
   private startFailed = false;
@@ -80,9 +140,10 @@ export class ServerPronunciationService implements ISpeechCaptureService {
     this.lang = lang;
   }
 
-  start(referenceText: string): void {
+  start(referenceText: string, options?: SpeechCaptureStartOptions): void {
     if (this.isRecording) return;
     this.referenceText = referenceText ?? '';
+    this.neighbors = options?.neighbors ?? [];
     this.isRecording = true;
     this.startFailed = false;
     this.cancelled = false;
@@ -140,7 +201,12 @@ export class ServerPronunciationService implements ISpeechCaptureService {
     const recognized = await this.tryStt(wav, authHeaders);
     if (this.cancelled) return;
     if (recognized) {
-      this.onResult?.({ ...recognized, azure: null });
+      // 이웃 비교를 요청했다면 그 시도는 경쟁자 결과 없이 끝난 것이다(null) — 요청 안 한 시도(undefined)와 다르다.
+      this.onResult?.({
+        ...recognized,
+        azure: null,
+        ...(this.neighbors.length > 0 ? { competitors: null } : {}),
+      });
       return;
     }
     this.onError?.(i18n.t('sttError.pronunciationServerConnectFailed', { ns: 'quiz' }));
@@ -159,6 +225,12 @@ export class ServerPronunciationService implements ISpeechCaptureService {
       form.append('audio', wav, 'speech.wav');
       form.append('lang', this.lang);
       form.append('reference_text', this.referenceText);
+      // 이웃 비교 채점: 이웃과 함께 후보 없는 인식 결과도 경쟁자로 채점해 달라고 요청한다.
+      // 이웃이 없으면 아무것도 안 싣는다 — 서버가 받는 폼이 예전과 같다.
+      if (this.neighbors.length > 0) {
+        form.append('competitors', JSON.stringify(this.neighbors));
+        form.append('stt_competitor', 'true');
+      }
 
       const res = await fetch(`${API_BASE_URL}/ai/pronunciation`, {
         method: 'POST',
@@ -178,6 +250,9 @@ export class ServerPronunciationService implements ISpeechCaptureService {
           pronunciationScore: data.pronunciation_score ?? 0,
           prosodyScore: data.prosody_score ?? null,
         },
+        ...(this.neighbors.length > 0
+          ? { competitors: parseCompetitorInfo(data) }
+          : {}),
       };
     } catch {
       return null;
@@ -246,6 +321,8 @@ export class WebSpeechCaptureAdapter implements ISpeechCaptureService {
     this.stt.onError = (msg: string) => this.onError?.(msg);
   }
 
+  // 인터페이스의 두 번째 인자(options — 이웃 비교 경쟁자 모드)는 받지 않는다. 경쟁자 채점은 서버 녹음이
+  // 필요해서 브라우저 인식에서는 쓸 수 없다. 결과에 competitors 키가 없으니 호출한 쪽은 이전 채점으로 간다.
   start(referenceText: string): void {
     // WebSpeech는 phrase hint 미지원 — referenceText를 후보로만 넘긴다(무시됨).
     this.stt.start(referenceText.length > 0 ? [referenceText] : undefined);
