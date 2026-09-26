@@ -15,7 +15,7 @@
 | 3 | **asr-severity-breakdown** — 기존 예측을 화자 범주·화자별 기준 CER로 다시 집계(608에 중증도 라벨은 없다) | 중증 환자 성능 | 추론을 다시 돌릴 필요 없음 |
 | 4 | **asr-app-audio-collection** — `observe-unassisted-pair-before-cutover` 때 동의받고 녹음 + 보호자 판정 저장(200~300개) | 실제 앱 오디오·실제 착어 | 동의·PII 정책 먼저(#235 법무 흐름) |
 | 5 | **asr-personalization** — 환자별 소형 어댑터. [`personalization-design.md`](docs/asr/personalization-design.md) | 개인차 | 4에서 데이터가 모인 뒤 |
-| — | **azure-pa-near-word-leak** — 현행 채점기(Azure 발음 평가)가 가까운 다른 단어(사탕←사자)를 얼마나 정답 처리하는지 608 test 단어 + 근접 foil로 잰다. 무작위 오답 참조로는 6.2%였다(`acoustic-scorer-plan.md` 4-2). 1의 비교 기준이기도 하다 | 현행 채점의 오통과 | 진행 중 |
+| — | **azure-pa-near-word-leak** — 현행 채점기(Azure 발음 평가)의 근접 단어 오통과. **결과: 35.7%로 결함**(음운 근접 43.6%, 의미 근접 3.7%). 이웃 비교로 2.9%까지 줄지만 오판정이 6.8→12.3%로 는다(`acoustic-scorer-plan.md` 4-3) → 2번에서 다룬다 | 현행 채점의 오통과 | 측정 완료(2026-09-26) |
 | — | **qab-vocab-608-overlap-bonus** — QAB 단어 선정에 608 어휘 겹침을 가산점으로(치료 목적이 우선) | 낯선 단어 | P3, 0의 결과를 보고 결정 |
 
 **원칙.** 대화 모드는 자유 발화 평가셋이 생길 때까지 ASR 결과를 **점수에 쓰지 않고
