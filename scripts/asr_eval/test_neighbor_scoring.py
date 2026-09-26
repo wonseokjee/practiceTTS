@@ -100,7 +100,24 @@ def test_stt_competitor_rules():
     assert E.stt_competitor(None, "고래") is None
     assert E.stt_competitor("고래", "고래") is None
     assert E.stt_competitor("고래요", "고래") is None       # 어미가 붙은 정답
-    assert E.stt_competitor("전화", "전화기") is None       # 줄여 부른 말
+    assert E.stt_competitor("전화", "전화기") is None       # 부분 명칭(2/3)
+    assert E.stt_competitor("비", "비행기") == "비"          # 조각(1/3)은 부분 명칭이 아니다
+
+
+def test_accepted_variant_definition():
+    assert E.is_accepted_variant("나무", "통나무") and E.is_accepted_variant("사과요", "사과")
+    assert E.is_accepted_variant("사과", "사과")
+    assert not E.is_accepted_variant("비", "비행기")
+    assert not E.is_accepted_variant("노래", "고래")
+    assert not E.is_accepted_variant("", "고래")
+
+
+def test_plan_drops_accepted_variants_from_negatives():
+    rows = [{"audio": "a.wav", "_wav": Path("a.wav"), "text": "나무"}]
+    foils = {"나무": {"foils": [{"foil": "통나무", "kind": "phon", "counts_for_fa": True},
+                                {"foil": "마루", "kind": "phon", "counts_for_fa": True}]}}
+    _, neg = E.plan(rows, foils, VOCAB, "A")
+    assert [c["target"] for c in neg] == ["마루"]
 
 
 def test_plan_arm_c_adds_transcript_from_audio_not_target():
