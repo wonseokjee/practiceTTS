@@ -4,6 +4,7 @@
 그 텍스트를 가로채, 심어둔 PII가 몇 개나 남아 있는지 센다.
 
 사용:  ai-service> venv/Scripts/python.exe tests/measure_leak.py
+영어:  LANG_CODE=en-US venv/Scripts/python.exe tests/measure_leak.py
 """
 import asyncio
 import os
@@ -32,6 +33,26 @@ CASES: list[tuple[str, list[str]]] = [
 ]
 
 
+# 영어 보호자 메모. 앵커 없는 맨 이름·지명을 일부러 섞었다 — 로컬 계층이 포기하는
+# 부분이라 이 숫자가 곧 "Gemini에 노출되는 양"이다.
+CASES_EN: list[tuple[str, list[str]]] = [
+    ("Today my son Michael took her to Prospect Park.", ["Michael", "Prospect Park"]),
+    ("Dr. Patel said her blood pressure looks better.", ["Patel"]),
+    ("Linda came over and they had lunch together.", ["Linda"]),
+    ("You can reach me at (212) 555-0123 tonight.", ["555-0123"]),
+    ("We went to Mount Sinai Hospital yesterday.", ["Mount Sinai"]),
+    ("She bought apples at the market in Flushing.", ["Flushing"]),
+    ("Her granddaughter Emma visited after school.", ["Emma"]),
+    ("Her nephew from Fort Lee called this morning.", ["Fort Lee"]),
+    ("Kevin called to say hello.", ["Kevin"]),
+    ("Mrs. Alvarez played cards with her all afternoon.", ["Alvarez"]),
+    ("Her oldest daughter Sarah made seaweed soup.", ["Sarah"]),
+    ("They met at 34th Street station.", ["34th Street"]),
+]
+
+LANG = os.environ.get("LANG_CODE", "ko-KR")
+
+
 class _Capture:
     """Gemini로 나가는 텍스트를 가로챈다 (실제 호출은 하지 않는다)."""
 
@@ -53,10 +74,11 @@ async def main() -> None:
     pii_total = 0
     leaked_items: list[str] = []
 
-    for idx, (note, secrets_in_note) in enumerate(CASES):
+    cases = CASES_EN if LANG == "en-US" else CASES
+    for idx, (note, secrets_in_note) in enumerate(cases):
         capture.sent.clear()
         try:
-            await service.mask_text(note, f"measure-{idx}")
+            await service.mask_text(note, f"measure-{idx}", lang=LANG)
         except Exception as exc:  # 잔존 검증 등에서 예외가 나도 계속 측정
             print(f"  (예외: {type(exc).__name__})", end=" ")
         outbound = capture.sent[0] if capture.sent else ""
