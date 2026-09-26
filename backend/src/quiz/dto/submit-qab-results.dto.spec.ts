@@ -59,3 +59,68 @@ describe('SubmitQabResultsDto — answeredAt', () => {
     expect(await errorsFor(1_757_844_000_000)).toContain('answeredAt');
   });
 });
+
+/**
+ * `scorerVersion`·`unscoredReason`(M33) — 이웃 비교 채점의 기록 필드.
+ *
+ * 둘 다 관측값이라 채점에는 안 쓰지만 목록 밖의 값이 저장되면 집계(`ARRAY_AGG`)와 화면의
+ * "채점 방식이 바뀌었어요"가 알 수 없는 버전을 그대로 노출한다. `foilKind`처럼 목록으로 지킨다.
+ */
+async function itemErrorsFor(
+  extra: Record<string, unknown>,
+): Promise<string[]> {
+  const dto = plainToInstance(SubmitQabResultsDto, {
+    sessionToken: '6f1c2b1e-3a4d-4e5f-8a9b-0c1d2e3f4a5b',
+    results: [
+      {
+        subtest: 'naming',
+        itemRef: 'naming_qw_001',
+        isCorrect: false,
+        ...extra,
+      },
+    ],
+  });
+  const errors = await validate(dto);
+  return errors.flatMap((e) =>
+    (e.children ?? []).flatMap((c) =>
+      (c.children ?? []).map((cc) => cc.property),
+    ),
+  );
+}
+
+describe('SubmitQabResultsDto — scorerVersion · unscoredReason', () => {
+  it('알려진 채점기 버전과 채점 불가 이유를 받는다', async () => {
+    expect(await itemErrorsFor({ scorerVersion: 'azure-pa-v1' })).toEqual([]);
+    expect(await itemErrorsFor({ scorerVersion: 'azure-pa-nbr-v1' })).toEqual(
+      [],
+    );
+    expect(
+      await itemErrorsFor({ unscored: true, unscoredReason: 'ambiguous' }),
+    ).toEqual([]);
+    expect(
+      await itemErrorsFor({ unscored: true, unscoredReason: 'no_score' }),
+    ).toEqual([]);
+  });
+
+  it('생략해도 된다 — 옛 클라이언트', async () => {
+    expect(await itemErrorsFor({})).toEqual([]);
+  });
+
+  it('목록 밖의 값은 거부한다', async () => {
+    expect(await itemErrorsFor({ scorerVersion: 'azure-pa-v2' })).toContain(
+      'scorerVersion',
+    );
+    expect(await itemErrorsFor({ scorerVersion: '' })).toContain(
+      'scorerVersion',
+    );
+    expect(await itemErrorsFor({ scorerVersion: 1 })).toContain(
+      'scorerVersion',
+    );
+    expect(await itemErrorsFor({ unscoredReason: 'timeout' })).toContain(
+      'unscoredReason',
+    );
+    expect(await itemErrorsFor({ unscoredReason: true })).toContain(
+      'unscoredReason',
+    );
+  });
+});

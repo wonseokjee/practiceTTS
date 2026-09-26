@@ -105,6 +105,20 @@ useMixedQuizSession.submitNaming → qab_results
 
 ### PR 3 — 백엔드: 전달 · 기록
 
+> **구현됨(2026-09-26).** 계획에서 달라지거나 더해진 것:
+>
+> - 마이그레이션은 **M33**(`1786500000000`)이다. 컬럼 둘 다 널 허용·기본값 없음이고 CHECK 제약은 두지 않았다
+>   (값 목록은 DTO가 지킨다 — `foil_kind`와 같은 결정). 임시 DB에서 up → down → up 왕복을 확인했다.
+> - 요약에 **`scorerChangedAt`**를 더했다(계획에는 `unscoredAmbiguous`·`scorerVersions`만 있었다). 보호자 카드가
+>   "채점 방식이 바뀌었어요(날짜)"를 그리려면 전환 **날짜**가 필요하고, 버전 목록만으로는 날짜를 못 준다. 요약에는
+>   기간이 없어서 세 값 모두 **검사별 전 기간** 기준이다. 전환 시각은 `MIN(answered_at)`(푼 시각)이다.
+> - 값 목록 상수는 `quiz/constants/qab-scorer.ts`, 프록시 검증은 `ai-proxy/competitors.ts`다. 프록시의 상한(5개·30자)은
+>   ai-service 소스를 읽어 대조하는 테스트가 지킨다(어긋나면 "받아주지만 반드시 거절되는" 죽은 구간이 생긴다).
+> - 시간 축 가드 테스트(`answered_at` 사용 횟수)를 11 → 12로 올렸다. 새 사용은 전환 시각이고 푼 시각이어야 하는 자리다.
+> - **알아둘 것 — 사용자별 한도는 요청 단위 그대로다.** 경쟁자 요청도 1건이라, 한 계정이 분당 12건을 보내면 최대
+>   72 Azure 호출(예전 12)이 나간다. 기능 플래그가 꺼진 지금은 영향이 없고, PR 6에서 실사용을 보고 조정한다.
+> - 프론트 타입(`QabSubtestSummary` 미러)은 PR 5에서 소비하는 자리와 함께 더한다.
+
 - 프록시(`ai-proxy.controller.ts` `pronunciation`): `competitors`·`stt_competitor`를 검증해서 그대로 넘긴다
   (JSON 파싱, 개수·길이 상한). 녹음 보존(`speechData.saveRecording`)은 그대로 둔다.
 - `qab_results` 마이그레이션:

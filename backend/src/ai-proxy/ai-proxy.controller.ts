@@ -25,6 +25,7 @@ import { RateLimit, RateLimitGuard } from '../common/rate-limit.guard';
 import { EffectivePatientId } from '../auth/decorators/effective-patient-id.decorator';
 import { SpeechDataService } from '../speech-data/speech-data.service';
 import { isSupportedLocale } from '../common/locale';
+import { parseCompetitors, parseSttCompetitor } from './competitors';
 
 /** JwtAuthGuard가 주입한 사용자. 레이트리밋 키로 쓴다. */
 interface AuthenticatedRequest {
@@ -217,6 +218,10 @@ export class AiProxyController {
    *
    * STT와 같은 비용(Azure 음성)이라 같은 사용자별 한도를 쓴다. 정답을 아는
    * 재활 과제(따라말하기·읽기)에서 reference_text로 목표 문장을 넘긴다.
+   *
+   * 경쟁자 모드(선택, 이웃 비교 채점): `competitors`(JSON 배열 문자열)와 `stt_competitor`를
+   * 검증해 ai-service에 그대로 넘긴다. 사용자별 한도는 **요청 단위 그대로**다 — 경쟁자 요청도
+   * 1건이고, 호출 수 가중은 ai-service의 전역 회로차단기가 한다.
    */
   @Post('pronunciation')
   @RateLimit({
@@ -231,7 +236,13 @@ export class AiProxyController {
     @Req() _req: AuthenticatedRequest,
     @EffectivePatientId() patientId: string,
     @UploadedFile() audio: Express.Multer.File | undefined,
-    @Body() body: { lang?: string; reference_text?: string },
+    @Body()
+    body: {
+      lang?: string;
+      reference_text?: string;
+      competitors?: unknown;
+      stt_competitor?: unknown;
+    },
     @Res() res: Response,
   ): Promise<void> {
     if (!audio) {
@@ -244,6 +255,15 @@ export class AiProxyController {
       res.status(HttpStatus.BAD_REQUEST).json({
         message: '지원하지 않는 언어입니다.',
         code: 'LANG_UNSUPPORTED',
+      });
+      return;
+    }
+    const competitors = parseCompetitors(body.competitors);
+    const sttCompetitor = parseSttCompetitor(body.stt_competitor);
+    if (competitors === null || sttCompetitor === null) {
+      res.status(HttpStatus.BAD_REQUEST).json({
+        message: '경쟁 단어 형식이 올바르지 않습니다.',
+        code: 'COMPETITORS_INVALID',
       });
       return;
     }
@@ -265,6 +285,13 @@ export class AiProxyController {
     );
     form.append('lang', body.lang);
     form.append('reference_text', reference);
+    // 경쟁자 모드는 있을 때만 붙인다 — 없으면 ai-service가 받는 폼이 예전과 같다.
+    if (competitors.length > 0) {
+      form.append('competitors', JSON.stringify(competitors));
+    }
+    if (sttCompetitor) {
+      form.append('stt_competitor', 'true');
+    }
 
     try {
       const upstream = await firstValueFrom(

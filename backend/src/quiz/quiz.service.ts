@@ -15,6 +15,7 @@ import {
   weekWindowStart,
 } from '../common/week-boundary';
 import { DEFAULT_QUIZ_DISTRIBUTION } from './constants/quiz-distribution';
+import { QAB_LEGACY_SCORER_VERSION } from './constants/qab-scorer';
 import { QuizSetSummaryDto } from './dto/quiz-set-summary.dto';
 import {
   QuizQuestionPublicDto,
@@ -228,6 +229,25 @@ export interface QabSubtestSummary {
    * 의심해야 한다 — 그래서 숨기지 않고 내보낸다.
    */
   unscored: number;
+  /**
+   * 채점 불가 중 **이웃 비교에서 재시도까지 했는데 못 가른** 문항 수(`unscored`의 부분집합).
+   *
+   * `unscored - unscoredAmbiguous`는 채점 서버에 못 닿은 쪽이다. 둘을 갈라 보여야 모호율이
+   * 높은 것(판정 규칙)과 채점 경로가 흔들린 것을 구분한다.
+   */
+  unscoredAmbiguous: number;
+  /**
+   * 이 검사의 기록에 나타난 채점기 버전(중복 없음, 정렬). NULL 행은 `azure-pa-v1`로 센다.
+   *
+   * 둘 이상이면 정답률 추이가 **전환을 넘어 이어진 것**이다 — 채점기가 바뀌면 같은 수행이 다른
+   * 점수를 받으므로 그 꺾임은 환자가 아니라 자의 변화일 수 있다. 화면이 이 값으로 알린다.
+   */
+  scorerVersions: string[];
+  /**
+   * 옛 채점기(`azure-pa-v1`)가 아닌 채점기가 **처음** 쓰인 시각(ISO). 전환이 없으면 null.
+   * 화면이 "채점 방식이 바뀌었어요(날짜)"를 그릴 때 쓴다.
+   */
+  scorerChangedAt: string | null;
   /** 수치 지표 평균(ddk 등). 없으면 null */
   avgMetric: number | null;
   /** 수치 지표 최고값(ddk 최고 횟수 등). 없으면 null */
@@ -1249,6 +1269,12 @@ export class QuizService {
         itemRef: r.itemRef,
         isCorrect: r.isCorrect,
         unscored,
+        // 이유는 채점 불가일 때만 남긴다. 채점된 행에 이유가 붙으면 "채점됐는데 못 잰
+        // 이유가 있는 행"이 생겨 unscored 집계와 어긋난다 — score를 지우는 것과 같은 이유다.
+        unscoredReason: unscored ? (r.unscoredReason ?? null) : null,
+        // 클라이언트가 낸 채점기 버전을 그대로 남긴다. 안 보내면 NULL = azure-pa-v1이다.
+        // 서버 상수로 채우면 옛 클라이언트의 행이 새 채점기로 기록된 것처럼 보인다.
+        scorerVersion: r.scorerVersion ?? null,
         // 단서를 한 칸이라도 받았으면 assisted도 참이다(E18). 기존 통계가
         // `NOT r.assisted`로 거르고 있어 그 뜻을 유지해야 마이그레이션이 무해하다.
         // 클라이언트가 assisted만 보내던 시절의 요청도 그대로 동작한다.
@@ -1695,6 +1721,20 @@ export class QuizService {
       .addSelect('SUM(CASE WHEN r.assisted THEN 1 ELSE 0 END)', 'assisted')
       // 세어서 내보낸다. 채점 실패율을 아무도 볼 수 없으면 조용히 망가진다.
       .addSelect('SUM(CASE WHEN r.unscored THEN 1 ELSE 0 END)', 'unscored')
+      .addSelect(
+        `SUM(CASE WHEN r.unscored AND r.unscored_reason = 'ambiguous' THEN 1 ELSE 0 END)`,
+        'unscoredAmbiguous',
+      )
+      // 채점기 버전 — NULL(컬럼 이전)은 그 시절의 유일한 채점기로 해석한다. 소급해서 채우지
+      // 않았으므로 읽을 때 COALESCE로 같은 뜻을 얻는다.
+      .addSelect(
+        `ARRAY_AGG(DISTINCT COALESCE(r.scorer_version, '${QAB_LEGACY_SCORER_VERSION}'))`,
+        'scorerVersions',
+      )
+      .addSelect(
+        `MIN(r.answered_at) FILTER (WHERE COALESCE(r.scorer_version, '${QAB_LEGACY_SCORER_VERSION}') <> '${QAB_LEGACY_SCORER_VERSION}')`,
+        'scorerChangedAt',
+      )
       .addSelect('AVG(r.metric)', 'avgMetric')
       .addSelect('MAX(r.metric)', 'maxMetric')
       .addSelect('AVG(r.score)', 'avgScore')
@@ -1731,6 +1771,9 @@ export class QuizService {
         correct: string;
         assisted: string;
         unscored: string;
+        unscoredAmbiguous: string;
+        scorerVersions: string[] | null;
+        scorerChangedAt: Date | string | null;
         avgMetric: string | null;
         maxMetric: string | null;
         avgScore: string | null;
@@ -1747,6 +1790,15 @@ export class QuizService {
       const correct = Number(row.correct);
       const assisted = Number(row.assisted);
       const unscored = Number(row.unscored);
+      // `?? 0` — 실 DB는 항상 컬럼을 주지만 없으면 Number(undefined)가 NaN이 되어 API로 샌다.
+      const unscoredAmbiguous = Number(row.unscoredAmbiguous ?? 0);
+      const scorerVersions = [...(row.scorerVersions ?? [])].sort();
+      const scorerChangedAt =
+        row.scorerChangedAt === null || row.scorerChangedAt === undefined
+          ? null
+          : row.scorerChangedAt instanceof Date
+            ? row.scorerChangedAt.toISOString()
+            : new Date(row.scorerChangedAt).toISOString();
       const avgMetric =
         row.avgMetric === null
           ? null
@@ -1785,6 +1837,9 @@ export class QuizService {
         accuracy: total > 0 ? Math.round((correct / total) * 100) : 0,
         assisted,
         unscored,
+        unscoredAmbiguous,
+        scorerVersions,
+        scorerChangedAt,
         avgMetric,
         maxMetric,
         avgScore,

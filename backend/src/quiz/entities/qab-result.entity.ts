@@ -11,6 +11,10 @@ import {
 import { User } from '../../auth/entities/user.entity';
 import type { QabSubtest } from '../constants/qab-subtest';
 import type { QabFoilKind } from '../constants/qab-foil-kind';
+import type {
+  QabScorerVersion,
+  QabUnscoredReason,
+} from '../constants/qab-scorer';
 
 /**
  * QAB 질문형 검사 결과 1행 (항목 단위).
@@ -95,6 +99,39 @@ export class QabResult {
    */
   @Column({ name: 'unscored', type: 'boolean', default: false })
   unscored: boolean;
+
+  /**
+   * 채점 불가의 이유(M33) — `no_score`(채점 서버에 못 닿음·인식 결과 없음) | `ambiguous`
+   * (이웃 비교에서 재시도까지 했지만 가까운 다른 단어를 못 가름).
+   *
+   * `unscored = false`인 행은 NULL이다 — 서버가 지운다(`score`와 같은 규약). 이유를
+   * 안 보낸 클라이언트의 unscored 행도 NULL이다. 관측값이라 채점에 쓰지 않는다.
+   */
+  @Column({
+    name: 'unscored_reason',
+    type: 'varchar',
+    length: 16,
+    nullable: true,
+  })
+  unscoredReason: QabUnscoredReason | null;
+
+  /**
+   * 이 행을 채점한 채점기 버전(M33) — 점수는 채점기에 묶인다.
+   *
+   * **NULL이 정상이다.** 이 컬럼 이전의 행이고, 그 시절의 유일한 채점기였던
+   * `azure-pa-v1`을 뜻한다(`manifest_version`·`locale`과 같은 관례). 소급해서 채우지
+   * 않는다 — 읽는 쪽이 `COALESCE(scorer_version, 'azure-pa-v1')`로 해석한다.
+   *
+   * 진전 추이는 같은 버전 안에서만 잇는다. 버전이 바뀌는 지점에서 정답률이 꺾이는 것은
+   * 환자가 아니라 자가 바뀐 것이다.
+   */
+  @Column({
+    name: 'scorer_version',
+    type: 'varchar',
+    length: 24,
+    nullable: true,
+  })
+  scorerVersion: QabScorerVersion | null;
 
   /**
    * 틀렸을 때 고른 오답의 갈래 — 단어이해(word)에만 값이 있다.
