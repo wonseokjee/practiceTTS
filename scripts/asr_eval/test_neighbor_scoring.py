@@ -92,3 +92,29 @@ def test_summarize_rates():
     assert s["neg"]["pass"] == 1 and s["neg"]["ambiguous"] == 1 and s["fa"] == 0.5
     assert s["neg_said_in_comps"] == 0.5
     assert E.verdict(s).startswith("실패")
+
+
+def test_stt_competitor_rules():
+    assert E.stt_competitor("노래.", "고래") == "노래"
+    assert E.stt_competitor("", "고래") is None
+    assert E.stt_competitor(None, "고래") is None
+    assert E.stt_competitor("고래", "고래") is None
+    assert E.stt_competitor("고래요", "고래") is None       # 어미가 붙은 정답
+    assert E.stt_competitor("전화", "전화기") is None       # 줄여 부른 말
+
+
+def test_plan_arm_c_adds_transcript_from_audio_not_target():
+    rows = [{"audio": "a.wav", "_wav": Path("a.wav"), "text": "고래"}]
+    foils = {"고래": {"foils": [{"foil": "구름", "kind": "phon", "counts_for_fa": True}]}}
+    stt = {"a.wav": "모래"}   # 어휘 밖 단어 — 이웃 목록에는 없다
+    pos, neg = E.plan(rows, foils, VOCAB, "C", stt)
+    assert pos[0]["comps"][-1] == "모래" and neg[0]["comps"][-1] == "모래"
+    assert pos[0]["comps"][:-1] == N.neighbors("고래", VOCAB)
+    pos_s, neg_s = E.plan(rows, foils, VOCAB, "S", stt)
+    assert pos_s[0]["comps"] == ["모래"] and neg_s[0]["comps"] == ["모래"]
+    # 전사가 이미 이웃 목록에 있으면 두 번 넣지 않는다
+    pos_d, _ = E.plan(rows, foils, VOCAB, "C", {"a.wav": "노래"})
+    assert pos_d[0]["comps"] == N.neighbors("고래", VOCAB)
+    # 전사가 목표와 같으면 경쟁자가 안 붙는다(음성 목표 구름에는 붙는다)
+    pos2, neg2 = E.plan(rows, foils, VOCAB, "S", {"a.wav": "고래"})
+    assert pos2[0]["comps"] == [] and neg2[0]["comps"] == ["고래"]
