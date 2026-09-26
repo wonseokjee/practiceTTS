@@ -78,22 +78,23 @@ def test_phon_foils_are_nearest_by_app_scorer():
 
 
 def test_counts_for_fa_rule():
-    # 다른 실제 단어는 앱 채점기가 정답으로 쳐도 오통과로 센다
-    assert F.counts_for_fa("phon", app_wrong=False) is True
-    assert F.counts_for_fa("sem", app_wrong=False) is True
-    assert F.counts_for_fa("para", app_wrong=False) is False
-    assert F.counts_for_fa("para", app_wrong=True) is True
-    assert F.counts_for_fa("rand", app_wrong=True) is False
+    # 다른 실제 단어만 센다 — 착어·무작위는 따로 보고
+    assert F.counts_for_fa("phon") is True
+    assert F.counts_for_fa("sem") is True
+    assert F.counts_for_fa("para") is False
+    assert F.counts_for_fa("rand") is False
+    info = F.build_foils(["사과"], POOL, CATS)["사과"]
+    assert all(f["counts_for_fa"] == (f["kind"] in ("phon", "sem")) for f in info["foils"])
 
 
-def test_app_wrong_direction_is_said_word_vs_foil_target():
+def test_string_scorer_direction_is_said_word_vs_foil_target():
     info = F.build_foils(["사과"], POOL, CATS)["사과"]
     for f in info["foils"]:
-        assert f["app_wrong"] == (not is_speech_correct("사과", f["foil"], "word"))
+        assert f["string_scorer_wrong"] == (not is_speech_correct("사과", f["foil"], "word"))
 
 
-def test_app_scorer_accepts_different_real_word_saja_for_satang():
-    # 「채점기 발견」의 근거 사례 — 이게 바뀌면(채점기를 고치면) 대장도 갱신할 것
+def test_string_scorer_accepts_different_real_word_saja_for_satang():
+    # 대장 「foil 실측과 문자열 채점기의 성질」의 근거 사례(퇴역한 채점기의 성질이다)
     assert is_speech_correct("사자", "사탕", "word") is True
 
 
