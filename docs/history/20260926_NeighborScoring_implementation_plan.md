@@ -52,6 +52,10 @@ useMixedQuizSession.submitNaming → qab_results
 
 ### PR 1 — 이웃 목록 자산
 
+> **구현됨(2026-09-26).** 이름대기 낱말 89개. 아래 계획에서 달라진 점은 없고, 두 가지를 더했다.
+> `--check` 모드(파일이 낡았는지만 본다)와, 낡음을 잡는 pytest(`scripts/asr_eval/test_neighbor_manifest_asset.py`)다.
+> CI가 없어서(TODOS `ci-pipeline`) 낡음은 두 테스트를 손으로 돌릴 때 드러난다.
+
 - `scripts/build_neighbor_manifest.py`: `scripts/asr_eval/neighbor_manifest.py`(0단계와 **같은 함수**)로
   이름대기 대상 단어(`pickNamingItems`가 낼 수 있는 전 단어: 낱말 풀 중 사진 있는 것 + 이름대기 전용)
   마다 이웃 3개를 만든다.
