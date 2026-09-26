@@ -230,6 +230,7 @@ describe('MemoryEntryService.create() — 3-step 트랜잭션 회귀', () => {
     // When
     const result = await service.create(CAREGIVER_ID, dto, photo, {
       patientId: PATIENT_ID,
+      locale: 'ko-KR',
     });
 
     // Then — 5종 row 저장 호출 검증
@@ -254,6 +255,7 @@ describe('MemoryEntryService.create() — 3-step 트랜잭션 회귀', () => {
     // When
     await service.create(CAREGIVER_ID, dto, undefined, {
       patientId: PATIENT_ID,
+      locale: 'ko-KR',
     });
 
     // Then
@@ -265,6 +267,19 @@ describe('MemoryEntryService.create() — 3-step 트랜잭션 회귀', () => {
     expect(fastApiClientMock.tag).not.toHaveBeenCalled();
   });
 
+  it('메모 마스킹은 쓴 보호자의 로케일로 요청한다 (en-US 보호자 → lang=en-US)', async () => {
+    await service.create(CAREGIVER_ID, buildDto(), undefined, {
+      patientId: PATIENT_ID,
+      locale: 'en-US',
+    });
+
+    expect(fastApiClientMock.mask).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      'en-US',
+    );
+  });
+
   it('케이스 3: photo만 (patientAnswers=[]) → R2(b) 재해석 통과, patientNote 저장 0개', async () => {
     // Given
     const dto = buildDto({ patientAnswers: [] });
@@ -273,6 +288,7 @@ describe('MemoryEntryService.create() — 3-step 트랜잭션 회귀', () => {
     // When
     const result = await service.create(CAREGIVER_ID, dto, photo, {
       patientId: PATIENT_ID,
+      locale: 'ko-KR',
     });
 
     // Then
@@ -291,6 +307,7 @@ describe('MemoryEntryService.create() — 3-step 트랜잭션 회귀', () => {
     await expect(
       service.create(CAREGIVER_ID, dto, undefined, {
         patientId: PATIENT_ID,
+        locale: 'ko-KR',
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
 
@@ -305,6 +322,7 @@ describe('MemoryEntryService.create() — 3-step 트랜잭션 회귀', () => {
     await expect(
       service.create(CAREGIVER_ID, dto, undefined, {
         patientId: PATIENT_ID,
+        locale: 'ko-KR',
       }),
     ).rejects.toBeInstanceOf(ForbiddenException);
 
@@ -319,7 +337,10 @@ describe('MemoryEntryService.create() — 3-step 트랜잭션 회귀', () => {
 
     // When / Then
     await expect(
-      service.create(CAREGIVER_ID, dto, photo, { patientId: PATIENT_ID }),
+      service.create(CAREGIVER_ID, dto, photo, {
+        patientId: PATIENT_ID,
+        locale: 'ko-KR',
+      }),
     ).rejects.toThrow('DB FK 위반');
 
     expect(fileStorageServiceMock.delete).toHaveBeenCalledWith(
@@ -337,7 +358,10 @@ describe('MemoryEntryService.create() — 3-step 트랜잭션 회귀', () => {
 
     // When / Then
     await expect(
-      service.create(CAREGIVER_ID, dto, photo, { patientId: PATIENT_ID }),
+      service.create(CAREGIVER_ID, dto, photo, {
+        patientId: PATIENT_ID,
+        locale: 'ko-KR',
+      }),
     ).rejects.toThrow('R2 PutObject 실패');
 
     // 저장이 안 됐으니 트랜잭션도, cleanup도 시도할 게 없다.
@@ -357,6 +381,7 @@ describe('MemoryEntryService.create() — 3-step 트랜잭션 회귀', () => {
     // When
     const result = await service.create(CAREGIVER_ID, dto, undefined, {
       patientId: PATIENT_ID,
+      locale: 'ko-KR',
     });
 
     // Then
@@ -376,6 +401,7 @@ describe('MemoryEntryService.create() — 3-step 트랜잭션 회귀', () => {
     // When
     await service.create(CAREGIVER_ID, dto, undefined, {
       patientId: PATIENT_ID,
+      locale: 'ko-KR',
     });
 
     // Then — save에 전달된 객체의 isPrivate === true

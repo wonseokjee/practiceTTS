@@ -614,11 +614,25 @@ describe('QuizService', () => {
       expect(fastApiClientMock.mask).toHaveBeenCalledWith(
         '서울 강남구 삼성병원에 다녀왔어요',
         MEMORY_ENTRY_ID,
+        'ko-KR',
       );
       const payload = generationClientMock.generate.mock.calls[0][0] as {
         patientNotes: Array<{ answerText: string }>;
       };
       expect(payload.patientNotes[0].answerText).toBe('[장소]에 다녀왔어요');
+    });
+
+    it('노트 마스킹은 메모를 쓴 보호자의 로케일로 요청한다', async () => {
+      arrangeNotes('My son Michael came by');
+      userRepo.findOne.mockResolvedValue({ id: 'cg', locale: 'en-US' });
+
+      await service.generateForMemoryEntry(MEMORY_ENTRY_ID);
+
+      expect(fastApiClientMock.mask).toHaveBeenCalledWith(
+        expect.any(String),
+        MEMORY_ENTRY_ID,
+        'en-US',
+      );
     });
 
     it('토큰화 → 마스킹 순서로 처리한다 (마스킹은 토큰화된 텍스트를 받는다)', async () => {
