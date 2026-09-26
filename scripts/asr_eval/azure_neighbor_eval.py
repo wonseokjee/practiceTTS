@@ -71,13 +71,29 @@ def norm_transcript(t: str | None) -> str:
     return re.sub(r"\s+", " ", t).strip()
 
 
+# 부분 명칭의 최소 길이 비율 — nameMatch.ts의 PARTIAL_MIN_RATIO와 같은 값(앱의 선례).
+# "통나무"에 "나무"(2/3)는 부분 명칭, "비행기"에 "비"(1/3)는 조각이다.
+PARTIAL_MIN_RATIO = 0.6
+
+
+def is_accepted_variant(said: str, target: str) -> bool:
+    """이름대기에서 정답으로 보는 변형인가(설계 9절, 사용자 결정 2026-09-26).
+
+    - 목표를 품는 말: 사과 ← "사과요"(조사·어미)
+    - 부분 명칭: 통나무 ← "나무" — 목표의 연속 부분이고 길이가 60% 이상
+    """
+    a, b = said.replace(" ", ""), target.replace(" ", "")
+    if not a or not b:
+        return False
+    if a == b or b in a:
+        return True
+    return a in b and len(a) >= PARTIAL_MIN_RATIO * len(b)
+
+
 def stt_competitor(transcript: str | None, target: str) -> str | None:
-    """설계 8절 — 비었거나, 목표와 같거나, 포함관계면 경쟁자로 안 쓴다."""
+    """설계 8·9절 — 비었거나, 목표 자신이거나, 정답으로 보는 변형이면 경쟁자로 안 쓴다."""
     t = norm_transcript(transcript)
-    if not t:
-        return None
-    a, b = t.replace(" ", ""), target.replace(" ", "")
-    if a == b or N.is_containment(a, b):
+    if not t or is_accepted_variant(t, target):
         return None
     return t
 
@@ -107,7 +123,8 @@ def plan(rows: list[dict], foils: dict, vocab: list[str], arm: str,
         pos.append({"audio": r["audio"], "_wav": r["_wav"], "said": a, "target": a,
                     "comps": comps(a, r["audio"])})
         for f in foils[a]["foils"]:
-            if f["counts_for_fa"]:
+            # 부분 명칭 등 정답으로 보는 변형은 애초에 음성 사례가 아니다(설계 9절)
+            if f["counts_for_fa"] and not is_accepted_variant(a, f["foil"]):
                 neg.append({"audio": r["audio"], "_wav": r["_wav"], "said": a, "target": f["foil"],
                             "comps": comps(f["foil"], r["audio"])})
     return pos, neg
