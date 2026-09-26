@@ -49,6 +49,18 @@ DEFAULT_KINDS = ("phon", "sem", "para")   # rand는 0단계 측정 B의 캐시�
 LEAK_OK, LEAK_BAD = 0.05, 0.10
 
 
+def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
+    """이항 비율의 윌슨 95% 구간. 쌍들은 같은 오디오·같은 단어를 공유해 완전히 독립이
+    아니므로 **실제보다 좁게** 나온다 — 읽을 때 하한선으로 본다."""
+    if n == 0:
+        return float("nan"), float("nan")
+    ph = k / n
+    d = 1 + z * z / n
+    c = (ph + z * z / (2 * n)) / d
+    h = z * ((ph * (1 - ph) / n + z * z / (4 * n * n)) ** 0.5) / d
+    return max(0.0, c - h), min(1.0, c + h)
+
+
 def app_outcome(res: dict | None) -> str:
     """앱이 이 Azure 결과로 내릴 판정: 'pass' | 'fail' | 'unscored'.
 
@@ -76,6 +88,17 @@ def load_pair_cache(p: Path) -> dict[str, dict]:
     return out
 
 
+def is_containment(word: str, ref: str) -> bool:
+    """한쪽이 다른 쪽을 품는가(전화↔전화기, 나무↔통나무).
+
+    **사후에 추가한 구분이다**(5행 스모크를 본 뒤, 전체 결과를 보기 전). "전화기" 문항에
+    "전화"라고 한 건 같은 물건을 줄여 부른 것일 수 있어 이름대기 오류로 단정하기 어렵다.
+    사전 등록한 판정은 이 쌍을 **포함한 채로** 내리고, 뺀 값은 민감도로만 보고한다.
+    """
+    a, b = word.replace(" ", ""), ref.replace(" ", "")
+    return a in b or b in a
+
+
 def build_pairs(rows: list[dict], foils: dict[str, dict], kinds: tuple[str, ...]) -> list[dict]:
     """단어 행 × 그 단어의 foil — (오디오, 참조) 호출 목록."""
     pairs = []
@@ -94,6 +117,8 @@ def summarize(pairs: list[dict], pair_cache: dict[str, dict], pos_cache: dict[st
     out: dict = {}
     groups = {k: [p for p in pairs if p["kind"] == k] for k in sorted({p["kind"] for p in pairs})}
     groups["근접(phon+sem)"] = [p for p in pairs if p["counts_for_fa"]]
+    groups["근접-포함관계제외(사후)"] = [p for p in pairs if p["counts_for_fa"]
+                                  and not is_containment(p["word"], p["ref"])]
     for name, ps in groups.items():
         done = [p for p in ps if cache_key(p["audio"], p["ref"]) in pair_cache]
         if not done:
@@ -109,6 +134,7 @@ def summarize(pairs: list[dict], pair_cache: dict[str, dict], pos_cache: dict[st
             "pass": oc.count("pass"), "unscored": oc.count("unscored"),
             # 분모 = 앱이 실제로 판정을 내린 것. 채점 불가는 통과도 탈락도 아니다
             "fa_rate": (oc.count("pass") / len(scored)) if scored else float("nan"),
+            "fa_ci95": wilson(oc.count("pass"), len(scored)),
             "mean_acc_foil": sum(neg) / len(neg) if neg else float("nan"),
             "mean_acc_true": sum(pos) / len(pos) if pos else float("nan"),
             "auc": AE.auc(pos, neg) if pos and neg else float("nan"),
@@ -243,10 +269,11 @@ def main() -> int:
     print(f"  단어 {len(rows)}행 · 정답 처리 {pos_oc.count('pass')} · 채점 불가 {pos_oc.count('unscored')}"
           f" · 오판정률 {1 - pos_oc.count('pass') / len(pos_scored):.1%}" if pos_scored else "  (없음)")
     print("\n── foil 참조 — 앱 판정(accuracy >= 60) ──")
-    print(f"  {'종류':14}{'n':>6}{'오통과':>9}{'채점불가':>9}{'acc 정답':>10}{'acc foil':>10}{'AUC':>7}{'문자열채점기 통과':>18}")
+    print(f"  {'종류':22}{'n':>6}{'오통과':>9}{'95% 구간':>16}{'채점불가':>9}{'acc 정답':>10}{'acc foil':>10}{'AUC':>7}{'문자열채점기 통과':>18}")
     for name, g in s.items():
-        print(f"  {name:14}{g['n']:6d}{g['fa_rate']:9.1%}{g['unscored']:9d}{g['mean_acc_true']:10.1f}"
-              f"{g['mean_acc_foil']:10.1f}{g['auc']:7.3f}{g['string_scorer_pass']:18.1%}")
+        lo, hi = g["fa_ci95"]
+        print(f"  {name:22}{g['n']:6d}{g['fa_rate']:9.1%}{f'[{lo:.1%}, {hi:.1%}]':>16}{g['unscored']:9d}"
+              f"{g['mean_acc_true']:10.1f}{g['mean_acc_foil']:10.1f}{g['auc']:7.3f}{g['string_scorer_pass']:18.1%}")
     near = s.get("근접(phon+sem)")
     if near:
         print(f"\n[판정 — 사전 등록] {verdict(near['fa_rate'])}")

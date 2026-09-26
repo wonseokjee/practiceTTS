@@ -84,3 +84,23 @@ def test_pair_cache_roundtrip(tmp_path):
     c = E.load_pair_cache(p)
     assert set(c) == {E.cache_key("a.wav", "사자"), E.cache_key("a.wav", "피자")}
     assert json.loads(p.read_text(encoding="utf-8").splitlines()[0])["ref"] == "사자"
+
+
+def test_containment_sensitivity_group():
+    assert E.is_containment("전화", "전화기") and E.is_containment("통나무", "나무")
+    assert not E.is_containment("사탕", "사자")
+    rows = [{"audio": "a.wav", "_wav": Path("a.wav"), "text": "전화"}]
+    foils = {"전화": {"foils": [
+        {"foil": "전화기", "kind": "phon", "counts_for_fa": True, "string_scorer_wrong": False},
+        {"foil": "전구", "kind": "phon", "counts_for_fa": True, "string_scorer_wrong": True}]}}
+    pairs = E.build_pairs(rows, foils, ("phon",))
+    cache = {E.cache_key("a.wav", "전화기"): _res(85), E.cache_key("a.wav", "전구"): _res(20)}
+    s = E.summarize(pairs, cache, {"a.wav": _res(90)})
+    assert s["근접(phon+sem)"]["fa_rate"] == 0.5
+    assert s["근접-포함관계제외(사후)"]["n"] == 1 and s["근접-포함관계제외(사후)"]["fa_rate"] == 0.0
+
+
+def test_wilson_interval():
+    lo, hi = E.wilson(5, 100)
+    assert abs(lo - 0.0215) < 1e-3 and abs(hi - 0.1118) < 1e-3   # 표준 윌슨 값
+    assert E.wilson(0, 10)[0] == 0.0
