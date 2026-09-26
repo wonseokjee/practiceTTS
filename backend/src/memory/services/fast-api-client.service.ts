@@ -101,7 +101,11 @@ export class FastApiClientService implements IFastApiClient {
    * - POST {baseUrl}/mask
    * - entity_map은 응답에서 수신하더라도 즉시 폐기 (절대 외부 노출 금지)
    */
-  async mask(rawText: string, memoryEntryId: string): Promise<AiMaskResult> {
+  async mask(
+    rawText: string,
+    memoryEntryId: string,
+    lang: string,
+  ): Promise<AiMaskResult> {
     try {
       // 퀴즈 경로의 마스킹은 fail-closed다(실패 시 생성 중단). 일시적 업스트림
       // 오류로 퀴즈가 통째로 실패하지 않도록 백오프 재시도로 흡수한다.
@@ -110,7 +114,7 @@ export class FastApiClientService implements IFastApiClient {
           firstValueFrom(
             this.httpService.post<RawMaskResponse>(
               `${this.baseUrl}/mask`,
-              { raw_text: rawText, memory_entry_id: memoryEntryId },
+              { raw_text: rawText, memory_entry_id: memoryEntryId, lang },
               {
                 timeout: FastApiClientService.DEFAULT_TIMEOUT_MS,
                 headers: aiServiceHeaders(this.configService),

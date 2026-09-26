@@ -14,6 +14,7 @@ import {
   weekBucket,
   weekWindowStart,
 } from '../common/week-boundary';
+import { DEFAULT_LOCALE } from '../common/locale';
 import { DEFAULT_QUIZ_DISTRIBUTION } from './constants/quiz-distribution';
 import { QAB_LEGACY_SCORER_VERSION } from './constants/qab-scorer';
 import { QuizSetSummaryDto } from './dto/quiz-set-summary.dto';
@@ -566,7 +567,14 @@ export class QuizService {
       // 마스킹: 프로필에 없는 PII(주소·기관명·미등록 지인 등)를 익명화한다.
       // 실패 시 생성을 중단한다(fail-closed) — 마스킹 없는 원문을 LLM에 보내지 않는다.
       // 시나리오 경로와 동일한 순서: 토큰화 → 마스킹 → LLM.
-      const patientNotes = await this.maskNotes(notes, entry.id, tokenMap);
+      // 메모는 보호자가 쓴다 — 마스킹 규칙은 그 보호자의 로케일로 고른다.
+      const authorLocale = await this.localeOf(entry.caregiverId);
+      const patientNotes = await this.maskNotes(
+        notes,
+        entry.id,
+        tokenMap,
+        authorLocale,
+      );
 
       const payload: IQuizGenerationPayload = {
         patientNotes,
@@ -662,6 +670,7 @@ export class QuizService {
     notes: PatientMemoryNote[],
     memoryEntryId: string,
     tokenMap: Record<string, string>,
+    authorLocale: string,
   ): Promise<IQuizGenerationPayload['patientNotes']> {
     const masked: Array<{
       category: PatientMemoryNote['category'];
@@ -679,6 +688,7 @@ export class QuizService {
           const { maskedText } = await this.fastApiClient.mask(
             tokenized,
             memoryEntryId,
+            authorLocale,
           );
           return { category: note.category, answerText: maskedText };
         }),
@@ -1610,6 +1620,15 @@ export class QuizService {
           ? Math.round((totalItems / dropped.length) * 10) / 10
           : null,
     };
+  }
+
+  /** 계정의 로케일(users.locale). 행이 없으면 기본값. */
+  private async localeOf(userId: string): Promise<string> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: { id: true, locale: true },
+    });
+    return user?.locale ?? DEFAULT_LOCALE;
   }
 
   /**

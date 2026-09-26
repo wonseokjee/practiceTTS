@@ -98,6 +98,7 @@ export class MemoryController {
   ): Promise<MemoryEntryResponseDto> {
     return this.memoryEntryService.create(req.user.id, dto, photo, {
       patientId: req.user.patientId,
+      locale: req.user.locale,
     });
   }
 

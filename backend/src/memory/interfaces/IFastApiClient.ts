@@ -23,7 +23,12 @@ export interface IFastApiClient {
    * @param memoryEntryId 메모리 엔트리 UUID
    * @returns maskedText (entity_map은 즉시 폐기)
    */
-  mask(rawText: string, memoryEntryId: string): Promise<AiMaskResult>;
+  /** lang = 메모를 쓴 보호자의 로케일(users.locale). 마스킹 규칙을 고른다 */
+  mask(
+    rawText: string,
+    memoryEntryId: string,
+    lang: string,
+  ): Promise<AiMaskResult>;
 
   /**
    * 마스킹된 컨텍스트로 훈련 시나리오 생성

@@ -65,7 +65,7 @@ export class MemoryEntryService implements IMemoryEntryService {
     caregiverId: string,
     dto: CreateMemoryEntryDto,
     photo: Express.Multer.File | undefined,
-    caregiver: { patientId: string | null },
+    caregiver: { patientId: string | null; locale: string },
   ): Promise<MemoryEntryResponseDto> {
     // (1) 소유권 검증
     if (caregiver.patientId !== dto.patientId) {
@@ -161,6 +161,7 @@ export class MemoryEntryService implements IMemoryEntryService {
           noteTexts,
           savedEntry.id,
           dto.patientId,
+          caregiver.locale,
         );
 
       // 결과를 별도 update로 반영 (실패해도 부분 성공 허용)
@@ -434,6 +435,7 @@ export class MemoryEntryService implements IMemoryEntryService {
     noteTexts: string[],
     memoryEntryId: string,
     patientId: string,
+    authorLocale: string,
   ): Promise<{
     locationTag: string | null;
     objectTags: string[] | null;
@@ -487,6 +489,7 @@ export class MemoryEntryService implements IMemoryEntryService {
         const maskResponse = await this.fastApiClient.mask(
           context,
           memoryEntryId,
+          authorLocale,
         );
         maskedContext = this.cryptoService.encrypt(maskResponse.maskedText);
       } catch {
