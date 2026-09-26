@@ -124,3 +124,23 @@ describe('SubmitQabResultsDto — scorerVersion · unscoredReason', () => {
     );
   });
 });
+
+describe('SubmitQabResultsDto — ambiguousRetries', () => {
+  it('0~3 정수를 받는다', async () => {
+    for (const n of [0, 1, 2, 3]) {
+      expect(await itemErrorsFor({ ambiguousRetries: n })).toEqual([]);
+    }
+  });
+
+  it('생략해도 된다 — 이웃 비교를 안 거친 시도(NULL)다', async () => {
+    expect(await itemErrorsFor({})).toEqual([]);
+  });
+
+  it('범위 밖·정수 아님·숫자 아님은 거부한다', async () => {
+    for (const bad of [-1, 4, 1.5, '1', true]) {
+      expect(await itemErrorsFor({ ambiguousRetries: bad })).toContain(
+        'ambiguousRetries',
+      );
+    }
+  });
+});

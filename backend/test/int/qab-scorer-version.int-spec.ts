@@ -43,6 +43,7 @@ describe('QAB 채점기 버전 (DB)', () => {
       unscored: boolean;
       unscoredReason: string | null;
       scorerVersion: string | null;
+      ambiguousRetries: number | null;
       answeredAt: Date;
     }>,
   ): Promise<void> => {
@@ -56,6 +57,7 @@ describe('QAB 채점기 버전 (DB)', () => {
       unscoredReason: (row.unscoredReason ??
         null) as QabResult['unscoredReason'],
       scorerVersion: (row.scorerVersion ?? null) as QabResult['scorerVersion'],
+      ambiguousRetries: row.ambiguousRetries ?? null,
       answeredAt: row.answeredAt ?? T(1),
     });
   };
@@ -84,15 +86,21 @@ describe('QAB 채점기 버전 (DB)', () => {
       column_name: string;
       is_nullable: string;
       column_default: string | null;
-      character_maximum_length: number;
+      character_maximum_length: number | null;
     }[] = await ds.query(
       `SELECT column_name, is_nullable, column_default, character_maximum_length
          FROM information_schema.columns
         WHERE table_name = 'qab_results'
-          AND column_name IN ('scorer_version', 'unscored_reason')
+          AND column_name IN ('scorer_version', 'unscored_reason', 'ambiguous_retries')
         ORDER BY column_name`,
     );
     expect(cols).toEqual([
+      {
+        column_name: 'ambiguous_retries',
+        is_nullable: 'YES',
+        column_default: null,
+        character_maximum_length: null,
+      },
       {
         column_name: 'scorer_version',
         is_nullable: 'YES',
@@ -190,5 +198,55 @@ describe('QAB 채점기 버전 (DB)', () => {
     expect(by.naming.scorerVersions).toEqual(['azure-pa-nbr-v1']);
     expect(by.repeat.scorerVersions).toEqual(['azure-pa-v1']);
     expect(by.repeat.scorerChangedAt).toBeNull();
+  });
+
+  it('1차 모호율의 분자·분모 — NULL(이웃 비교를 안 거침)은 분모에 안 들어간다', async () => {
+    const p = await patient();
+    // 이웃 비교를 거치지 않은 행 둘(이전 채점기)
+    await addRow(p, {});
+    await addRow(p, { scorerVersion: 'azure-pa-v1' });
+    // 거친 행: 안 시킴 3, 다시 시킴 2(그중 하나는 재시도 후에도 못 가려 채점 불가)
+    for (let i = 0; i < 3; i += 1) {
+      await addRow(p, {
+        scorerVersion: 'azure-pa-nbr-v1',
+        ambiguousRetries: 0,
+      });
+    }
+    await addRow(p, { scorerVersion: 'azure-pa-nbr-v1', ambiguousRetries: 1 });
+    await addRow(p, {
+      isCorrect: false,
+      unscored: true,
+      unscoredReason: 'ambiguous',
+      scorerVersion: 'azure-pa-nbr-v1',
+      ambiguousRetries: 1,
+    });
+
+    const [item] = (await summaryOf(p)).items;
+    expect(item.neighborAttempts).toBe(5); // NULL 둘은 빠진다 — 0으로 셌다면 7
+    expect(item.neighborRetried).toBe(2);
+    expect(item.unscoredAmbiguous).toBe(1); // 재시도 후에도 못 가른 것은 그중 하나
+  });
+
+  it('다른 검사·다른 환자의 재시도가 새지 않는다', async () => {
+    const p = await patient();
+    const other = await patient();
+    await addRow(p, {
+      subtest: 'naming',
+      scorerVersion: 'azure-pa-nbr-v1',
+      ambiguousRetries: 1,
+    });
+    await addRow(p, { subtest: 'repeat' });
+    await addRow(other, {
+      subtest: 'naming',
+      scorerVersion: 'azure-pa-nbr-v1',
+      ambiguousRetries: 1,
+    });
+
+    const by = Object.fromEntries(
+      (await summaryOf(p)).items.map((i) => [i.subtest, i]),
+    );
+    expect(by.naming.neighborAttempts).toBe(1);
+    expect(by.repeat.neighborAttempts).toBe(0);
+    expect(by.repeat.neighborRetried).toBe(0);
   });
 });

@@ -172,6 +172,20 @@ useMixedQuizSession.submitNaming → qab_results
   폼에 싣는다. 응답에서 새 필드를 읽어 `SpeechCaptureResult`에 싣는다.
 - `featureFlags.ts`: `isNeighborScoringEnabled()` ← `VITE_ENABLE_NEIGHBOR_SCORING`.
 
+### PR 5-0 — 백엔드: 재시도 횟수 기록 (계획에 없던 것, PR 5를 읽다가 찾았다)
+
+> **구현됨(2026-09-26).** PR 5를 준비하며 세션 훅을 읽다가 계획의 빈틈을 찾았다. 결과는 **최종 시도만** 저장된다.
+> 1차에 모호했다가 재시도에서 풀린 경우는 어느 행에도 남지 않아, PR 6에서 볼 핵심 지표인 **1차 모호율**("한 번 더"를 얼마나
+> 자주 듣는가 — 채택 기준 ≤ 15%와 직접 비교할 값)을 잴 수 없다. 재시도 후에도 못 가른 것(`unscored_reason = 'ambiguous'`)만
+> 보이고, 그건 그 지표의 일부일 뿐이다. 이미 있는 범용 `events` 테이블은 프론트 전송 코드가 없어서 이것 하나에 쓰기엔 무겁다.
+>
+> - **M34** `qab_results.ambiguous_retries SMALLINT NULL`. **NULL = 이웃 비교를 거치지 않음, 0 = 거쳤고 안 시킴, 1 = 한 번 다시
+>   시킴.** NULL과 0을 가르는 것이 요점이다(0으로 채우면 안 거친 행이 분모에 섞여 비율이 낮게 나온다).
+> - 이름대기 밖의 검사에서 오면 서버가 지운다(`cue_level`과 같은 이유). DTO는 0~3 정수(쓰레기만 막고, 정책 상한은 프론트가 지킨다).
+> - 요약에 `neighborAttempts`(NULL이 아닌 행 수, 분모)와 `neighborRetried`(≥ 1, 분자)를 더했다.
+>   **1차 모호율 = `neighborRetried / neighborAttempts`**, 재시도 후에도 못 가른 몫은 `unscoredAmbiguous`다.
+> - 실제 Postgres 통합 테스트로 NULL이 분모에서 빠지는 것(7이 아니라 5)을 확인했고, up → down → up 왕복을 확인했다.
+
 ### PR 5 — 프론트 흐름: 재시도 · 기록 · 보호자 표시
 
 - `PictureNamingItem`: 플래그가 켜져 있고 로케일이 `ko-KR`이면 manifest에서 이웃을 찾아 서비스에 준다
@@ -198,7 +212,7 @@ useMixedQuizSession.submitNaming → qab_results
 
   | 지표 | 기대 | 넘으면 |
   |---|---|---|
-  | 이름대기 모호율(1차) | ≤ 15% | 재시도 부담이 크다 — m·경쟁자 수를 다시 본다 |
+  | 이름대기 모호율(1차) = `neighborRetried / neighborAttempts` | ≤ 15% | 재시도 부담이 크다 — m·경쟁자 수를 다시 본다 |
   | 모호 → 채점 불가(2차) | 1차의 절반 이하 | 재시도가 안 푼다 — 재시도의 의미를 다시 본다 |
   | 보호자 정정률(v2 행) | v1과 비교 | v2가 더 자주 정정되면 판정이 사람과 어긋난다 |
   | 문항당 지연 p95 | 3초 이하 | 병렬화·타임아웃을 조정한다 |

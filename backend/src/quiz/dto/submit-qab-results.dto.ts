@@ -99,6 +99,17 @@ export class QabResultItemDto {
   @IsIn(QAB_SCORER_VERSIONS)
   scorerVersion?: QabScorerVersion;
 
+  /**
+   * 이웃 비교에서 다시 말하게 한 횟수(M34). 이름대기에서 이웃 비교를 거친 시도만 보낸다.
+   * 안 보내면 NULL — 이웃 비교를 안 거친 행이다(0과 다르다). 값의 뜻은 엔티티 주석 참고.
+   * 범위는 쓰레기 값만 막는 정도다(정책의 상한은 프론트가 지킨다).
+   */
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(3)
+  ambiguousRetries?: number;
+
   // 이름대기에서 몇 단계까지 단서를 받았나(E18). 없으면 단서 개념이 없는 검사다.
   //   0 무단서 · 1 의미 · (2 문장 완성 — 미구현) · 3 음소 · 4 통과
   // 2를 허용 범위에 남겨 둔 이유는 M25 주석 참고.

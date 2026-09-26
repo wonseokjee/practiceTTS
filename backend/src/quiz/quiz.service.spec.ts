@@ -1866,6 +1866,38 @@ describe('QuizService', () => {
         });
       });
 
+      it('이웃 비교에서 다시 말하게 한 횟수를 남긴다 — NULL(안 거침)과 0(안 시킴)을 가른다', async () => {
+        // 0으로 채우면 이웃 비교를 안 거친 행이 "다시 말하게 한 적 없는 행"과 섞여 1차 모호율의
+        // 분모가 부풀고 비율이 조용히 낮게 나온다.
+        expect(await save({ ambiguousRetries: 1 })).toMatchObject({
+          ambiguousRetries: 1,
+        });
+        expect(await save({ ambiguousRetries: 0 })).toMatchObject({
+          ambiguousRetries: 0,
+        });
+        expect(await save({})).toMatchObject({ ambiguousRetries: null });
+      });
+
+      it('이름대기 밖의 검사에서 온 재시도 횟수는 떨군다', async () => {
+        skillLevelRepo.find.mockResolvedValue([]);
+        qabResultRepo.save.mockResolvedValue([]);
+        await service.saveQabResults(PATIENT_ID, {
+          sessionToken: SESSION_TOKEN,
+          results: [
+            {
+              subtest: 'repeat',
+              itemRef: 'repeat_w0',
+              isCorrect: true,
+              ambiguousRetries: 1,
+            },
+          ],
+        } as SubmitQabResultsDto);
+        const calls = qabResultRepo.create.mock.calls;
+        expect(calls[calls.length - 1][0]).toMatchObject({
+          ambiguousRetries: null,
+        });
+      });
+
       it('이유를 모르는 옛 클라이언트의 채점 불가는 이유가 NULL이다', async () => {
         expect(await save({ unscored: true })).toMatchObject({
           unscored: true,
@@ -2902,6 +2934,8 @@ describe('QuizService', () => {
           cueScored: 0,
           // 채점기 버전 컬럼이 없는 행은 모호 0건 · 버전 목록 비어 있음 · 전환 없음이다(M33).
           unscoredAmbiguous: 0,
+          neighborAttempts: 0,
+          neighborRetried: 0,
           scorerVersions: [],
           scorerChangedAt: null,
         },
@@ -2920,6 +2954,8 @@ describe('QuizService', () => {
           avgCueLevel: null,
           cueScored: 0,
           unscoredAmbiguous: 0,
+          neighborAttempts: 0,
+          neighborRetried: 0,
           scorerVersions: [],
           scorerChangedAt: null,
         },
@@ -3029,8 +3065,38 @@ describe('QuizService', () => {
         // 실 DB는 항상 주지만, 없으면 Number(undefined)가 NaN이 되어 JSON에서 조용히 null이 된다.
         const { item } = await summaryFor({});
         expect(item.unscoredAmbiguous).toBe(0);
+        expect(item.neighborAttempts).toBe(0);
+        expect(item.neighborRetried).toBe(0);
         expect(item.scorerVersions).toEqual([]);
         expect(item.scorerChangedAt).toBeNull();
+      });
+
+      it('이웃 비교를 거친 시도 수와 다시 말하게 한 수를 내려보낸다(1차 모호율의 분자·분모)', async () => {
+        const { item } = await summaryFor({
+          neighborAttempts: '20',
+          neighborRetried: '3',
+        });
+        expect(item).toMatchObject({
+          neighborAttempts: 20,
+          neighborRetried: 3,
+        });
+      });
+
+      it('SQL이 NULL(안 거침)과 0(안 시킴)을 가른다', async () => {
+        const { qb } = await summaryFor({});
+        const selects = qb.addSelect.mock.calls.map((c) => String(c[0]));
+        expect(
+          selects.some((q) =>
+            /COUNT\(\*\) FILTER \(WHERE r\.ambiguous_retries IS NOT NULL\)/.test(
+              q,
+            ),
+          ),
+        ).toBe(true);
+        expect(
+          selects.some((q) =>
+            /COUNT\(\*\) FILTER \(WHERE r\.ambiguous_retries >= 1\)/.test(q),
+          ),
+        ).toBe(true);
       });
 
       it('SQL이 NULL 버전을 v1로 해석하고 모호만 센다', async () => {
