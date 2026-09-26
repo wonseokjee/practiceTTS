@@ -31,7 +31,8 @@
     "hintAria": "힌트 보기",
     "hintMoreAria": "힌트 하나 더 보기",
     "hint": "힌트",
-    "hintMore": "힌트 하나 더"
+    "hintMore": "힌트 하나 더",
+    "retryAmbiguous": "한 번만 더 말씀해 주시겠어요?"
   },
   "speechCapture": {
     "contentAria": "내용: {{text}}",

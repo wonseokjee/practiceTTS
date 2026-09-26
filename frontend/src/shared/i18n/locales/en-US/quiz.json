@@ -31,7 +31,8 @@
     "hintAria": "Show a hint",
     "hintMoreAria": "Show another hint",
     "hint": "Hint",
-    "hintMore": "Another hint"
+    "hintMore": "Another hint",
+    "retryAmbiguous": "Could you say it one more time?"
   },
   "speechCapture": {
     "contentAria": "Text: {{text}}",
