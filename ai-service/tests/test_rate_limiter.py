@@ -104,3 +104,54 @@ def test_invalid_config_raises():
         SlidingWindowRateLimiter(0, 60.0)
     with pytest.raises(ValueError):
         SlidingWindowRateLimiter(1, 0.0)
+
+
+# ── cost(호출 수 가중) ────────────────────────────────────────
+
+
+def test_cost_counts_calls_not_requests():
+    clock = FakeClock()
+    limiter = SlidingWindowRateLimiter(10, 60.0, time_fn=clock)
+
+    assert limiter.allow("k", cost=6) is True      # 6/10
+    assert limiter.allow("k", cost=4) is True      # 10/10 — 정확히 한도까지는 허용
+    assert limiter.allow("k") is False             # 11 > 10
+
+
+def test_denied_request_charges_nothing():
+    clock = FakeClock()
+    limiter = SlidingWindowRateLimiter(10, 60.0, time_fn=clock)
+
+    assert limiter.allow("k", cost=8) is True
+    assert limiter.allow("k", cost=5) is False     # 13 > 10 — 거절
+    assert limiter.allow("k", cost=2) is True      # 거절이 차감했다면 여기서 막힌다(8+5+2)
+
+
+def test_cost_expires_with_the_window():
+    clock = FakeClock()
+    limiter = SlidingWindowRateLimiter(6, 60.0, time_fn=clock)
+
+    assert limiter.allow("k", cost=6) is True
+    assert limiter.allow("k") is False
+    clock.advance(60.1)
+    assert limiter.allow("k", cost=6) is True      # 6칸이 한꺼번에 풀린다
+
+
+def test_cost_larger_than_limit_is_never_allowed():
+    limiter = SlidingWindowRateLimiter(5, 60.0, time_fn=FakeClock())
+    assert limiter.allow("k", cost=6) is False
+    assert limiter.allow("k", cost=5) is True      # 거절이 상태를 오염시키지 않았다
+
+
+def test_cost_must_be_positive():
+    limiter = SlidingWindowRateLimiter(5, 60.0, time_fn=FakeClock())
+    with pytest.raises(ValueError):
+        limiter.allow("k", cost=0)
+    with pytest.raises(ValueError):
+        limiter.allow("k", cost=-1)
+
+
+def test_default_cost_is_one_and_keys_stay_independent():
+    limiter = SlidingWindowRateLimiter(2, 60.0, time_fn=FakeClock())
+    assert limiter.allow("a") and limiter.allow("a") and not limiter.allow("a")
+    assert limiter.allow("b", cost=2) and not limiter.allow("b")

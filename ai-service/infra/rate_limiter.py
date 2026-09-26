@@ -32,8 +32,15 @@ class SlidingWindowRateLimiter:
         self._hits: Dict[str, Deque[float]] = defaultdict(deque)
         self._lock = Lock()
 
-    def allow(self, key: str) -> bool:
-        """요청을 허용하면 True(카운트 반영), 한도 초과면 False."""
+    def allow(self, key: str, cost: int = 1) -> bool:
+        """요청을 허용하면 True(카운트 반영), 한도 초과면 False.
+
+        `cost`는 이 요청이 실제로 치르는 호출 수다(기본 1). 한 요청이 유료 호출을 여러 번
+        내면(예: /pronunciation의 경쟁자 채점) 요청 수가 아니라 **호출 수**로 세야 Azure
+        할당량을 지키는 회로차단기가 된다. 한도를 넘기면 **아무것도 차감하지 않는다**.
+        """
+        if cost < 1:
+            raise ValueError("cost는 1 이상이어야 합니다.")
         now = self._time()
         cutoff = now - self._window
         with self._lock:
@@ -43,9 +50,9 @@ class SlidingWindowRateLimiter:
             # 윈도우를 벗어난 오래된 기록 제거
             while hits and hits[0] <= cutoff:
                 hits.popleft()
-            if len(hits) >= self._max:
+            if len(hits) + cost > self._max:
                 return False
-            hits.append(now)
+            hits.extend([now] * cost)
             return True
 
     def _prune(self, cutoff: float) -> None:

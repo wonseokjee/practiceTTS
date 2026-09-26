@@ -67,6 +67,26 @@ useMixedQuizSession.submitNaming → qab_results
 
 ### PR 2 — ai-service `competitors` · `stt_competitor`
 
+> **구현됨(2026-09-26).** 계획에서 달라지거나 더해진 것:
+>
+> - 응답에 **`stt_status`**(`ok` | `empty` | `error`)와 **`competitors_skipped: "no_match"`**를 더했다. 인식 호출이
+>   실패한 것(`error`)과 인식 결과가 없는 것(`empty`)은 판정이 달라서(전자는 채점 불가, 후자는 경쟁자 없음)
+>   `stt_transcript: null`만으로는 가를 수 없었다.
+> - 경쟁자 항목에 **`source`**(`neighbor` | `stt`)를 실었다. 전사가 이웃 하나와 같으면 그 점수를 재사용하되
+>   **`source: "stt"` 항목은 항상 하나 있다**(프론트가 "STT 경쟁자 있음/없음"을 한 규칙으로 읽는다).
+> - `competitors` 검증: 원본 개수 5개·항목 30자 상한(정리 전 기준), 형식 오류 400. 빈 항목·목표와 같은 항목·중복은
+>   조용히 버린다. `stt_competitor`는 불리언(그 밖의 값은 422).
+> - 한도: 라우터가 요청 1건을 먼저 차감한 뒤 `최대 호출 수 - 1`을 더 차감한다(거절되면 추가분은 차감 안 함).
+>   `SlidingWindowRateLimiter.allow(key, cost=1)`. **`PRONUNCIATION_RATE_LIMIT_PER_MIN`의 단위가 요청에서 호출로 바뀌었다**
+>   (`.env.example` 갱신). 기본 240이면 경쟁자 요청은 전역 40건/분이다 — PR 6에서 실사용을 보고 조정한다.
+> - 경쟁자 서비스는 `CompetitorService`(`services/competitor_service.py`)로 분리했다. STT 서비스는 지연 생성이라
+>   경쟁자를 안 쓰는 요청은 STT 설정 누락에 영향받지 않는다.
+> - `COMPETITOR_SKIP_BELOW`(60)는 프론트 정답선(`pronunciationScore.ts`의 `good`)과 같아야 해서 테스트가 두 값을
+>   대조한다.
+> - **실제 Azure 스모크**(608 test 단어 20개): 인식 결과가 0단계 실측 때와 **20/20 일치**, 목표 점수 차이 0,
+>   경쟁자 오류 0건, 항목당 지연 평균 1.5초·최대 2.6초. 이웃 점수는 57쌍 중 56쌍이 같았고 1쌍이 달랐다
+>   (날개←물개 41점 → 0점, Azure의 호출 간 변동).
+
 - 요청(multipart, 선택): `competitors` = JSON 배열 문자열(최대 5개, 각 30자 이하), `stt_competitor` = `"true"`.
   둘 다 없으면 **지금과 바이트 단위로 같은 응답**(하위 호환).
 - 응답 추가 필드:

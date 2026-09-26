@@ -8,7 +8,7 @@
 import os
 import secrets
 
-from fastapi import Header, HTTPException, Request, status
+from fastapi import Depends, Header, HTTPException, Request, status
 
 from infra.azure_pronunciation import AzurePronunciationAssessor
 from infra.azure_stt import AzureSttEngine
@@ -18,6 +18,7 @@ from infra.in_memory_masking_store import InMemoryMaskingStore
 from infra.in_memory_vector_store import InMemoryVectorStore
 from infra.rate_limiter import SlidingWindowRateLimiter
 from services.chat_service import ChatService
+from services.competitor_service import CompetitorService
 from services.masking_service import MaskingService
 from services.pronunciation_service import PronunciationService
 from services.quiz_service import QuizGeneratorService
@@ -332,6 +333,17 @@ def get_stt_rate_limiter() -> SlidingWindowRateLimiter:
             window_seconds=60.0,
         )
     return _stt_rate_limiter
+
+
+def get_competitor_service(
+    pronunciation: PronunciationService = Depends(get_pronunciation_service),
+) -> CompetitorService:
+    """CompetitorService (FastAPI Depends 용).
+
+    STT 서비스는 **지연 생성**이라(`get_stt_service`를 넘기기만 한다) 경쟁자 모드에서 STT를
+    요청했을 때만 만들어진다. 경쟁자를 안 쓰는 요청이 STT 설정 누락(503)에 영향받지 않는다.
+    """
+    return CompetitorService(pronunciation, stt_provider=get_stt_service)
 
 
 def get_pronunciation_rate_limiter() -> SlidingWindowRateLimiter:
