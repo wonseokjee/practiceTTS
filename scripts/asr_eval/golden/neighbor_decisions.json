@@ -1,0 +1,494 @@
+{
+  "passLine": 60,
+  "partialMinRatio": 0.6,
+  "variants": [
+    {
+      "said": "사과",
+      "target": "사과",
+      "accepted": true
+    },
+    {
+      "said": "사과요",
+      "target": "사과",
+      "accepted": true
+    },
+    {
+      "said": "나무",
+      "target": "통나무",
+      "accepted": true
+    },
+    {
+      "said": "가나다",
+      "target": "가나다라마",
+      "accepted": true
+    },
+    {
+      "said": "가나다라",
+      "target": "가나다라마",
+      "accepted": true
+    },
+    {
+      "said": "가나",
+      "target": "가나다라마",
+      "accepted": false
+    },
+    {
+      "said": "가나",
+      "target": "가나다라",
+      "accepted": false
+    },
+    {
+      "said": "가나다",
+      "target": "가나다라",
+      "accepted": true
+    },
+    {
+      "said": "비",
+      "target": "비행기",
+      "accepted": false
+    },
+    {
+      "said": "행",
+      "target": "비행기",
+      "accepted": false
+    },
+    {
+      "said": "노래",
+      "target": "고래",
+      "accepted": false
+    },
+    {
+      "said": "",
+      "target": "고래",
+      "accepted": false
+    },
+    {
+      "said": "고래",
+      "target": "",
+      "accepted": false
+    },
+    {
+      "said": "고 래.",
+      "target": "고래",
+      "accepted": true
+    },
+    {
+      "said": "나 무!",
+      "target": "통나무",
+      "accepted": true
+    }
+  ],
+  "decisions": [
+    {
+      "targetText": "(목표)",
+      "sttStatus": "ok",
+      "pythonModelled": true,
+      "name": "정답 — 경쟁자가 모두 낮다",
+      "target": "고래",
+      "targetAccuracy": 90,
+      "competitors": [
+        {
+          "text": "구름",
+          "source": "neighbor",
+          "accuracy": 20,
+          "status": "ok"
+        },
+        {
+          "text": "가위",
+          "source": "neighbor",
+          "accuracy": 30,
+          "status": "ok"
+        },
+        {
+          "text": "노래",
+          "source": "stt",
+          "accuracy": 50,
+          "status": "ok"
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "targetText": "(목표)",
+      "sttStatus": "ok",
+      "pythonModelled": true,
+      "name": "오답 — 정답선 바로 아래(59.9)",
+      "target": "고래",
+      "targetAccuracy": 59.9,
+      "competitors": [
+        {
+          "text": "구름",
+          "source": "neighbor",
+          "accuracy": 10,
+          "status": "ok"
+        }
+      ],
+      "verdict": "fail"
+    },
+    {
+      "targetText": "(목표)",
+      "sttStatus": "ok",
+      "pythonModelled": true,
+      "name": "정답 — 정답선 정확히(60), 경쟁자 없음",
+      "target": "고래",
+      "targetAccuracy": 60,
+      "competitors": [],
+      "verdict": "pass"
+    },
+    {
+      "targetText": "(목표)",
+      "sttStatus": "ok",
+      "pythonModelled": true,
+      "name": "정답 — 동점(m=0)",
+      "target": "고래",
+      "targetAccuracy": 80,
+      "competitors": [
+        {
+          "text": "노래",
+          "source": "neighbor",
+          "accuracy": 80,
+          "status": "ok"
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "targetText": "(목표)",
+      "sttStatus": "ok",
+      "pythonModelled": true,
+      "name": "모호 — 이웃이 더 높다(고래←노래)",
+      "target": "고래",
+      "targetAccuracy": 80,
+      "competitors": [
+        {
+          "text": "노래",
+          "source": "neighbor",
+          "accuracy": 91,
+          "status": "ok"
+        },
+        {
+          "text": "구름",
+          "source": "neighbor",
+          "accuracy": 20,
+          "status": "ok"
+        }
+      ],
+      "verdict": "ambiguous"
+    },
+    {
+      "targetText": "(목표)",
+      "sttStatus": "ok",
+      "pythonModelled": true,
+      "name": "모호 — 인식 경쟁자가 더 높다",
+      "target": "고래",
+      "targetAccuracy": 80,
+      "competitors": [
+        {
+          "text": "구름",
+          "source": "neighbor",
+          "accuracy": 10,
+          "status": "ok"
+        },
+        {
+          "text": "모래",
+          "source": "stt",
+          "accuracy": 85,
+          "status": "ok"
+        }
+      ],
+      "verdict": "ambiguous"
+    },
+    {
+      "targetText": "(목표)",
+      "sttStatus": "ok",
+      "pythonModelled": true,
+      "name": "정답 — 부분 명칭(통나무←나무)은 경쟁자가 아니다",
+      "target": "통나무",
+      "targetAccuracy": 85,
+      "competitors": [
+        {
+          "text": "마루",
+          "source": "neighbor",
+          "accuracy": 20,
+          "status": "ok"
+        },
+        {
+          "text": "나무",
+          "source": "stt",
+          "accuracy": 90,
+          "status": "ok"
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "targetText": "(목표)",
+      "sttStatus": "ok",
+      "pythonModelled": true,
+      "name": "정답 — 목표를 품는 말(사과←사과요)",
+      "target": "사과",
+      "targetAccuracy": 84,
+      "competitors": [
+        {
+          "text": "사과요",
+          "source": "stt",
+          "accuracy": 95,
+          "status": "ok"
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "targetText": "(목표)",
+      "sttStatus": "ok",
+      "pythonModelled": true,
+      "name": "모호 — 조각(비행기←비, 1/3)은 경쟁자다",
+      "target": "비행기",
+      "targetAccuracy": 80,
+      "competitors": [
+        {
+          "text": "비",
+          "source": "stt",
+          "accuracy": 90,
+          "status": "ok"
+        }
+      ],
+      "verdict": "ambiguous"
+    },
+    {
+      "targetText": "(목표)",
+      "sttStatus": "ok",
+      "pythonModelled": true,
+      "name": "정답 — 부분 명칭 경계(가나다←가나다라마, 정확히 60%)",
+      "target": "가나다라마",
+      "targetAccuracy": 80,
+      "competitors": [
+        {
+          "text": "가나다",
+          "source": "stt",
+          "accuracy": 90,
+          "status": "ok"
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "targetText": "(목표)",
+      "sttStatus": "ok",
+      "pythonModelled": true,
+      "name": "모호 — 부분 명칭 경계 아래(가나, 40%)",
+      "target": "가나다라마",
+      "targetAccuracy": 80,
+      "competitors": [
+        {
+          "text": "가나",
+          "source": "stt",
+          "accuracy": 90,
+          "status": "ok"
+        }
+      ],
+      "verdict": "ambiguous"
+    },
+    {
+      "targetText": "(목표)",
+      "sttStatus": "ok",
+      "pythonModelled": true,
+      "name": "모호 — 이웃 쪽의 변형 텍스트는 거르지 않는다",
+      "target": "통나무",
+      "targetAccuracy": 85,
+      "competitors": [
+        {
+          "text": "나무",
+          "source": "neighbor",
+          "accuracy": 90,
+          "status": "ok"
+        }
+      ],
+      "verdict": "ambiguous"
+    },
+    {
+      "targetText": "(목표)",
+      "sttStatus": "ok",
+      "pythonModelled": true,
+      "name": "정답 — no_match 경쟁자는 0점",
+      "target": "고래",
+      "targetAccuracy": 60,
+      "competitors": [
+        {
+          "text": "노래",
+          "source": "neighbor",
+          "accuracy": 0,
+          "status": "no_match"
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "targetText": "(목표)",
+      "sttStatus": "ok",
+      "pythonModelled": true,
+      "name": "정답 — no_match 경쟁자는 점수 값이 무엇이든 0점이다",
+      "target": "고래",
+      "targetAccuracy": 60,
+      "competitors": [
+        {
+          "text": "노래",
+          "source": "neighbor",
+          "accuracy": 99,
+          "status": "no_match"
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "targetText": "(목표)",
+      "sttStatus": "ok",
+      "pythonModelled": true,
+      "name": "정답 — 이웃과 인식 결과가 같은 단어(중복)",
+      "target": "고래",
+      "targetAccuracy": 90,
+      "competitors": [
+        {
+          "text": "노래",
+          "source": "neighbor",
+          "accuracy": 70,
+          "status": "ok"
+        },
+        {
+          "text": "노래",
+          "source": "stt",
+          "accuracy": 70,
+          "status": "ok"
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "targetText": "(목표)",
+      "sttStatus": "ok",
+      "pythonModelled": true,
+      "name": "모호 — 이웃과 인식 결과가 같은 단어이고 더 높다",
+      "target": "고래",
+      "targetAccuracy": 60,
+      "competitors": [
+        {
+          "text": "노래",
+          "source": "neighbor",
+          "accuracy": 70,
+          "status": "ok"
+        },
+        {
+          "text": "노래",
+          "source": "stt",
+          "accuracy": 70,
+          "status": "ok"
+        }
+      ],
+      "verdict": "ambiguous"
+    },
+    {
+      "targetText": "",
+      "sttStatus": "ok",
+      "pythonModelled": true,
+      "name": "채점 불가 — 목표 인식 결과가 없다(NoMatch)",
+      "target": "고래",
+      "targetAccuracy": 0,
+      "competitors": [],
+      "verdict": "unscored"
+    },
+    {
+      "targetText": "(목표)",
+      "sttStatus": "ok",
+      "pythonModelled": true,
+      "name": "채점 불가 — 이웃 호출 실패",
+      "target": "고래",
+      "targetAccuracy": 90,
+      "competitors": [
+        {
+          "text": "구름",
+          "source": "neighbor",
+          "accuracy": 10,
+          "status": "ok"
+        },
+        {
+          "text": "가위",
+          "source": "neighbor",
+          "accuracy": 0,
+          "status": "error"
+        }
+      ],
+      "verdict": "unscored"
+    },
+    {
+      "targetText": "(목표)",
+      "sttStatus": "error",
+      "pythonModelled": false,
+      "name": "채점 불가 — 인식 호출 실패",
+      "target": "고래",
+      "targetAccuracy": 90,
+      "competitors": [
+        {
+          "text": "구름",
+          "source": "neighbor",
+          "accuracy": 10,
+          "status": "ok"
+        }
+      ],
+      "verdict": "unscored"
+    },
+    {
+      "targetText": "(목표)",
+      "sttStatus": null,
+      "pythonModelled": false,
+      "name": "채점 불가 — 인식 응답이 없다",
+      "target": "고래",
+      "targetAccuracy": 90,
+      "competitors": [
+        {
+          "text": "구름",
+          "source": "neighbor",
+          "accuracy": 10,
+          "status": "ok"
+        }
+      ],
+      "verdict": "unscored"
+    },
+    {
+      "targetText": "(목표)",
+      "sttStatus": "ok",
+      "pythonModelled": false,
+      "name": "채점 불가 — 정답선을 넘었는데 경쟁자를 건너뛴 응답",
+      "target": "고래",
+      "targetAccuracy": 90,
+      "competitors": null,
+      "verdict": "unscored"
+    },
+    {
+      "targetText": "(목표)",
+      "sttStatus": "ok",
+      "pythonModelled": false,
+      "name": "오답 — 서버가 경쟁자를 건너뛴 응답(목표 59)",
+      "target": "고래",
+      "targetAccuracy": 59,
+      "competitors": null,
+      "verdict": "fail"
+    },
+    {
+      "targetText": "(목표)",
+      "sttStatus": "empty",
+      "pythonModelled": true,
+      "name": "정답 — 인식 결과 없음(empty)은 실패가 아니다",
+      "target": "고래",
+      "targetAccuracy": 90,
+      "competitors": [
+        {
+          "text": "구름",
+          "source": "neighbor",
+          "accuracy": 10,
+          "status": "ok"
+        }
+      ],
+      "verdict": "pass"
+    }
+  ]
+}

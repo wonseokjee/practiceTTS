@@ -19,7 +19,9 @@ function normalizeName(text: string): string {
  * 인식 텍스트가 정답의 이 비율 미만이면 거부한다.
  * (STT 잡음 1글자가 긴 정답에 매칭돼 정확도가 부풀려지는 것을 방지.)
  */
-const PARTIAL_MIN_RATIO = 0.6;
+// `neighborScoring.ts`도 이 값을 쓴다 — 이름대기에서 부분 명칭(통나무 ← "나무")을 정답으로 보는
+// 길이 기준이다. 채점 경로에서는 빠진 함수의 상수지만 값 자체는 앱의 선례라 export해서 가져다 쓴다.
+export const PARTIAL_MIN_RATIO = 0.6;
 
 /** 음소 유사 거리 정답 임계값 — 음절당 평균 음소 오류가 이 값 이하이면 정답. */
 const PHONETIC_PASS_THRESHOLD = 0.34;

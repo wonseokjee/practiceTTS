@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { isConversationModeEnabled } from './featureFlags.js';
+import {
+  isConversationModeEnabled,
+  isNeighborScoringEnabled,
+} from './featureFlags.js';
 
 /**
  * 대화 모드 플래그 회귀 테스트.
@@ -37,4 +40,45 @@ describe('isConversationModeEnabled', () => {
       expect(isConversationModeEnabled()).toBe(false);
     },
   );
+});
+
+/**
+ * 이름대기 이웃 비교 채점 플래그 회귀 테스트.
+ *
+ * 켜면 **채점 규칙이 바뀐다** — 가까운 다른 단어를 말한 시도가 정답에서 모호(재시도)로 옮겨가
+ * 정답률이 전환 시점에 내려간다. 실수로 기본값이 켜짐이면 스테이징 관찰(계획 PR 6) 전에 그
+ * 전환이 환자에게 그대로 나간다.
+ */
+describe('isNeighborScoringEnabled', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('미설정이면 꺼짐 (안전한 기본값)', () => {
+    vi.stubEnv('VITE_ENABLE_NEIGHBOR_SCORING', '');
+
+    expect(isNeighborScoringEnabled()).toBe(false);
+  });
+
+  it("'true'일 때만 켜진다", () => {
+    vi.stubEnv('VITE_ENABLE_NEIGHBOR_SCORING', 'true');
+
+    expect(isNeighborScoringEnabled()).toBe(true);
+  });
+
+  it.each(['false', '1', 'yes', 'TRUE', 'on'])(
+    "'%s'는 켜짐으로 보지 않는다",
+    (value) => {
+      vi.stubEnv('VITE_ENABLE_NEIGHBOR_SCORING', value);
+
+      expect(isNeighborScoringEnabled()).toBe(false);
+    },
+  );
+
+  it('대화 모드 플래그와 독립이다', () => {
+    vi.stubEnv('VITE_ENABLE_CONVERSATION', 'true');
+    vi.stubEnv('VITE_ENABLE_NEIGHBOR_SCORING', '');
+
+    expect(isNeighborScoringEnabled()).toBe(false);
+  });
 });

@@ -82,7 +82,11 @@ def is_accepted_variant(said: str, target: str) -> bool:
     - 목표를 품는 말: 사과 ← "사과요"(조사·어미)
     - 부분 명칭: 통나무 ← "나무" — 목표의 연속 부분이고 길이가 60% 이상
     """
-    a, b = said.replace(" ", ""), target.replace(" ", "")
+    # 앱(neighborScoring.ts)의 compact와 같은 정규화 — NFC·문장부호 제거·공백 제거. 예전에는 공백만
+    # 뗐다: 실측 파이프라인은 전사를 미리 정규화해서 결과가 같았지만, 함수 자체는 앱과 어긋나
+    # 있었다("나 무!" ← 통나무). 골든 벡터(test_neighbor_golden.py)가 이걸 잡았다.
+    a = norm_transcript(said).replace(" ", "")
+    b = norm_transcript(target).replace(" ", "")
     if not a or not b:
         return False
     if a == b or b in a:
