@@ -6,17 +6,20 @@
 
 | kind | 만드는 법 | 흉내 내는 오류 |
 |------|-----------|----------------|
-| phon | 앱 표적 단어 중 앱 채점기 오류율이 가장 낮은 단어 | 음운적으로 비슷한 단어로 대치 |
+| phon | 앱 표적 단어 중 음소 유사 거리(`phoneticEditDistance`)가 가장 가까운 단어 | 음운적으로 비슷한 단어로 대치 |
 | para | 음절 하나에서 자모 하나를 **다른 조음 그룹**으로 바꾼 말(앱 어휘 밖) | 음소 착어 |
 | sem  | 앱 `WORD_CATEGORY`에서 같은 범주의 다른 단어 | 의미 착어 |
 | rand | 앱 표적 단어 중 무작위 | 하한선(판정에 안 씀) |
 
-각 foil에 `app_wrong`("A라고 말했는데 목표가 B"를 앱 채점기가 오답으로 치는가)과
-`counts_for_fa`(오통과율 분모에 드는가)를 붙인다. 규칙은 `counts_for_fa()` 참고.
+각 foil에 `counts_for_fa`(오통과율 분모에 드는가, `counts_for_fa()` 참고)와
+`string_scorer_wrong`("A라고 말했는데 목표가 B"를 **퇴역한 문자열 채점기**
+`app_scorer.py`가 오답으로 치는가)을 붙인다.
 
-⚠️ 앱 채점기는 2음절 이상 단어에서 자모 하나짜리 치환을 **절대 오답으로 치지
-않는다**(한 자모의 최대 비용 0.4 ÷ 2음절 = 0.2 ≤ 0.34). 음절 하나의 초성과 종성이
-같이 바뀐 **다른 실제 단어**(사탕↔사자)도 정답으로 친다. 대장 「채점기 발견」.
+⚠️ 뒤엣것은 **지금 앱의 판정이 아니다.** 문자열 채점기는 2026-08-24에 채점 경로에서
+빠졌고, 지금 앱은 Azure 발음 평가로만 채점한다(`acoustic-scorer-plan.md` 5절). 이
+필드는 608 평가의 「앱 잣대 통과율」이 근접 단어를 얼마나 봐주는지 보이려고 남긴다
+— 2음절 이상에서 자모 하나짜리 치환은 절대 오답이 안 되고(0.4 ÷ 2 = 0.2 ≤ 0.34),
+사탕↔사자도 통과한다. 대장 「foil 실측과 문자열 채점기의 성질」.
 
 사용:
     python build_target_foils.py --words-from colab_trainset_big7_vochold/holdout_eval.jsonl \\
@@ -118,21 +121,16 @@ def paraphasia_candidates(word: str) -> list[str]:
     return sorted(out)
 
 
-def counts_for_fa(kind: str, app_wrong: bool) -> bool:
+def counts_for_fa(kind: str) -> bool:
     """이 foil을 통과시키면 오통과로 세는가(오통과율 분모에 들어가는가).
 
-    - phon·sem: **항상.** 다른 실제 단어를 말한 건 앱 채점기가 뭐라 하든 이름대기
-      오류다. 앱 채점기는 사탕↔사자·가위↔거위를 정답으로 치는데, 그건 채점기의
-      빈틈이지 정책이 아니다(대장 「채점기 발견」).
-    - para: 앱 채점기가 오답으로 칠 때만. 자모 하나 바뀐 말은 구음장애 왜곡과
-      구분이 안 돼서, 앱이 봐주는 변형을 통과시켰다고 벌하지 않는다.
+    - phon·sem: 센다. 다른 실제 단어를 말한 건 어떤 채점기로 보든 이름대기 오류다.
+    - para: 안 센다(따로 보고). 자모 하나 바뀐 말은 구음장애 왜곡과 구분할 수 없어서
+      통과시켰다고 오류로 셀 근거가 없다. (초판은 퇴역한 문자열 채점기의 판정에
+      기대 이걸 정했다 — 대장 2026-09-26 정정.)
     - rand: 안 센다. 하한선 참고용이다.
     """
-    if kind in ("phon", "sem"):
-        return True
-    if kind == "para":
-        return app_wrong
-    return False
+    return kind in ("phon", "sem")
 
 
 def _pick(cands: list[str], k: int, rng: random.Random) -> list[str]:
@@ -184,13 +182,12 @@ def build_foils(
         for kind in KINDS:
             for f in chosen[kind]:
                 # 오디오는 w를 말했고 목표는 f다 → (인식결과=w, 목표=f) 순서
-                app_wrong = not is_speech_correct(w, f, "word")
                 foils.append({
                     "foil": f,
                     "kind": kind,
                     "err": round(speech_error_rate(w, f, "word"), 4),
-                    "app_wrong": app_wrong,
-                    "counts_for_fa": counts_for_fa(kind, app_wrong),
+                    "string_scorer_wrong": not is_speech_correct(w, f, "word"),
+                    "counts_for_fa": counts_for_fa(kind),
                 })
         out[w] = {"in_app_pool": w in pool, "category": cat, "foils": foils}
     return out
@@ -225,7 +222,7 @@ def main() -> None:
 
     print(f"단어 {len(foils)}종 · 앱 어휘 {len(pool)}종 · 범주표에 없는 앱 slug {len(missing_slug)}개")
     for w, info in foils.items():
-        by = {kd: [f"{f['foil']}{'' if f['app_wrong'] else '*'}" for f in info["foils"] if f["kind"] == kd]
+        by = {kd: [f"{f['foil']}{'' if f['string_scorer_wrong'] else '*'}" for f in info["foils"] if f["kind"] == kd]
               for kd in KINDS}
         warn = "" if info["in_app_pool"] else "  [!] 앱 어휘에 없음"
         print(f"  {w} ({info['category']}){warn}")
@@ -233,10 +230,10 @@ def main() -> None:
             print(f"    {kd:4}: {' '.join(by[kd]) or '(없음)'}")
     allf = [f for i in foils.values() for f in i["foils"]]
     print(f"\nfoil {len(allf)}개 · 오통과율 분모 {sum(f['counts_for_fa'] for f in allf)}개")
-    print("* = 앱 채점기가 정답으로 친다. 종류별:")
+    print("* = 퇴역한 문자열 채점기가 정답으로 친다(지금 앱의 판정 아님). 종류별:")
     for kd in KINDS:
         fs = [f for f in allf if f["kind"] == kd]
-        print(f"  {kd:4}: {sum(not f['app_wrong'] for f in fs)}/{len(fs)}")
+        print(f"  {kd:4}: {sum(not f['string_scorer_wrong'] for f in fs)}/{len(fs)}")
     print(f"→ {args.out}")
 
 
