@@ -164,6 +164,24 @@ export interface QabSubtestSummary {
    * 이 수가 커지면 정확도가 아니라 **채점 경로**를 의심해야 한다.
    */
   unscored: number;
+  /**
+   * 채점 불가 중 이웃 비교에서 **재시도까지 했는데 못 가른** 문항 수(`unscored`의 부분집합).
+   * 옛 서버는 안 준다.
+   */
+  unscoredAmbiguous?: number;
+  /**
+   * 이웃 비교를 거친 시도 수와 그중 "한 번 더"를 청한 수. `neighborRetried / neighborAttempts`가 1차 모호율이다
+   * (스테이징 관찰용 — 보호자 화면에는 안 그린다). 옛 서버는 안 준다.
+   */
+  neighborAttempts?: number;
+  neighborRetried?: number;
+  /**
+   * 이 검사의 기록에 나타난 채점기 버전(중복 없음). 둘 이상이면 정답률 추이가 **채점 방식이 바뀐 것을 넘어**
+   * 이어진 것이다. 옛 서버는 안 준다.
+   */
+  scorerVersions?: string[];
+  /** 옛 채점기가 아닌 채점기가 **처음** 쓰인 시각(ISO). 바뀐 적이 없으면 null. */
+  scorerChangedAt?: string | null;
   avgMetric: number | null;
   maxMetric: number | null;
   /** 발음 정확도 평균(0..100). 발화 기록 없으면 null */

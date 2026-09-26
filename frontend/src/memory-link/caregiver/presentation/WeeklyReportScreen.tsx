@@ -22,9 +22,12 @@ import {
 import { useAuth } from '../../shared/AuthContext.js';
 import { quizApi } from '../../patient/quiz/infrastructure/QuizApi.js';
 import type {
+  QabSubtestSummary,
   QabTrendSeries,
   QabWeeklyPoint,
 } from '../../patient/quiz/domain/QabResult.js';
+import { scorerChangedAt } from '../../patient/quiz/domain/scorerTransition.js';
+import { ScorerChangeNote } from './components/ScorerChangeNote.js';
 import { withHonorific, ELDER_HONORIFIC } from '../../shared/honorific.js';
 import { formatDate } from '../../../shared/i18n/formatDate.js';
 
@@ -77,16 +80,33 @@ function formatWeek(iso: string): string {
 
 interface WeeklyReportScreenProps {
   onBack: () => void;
+  /** 요약 조회 함수(테스트 주입용). 채점 방식이 바뀐 지점을 알리는 데만 쓴다. */
+  fetchSummary?: () => Promise<QabSubtestSummary[]>;
 }
 
-export function WeeklyReportScreen({ onBack }: WeeklyReportScreenProps) {
+export function WeeklyReportScreen({ onBack, fetchSummary }: WeeklyReportScreenProps) {
   const { t } = useTranslation('caregiver');
   const { user } = useAuth();
   const [series, setSeries] = useState<QabTrendSeries[] | null>(null);
   const [failed, setFailed] = useState(false);
+  // 검사별로 채점 방식이 바뀐 시각. 요약이 없거나 실패해도 표는 그대로 보인다(부가 안내다).
+  const [changedAtBySubtest, setChangedAtBySubtest] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
     let alive = true;
+    (fetchSummary ?? quizApi.getQabSummary)()
+      .then((items) => {
+        if (!alive) return;
+        const map = new Map<string, string>();
+        for (const it of items) {
+          const at = scorerChangedAt(it);
+          if (at !== null) map.set(it.subtest, at);
+        }
+        setChangedAtBySubtest(map);
+      })
+      .catch(() => {
+        // 안내가 없을 뿐 표는 그대로다.
+      });
     quizApi
       .getQabTrend(REPORT_WEEKS)
       .then((data) => {
@@ -98,7 +118,7 @@ export function WeeklyReportScreen({ onBack }: WeeklyReportScreenProps) {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [fetchSummary]);
 
   const viewedAt = formatDate(new Date(), {
     year: 'numeric',
@@ -195,6 +215,11 @@ export function WeeklyReportScreen({ onBack }: WeeklyReportScreenProps) {
                     <h2 className="mb-2 text-base font-semibold text-ink">
                       {subtestLabel(s.subtest, t)}
                     </h2>
+                    {changedAtBySubtest.has(s.subtest) && (
+                      <div className="mb-2">
+                        <ScorerChangeNote changedAt={changedAtBySubtest.get(s.subtest)!} />
+                      </div>
+                    )}
                     <table className="w-full border-collapse text-sm">
                       <caption className="sr-only">
                         {t('weeklyReport.tableCaption', { label: subtestLabel(s.subtest, t) })}

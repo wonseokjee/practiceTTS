@@ -252,7 +252,8 @@
     "cueLevelBarAria": "그림 이름대기 평균 {{level}}단계 도움 (0에 가까울수록 스스로 함)",
     "foilNoteTitle": "소리가 닮은 그림은 눈높이 4단계부터 나와요. 그 아래에서는 고를 기회가 없어 0으로 보입니다.",
     "foilLine": "고른 오답 {{count}}개 중 <b>뜻이 가까운 그림 {{semantic}}개</b>, <b2>소리가 닮은 그림 {{phonological}}개</b2>",
-    "trendAria": "{{label}} 최근 {{weeks}}주 추이: {{values}}%"
+    "trendAria": "{{label}} 최근 {{weeks}}주 추이: {{values}}%",
+    "scorerChangedNote": "{{date}}부터 채점 방식이 바뀌었어요. 그 전후의 정답률은 바로 비교하기 어려워요."
   },
   "weeklyReport": {
     "title": "언어·인지 검사 기록",

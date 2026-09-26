@@ -11,11 +11,16 @@ import {
   subtestLabel,
 } from '../../patient/quiz/domain/qabSubtestLabels.js';
 import { QabSparkline } from './components/QabSparkline.js';
+import { ScorerChangeNote } from './components/ScorerChangeNote.js';
 import { quizApi } from '../../patient/quiz/infrastructure/QuizApi.js';
 import type {
   QabSubtestSummary,
   QabTrendSeries,
 } from '../../patient/quiz/domain/QabResult.js';
+import {
+  isDeltaComparable,
+  scorerChangedAt,
+} from '../../patient/quiz/domain/scorerTransition.js';
 
 interface QabProgressCardProps {
   /** 요약 조회 함수 (테스트 주입용) */
@@ -194,6 +199,10 @@ export function QabProgressCard({
            * 없음"이라고 말한다. 같은 규칙을 한 칸 넓힌다.
            */
           const underSampled = it.total > 0 && it.assisted > it.total;
+          // 채점 방식이 바뀐 검사 — 날짜를 알리고, 전환을 사이에 둔 ▲▼는 숨긴다.
+          const changedAt = scorerChangedAt(it);
+          const series = trend.get(it.subtest);
+          const showDelta = isDeltaComparable(series?.points ?? [], changedAt);
           return (
             <li key={it.subtest} className="flex flex-col gap-1">
               <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between">
@@ -207,7 +216,7 @@ export function QabProgressCard({
                       {t('qabProgress.drillBadge')}
                     </span>
                   ) : (
-                    <WeeklyTrend series={trend.get(it.subtest)} label={label} />
+                    <WeeklyTrend series={series} label={label} showDelta={showDelta} />
                   )}
                 </span>
                 <span className="text-sm tabular-nums text-muted-sage">
@@ -298,6 +307,7 @@ export function QabProgressCard({
                   scored={it.cueScored ?? 0}
                 />
               )}
+              {changedAt !== null && <ScorerChangeNote changedAt={changedAt} />}
             </li>
           );
         })}
@@ -373,9 +383,15 @@ function CueLevelLine({
 function WeeklyTrend({
   series,
   label,
+  showDelta = true,
 }: {
   series: QabTrendSeries | undefined;
   label: string;
+  /**
+   * 직전 주 대비 변화(▲▼)를 그릴지. 채점 방식이 바뀐 지점을 사이에 둔 두 주의 차이는 환자가 아니라 자의
+   * 변화일 수 있어 숨긴다(scorerTransition.ts). 스파크라인은 실제 주간 수치라 그대로 둔다.
+   */
+  showDelta?: boolean;
 }) {
   const { t } = useTranslation('caregiver');
   if (series === undefined || series.points.length < 2) {
@@ -391,7 +407,7 @@ function WeeklyTrend({
         values={values}
         label={t('qabProgress.trendAria', { label, weeks: values.length, values: values.join(', ') })}
       />
-      {delta !== null && delta !== 0 && (
+      {showDelta && delta !== null && delta !== 0 && (
         <span className="text-xs tabular-nums text-muted-sage">
           {delta > 0 ? '▲' : '▼'}
           {Math.abs(delta)}%p
