@@ -199,6 +199,39 @@ pm2가 재시작 한도(`max_restarts: 10`)를 넘겨 포기하면 nginx가 조�
 - 인증서 만료 알림은 UptimeRobot의 SSL 만료 알림을 켠다(갱신은 03이 dry-run으로
   검증하지만 이중 안전장치).
 
+## 비용 상한 — 해킹·폭주로 청구서가 커지는 것 막기
+
+유료 호출은 Gemini(LLM)와 Azure Speech(STT·발음·TTS)다. 방어선은 세 겹이다.
+
+1. **가구별 하루 상한**(`backend/src/usage/daily-generation-caps.ts`) — 계정 하나가 새는 것을 막는다.
+2. **서비스 전체 하루 상한**(`backend/src/usage/daily-global-caps.ts`) — 계정을 여러 개 만들거나
+   탈취된 계정이 여럿이어도 **하루 총량이 이 값을 못 넘는다.** 하루는 **UTC 날짜**다.
+
+   | 종류 | 전체 하루 상한 | 대상 |
+   |---|---|---|
+   | memory / quiz / scenario / conversation | 300 / 500 / 500 / 5000 | Gemini |
+   | stt / pronunciation / tts | 3000 / 3000 / 30000 | Azure (TTS는 캐시 적중도 센다) |
+
+   넘으면 그 종류는 **그날 UTC 자정까지 전부 429**(정상 사용자도 포함)이고, pm2 로그에
+   `전체 일일 상한 도달` 에러가 **한 번** 찍힌다 — 실사용자가 닿았다면 값이 틀린 것이니 올리고,
+   아니면 비정상 트래픽이다(계정·키 점검). 값은 정상 사용을 한참 넘게 잡은 **추정치**라
+   첫 배포 후 며칠 실사용량을 보고 조정한다.
+3. **공급자 쪽 한도**(아래) — 앱이 뚫려도 청구서 자체를 막는다. 앱 밖이라 사람이 직접 건다.
+
+오늘 사용량 보기(서버에서):
+
+```bash
+sudo -u postgres psql practivetts -c "SELECT day, kind, count FROM daily_global_usage ORDER BY day DESC, kind LIMIT 21"
+```
+
+**공급자 쪽 설정(사람이 할 일):**
+- **결제 수단에 한도**가 있는 카드(체크·선불·가상카드)를 등록한다 — 어떤 서비스든 카드사 한도가 최후의 하드 캡이다.
+- **Gemini:** Google Cloud 콘솔에서 결제 예산 알림 + **API 할당량(일일/분당 요청 수)** 을 낮게 건다.
+  예산은 알림만 하고 차단하지 않으므로 할당량이 실제 상한이다.
+- **Azure Speech:** 무료 티어(F0)는 한도 초과 시 청구가 아니라 요청 거절이다. 유료(S0)면 Cost Management
+  **예산 알림**을 건다(알림일 뿐 차단이 아니다).
+- **Cloudflare R2 / Vultr:** 사용량 알림을 켜고, Vultr는 Auto Backups·스냅샷을 켜지 않는다(우리는 pg_dump→R2).
+
 ## 로그 — pm2-logrotate
 
 `AllExceptionsFilter`(backend)가 4xx·5xx를 서버 로그에 남긴다(계획 §13 8-1) —

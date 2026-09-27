@@ -21,6 +21,7 @@ import { memoryStorage } from 'multer';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { OnboardingGuard } from '../auth/onboarding.guard';
 import { DailyCap, DailyCapGuard } from '../usage/daily-cap.guard';
+import { GlobalCap, GlobalCapGuard } from '../usage/global-cap.guard';
 import type { User } from '../auth/entities/user.entity';
 import { MAX_PHOTO_SIZE_BYTES } from './constants/memory-entry.constants';
 import { CreateMemoryEntryDto } from './dto/create-memory-entry.dto';
@@ -64,8 +65,9 @@ export class MemoryController {
    */
   @Post('memory-entries')
   // 가드라 multer보다 먼저 돈다 — 상한을 넘으면 사진을 받기 전에 거절한다.
-  @UseGuards(DailyCapGuard)
+  @UseGuards(DailyCapGuard, GlobalCapGuard)
   @DailyCap('memory')
+  @GlobalCap('memory')
   @UseInterceptors(
     FileInterceptor('photo', {
       // 버퍼로만 받는다 — 실제 영속화(로컬 디스크 또는 R2)는
@@ -143,8 +145,9 @@ export class MemoryController {
    * 시나리오 생성 트리거 (maskedContext 기반 FastAPI /scenario 호출)
    */
   @Post('memory-entries/:id/scenario')
-  @UseGuards(DailyCapGuard)
+  @UseGuards(DailyCapGuard, GlobalCapGuard)
   @DailyCap('scenario')
+  @GlobalCap('scenario')
   async triggerScenario(
     @Req() req: AuthenticatedRequest,
     @Param('id', ParseUUIDPipe) id: string,

@@ -22,6 +22,7 @@ import { OnboardingGuard } from '../auth/onboarding.guard';
 import type { User } from '../auth/entities/user.entity';
 import { aiServiceHeaders } from '../common/ai-service-auth';
 import { RateLimit, RateLimitGuard } from '../common/rate-limit.guard';
+import { GlobalCap, GlobalCapGuard } from '../usage/global-cap.guard';
 import { EffectivePatientId } from '../auth/decorators/effective-patient-id.decorator';
 import { SpeechDataService } from '../speech-data/speech-data.service';
 import { isSupportedLocale } from '../common/locale';
@@ -119,6 +120,9 @@ export class AiProxyController {
    * POST /ai/stt — 녹음 WAV를 ai-service로 넘겨 인식 결과를 돌려준다.
    */
   @Post('stt')
+  // 서비스 전체 하루 총량 천장(Azure 비용 방어) — 인터셉터(multer)보다 먼저 돈다.
+  @UseGuards(GlobalCapGuard)
+  @GlobalCap('stt')
   // 반드시 인터셉터보다 먼저 잘라야 한다. 실행 순서가
   // 가드 -> 인터셉터라, 여기서 막지 않으면 한도를 넘긴 요청도 multer가
   // 본문을 메모리에 다 올린 뒤에야 429를 받는다.
@@ -224,6 +228,8 @@ export class AiProxyController {
    * 1건이고, 호출 수 가중은 ai-service의 전역 회로차단기가 한다.
    */
   @Post('pronunciation')
+  @UseGuards(GlobalCapGuard)
+  @GlobalCap('pronunciation')
   @RateLimit({
     name: 'pronunciation',
     limit: STT_PER_USER_PER_MIN,
@@ -331,6 +337,8 @@ export class AiProxyController {
    * 프론트는 fetch로 받아 Blob URL로 재생한다(헤더를 붙이기 위해).
    */
   @Get('tts')
+  @UseGuards(GlobalCapGuard)
+  @GlobalCap('tts')
   @RateLimit({
     name: 'tts',
     limit: TTS_PER_USER_PER_MIN,

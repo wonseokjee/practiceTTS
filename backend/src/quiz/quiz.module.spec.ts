@@ -8,6 +8,7 @@ import { PersonaContextService } from '../profile/services/persona-context.servi
 import { PracticeResult } from '../practice/entities/practice-result.entity';
 import { PracticeService } from '../practice/practice.service';
 import { GenerationUsageService } from '../usage/generation-usage.service';
+import { GlobalUsageService } from '../usage/global-usage.service';
 import { QuizAttempt } from './entities/quiz-attempt.entity';
 import { QuizBestScore } from './entities/quiz-best-score.entity';
 import { QabResult } from './entities/qab-result.entity';
@@ -109,6 +110,7 @@ describe('Quiz Phase 3 와이어링', () => {
         },
         // 수동 생성 라우트의 DailyCapGuard가 이걸 주입받는다(UsageModule).
         { provide: GenerationUsageService, useValue: { consume: jest.fn() } },
+        { provide: GlobalUsageService, useValue: { consume: jest.fn() } },
       ],
     }).compile();
   });
