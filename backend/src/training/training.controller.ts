@@ -13,6 +13,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { OnboardingGuard } from '../auth/onboarding.guard';
 import { EffectivePatientId } from '../auth/decorators/effective-patient-id.decorator';
 import { DailyCap, DailyCapGuard } from '../usage/daily-cap.guard';
+import { GlobalCap, GlobalCapGuard } from '../usage/global-cap.guard';
 import { CreateSessionDto } from './dto/create-session.dto';
 import type { MessageResponseDto } from './dto/message-response.dto';
 import { SendMessageDto } from './dto/send-message.dto';
@@ -80,8 +81,9 @@ export class TrainingController {
    */
   @Post('sessions/:id/message')
   // AI를 부르는 건 이 경로뿐이다 — 세션 생성·힌트는 LLM 호출이 없다.
-  @UseGuards(DailyCapGuard)
+  @UseGuards(DailyCapGuard, GlobalCapGuard)
   @DailyCap('conversation')
+  @GlobalCap('conversation')
   async sendMessage(
     @EffectivePatientId() patientId: string,
     @Param('id', ParseUUIDPipe) id: string,

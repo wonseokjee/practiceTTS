@@ -8,6 +8,7 @@ import type { App } from 'supertest/types';
 import { AiProxyController } from './ai-proxy.controller';
 import { SpeechDataService } from '../speech-data/speech-data.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { GlobalCapGuard } from '../usage/global-cap.guard';
 import { OnboardingGuard } from '../auth/onboarding.guard';
 import { RateLimitGuard } from '../common/rate-limit.guard';
 
@@ -35,6 +36,9 @@ describe('AiProxyController lang 게이트', () => {
         { provide: SpeechDataService, useValue: { saveRecording: jest.fn() } },
       ],
     })
+      // 서비스 전체 일일 상한은 global-cap.guard.spec이 본다. 여기선 라우트 로직만.
+      .overrideGuard(GlobalCapGuard)
+      .useValue({ canActivate: () => true })
       .overrideGuard(JwtAuthGuard)
       .useValue({
         canActivate: (ctx: {
