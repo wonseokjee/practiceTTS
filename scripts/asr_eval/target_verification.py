@@ -65,13 +65,19 @@ def prefix_len(processor) -> int:
 
 
 def sequence_logprobs(model, processor, input_features, texts: Sequence[str],
-                      device: str = "cpu") -> list[float]:
+                      device: str | None = None) -> list[float]:
     """한 녹음(input_features, [n_mels, frames])에 대해 각 텍스트의 토큰당 평균 log p.
 
     인코더는 한 번만 돌리고 디코더만 후보 수만큼 돌린다. 평균은 접두 뒤(텍스트 토큰 + 끝 토큰)에서만
     낸다 — 접두는 모든 후보에 같아서 넣으면 짧은 후보가 유리해진다.
     """
     import torch
+
+    # 입력은 모델이 있는 장치로 보낸다. 인자로 준 장치와 모델 장치가 다르면 조용히 옮기지 않고 멈춘다.
+    model_device = next(model.parameters()).device
+    if device is not None and torch.device(device).type != model_device.type:
+        raise ValueError(f"모델은 {model_device}에 있는데 device={device}가 주어졌다 — model.to(...)를 먼저 하라")
+    device = model_device
 
     labels = [label_ids(processor, t) for t in texts]
     skip = prefix_len(processor)

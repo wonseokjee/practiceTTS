@@ -221,3 +221,11 @@ def test_empty_candidate_is_scored_not_crashed(tiny):
     proc, model = tiny
     s = T.sequence_logprobs(model, proc, _clip(proc), ["", "사과"])
     assert all(math.isfinite(x) for x in s)
+
+
+def test_device_mismatch_is_an_error_not_a_crash_deep_in_torch(tiny):
+    """모델이 CPU인데 cuda를 달라고 하면 torch 내부가 아니라 여기서 이유와 함께 멈춘다(Colab 셀 8 사고)."""
+    proc, model = tiny
+    with pytest.raises(ValueError, match="model.to"):
+        T.sequence_logprobs(model, proc, _clip(proc), ["사과"], device="cuda")
+    assert len(T.sequence_logprobs(model, proc, _clip(proc), ["사과"])) == 1   # 기본 = 모델 장치
