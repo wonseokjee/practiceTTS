@@ -1149,3 +1149,77 @@ def test_dry_run은_아무것도_안_쓴다(tmp_path, monkeypatch):
     out = tmp_path / "out"
     _run_holdout(monkeypatch, src, out, "--dry-run")
     assert not out.exists()
+
+
+def test_홀드아웃_zip은_flat이다_노트북이_풀어서_dev를_읽는다(tmp_path, monkeypatch):
+    """#241의 결함: zip을 폴더째 감싸서 노트북(BASE/dev.jsonl)이 dev.jsonl을 못 찾았다.
+
+    "zip 안에 파일이 있다"만 보면 통과한다 — 노트북이 **풀어서 읽는 경로**를 그대로 재현한다.
+    기존 big7.zip(prepare_colab_trainset)이 flat이라 노트북이 그걸 가정한다.
+    """
+    import zipfile
+
+    src = _holdout_fixture(tmp_path)
+    out = tmp_path / "vochold"
+    _run_holdout(monkeypatch, src, out, "--zip")
+
+    with zipfile.ZipFile(tmp_path / "vochold.zip") as z:
+        z.extractall(tmp_path / "BASE")
+    base = tmp_path / "BASE"
+    for f in ("train.jsonl", "dev.jsonl", "test.jsonl", "holdout_eval.jsonl"):
+        assert (base / f).exists(), f"{f}가 zip 루트에 없다"
+    # 참조되는 wav가 BASE 기준 상대 경로로 풀린다
+    row = json.loads((base / "train.jsonl").read_text(encoding="utf-8").splitlines()[0])
+    assert (base / row["audio"]).exists()
+
+
+def _nb_cell3_snippet(nbfile: str, idx: int) -> str:
+    """노트북 셀 3에서 '감싼 폴더 내려가기' 블록만 뽑는다(마운트·unzip 같은 Colab 전용 줄은 뺀다)."""
+    nb = json.loads((Path(__file__).parent / nbfile).read_text(encoding="utf-8"))
+    src = next("".join(c["source"]) for c in nb["cells"]
+               if c["cell_type"] == "code" and "drive.mount" in "".join(c["source"]))
+    start = src.index("# zip이 폴더째 감싸져 있으면")
+    end = src.index("if not os.path.exists", src.index("if len(_inner) == 1:"))
+    return src[start:end]
+
+
+import pytest  # noqa: E402
+
+
+@pytest.mark.parametrize("nbfile,idx", [
+    ("finetune_whisper_608_colab.ipynb", 8),
+    ("eval_vocab_holdout_colab.ipynb", 9),
+])
+def test_노트북_셀3은_감싼_폴더를_내려가고_flat은_그대로_둔다(tmp_path, nbfile, idx):
+    import os
+
+    snippet = _nb_cell3_snippet(nbfile, idx)
+
+    def run(base: Path):
+        ns = {"os": os, "BASE": str(base)}
+        exec(snippet, ns)  # noqa: S102 - 노트북 셀 조각 검증
+        return Path(ns["BASE"])
+
+    # flat: 그대로
+    flat = tmp_path / "flat"
+    flat.mkdir()
+    (flat / "dev.jsonl").write_text("x", encoding="utf-8")
+    assert run(flat) == flat
+
+    # 폴더째 감쌌다(#241로 만든 실제 zip 모양): 안쪽으로 내려간다
+    wrapped = tmp_path / "wrapped"
+    (wrapped / "colab_trainset_big7_vochold").mkdir(parents=True)
+    (wrapped / "colab_trainset_big7_vochold" / "dev.jsonl").write_text("x", encoding="utf-8")
+    assert run(wrapped) == wrapped / "colab_trainset_big7_vochold"
+
+    # 애매하면 건드리지 않는다: 후보가 둘, 또는 없음
+    two = tmp_path / "two"
+    for d in ("a", "b"):
+        (two / d).mkdir(parents=True)
+        (two / d / "dev.jsonl").write_text("x", encoding="utf-8")
+    assert run(two) == two
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    assert run(empty) == empty
+    assert run(tmp_path / "missing") == tmp_path / "missing"   # 폴더가 없어도 죽지 않는다
+
