@@ -113,7 +113,10 @@ def main() -> None:
         with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:
             for p in args.out.rglob("*"):
                 if p.is_file():
-                    z.write(p, p.relative_to(args.out.parent))
+                    # flat — 노트북은 zip을 BASE에 풀고 BASE/dev.jsonl을 읽는다. 폴더째 감싸면
+                    # (relative_to(out.parent)였다) 한 겹 안쪽에 풀려 dev.jsonl을 못 찾는다.
+                    # 기존 prepare_colab_trainset.py의 zip(shutil.make_archive root_dir)과 같은 모양이다.
+                    z.write(p, p.relative_to(args.out))
         print(f"zip: {zpath}  ({zpath.stat().st_size / 2**20:.0f} MB)")
 
 
