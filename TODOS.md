@@ -101,6 +101,111 @@ pg 클라이언트 전역 설정이라 느린 정상 쿼리(문항 생성 등)�
 **Priority:** P3
 **Depends on:** 서버 기동 + 실측
 
+## 다음 할 일 — 보호자 회복: 선배 보호자 도우미 (CEO 리뷰, 2026-10-04 기준)
+
+`/plan-ceo-review`(HOLD SCOPE) 결과. 설계: [20261004_SeniorCaregiverMentor_design.md](docs/history/20261004_SeniorCaregiverMentor_design.md). 앱의 차별점 = **환자와 보호자 두 사람의 회복**.
+보호자 쪽은 실제 선배 보호자 이야기로 만든 도우미(AI임을 밝힘, 치료 아님)로 간다. 순서는
+**Phase 0 인터뷰 → Phase 1 LLM 없는 카드 흐름 → Phase 2 생성형 대화**(외부 의견 수용으로 순서 변경).
+9/28 "두 메시지" 설계와 마음챙김(회고 이어쓰기)은 이 문서가 대체한다.
+
+| | 내용 | 우선순위 |
+|---|---|---|
+| **senior-caregiver-interviews** | 선배 보호자 5~10명 인터뷰, 이야기 조각 30~60개 + 동의 (Phase 0) | `P1` |
+| **legal-review-mentor** | 법률 검토에 도우미 추가: 제품 분류·민감정보 동의·효능 문구·위기 연결처 | `P1` |
+| **gemini-no-training-check** | Gemini가 "입력을 학습에 쓰지 않는" 유료 조건인지 확인 — **지금 기능에도 해당** | `P1` |
+| **crisis-eval-set** | 위기 3분류(자해/타해/학대) + 오탐 평가 세트, 외부 출처·홀드아웃 | `P1` |
+| **gemini-client-error-split** | 공유 `gemini_client` 오류 분리(차단·빈 응답·시간 초과·429) — 지금 기능의 조용한 실패 | `P2` |
+| **mentor-phase2-entry** | Phase 2(생성형 대화) 진입 조건 묶음 | `P3` |
+
+### senior-caregiver-interviews
+
+**What:** 카페·자조모임에서 선배 보호자(발병 1~2년 이상) 5~10명을 만나 상황별 이야기 조각 30~60개를 모으고,
+이야기 사용·익명화·출처 라벨("7년째 남편을 돌보는 ○○님") 동의를 받는다. 이야기 검수자도 정한다.
+
+**Why:** 카드 흐름도 생성 대화도 실제 이야기가 없으면 "지어낸 선배"가 된다(가짜 페르소나 금지가 전제). 다른 모든
+작업의 전제이고, 보호자 수요 확인을 겸한다.
+
+**Context:** 근거 — 구조 있는 경험자 멘토링은 효과, 단순 말벗은 무효(BECCA·SHIELD), 실어증 SUPERB는 짝꿍 측도
+보람. 인터뷰 대상은 나중에 사람 짝꿍 후보 풀도 된다. 이야기는 공개 저장소에 넣지 않는다.
+
+**Effort:** M (human 2~3주) → CC+gstack S(질문지·동의서·카드 양식)
+**Priority:** P1
+**Depends on:** 없음 — 동의서 문구는 legal-review-mentor와 병행
+
+### legal-review-mentor
+
+**What:** 기존 「영어 웰니스 라벨 — 법무 검토」 요청 문서에 절을 더해 한 번에 묻는다: 도우미의 디지털의료제품법
+(2025.1 시행) 해당 여부, 민감정보(건강) 별도 동의 문구, 국외 처리(Phase 2 Gemini), 앱 문구 효능 표현 금지 목록
+("우울 치료·회복 효과" 등), 위기 분류별 연결처(109, 112·119, 노인보호전문기관 — 확인 필요).
+
+**Why:** "치료 아님"이라 적어도 보호자 마음 회복을 내세우면 목적이 정신건강 개선으로 읽힐 수 있다. 만든 뒤 분류
+문제로 구조를 고치는 일을 막는다.
+
+**Context:** CEO 리뷰 OV-10·결정 6. 영어판 도우미는 캘리포니아 SB 243(AI 고지·위기 절차)·일리노이(무면허 치료
+금지)까지 확인 전엔 별도 게이트로 닫아둔다(결정 13).
+
+**Effort:** S (문서 추가) → CC+gstack S
+**Priority:** P1
+**Depends on:** 없음
+
+### gemini-no-training-check
+
+**What:** 현재 운영 Gemini API 키가 유료 조건(입력을 모델 학습에 쓰지 않음)인지, 무료 티어인지 확인한다.
+
+**Why:** 도우미 Phase 2의 관문이기도 하지만, **이미 보호자 메모·퀴즈·시나리오가 Gemini로 나가고 있다.** 무료
+티어라면 지금 기능도 개인정보가 학습에 쓰일 수 있다.
+
+**Context:** `ai-service/infra/gemini_client.py`. 확인은 Google AI Studio/Cloud 콘솔의 결제 상태로.
+
+**Effort:** S → CC+gstack S
+**Priority:** P1
+**Depends on:** 없음
+
+### crisis-eval-set
+
+**What:** 자해 / 타해(환자) / 학대 문장 + 평범한 과장 표현("죽겠다 힘들어서" 등, 오탐 측정) 세트를 외부 출처
+(자살예방 교육 자료의 우회 표현 등)로 만들고, 위기 규칙을 튜닝용/홀드아웃으로 잰다(마스킹 코퍼스 방식).
+놓친 비율은 "0" 주장 대신 측정·공개한다.
+
+**Why:** Phase 1 카드 흐름의 자유 입력도 위기 규칙을 거친다. 직접 만든 문장만으로 재면 실제 놓침률을 모른다.
+간병 비극(동반 자살·타해)이 알려진 문제라 자해만 보면 부족하다(OV-3).
+
+**Context:** 배포 관문(결정 10): 위기 문장 → 분류별 안전 창. 위기 경로는 AI가 아니라 규칙이 지킨다(결정 3).
+
+**Effort:** M → CC+gstack S
+**Priority:** P1
+**Depends on:** legal-review-mentor(연결처 확인)와 병행
+
+### gemini-client-error-split
+
+**What:** `ai-service/infra/gemini_client.py`의 `complete()`가 안전 필터 차단 시 `response.text`(None)를 예외 없이
+반환하고, 모든 실패를 `except Exception` 하나로 `GeminiApiError`에 묶는 것을 고친다 — 차단·빈 응답·시간 초과·429를
+이름 붙은 오류로.
+
+**Why:** 도우미와 무관하게 지금 퀴즈·시나리오·마스킹도 빈 응답을 정상처럼 받을 수 있다(조용한 실패). 모든 호출부가
+지나는 곳을 한 번 고친다(결정 9).
+
+**Context:** 호출부 — quiz·scenario·masking·tagging·wish·chat 서비스. 각 호출부가 새 오류를 어떻게 처리할지 테스트로 고정.
+
+**Effort:** M → CC+gstack S (~1시간)
+**Priority:** P2
+**Depends on:** 없음
+
+### mentor-phase2-entry
+
+**What:** 생성형 대화(Phase 2)를 열기 전 조건 — 이야기 원문 고정(모델은 ID 선택·연결 문장만, 없는 ID는 거절),
+Gemini `safety_settings` 명시 + 필터 차단과 위기 구분 + 오탐률 상한, 상한은 새 종류 `caregiver_chat`(가구·전체
+상한, 위기 검사 뒤 서비스 계층 `consume` — `DailyCapGuard`는 핸들러 전에 돌아 못 씀), 모델 감지기 fail-closed,
+저장 계층 신규(요약 저장 없음), Gemini 유료 계약 관문, 이야기 150개 초과 시 검색.
+
+**Why:** Phase 2를 열 때 오늘 찾은 함정을 다시 찾지 않도록(CEO 리뷰 외부 의견 2·4·5·6·7·9).
+
+**Context:** 설계 문서 「Phase 2 — 진입 조건」 절.
+
+**Effort:** L → CC+gstack M
+**Priority:** P3
+**Depends on:** Phase 1 사용률·이탈 데이터, gemini-no-training-check, gemini-client-error-split
+
 ## 다음 할 일 — 영어판 준비 (4차 엔지니어링 리뷰, 2026-09-23 기준)
 
 전체 재검토(`/plan-eng-review`, [20260906_EnglishLocalization_execution_plan.md](docs/history/20260906_EnglishLocalization_execution_plan.md) §17) 결과. 아키텍처·코드품질·테스트·성능 12건은 그 문서 §17에 결정과 함께 남겼다(구현은 아직 시작 안 함). 여기 넷은 별도 TODO로 추적하기로 한 것.
@@ -191,6 +296,8 @@ pg 클라이언트 전역 설정이라 느린 정상 쿼리(문항 생성 등)�
 작업).
 
 ### 영어 웰니스 라벨 — 배포 전 법무·컴플라이언스 검토 (P2, 2026-09-19 /plan-eng-review 외부 의견)
+
+> **2026-10-04:** 선배 보호자 도우미 검토 항목을 같은 요청에 합친다 → `legal-review-mentor`.
 
 **What:** `caregiver.json`(en-US)의 `qabSubtestLabels.*`(Alertness check / Word activity /
 Picture naming exercise …)와 영어 UI 전반의 임상·의료기기 뉘앙스 문구를 영어 사용자에게 열기
