@@ -76,4 +76,31 @@ class InvalidHintLevelError(AiServiceError):
 
 # 외부 API 에러
 class GeminiApiError(AiServiceError):
-    """Gemini API 호출 중 오류 발생."""
+    """Gemini API 호출 중 오류 발생.
+
+    아래 하위 클래스로 원인을 나눈다. 모두 이 클래스를 상속하므로
+    `except GeminiApiError`로 잡던 호출부는 그대로 동작한다(502·degraded 등).
+    나눈 이유는 원인별로 다르게 다룰 호출부(선배 보호자 도우미 Phase 2의
+    "필터 차단 ≠ 위기")가 생기기 때문이다.
+    """
+
+
+class GeminiBlockedError(GeminiApiError):
+    """안전 필터 등 정책으로 응답이 막힘 — 프롬프트 차단 또는 finish_reason이 차단 계열."""
+
+
+class GeminiEmptyResponseError(GeminiApiError):
+    """차단 표시 없이 응답 텍스트가 비어 있음.
+
+    예전에는 `response.text`(None)를 그대로 돌려줘, 호출부에서
+    `None.strip()`·`json.loads(None)`이 GeminiApiError가 아닌 예외로 터졌다
+    (마스킹은 degraded로 내려가지 못하고 500이 됐다).
+    """
+
+
+class GeminiTimeoutError(GeminiApiError):
+    """Gemini 호출이 시간 초과로 끝남(HTTP 클라이언트 타임아웃)."""
+
+
+class GeminiRateLimitError(GeminiApiError):
+    """Gemini가 429(할당량·속도 제한)로 거절함."""
