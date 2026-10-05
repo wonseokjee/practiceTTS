@@ -7,13 +7,22 @@ NOTE: 구 `google-generativeai` 패키지는 지원 종료되어 신 `google-gen
 (google.genai)로 마이그레이션됨. 호출부 계약(complete(messages, model,
 generation_config={...}))은 그대로 유지하며, 내부에서 신 SDK 형식으로 변환한다.
 """
+import asyncio
 import base64
 import io
 
+import httpx
 from google import genai
+from google.genai import errors as genai_errors
 from google.genai import types
 
-from domain.errors import GeminiApiError
+from domain.errors import (
+    GeminiApiError,
+    GeminiBlockedError,
+    GeminiEmptyResponseError,
+    GeminiRateLimitError,
+    GeminiTimeoutError,
+)
 from interfaces.llm_client import ILlmClient
 
 # Vision 처리를 위해 PIL 사용 (신 SDK는 contents에 PIL.Image를 직접 수용)
@@ -23,6 +32,58 @@ try:
     _PIL_AVAILABLE = True
 except ImportError:
     _PIL_AVAILABLE = False
+
+
+# 응답이 정책으로 막혔다는 뜻의 finish_reason. MAX_TOKENS·STOP은 막힌 게 아니다.
+_BLOCKED_FINISH_REASONS = frozenset(
+    {
+        types.FinishReason.SAFETY,
+        types.FinishReason.RECITATION,
+        types.FinishReason.BLOCKLIST,
+        types.FinishReason.PROHIBITED_CONTENT,
+        types.FinishReason.SPII,
+        types.FinishReason.IMAGE_SAFETY,
+        types.FinishReason.IMAGE_PROHIBITED_CONTENT,
+        types.FinishReason.IMAGE_RECITATION,
+    }
+)
+
+
+def _text_or_raise(response: object, model: str) -> str:
+    """응답에서 텍스트를 꺼낸다. 비었으면 이유별 예외로 바꾼다.
+
+    `response.text`는 차단·빈 응답일 때 None을 돌려준다(예외가 아니다).
+    그걸 호출부에 넘기면 `None.strip()` 같은 엉뚱한 예외로 터지므로,
+    여기서 반드시 GeminiApiError 계열로 바꾼다.
+    """
+    text = getattr(response, "text", None)
+    if text and text.strip():
+        return text
+
+    feedback = getattr(response, "prompt_feedback", None)
+    block_reason = getattr(feedback, "block_reason", None)
+    if block_reason:
+        raise GeminiBlockedError(
+            f"Gemini가 프롬프트를 차단했습니다 (모델: {model}, 사유: {block_reason})"
+        )
+    for candidate in getattr(response, "candidates", None) or []:
+        finish = getattr(candidate, "finish_reason", None)
+        if finish in _BLOCKED_FINISH_REASONS:
+            raise GeminiBlockedError(
+                f"Gemini가 응답을 차단했습니다 (모델: {model}, 사유: {finish})"
+            )
+    raise GeminiEmptyResponseError(f"Gemini 응답이 비어 있습니다 (모델: {model})")
+
+
+def _classify(exc: Exception, label: str) -> GeminiApiError:
+    """SDK·전송 예외를 이름 붙은 GeminiApiError로 바꾼다."""
+    if isinstance(exc, GeminiApiError):
+        return exc
+    if isinstance(exc, (httpx.TimeoutException, asyncio.TimeoutError)):
+        return GeminiTimeoutError(f"{label} 시간 초과: {exc}")
+    if isinstance(exc, genai_errors.APIError) and exc.code == 429:
+        return GeminiRateLimitError(f"{label} 속도 제한(429): {exc}")
+    return GeminiApiError(f"{label} 실패: {exc}")
 
 
 class GeminiClient(ILlmClient):
@@ -95,12 +156,12 @@ class GeminiClient(ILlmClient):
                 contents=contents,
                 config=config,
             )
-            return response.text
+            return _text_or_raise(response, model)
 
+        except GeminiApiError:
+            raise
         except Exception as exc:
-            raise GeminiApiError(
-                f"Gemini API 호출 실패 (모델: {model}): {exc}"
-            ) from exc
+            raise _classify(exc, f"Gemini API 호출 (모델: {model})") from exc
 
     async def complete_with_vision(
         self,
@@ -133,11 +194,9 @@ class GeminiClient(ILlmClient):
                 contents=[text_prompt, image],
                 config=config,
             )
-            return response.text
+            return _text_or_raise(response, model)
 
         except GeminiApiError:
             raise
         except Exception as exc:
-            raise GeminiApiError(
-                f"Gemini Vision API 호출 실패 (모델: {model}): {exc}"
-            ) from exc
+            raise _classify(exc, f"Gemini Vision API 호출 (모델: {model})") from exc
