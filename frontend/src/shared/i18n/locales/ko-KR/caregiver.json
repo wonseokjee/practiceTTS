@@ -27,6 +27,25 @@
     "skip": "건너뛰기",
     "skipAria": "이 단계 건너뛰기"
   },
+  "crisisBar": {
+    "aria": "위기 연결처",
+    "lead": "지금 많이 힘들면 바로 전화하세요",
+    "more": "더보기",
+    "moreAria": "연결처 더보기",
+    "callAria": "{{label}}, {{number}}에 전화하기",
+    "sheetTitle": "바로 이야기할 수 있는 곳",
+    "sheetNote": "이 앱은 위기 상황을 지켜보지 않아요. 도움이 필요하면 위 번호로 바로 연락해 주세요.",
+    "close": "닫기",
+    "contact": {
+      "suicide": "자살예방 상담 (24시간)",
+      "police": "위급할 때 · 경찰",
+      "ambulance": "위급할 때 · 구급",
+      "elderAbuse": "노인학대 신고 · 상담",
+      "lifeline": "자살·위기 상담 (미국)",
+      "emergency": "긴급 신고 (미국)",
+      "eldercare": "노인 돌봄 안내 (미국)"
+    }
+  },
   "skillLevel": {
     "sectionAria": "스킬별 연습 눈높이",
     "title": "연습 눈높이",

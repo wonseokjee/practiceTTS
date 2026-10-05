@@ -86,6 +86,14 @@
   --color-accent-faint: #fcf3ec; /* 가장 옅은 테라코타 면 */
   --color-accent-line: #e0a984; /* 테라코타 테두리·링 */
 
+  /* ── 보호자 사적 영역 ──
+   * 일기 '나의 하루'·선배 보호자 도우미처럼 보호자 본인만 보는 화면.
+   * 배경 accent-faint, 제목 accent-ink, 버튼 accent-strong, 링크 accent-hover.
+   * accent-strong은 이 배경 위에서 4.15:1이라 **링크 글자로는 미달**이다.
+   * 아래 둘만 새 값이다 — 근거는 DESIGN.md 「보호자 사적 영역」. */
+  --color-caregiver-muted: #7a5444; /* 보조 글자(accent-faint 위 6.03:1) */
+  --color-caregiver-line: #f1dccd; /* 흰 카드 테두리 — 흰색과 배경이 1.1:1이라 필요 */
+
   /* ── 상태 ── */
   --color-danger: #c94040; /* 오류·위험 동작. DESIGN.md --danger */
   --color-danger-ink: #8b2020; /* 연한 danger 면 위의 글자 */

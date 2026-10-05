@@ -10,6 +10,7 @@ import type { CaptureStep } from '../domain/CaptureFlow.js';
 import { MoodCheckStep } from './MoodCheckStep.js';
 import { MyDayStep } from './MyDayStep.js';
 import { PatientDayStep } from './PatientDayStep.js';
+import { CrisisContactBar } from '../../shared/components/CrisisContactBar.js';
 
 interface CaptureScreenProps {
   /** 보호자에 연결된 환자 ID — 부재 시 안내 화면 표시 */
@@ -151,6 +152,9 @@ export function CaptureScreen({
           {t('captureScreen.cancel')}
         </button>
       </div>
+
+      {/* 보호자가 속마음을 쓰는 단계에만 — 페이지 맨 끝에 둬야 마지막 내용을 가리지 않는다 */}
+      {step === 'myDay' && <CrisisContactBar />}
     </div>
   );
 }
