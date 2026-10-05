@@ -1,12 +1,18 @@
 // Step2: 나의 하루 화면 (보호자 사적 영역)
 //
-// §9-1-A: 연한 라벤더/뉴트럴 톤(#F0EEF5)으로 시각 차별화 — LLM 미전달 영역
+// §9-1-A: 메인 톤과 다른 면으로 시각 차별화 — LLM 미전달 영역
 // 자물쇠 아이콘 + "보호자 본인만 볼 수 있어요" 캡션
 // 건너뛰기 허용
+//
+// 2026-10-05 디자인 리뷰: 라벤더 일회성 hex를 「보호자 사적 영역」 토큰
+// (accent-faint 면 + accent-ink 제목 + caregiver-muted 보조)으로 옮겼다. 선배 보호자
+// 도우미와 같은 "보호자 본인 공간" 색이다. 🔒 이모지는 선 아이콘으로 바꿨다.
+// 위기 연결처 줄(CrisisContactBar)은 페이지 맨 끝에 놓여야 해서 CaptureScreen이 붙인다.
 
 import { useTranslation } from 'react-i18next';
 import type { DiaryQuestion } from '../domain/CaptureFlow.js';
 import { MAX_CAREGIVER_ANSWER_LENGTH } from '../domain/CaptureFlow.js';
+import { LockIcon } from '../../shared/components/LineIcons.js';
 
 interface MyDayStepProps {
   question: DiaryQuestion | null;
@@ -19,7 +25,7 @@ interface MyDayStepProps {
 
 /**
  * 보호자 자기 질문 1개에 자유롭게 답변. 선택 단계로 건너뛰기 가능.
- * - 시각 톤: 메인 톤(세이지+크림)이 아닌 라벤더 뉴트럴 (#F5F3FA)로 사적 공간 강조
+ * - 시각 톤: 메인 톤(세이지+크림)이 아닌 보호자 사적 영역(옅은 테라코타)으로 사적 공간 강조
  */
 export function MyDayStep({
   question,
@@ -34,27 +40,25 @@ export function MyDayStep({
 
   return (
     <section
-      className="font-pretendard rounded-xl bg-[#F5F3FA] p-6 sm:p-8"
+      className="font-pretendard rounded-xl bg-accent-faint p-6 sm:p-8"
       aria-labelledby="myday-step-heading"
     >
       <header className="mb-6">
-        <div className="flex items-center gap-2">
-          <span aria-hidden="true" className="text-xl">
-            🔒
-          </span>
+        <div className="flex items-center gap-2 text-accent-ink">
+          <LockIcon size={20} />
           <h2
             id="myday-step-heading"
-            className="text-2xl font-bold text-[#3A2E5C]"
+            className="text-2xl font-bold text-accent-ink"
           >
             {t('myDayStep.title')}
           </h2>
         </div>
-        <p className="mt-2 text-sm text-[#5C5870]">
+        <p className="mt-2 text-sm text-caregiver-muted">
           {t('myDayStep.privacyCaption')}
         </p>
       </header>
 
-      <div className="rounded-xl bg-white p-5">
+      <div className="rounded-xl border border-caregiver-line bg-white p-5">
         <p className="text-base font-medium text-ink-sage">
           {question ? question.text : t('myDayStep.loadingQuestion')}
         </p>
@@ -68,13 +72,13 @@ export function MyDayStep({
             placeholder={t('myDayStep.answerPlaceholder')}
             maxLength={MAX_CAREGIVER_ANSWER_LENGTH}
             rows={5}
-            className="w-full resize-none rounded-xl border border-[#D9D5E0] bg-[#FBFAFE] p-3 text-sm leading-relaxed text-ink-sage focus:border-[#6B5BA8] focus:outline-none focus:ring-1 focus:ring-[#6B5BA8] disabled:bg-[#F0EEF5]"
+            className="w-full resize-none rounded-xl border border-caregiver-line bg-white p-3 text-sm leading-relaxed text-ink-sage focus:border-accent-strong focus:outline-none focus:ring-1 focus:ring-accent-strong disabled:bg-surface-dim"
             aria-label={t('myDayStep.answerAria')}
           />
         </label>
 
         <div
-          className="mt-2 text-right text-xs text-[#5C5870]"
+          className="mt-2 text-right text-xs text-caregiver-muted"
           aria-live="polite"
         >
           <span className="font-medium tabular-nums">{charCount}</span>
@@ -87,7 +91,7 @@ export function MyDayStep({
         <button
           type="button"
           onClick={onPrev}
-          className="rounded-xl px-5 py-3 text-sm font-medium text-[#5C5870] transition-colors duration-[180ms] ease-out hover:bg-[#E8E4F0]"
+          className="rounded-xl px-5 py-3 text-sm font-medium text-caregiver-muted transition-colors duration-[180ms] ease-out hover:bg-accent-soft"
           aria-label={t('captureFlow.prevAria')}
         >
           {t('captureFlow.prev')}
@@ -97,7 +101,7 @@ export function MyDayStep({
           <button
             type="button"
             onClick={onSkip}
-            className="rounded-xl border border-[#D9D5E0] bg-white px-5 py-3 text-sm font-medium text-[#5C5870] transition-colors duration-[180ms] ease-out hover:bg-[#F0EEF5]"
+            className="rounded-xl border border-caregiver-line bg-white px-5 py-3 text-sm font-medium text-caregiver-muted transition-colors duration-[180ms] ease-out hover:bg-accent-soft"
             aria-label={t('myDayStep.skipAria')}
           >
             {t('myDayStep.skip')}
@@ -105,7 +109,7 @@ export function MyDayStep({
           <button
             type="button"
             onClick={onNext}
-            className="rounded-xl bg-[#6B5BA8] px-6 py-3 text-sm font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-[#564A88]"
+            className="rounded-xl bg-accent-strong px-6 py-3 text-sm font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-accent-hover"
             aria-label={t('captureFlow.nextAria')}
           >
             {t('captureFlow.next')}

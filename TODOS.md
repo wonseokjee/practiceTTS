@@ -118,7 +118,7 @@ pg 클라이언트 전역 설정이라 느린 정상 쿼리(문항 생성 등)�
 | **gemini-no-training-check** | Gemini가 "입력을 학습에 쓰지 않는" 유료 조건인지 확인 — **지금 기능에도 해당** | `P1` |
 | **crisis-eval-set** | 위기 3분류(자해/타해/학대) + 오탐 평가 세트, 외부 출처·홀드아웃 | `P1` |
 | **gemini-client-error-split** | 공유 `gemini_client` 오류 분리(차단·빈 응답·시간 초과·429) — 지금 기능의 조용한 실패 | `P2` |
-| **diary-crisis-footer** | 일기 2단계(나의 하루)에 위기 연결처 하단 고정 — 서버 전송 없음 | `P2` |
+| **diary-crisis-footer** | **완료(2026-10-05).** 일기 2단계(나의 하루)에 위기 연결처 하단 고정 + 보호자 사적 영역 토큰 — 서버 전송 없음 | `P2` |
 | **mentor-phase1-5-free-input** | 도우미 자유 입력 + 위기 규칙 + 14일 보관·삭제 + 위기 사후 (Phase 1.5) | `P3` |
 | **mentor-phase2-entry** | Phase 2(생성형 대화) 진입 조건 묶음 | `P3` |
 

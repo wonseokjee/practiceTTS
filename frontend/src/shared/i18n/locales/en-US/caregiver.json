@@ -27,6 +27,25 @@
     "skip": "Skip",
     "skipAria": "Skip this step"
   },
+  "crisisBar": {
+    "aria": "Crisis contacts",
+    "lead": "If it is too much right now, call",
+    "more": "More",
+    "moreAria": "More crisis contacts",
+    "callAria": "Call {{label}}, {{number}}",
+    "sheetTitle": "People you can talk to now",
+    "sheetNote": "This app does not watch for emergencies. If you need help, call one of these numbers.",
+    "close": "Close",
+    "contact": {
+      "suicide": "Suicide prevention line (Korea)",
+      "police": "Police (Korea)",
+      "ambulance": "Emergency (Korea)",
+      "elderAbuse": "Elder abuse hotline (Korea)",
+      "lifeline": "988 Suicide and Crisis Lifeline",
+      "emergency": "Emergency",
+      "eldercare": "Eldercare Locator"
+    }
+  },
   "skillLevel": {
     "sectionAria": "Practice level by skill",
     "title": "Practice level",
