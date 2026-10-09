@@ -96,3 +96,108 @@ def test_wordlist_groups_words():
 def test_wordlist_empty():
     assert segment_wordlist("", []) == []
     assert segment_wordlist("거울 안경", []) == []
+
+
+# ─── 긴 녹음 나눠 정렬 · 재개 ─────────────────────────────────────
+
+import json  # noqa: E402
+
+import align_608 as A  # noqa: E402
+
+
+class _FakeModel:
+    """입력 길이(초)마다 단어 하나를 0.5초에 놓는다. 통째 경로면 파일 경로 문자열을 받는다."""
+
+    def __init__(self):
+        self.calls = []
+
+    def transcribe(self, audio, **kw):
+        self.calls.append(audio)
+        n = 2 if isinstance(audio, str) else len(audio)
+        return {"segments": [{"words": [{"word": f" w{i}", "start": i + 0.5, "end": i + 0.9}
+                                        for i in range(n)]}]}
+
+
+def test_short_audio_is_aligned_whole_as_before(monkeypatch):
+    monkeypatch.setattr(A, "_wav_duration", lambda p: A.LONG_AUDIO_SEC)
+    m = _FakeModel()
+    words = A.align_words(Path("x.wav"), m)
+    assert m.calls == ["x.wav"]
+    assert words[0] == {"text": "w0", "start": 0.5, "end": 0.9}
+
+
+def test_unknown_duration_is_aligned_whole(monkeypatch):
+    monkeypatch.setattr(A, "_wav_duration", lambda p: None)
+    m = _FakeModel()
+    A.align_words(Path("x.flac"), m)
+    assert m.calls == ["x.flac"]
+
+
+def test_long_audio_is_chunked_and_offset(monkeypatch):
+    dur = A.LONG_AUDIO_SEC + 1
+    monkeypatch.setattr(A, "_wav_duration", lambda p: dur)
+    loads = []
+
+    def fake_load(path, start, d):
+        loads.append((start, d))
+        return [0.0] * 2           # 조각마다 단어 2개
+    monkeypatch.setattr(A, "_load_chunk", fake_load)
+    m = _FakeModel()
+    words = A.align_words(Path("x.wav"), m)
+
+    n = int(A.LONG_AUDIO_SEC // A.CHUNK_SEC) + 1
+    assert [s for s, _ in loads] == [k * A.CHUNK_SEC for k in range(n)]
+    assert loads[-1][1] == 1                       # 마지막 조각은 남은 길이만
+    assert all(d <= A.CHUNK_SEC for _, d in loads)
+    starts = [w["start"] for w in words]
+    assert starts == sorted(starts)                # 조각 시각이 이어진다
+    assert words[2]["start"] == A.CHUNK_SEC + 0.5  # 두 번째 조각 첫 단어 = 오프셋 + 0.5
+
+
+def test_wav_duration_reads_header(tmp_path):
+    import wave
+    p = tmp_path / "a.wav"
+    with wave.open(str(p), "wb") as w:
+        w.setnchannels(1); w.setsampwidth(2); w.setframerate(16000)
+        w.writeframes(b"\0\0" * 8000)
+    assert A._wav_duration(p) == 0.5
+    assert A._wav_duration(tmp_path / "missing.wav") is None
+
+
+def test_load_chunk_reads_only_the_window(tmp_path):
+    import shutil
+    import wave
+
+    import pytest
+    if not shutil.which("ffmpeg"):
+        pytest.skip("ffmpeg 없음")
+    p = tmp_path / "a.wav"
+    with wave.open(str(p), "wb") as w:
+        w.setnchannels(1); w.setsampwidth(2); w.setframerate(16000)
+        w.writeframes(b"\0\0" * 16000 * 3)
+    assert len(A._load_chunk(p, 1.0, 1.0)) == 16000
+
+
+def _seg(parent):
+    return json.dumps({"parent_file_id": parent, "sent_index": 0})
+
+
+def test_resume_drops_partial_file_lines(tmp_path):
+    seg, att = tmp_path / "segments.jsonl", tmp_path / "_attempted.txt"
+    seg.write_text("\n".join([_seg("a"), _seg("a"), _seg("b"), '{"parent_fi']) + "\n", encoding="utf-8")
+    att.write_text("a\nzero\n", encoding="utf-8")   # b는 정렬 도중 죽었다, zero는 세그 0개
+    done = A._resume_state(seg, att)
+    assert done == {"a", "zero"}
+    assert [json.loads(l)["parent_file_id"] for l in seg.read_text(encoding="utf-8").splitlines()] == ["a", "a"]
+
+
+def test_resume_without_attempted_log_keeps_legacy_behavior(tmp_path):
+    seg = tmp_path / "segments.jsonl"
+    seg.write_text(_seg("a") + "\n" + _seg("b") + "\n", encoding="utf-8")
+    assert A._resume_state(seg, tmp_path / "_attempted.txt") == {"a", "b"}
+    assert len(seg.read_text(encoding="utf-8").splitlines()) == 2
+
+
+def test_resume_fresh_dir(tmp_path):
+    assert A._resume_state(tmp_path / "segments.jsonl", tmp_path / "_attempted.txt") == set()
+

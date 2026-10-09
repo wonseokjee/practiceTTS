@@ -31,6 +31,7 @@ import json
 import re
 import subprocess
 import sys
+import wave
 from pathlib import Path
 
 _SENT_SPLIT = re.compile(r"(?<=[.?!。])\s+")
@@ -48,17 +49,63 @@ def _norm(tok: str) -> str:
     return re.sub(r"[^\w가-힣]", "", tok).lower()
 
 
-def align_words(audio_path: Path, model, language: str = "ko") -> list[dict]:
-    """whisper로 단어별 타임스탬프를 얻는다 → [{text,start,end}, ...]."""
-    result = model.transcribe(
-        str(audio_path), language=language, word_timestamps=True, verbose=False
-    )
-    words: list[dict] = []
+# 이보다 긴 녹음은 CHUNK_SEC씩 나눠 정렬한다. whisper transcribe는 파일 전체의 멜
+# 스펙트로그램을 한 번에 만든다 — 6.9시간 녹음에서 Colab RAM(12.7GB)을 넘겨 세션이
+# 죽었다(2026-10, TS01 미사용 문장). 5.95시간짜리는 통과했으므로 문턱은 여유를 둔 4시간.
+# 문턱 아래 파일은 예전과 똑같이 통째로 정렬한다(이미 정렬한 배치와 경계가 같도록).
+LONG_AUDIO_SEC = 4 * 3600.0
+CHUNK_SEC = 1800.0
+
+
+def _words(result: dict, offset: float) -> list[dict]:
+    out: list[dict] = []
     for seg in result.get("segments", []):
         for w in seg.get("words", []) or []:
-            words.append(
-                {"text": w["word"].strip(), "start": float(w["start"]), "end": float(w["end"])}
-            )
+            out.append({"text": w["word"].strip(),
+                        "start": float(w["start"]) + offset, "end": float(w["end"]) + offset})
+    return out
+
+
+def _wav_duration(path: Path) -> float | None:
+    """WAV 헤더로 길이(초). WAV가 아니거나 읽을 수 없으면 None(→ 통째로 정렬)."""
+    try:
+        with wave.open(str(path)) as w:
+            return w.getnframes() / float(w.getframerate())
+    except (wave.Error, OSError, EOFError):
+        return None
+
+
+def _load_chunk(path: Path, start: float, dur: float, sr: int = 16000):
+    """ffmpeg로 [start, start+dur] 구간만 16kHz 모노 float32로 읽는다(whisper.load_audio와 같은 변환)."""
+    import numpy as np
+
+    cmd = ["ffmpeg", "-nostdin", "-loglevel", "error", "-ss", f"{start:.3f}", "-t", f"{dur:.3f}",
+           "-i", str(path), "-f", "s16le", "-ac", "1", "-ar", str(sr), "-"]
+    raw = subprocess.run(cmd, capture_output=True, check=True).stdout
+    return np.frombuffer(raw, np.int16).astype(np.float32) / 32768.0
+
+
+def align_words(audio_path: Path, model, language: str = "ko") -> list[dict]:
+    """whisper로 단어별 타임스탬프를 얻는다 → [{text,start,end}, ...].
+
+    LONG_AUDIO_SEC보다 긴 녹음은 CHUNK_SEC 조각으로 나눠 정렬하고 시각에 조각 시작을
+    더한다. 조각 경계에 걸린 단어 하나 정도는 잘못 받아써질 수 있다 — 이어지는
+    difflib 앵커 매칭이 놓친 단어를 이웃 앵커로 보간하므로 그 문장만 영향을 받는다.
+    """
+    opts = dict(language=language, word_timestamps=True, verbose=False)
+    dur = _wav_duration(audio_path)
+    if dur is None or dur <= LONG_AUDIO_SEC:
+        return _words(model.transcribe(str(audio_path), **opts), 0.0)
+    words: list[dict] = []
+    n = 0
+    start = 0.0
+    while start < dur:
+        audio = _load_chunk(audio_path, start, min(CHUNK_SEC, dur - start))
+        if len(audio):
+            words += _words(model.transcribe(audio, **opts), start)
+        n += 1
+        start += CHUNK_SEC
+    print(f"   (긴 녹음 {dur / 3600:.1f}시간 → {n}조각으로 나눠 정렬)")
     return words
 
 
@@ -179,6 +226,44 @@ def _cut_wav(src: Path, start: float, end: float, dst: Path) -> bool:
     return subprocess.run(cmd, capture_output=True).returncode == 0
 
 
+def _resume_state(seg_manifest: Path, attempted_log: Path) -> set[str]:
+    """재개할 때 건너뛸 파일. 끝남은 _attempted.txt로만 판정한다.
+
+    세그먼트 줄은 파일을 다 정렬하기 전에도 버퍼가 차면 디스크에 쓰인다. 그래서
+    "segments.jsonl에 줄이 있다"를 끝남으로 보면, 정렬 도중 세션이 죽은 파일이 앞
+    문장만 남긴 채 영영 건너뛰어진다(2026-10 TS01 미사용 문장에서 2파일). 끝나지 않은
+    파일의 줄과 손상된 줄은 이어쓰기 전에 걷어낸다 — 그 파일은 이번에 처음부터 다시 한다.
+
+    _attempted.txt가 없는 예전 산출물은 세그먼트 parent를 끝남으로 본다(그때는 기록이 없었다).
+    """
+    lines = seg_manifest.read_text(encoding="utf-8").splitlines() if seg_manifest.exists() else []
+    if not attempted_log.exists():
+        done: set[str] = set()
+        for line in lines:
+            try:
+                done.add(json.loads(line)["parent_file_id"])
+            except (json.JSONDecodeError, KeyError):
+                continue
+        return done
+    done = {l.strip() for l in attempted_log.read_text(encoding="utf-8").splitlines() if l.strip()}
+    keep, dropped = [], set()
+    for line in lines:
+        if not line.strip():
+            continue
+        try:
+            parent = json.loads(line)["parent_file_id"]
+        except (json.JSONDecodeError, KeyError):
+            continue
+        if parent in done:
+            keep.append(line)
+        else:
+            dropped.add(parent)
+    if dropped or len(keep) != len([l for l in lines if l.strip()]):
+        seg_manifest.write_text("".join(l + "\n" for l in keep), encoding="utf-8")
+        print(f"재개: 중간에 끊긴 파일 {len(dropped)}개의 줄을 걷어냈다 — 처음부터 다시 정렬한다")
+    return done
+
+
 def main() -> int:
     for stream in (sys.stdout, sys.stderr):
         try:
@@ -241,24 +326,8 @@ def main() -> int:
 
     seg_manifest = out_dir / "segments.jsonl"
 
-    # 재개: 이미 처리한 parent_file_id는 건너뛴다. 세그먼트를 낸 파일(segments.jsonl의
-    # parent)과 세그먼트 0개였던 파일(_attempted.txt) 모두 완료로 본다 — 0세그 파일이
-    # 매 재개마다 다시 전사(가장 비싼 단계)되지 않게. 손상된 줄(중단 중 부분 flush로
-    # 잘린 마지막 줄)은 건너뛴다 — 그 한 줄 때문에 재개가 영영 죽지 않게 한다.
     attempted_log = out_dir / "_attempted.txt"
-    done_parents: set[str] = set()
-    if seg_manifest.exists():
-        for line in seg_manifest.read_text(encoding="utf-8").splitlines():
-            if not line.strip():
-                continue
-            try:
-                done_parents.add(json.loads(line)["parent_file_id"])
-            except (json.JSONDecodeError, KeyError):
-                continue  # 부분 기록/손상된 줄은 무시하고 계속
-    if attempted_log.exists():
-        for line in attempted_log.read_text(encoding="utf-8").splitlines():
-            if line.strip():
-                done_parents.add(line.strip())
+    done_parents = _resume_state(seg_manifest, attempted_log)
     if done_parents:
         print(f"재개: 이미 처리 {len(done_parents)}파일 건너뜀")
 
