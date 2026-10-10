@@ -29,7 +29,7 @@ export function WordChoiceItem({
   const { t } = useTranslation('patient');
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-base text-muted-sage">{item.instruction}</p>
+      <p className="text-base text-muted-sage">{t('practiceItems.wordChoiceInstruction')}</p>
 
       {/*
         그림은 정사각 카드 하나. 그림고르기의 2×2 격자와 높이를 비슷하게 두면

@@ -20,6 +20,8 @@
   "practiceItems": {
     "imageChoicesAria": "그림 선택지",
     "wordChoicesAria": "낱말 선택지",
+    "oddOneOutInstruction": "종류가 다른 하나를 골라주세요",
+    "wordChoiceInstruction": "그림에 맞는 낱말을 골라주세요",
     "selectChoiceAria": "{{label}} 선택"
   },
   "soundCheck": {

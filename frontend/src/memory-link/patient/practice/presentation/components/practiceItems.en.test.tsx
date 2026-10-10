@@ -17,7 +17,6 @@ const HANGUL = /[가-힣]/;
 
 const oddOneOutItem = (): PracticeOddOneOutItem => ({
   itemId: 'ooo_001',
-  instruction: 'Pick the one that is different',
   choices: [
     { choiceId: 'c1', label: 'apple', imageUrl: '/apple.svg', isCorrect: false },
     { choiceId: 'c2', label: 'car', imageUrl: '/car.svg', isCorrect: true },
@@ -27,7 +26,6 @@ const oddOneOutItem = (): PracticeOddOneOutItem => ({
 const wordChoiceItem = (): PracticeWordChoiceItem => ({
   itemId: 'wc_001',
   imageUrl: '/apple.svg',
-  instruction: 'Pick the matching word',
   choices: [
     { choiceId: 'c1', label: 'pear', isCorrect: false },
     { choiceId: 'c2', label: 'apple', isCorrect: true },
@@ -52,6 +50,9 @@ describe('practice item 렌더러 — 영어로 그린다', () => {
         onSelect={vi.fn()}
       />,
     );
+    // 지시문은 문항 데이터가 아니라 i18n에서 온다 — 예전엔 도메인 상수(한국어)라
+    // 영어 화면에도 "종류가 다른 하나를 골라주세요"가 떴다.
+    expect(screen.getByText('Pick the one from a different group')).toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'Image choices' })).toBeInTheDocument();
     expect(screen.getByLabelText('Choose apple')).toBeInTheDocument();
     expect(container.textContent).not.toMatch(HANGUL);
@@ -67,6 +68,7 @@ describe('practice item 렌더러 — 영어로 그린다', () => {
         onSelect={vi.fn()}
       />,
     );
+    expect(screen.getByText('Pick the word for the picture')).toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'Word choices' })).toBeInTheDocument();
     expect(screen.getByLabelText('Choose apple')).toBeInTheDocument();
     expect(container.textContent).not.toMatch(HANGUL);

@@ -12,7 +12,6 @@ import { WordChoiceItem } from './WordChoiceItem.js';
 const item = (): PracticeWordChoiceItem => ({
   itemId: 'wc_qw_001',
   imageUrl: '/apple.svg',
-  instruction: '그림에 맞는 낱말을 골라주세요',
   choices: [
     { choiceId: 'c1', label: '배', isCorrect: false },
     { choiceId: 'c2', label: '사과', isCorrect: true },

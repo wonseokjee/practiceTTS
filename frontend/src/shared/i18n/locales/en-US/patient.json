@@ -20,6 +20,8 @@
   "practiceItems": {
     "imageChoicesAria": "Image choices",
     "wordChoicesAria": "Word choices",
+    "oddOneOutInstruction": "Pick the one from a different group",
+    "wordChoiceInstruction": "Pick the word for the picture",
     "selectChoiceAria": "Choose {{label}}"
   },
   "soundCheck": {
