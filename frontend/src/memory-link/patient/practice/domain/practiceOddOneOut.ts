@@ -20,13 +20,9 @@ export interface PracticeOddOneOutOption {
 export interface PracticeOddOneOutItem {
   /** `ooo_` 접두사 — 이유는 practiceWordChoice.ts의 itemId 주석 참고. */
   itemId: string;
-  instruction: string;
   choices: PracticeOddOneOutOption[];
 }
 
-// "다른 하나"만으로는 무엇이 다른지(색·모양·크기) 기준이 없다. 이 과제는 범주로
-// 묶이므로 기준을 문구에 넣는다. "하나"는 남긴다 — 정답이 하나뿐이라는 신호다.
-export const ODD_ONE_OUT_INSTRUCTION = '종류가 다른 하나를 골라주세요';
 export const ODD_ONE_OUT_REF_PREFIX = 'ooo_';
 
 /** 한 문항의 선택지 수 — 같은 무리 3 + 다른 것 1. */
@@ -131,7 +127,6 @@ export function buildOddOneOutItems(
     items.push({
       // 다른 하나 + 무리 범주면 한 세션 안에서 유일하다(무리 범주가 안 겹치므로).
       itemId: `${ODD_ONE_OUT_REF_PREFIX}${odd.slug}_${category}`,
-      instruction: ODD_ONE_OUT_INSTRUCTION,
       choices: shuffle([
         ...group.map((w) => toOption(w, false)),
         toOption(odd, true),

@@ -27,7 +27,9 @@ export function OddOneOutItem({
   const { t } = useTranslation('patient');
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-base text-muted-sage">{item.instruction}</p>
+      {/* 지시문은 문항이 아니라 양식에 딸린 것이라 i18n 키로 둔다. "다른 하나"만으로는
+          색·모양·크기 중 무엇이 다른지 기준이 없어 "종류가"를 넣었다(2026-10-10). */}
+      <p className="text-base text-muted-sage">{t('practiceItems.oddOneOutInstruction')}</p>
 
       {/*
         격자 폭을 묶는다. 화면 폭(max-w-2xl = 672px)을 다 쓰면 정사각 카드가

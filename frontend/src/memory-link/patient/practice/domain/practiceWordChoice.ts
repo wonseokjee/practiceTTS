@@ -33,11 +33,8 @@ export interface PracticeWordChoiceItem {
   itemId: string;
   /** 보여줄 그림 — 정답 낱말의 것 */
   imageUrl: string;
-  instruction: string;
   choices: PracticeWordChoiceOption[];
 }
-
-export const WORD_CHOICE_INSTRUCTION = '그림에 맞는 낱말을 골라주세요';
 
 /** 낱말고르기 item_ref 접두사. */
 export const WORD_CHOICE_REF_PREFIX = 'wc_';
@@ -60,7 +57,6 @@ export function toWordChoiceItem(
   return {
     itemId: `${WORD_CHOICE_REF_PREFIX}${source.itemId}`,
     imageUrl: correct.imageUrl,
-    instruction: WORD_CHOICE_INSTRUCTION,
     // 선택지 순서는 뱅크가 이미 섞어 놨다. 여기서 또 섞으면 같은 문항이
     // 두 양식으로 나올 때 배치가 달라 보이는 이점이 사라진다 — 오히려
     // 같은 자리에 같은 낱말이 있는 편이 어르신에게 덜 혼란스럽다.
