@@ -12,6 +12,7 @@ import { EntryListScreen } from './EntryListScreen.js';
 import { SettingsScreen } from './SettingsScreen.js';
 import { QabProgressCard } from './QabProgressCard.js';
 import { SessionCompletionCard } from './SessionCompletionCard.js';
+import { PracticeSummaryCard } from './PracticeSummaryCard.js';
 import { SkillLevelCard } from './SkillLevelCard.js';
 import { WeeklyReportScreen } from './WeeklyReportScreen.js';
 import { withHonorific, ELDER_HONORIFIC } from '../../shared/honorific.js';
@@ -252,6 +253,9 @@ export function CaregiverDashboard() {
 
             {/* 연습 마무리(완료율·이탈 지점) — 기록 있을 때만 표시 */}
             <SessionCompletionCard />
+
+            {/* 가볍게 연습하기 — 한 양과 첫 시도 정답률(검사와 따로). 기록 있을 때만 */}
+            <PracticeSummaryCard />
 
             {/* 기억 목록 그리드 */}
             <EntryListScreen

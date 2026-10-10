@@ -9,6 +9,7 @@ import {
 import { Repository } from 'typeorm';
 import { PracticeResult } from './entities/practice-result.entity';
 import type { SubmitPracticeResultsDto } from './dto/submit-practice-results.dto';
+import type { PracticeItemKind } from './constants/practice-item-kind';
 
 /**
  * 연습 모드 결과 저장.
@@ -116,4 +117,94 @@ export class PracticeService {
       .getRawMany<{ day: string }>();
     return raw.map((x) => x.day);
   }
+
+  /**
+   * 보호자용 연습 요약(최근 days일) — 한 양과 **첫 시도 정답률**.
+   *
+   * **원칙을 바꾼 지점이다(2026-10-10, 사용자 결정).** 위 getActivityDays는
+   * "정답률은 내보내지 않는다"였다. 로컬 테스트에서 보호자가 "가볍게 연습하기는
+   * 기록되지 않네"라고 했고, 한 일만 보여주는 안과 정답률까지 보여주는 안 중
+   * 정답률까지를 골랐다. 오염 논리(연습이 검사 측정값을 덮는다)는 그대로라,
+   * 이 값은 **검사 테이블과 합치지 않고** 화면에서도 검사 점수와 따로 둔다.
+   *
+   * 정답률은 **첫 시도**만 센다. 터치 문항은 틀리면 정답을 보여주고 다시 고르게
+   * 하므로(재시도 3회), 마지막 시도를 세면 거의 늘 맞은 것으로 나온다.
+   * 판정이 없는 발화(Tier 1, is_correct NULL)는 "한 문항"에는 넣고 정답률
+   * 분모에서는 뺀다 — 채점하지 않은 것을 오답으로 접으면 안 된다.
+   *
+   * 날짜 창은 getActivityDays와 같은 규칙(환자 프로필 타임존의 자정).
+   */
+  async getSummary(patientId: string, days = 7): Promise<PracticeSummary> {
+    const user = await this.userRepository.findOne({
+      where: { id: patientId },
+      select: { id: true, timezone: true },
+    });
+    const timezone = user?.timezone ?? DEFAULT_TIMEZONE;
+    const since = dayWindowStart(timezone, days - 1);
+
+    const rows = await this.practiceResultRepository
+      .createQueryBuilder('p')
+      .select('p.item_kind', 'kind')
+      .addSelect('COUNT(DISTINCT (p.session_token, p.item_ref))::int', 'items')
+      .addSelect(
+        'COUNT(*) FILTER (WHERE p.attempt = 1 AND p.is_correct IS NOT NULL)::int',
+        'judged',
+      )
+      .addSelect(
+        'COUNT(*) FILTER (WHERE p.attempt = 1 AND p.is_correct)::int',
+        'correct',
+      )
+      .where('p.patient_id = :pid', { pid: patientId })
+      .andWhere(`p.created_at >= ${since}`)
+      .groupBy('p.item_kind')
+      .orderBy('p.item_kind')
+      .getRawMany<{
+        kind: PracticeItemKind;
+        items: number;
+        judged: number;
+        correct: number;
+      }>();
+
+    const totals = await this.practiceResultRepository
+      .createQueryBuilder('p')
+      .select('COUNT(DISTINCT p.session_token)::int', 'sessions')
+      .addSelect('MAX(p.created_at)', 'last')
+      .where('p.patient_id = :pid', { pid: patientId })
+      .andWhere(`p.created_at >= ${since}`)
+      .getRawOne<{ sessions: number; last: Date | null }>();
+
+    const judged = rows.reduce((s, r) => s + r.judged, 0);
+    const correct = rows.reduce((s, r) => s + r.correct, 0);
+    return {
+      days,
+      sessions: totals?.sessions ?? 0,
+      items: rows.reduce((s, r) => s + r.items, 0),
+      firstTry: {
+        judged,
+        correct,
+        rate: judged > 0 ? correct / judged : null,
+      },
+      byKind: rows,
+      lastPracticedAt: totals?.last
+        ? new Date(totals.last).toISOString()
+        : null,
+    };
+  }
+}
+
+export interface PracticeSummary {
+  days: number;
+  /** 연습 세션 수(세션 토큰 기준) */
+  sessions: number;
+  /** 푼 문항 수 — 판정 없는 발화 포함 */
+  items: number;
+  /** 첫 시도 정답률. 판정 있는 문항이 없으면 rate는 null(0%가 아니다). */
+  firstTry: { judged: number; correct: number; rate: number | null };
+  byKind: {
+    kind: PracticeItemKind;
+    items: number;
+    judged: number;
+    correct: number;
+  }[];
+  lastPracticedAt: string | null;
 }

@@ -1,9 +1,11 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -12,7 +14,7 @@ import type { User } from '../auth/entities/user.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { OnboardingGuard } from '../auth/onboarding.guard';
 import { resolveEffectivePatientId } from '../auth/effective-patient-id.util';
-import { PracticeService } from './practice.service';
+import { PracticeService, type PracticeSummary } from './practice.service';
 import { SubmitPracticeResultsDto } from './dto/submit-practice-results.dto';
 
 interface AuthenticatedRequest extends Request {
@@ -39,5 +41,22 @@ export class PracticeController {
   ): Promise<{ saved: number }> {
     const effectivePatientId = resolveEffectivePatientId(req.user);
     return await this.practiceService.saveResults(effectivePatientId, dto);
+  }
+
+  /**
+   * GET /practice/summary?days=7
+   * 보호자용 연습 요약 — 양과 첫 시도 정답률. 검사 지표와 합치지 않는다
+   * (PracticeService.getSummary 주석 참고).
+   */
+  @Get('summary')
+  async getSummary(
+    @Req() req: AuthenticatedRequest,
+    @Query('days') days?: string,
+  ): Promise<PracticeSummary> {
+    const effectivePatientId = resolveEffectivePatientId(req.user);
+    const parsed = Number(days);
+    const safeDays =
+      Number.isInteger(parsed) && parsed >= 1 && parsed <= 90 ? parsed : 7;
+    return await this.practiceService.getSummary(effectivePatientId, safeDays);
   }
 }

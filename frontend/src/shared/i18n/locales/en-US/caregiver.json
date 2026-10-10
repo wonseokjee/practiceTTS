@@ -63,6 +63,26 @@
     "dropoffNote": "Practices stopped partway got to about <b>{{items}} items</b> on average. If it keeps stopping around the same spot, that's usually where it gets hard.",
     "streakDisclaimer": "‘Days practiced’ on the patient home counts any day with at least one item answered. That's a different measure than completion rate here."
   },
+  "practiceSummary": {
+    "sectionAria": "Light practice record",
+    "title": "Light practice",
+    "amount": "Last {{days}} days · {{sessions}} sessions · {{items}} items",
+    "firstTryLabel": "Right on the first try ({{correct}}/{{judged}})",
+    "progressAria": "Right on the first try: {{rate}} percent",
+    "kindScore": "{{correct}}/{{judged}}",
+    "disclaimer": "Practice uses only the easier levels, so it is not comparable to test scores. Unscored items, like repeating words, count only toward the item total.",
+    "kind": {
+      "imageChoice": "Pick the picture",
+      "wordChoice": "Pick the word",
+      "category": "Sort into groups",
+      "oddOneOut": "Pick the one from a different group",
+      "arrange": "Put in order",
+      "spell": "Build the word",
+      "naming": "Name the picture",
+      "repeat": "Repeat the word",
+      "reading": "Read aloud"
+    }
+  },
   "settings": {
     "backToList": "← Back to list",
     "backToListAria": "Back to the list",
