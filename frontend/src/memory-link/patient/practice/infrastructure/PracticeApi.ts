@@ -5,9 +5,27 @@
 // 실수로 검사 지표를 건드릴 경로가 없다.
 
 import { memoryLinkApi } from '../../../shared/MemoryLinkApi.js';
-import type { PracticeAttemptInput } from '../domain/Practice.js';
+import type {
+  PracticeAttemptInput,
+  PracticeItemKind,
+} from '../domain/Practice.js';
 
 const INVALID_RESPONSE_MESSAGE = '서버 응답 형식이 올바르지 않습니다.';
+
+/** GET /practice/summary — 보호자용. 정답률은 첫 시도만 센다(백엔드 주석). */
+export interface PracticeSummary {
+  days: number;
+  sessions: number;
+  items: number;
+  firstTry: { judged: number; correct: number; rate: number | null };
+  byKind: {
+    kind: PracticeItemKind;
+    items: number;
+    judged: number;
+    correct: number;
+  }[];
+  lastPracticedAt: string | null;
+}
 
 export interface IPracticeApi {
   /**
@@ -22,6 +40,9 @@ export interface IPracticeApi {
     sessionToken: string,
     results: PracticeAttemptInput[],
   ): Promise<{ saved: number }>;
+
+  /** GET /practice/summary?days= — 보호자 대시보드의 연습 카드. */
+  getSummary(days: number): Promise<PracticeSummary>;
 }
 
 export const practiceApi: IPracticeApi = {
@@ -42,5 +63,23 @@ export const practiceApi: IPracticeApi = {
       throw new Error(INVALID_RESPONSE_MESSAGE);
     }
     return { saved: (obj as { saved: number }).saved };
+  },
+
+  async getSummary(days: number): Promise<PracticeSummary> {
+    const res = await memoryLinkApi.get<unknown>('/practice/summary', {
+      params: { days },
+    });
+    const obj = res.data as Partial<PracticeSummary> | null;
+    if (
+      typeof obj !== 'object' ||
+      obj === null ||
+      typeof obj.items !== 'number' ||
+      typeof obj.sessions !== 'number' ||
+      !Array.isArray(obj.byKind) ||
+      typeof obj.firstTry !== 'object'
+    ) {
+      throw new Error(INVALID_RESPONSE_MESSAGE);
+    }
+    return obj as PracticeSummary;
   },
 };
