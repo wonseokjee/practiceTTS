@@ -65,8 +65,36 @@ _MIN_NOTES_BLOB_LEN = 10
 _MAX_NOTES_BLOB_LEN = 2000
 # 예/아니오 정답 허용값
 _YES_NO_ANSWERS = {"yes", "no"}
-# 폴백 후보 단어 추출용 한글 토큰 정규식 (2~5자)
-_KOREAN_TOKEN_RE = re.compile(r"[가-힣]{2,5}")
+# 폴백 후보 단어 추출용 한글 토큰 정규식 (2자 이상 어절 전체).
+# 예전엔 {2,5}라 6자 넘는 어절이 잘려 "주무셨습니"처럼 반쪽 낱말이 후보가 됐다.
+_KOREAN_TOKEN_RE = re.compile(r"[가-힣]{2,}")
+# 하다 동사에서 명사 떼기 — "산책했어요"의 낱말은 "산책"이다(어간 2자 이상만).
+# 어간이 아/어/와/워로 끝나면 "좋아하는"처럼 동사의 활용이라 떼지 않는다.
+_HADA_RE = re.compile(
+    r"^([가-힣]{2,}?)(하셨어요|하셨습니다|하셨는데|하셨고|하셨다|하시고|하세요"
+    r"|했어요|했습니다|했는데|했고|했다|하고|해서|해요|합니다|하며|하러|하는|한|할)$"
+)
+_HADA_VERB_STEM_ENDINGS = ("아", "어", "와", "워")
+# 서술어(동사·형용사 활용)로 끝나는 어절 — 따라 말할 낱말이 아니다.
+# 명사가 이런 끝을 갖는 경우는 드물다("바다"·"사고"처럼 겹치는 끝 '다'·'고'는
+# 앞 글자까지 묶어서만 본다).
+_PREDICATE_END_RE = re.compile(
+    r"(요|니다|었다|았다|였다|셨다|겠다|는다|었고|았고|였고|셨고|시고"
+    r"|어서|아서|와서|워서|해서|는데|으며|으니|니까|었|았|셨)$"
+)
+# 2음절 동사 활용 "먹고"·"보고"와 흔한 부사 — 끝 글자만으로는 "사고"·"창고"와 못 가른다.
+_NON_NOUN_FORMS = frozenset(
+    {"먹고", "보고", "가고", "오고", "자고", "타고", "놀고", "걷고", "씻고", "입고",
+     "웃고", "받고", "듣고", "읽고", "쉬고", "가서",
+     "없이", "같이", "많이", "함께", "너무", "정말", "아주", "조금", "다시", "모두",
+     "그리고", "그래서", "그런데"}
+)
+# 2음절 어절 끝의 목적격·보조사 — 조사를 떼면 1음절("밥을"→"밥")이라 후보에서 빠진다.
+# 이 끝을 가진 2음절 명사는 드물어 예외만 둔다.
+_TWO_SYLLABLE_PARTICLE_ENDS = ("을", "를", "은", "는")
+_TWO_SYLLABLE_NOUN_EXCEPTIONS = frozenset({"마을", "가을", "노을", "고을"})
+# 종성 ㅆ — "갔다"·"왔고"·"했어"의 과거 표지. ㅆ 받침을 가진 명사는 사실상 없다.
+_JONG_SSANGSIOT = 20
 # 반복 비교에서 지우는 것 — 공백·밑줄(빈칸)·문장부호. 대괄호 토큰은 남긴다.
 _REPEAT_NOISE_RE = re.compile(r"[\s_.,!?~·…'\"“”‘’()\-]")
 # 토큰 끝에서 제거할 조사 접미사 (긴 것부터 검사)
@@ -634,14 +662,21 @@ class QuizGeneratorService:
     def _extract_candidate_words(
         self, notes_blob: str, used_answers: set[str]
     ) -> list[str]:
-        """메모 합본에서 한글 2자 이상 토큰을 추출하고 조사를 제거해 후보를 만든다."""
+        """메모 합본에서 따라 말할 낱말 후보를 만든다.
+
+        백필 빈칸은 백엔드에서 따라 말하기가 되므로 정답 낱말 자체가 문항이다.
+        예전엔 조사만 떼서 "산책했어요"·"드시고" 같은 활용형이 낱말로 나갔다.
+        하다 동사는 명사를 떼고("산책했어요"→"산책"), 서술어 활용은 버린다.
+        형태소 분석기 없는 휴리스틱이라 완전하지 않다("고양이"→"고양" 같은 조사 오인).
+        """
         candidates: list[str] = []
         seen: set[str] = set()
+        used = {self._strip_particle(a.replace(" ", "")) for a in used_answers}
         for raw_token in _KOREAN_TOKEN_RE.findall(notes_blob):
-            word = self._strip_particle(raw_token)
-            if len(word) < 2:
+            word = self._to_word(raw_token)
+            if word is None:
                 continue
-            if word in used_answers or word in seen:
+            if word in used_answers or word in used or word in seen:
                 continue
             # 가드 4: 금칙어가 폴백 정답으로 새어 나가지 않도록 후보 단계에서 배제한다.
             if self._contains_banned_word([word]):
@@ -649,6 +684,36 @@ class QuizGeneratorService:
             seen.add(word)
             candidates.append(word)
         return candidates
+
+    @classmethod
+    def _to_word(cls, token: str) -> str | None:
+        """어절 하나를 따라 말할 낱말로 바꾼다. 낱말이 아니면 None."""
+        hada = _HADA_RE.match(token)
+        if hada and not hada.group(1).endswith(_HADA_VERB_STEM_ENDINGS):
+            return hada.group(1)
+        word = cls._strip_particle(token)
+        if len(word) < 2:
+            return None
+        if _PREDICATE_END_RE.search(word) or word in _NON_NOUN_FORMS:
+            return None
+        if any(cls._has_past_marker(ch) for ch in word):
+            return None
+        if (
+            len(word) == 2
+            and word.endswith(_TWO_SYLLABLE_PARTICLE_ENDS)
+            and word not in _TWO_SYLLABLE_NOUN_EXCEPTIONS
+        ):
+            return None
+        # "좋아하는"에서 조사 '는'을 뗀 "좋아하" 같은 동사 어간
+        if len(word) >= 3 and word.endswith("하"):
+            return None
+        return word
+
+    @staticmethod
+    def _has_past_marker(ch: str) -> bool:
+        """한글 음절의 종성이 ㅆ인지(과거 표지)."""
+        code = ord(ch) - 0xAC00
+        return 0 <= code < 11172 and code % 28 == _JONG_SSANGSIOT
 
     @staticmethod
     def _strip_particle(token: str) -> str:
