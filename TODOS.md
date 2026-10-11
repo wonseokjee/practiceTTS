@@ -281,6 +281,34 @@ Gemini `safety_settings` 명시 + 필터 차단과 위기 구분 + 오탐률 상
 | **bilingual-household-demand-validation** | 한인 가족(이중 로케일) 수요를 싸게 검증하는 구체 계획 수립·실행 | `P2` |
 | **content-item-id-locale-prefix-consistency** | en-US 콘텐츠 자산 파일명 규칙을 ko와 통일 | `P3` |
 | **founding-member-clock-recheck** | M1/M2 지연이 창립 회원 혜택 기간에 미치는 영향 재계산 (CEO 리뷰 후보) | `P3` |
+| **memory-quiz-en** | 보호자 메모로 만드는 기억 퀴즈 생성의 영어 대응 — 지금은 경로 전체가 한국어 전용이고 **영어 금칙어가 없다** | `P1` |
+
+### memory-quiz-en
+
+**What:** 기억 퀴즈 생성(`/quiz/generate`) 경로를 언어별로 만든다. 지금은 요청에 언어 정보가
+아예 없다(`IQuizGenerationPayload`·`QuizGenerateRequest`에 locale 없음). 묶을 것:
+1. **언어 전달** — 메모 작성 보호자의 locale을 페이로드에 싣는다(마스킹은 이미 `authorLocale`을 쓴다).
+2. **영어 금칙어** — `ai-service/constants/banned_words.py`가 한국어뿐이라 가드 4(죽음·사고 등
+   정서 부담 표현 제거)가 영어에선 통째로 빠진다. **안전 항목이라 P1.**
+3. **출제·검수 프롬프트** — `prompts/quiz_prompt.py`의 생성·자기검증 지시문, 출제 축 안내
+   (`QUIZ_FOCUS_GUIDES`), 반복 피하기 문구가 전부 한국어("한국어 언어재활 문제 출제자").
+4. **길이 제한** — `_MAX_SENTENCE_LEN = 30`은 한국어 글자 기준. 영어는 단어 중간에서 잘린다 → 단어 수 기준으로.
+5. **백필 낱말** — `_extract_candidate_words`가 한글만 찾아 영어 메모면 후보 0개 → "오늘 무엇을
+   하셨나요? ___"에 메모 앞 두 글자가 정답으로 들어간다. 영어용 추출(불용어·동사 제외)이 필요.
+6. **따라 말하기 안내문** — 백엔드 `SPEECH_REPEAT_PROMPT`가 한국어 문장으로 DB에 저장된다 →
+   저장 대신 화면에서 i18n 키로.
+7. **반복 비교** — `_normalize`가 대소문자를 안 접는다("Park"≠"park").
+
+**Why:** 2026-10-11 "영어 버전으로 하면 이상없어?" 점검에서 드러났다. 영어판 계획(Phase 3 영어
+문항)은 연습·검사 문항 은행을 다루고, 보호자 메모 기반 퀴즈는 어느 TODO에도 없었다.
+
+**Context:** 오늘 문이 닫혀 있어 실제 영향은 없다 — `SUPPORTED_LOCALES`(`backend/src/common/locale.ts`)가
+환자·보호자 모두 `ko-KR`뿐. 반복 방지(#297)·백필 낱말 품질(#298)은 이 경로 위에 얹힌 것이라 함께 언어별로 갈라야 한다.
+영어 출력은 실측으로 확인할 것 — 이 경로의 프롬프트 지시는 flash-lite가 잘 어긴다(#297에서 3/3).
+
+**Effort:** M → CC+gstack S~M
+**Priority:** P1 (2번 금칙어). 나머지는 같은 묶음
+**Depends on:** 영어 사용자에게 문을 여는 시점(§0-5c, §16 M1) 이전에 끝나야 함
 
 ### healing-message-weekday-rotation-check
 
