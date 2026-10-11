@@ -22,6 +22,7 @@ import { FastApiClientService } from '../memory/services/fast-api-client.service
 import { PersonaContextService } from '../profile/services/persona-context.service';
 import type { PersonaSource, ProfileService } from '../profile/profile.service';
 import { QuizService } from './quiz.service';
+import type { IQuizGenerationPayload } from './interfaces/IQuizGenerationPayload';
 import { User } from '../auth/entities/user.entity';
 import { SpecMock, specMock } from '../common/testing/spec-mock';
 
@@ -86,6 +87,7 @@ describe('QuizService', () => {
       delete: specMock(),
       increment: specMock(),
       upsert: specMock(),
+      count: specMock(),
       createQueryBuilder: specMock(),
     };
   }
@@ -576,6 +578,184 @@ describe('QuizService', () => {
   });
 
   // ─── 마스킹 (프로필 밖 PII) ──────────────────────────────────────
+  describe('generateForMemoryEntry — 반복 피하기', () => {
+    /** 최근 문제 조회 쿼리빌더 — 체이닝 호출을 기록하고 rows를 돌려준다 */
+    function recentQb(rows: unknown[]) {
+      const calls: Array<[string, unknown[]]> = [];
+      const qb: Record<string, unknown> = {};
+      for (const m of [
+        'innerJoin',
+        'select',
+        'addSelect',
+        'where',
+        'andWhere',
+        'orderBy',
+        'addOrderBy',
+        'limit',
+      ]) {
+        qb[m] = (...args: unknown[]) => {
+          calls.push([m, args]);
+          return qb;
+        };
+      }
+      qb.getRawMany = () => Promise.resolve(rows);
+      return { qb, calls };
+    }
+
+    function arrange(): void {
+      memoryEntryRepo.findOne.mockResolvedValue(buildEntry());
+      patientMemoryNoteRepo.find.mockResolvedValue([buildNote()]);
+      quizSetRepo.findOne.mockResolvedValue(null);
+      quizSetRepo.save.mockResolvedValue(
+        buildSet({ generationStatus: 'pending' }),
+      );
+      quizQuestionRepo.save.mockResolvedValue([]);
+      quizSetRepo.update.mockResolvedValue({ affected: 1 });
+      generationClientMock.generate.mockResolvedValue({
+        questions: [
+          {
+            type: 'multiple_choice',
+            prompt: '어디서 산책했나요?',
+            choices: ['공원', '시장'],
+            correctAnswer: '공원',
+            hintFirstChar: null,
+          },
+        ],
+        model: 'm',
+        fallbackUsed: false,
+      });
+    }
+
+    function sentPayload(): IQuizGenerationPayload {
+      return generationClientMock.generate.mock
+        .calls[0][0] as IQuizGenerationPayload;
+    }
+
+    it('이 환자의 최근 3일 ready 세트 문제를 넘기되, 지금 만드는 세트는 뺀다', async () => {
+      arrange();
+      const { qb, calls } = recentQb([
+        {
+          type: 'multiple_choice',
+          prompt: '무엇을 드셨나요?',
+          correctAnswer: '죽',
+        },
+      ]);
+      quizQuestionRepo.createQueryBuilder.mockReturnValue(qb);
+      quizSetRepo.count.mockResolvedValue(3);
+
+      await service.generateForMemoryEntry(MEMORY_ENTRY_ID);
+
+      expect(sentPayload().recentQuestions).toEqual([
+        { prompt: '무엇을 드셨나요?', correctAnswer: '죽' },
+      ]);
+      const params = calls
+        .filter(([m]) => m === 'where' || m === 'andWhere')
+        .map(([, args]) => args[1] as Record<string, unknown> | undefined);
+      expect(params).toContainEqual({ patientId: PATIENT_ID });
+      expect(params).toContainEqual({ currentSetId: QUIZ_SET_ID });
+      const since = params.find((p) => p && 'since' in p)?.since as Date;
+      const days = (Date.now() - since.getTime()) / (24 * 60 * 60 * 1000);
+      expect(days).toBeCloseTo(3, 1);
+      expect(calls).toContainEqual(['limit', [20]]);
+    });
+
+    it('따라 말하기는 고정 안내 문구라 문장 없이 낱말만 넘긴다', async () => {
+      arrange();
+      const { qb } = recentQb([
+        {
+          type: 'speech',
+          prompt: '다음 단어를 듣고 따라 말해보세요',
+          correctAnswer: '산책',
+        },
+      ]);
+      quizQuestionRepo.createQueryBuilder.mockReturnValue(qb);
+      quizSetRepo.count.mockResolvedValue(1);
+
+      await service.generateForMemoryEntry(MEMORY_ENTRY_ID);
+
+      expect(sentPayload().recentQuestions).toEqual([
+        { prompt: null, correctAnswer: '산책' },
+      ]);
+    });
+
+    it('최근 문제의 가족 실명은 다시 토큰으로 바꿔 외부 LLM에 보낸다', async () => {
+      personaSource = {
+        hometown: null,
+        occupation: null,
+        hobbies: [],
+        significantPlaces: [],
+        family: [
+          {
+            relation: 'grandson',
+            name: '민준',
+            gender: 'M',
+            relationOrdinal: 1,
+          },
+        ],
+      };
+      arrange();
+      const { qb } = recentQb([
+        {
+          type: 'multiple_choice',
+          prompt: '민준이와 어디 갔나요?',
+          correctAnswer: '공원',
+        },
+        {
+          type: 'speech',
+          prompt: '다음 단어를 듣고 따라 말해보세요',
+          correctAnswer: '민준',
+        },
+      ]);
+      quizQuestionRepo.createQueryBuilder.mockReturnValue(qb);
+      quizSetRepo.count.mockResolvedValue(1);
+
+      await service.generateForMemoryEntry(MEMORY_ENTRY_ID);
+
+      const sent = JSON.stringify(sentPayload().recentQuestions);
+      expect(sent).not.toContain('민준');
+      expect(sent).toContain('[손자1]');
+    });
+
+    it('출제 축은 이 환자의 세트 순번으로 돌린다 (지금 세트를 빼고 센다)', async () => {
+      const focuses: unknown[] = [];
+      for (const count of [1, 2, 3, 4, 5]) {
+        jest.clearAllMocks();
+        arrange();
+        quizQuestionRepo.createQueryBuilder.mockReturnValue(recentQb([]).qb);
+        quizSetRepo.count.mockResolvedValue(count);
+        await service.generateForMemoryEntry(MEMORY_ENTRY_ID);
+        focuses.push(sentPayload().focus);
+      }
+      expect(focuses).toEqual([
+        'activity',
+        'place',
+        'object',
+        'time',
+        'activity',
+      ]);
+      expect(quizSetRepo.count).toHaveBeenCalledWith({
+        where: { patientId: PATIENT_ID },
+      });
+    });
+
+    it('최근 문제 조회가 실패해도 퀴즈는 다양성 없이 만든다', async () => {
+      arrange();
+      quizQuestionRepo.createQueryBuilder.mockImplementation(() => {
+        throw new Error('db down');
+      });
+
+      await service.generateForMemoryEntry(MEMORY_ENTRY_ID);
+
+      const payload = sentPayload();
+      expect(payload).not.toHaveProperty('recentQuestions');
+      expect(payload).not.toHaveProperty('focus');
+      expect(quizSetRepo.update).toHaveBeenCalledWith(
+        QUIZ_SET_ID,
+        expect.objectContaining({ generationStatus: 'ready' }),
+      );
+    });
+  });
+
   describe('generateForMemoryEntry — /mask 마스킹', () => {
     function arrangeNotes(answerText: string): void {
       memoryEntryRepo.findOne.mockResolvedValue(buildEntry());

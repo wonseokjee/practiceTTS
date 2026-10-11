@@ -650,3 +650,125 @@ class Test입력크기상한:
             await service.generate_quiz(
                 make_request(patient_notes=[{"category": "activity", "answer_text": huge}])
             )
+
+# ======================================================================
+# 반복 피하기 — 단조로운 하루라 메모가 매일 비슷하다
+# ======================================================================
+class Test반복피하기:
+    """최근에 낸 문제와 같은 문항은 버리고, 프롬프트에 최근 문제와 출제 축을 싣는다."""
+
+    async def test_문장과_정답이_모두_같은_객관식은_버리고_백필로_채운다(self, monkeypatch):
+        monkeypatch.setattr(quiz_service, "_CRITIQUE_ENABLED", False)
+        service = QuizGeneratorService(FakeLlmClient(raw=valid_five_questions_json()))
+        request = make_request(
+            recent_questions=[{"prompt": "어디에서 산책했나요?", "correct_answer": "공원"}]
+        )
+
+        response = await service.generate_quiz(request)
+
+        assert len(response.questions) == 5
+        assert not any(
+            q.prompt == "어디에서 산책했나요?" and q.correct_answer == "공원"
+            for q in response.questions
+        )
+        assert response.fallback_used is True
+
+    async def test_질문이_같아도_정답이_다르면_유지한다(self, monkeypatch):
+        monkeypatch.setattr(quiz_service, "_CRITIQUE_ENABLED", False)
+        service = QuizGeneratorService(FakeLlmClient(raw=valid_five_questions_json()))
+        # 어제는 시장에서 산책했다 — 오늘 공원은 진짜 회상 연습이다
+        request = make_request(
+            recent_questions=[{"prompt": "어디에서 산책했나요?", "correct_answer": "시장"}]
+        )
+
+        response = await service.generate_quiz(request)
+
+        assert any(q.prompt == "어디에서 산책했나요?" for q in response.questions)
+        assert response.fallback_used is False
+
+    async def test_말만_바꾸고_정답이_같으면_같은_문제로_보고_버린다(self, monkeypatch):
+        # 실측: LLM이 "정답을 다시 쓰지 말라"를 어기고 문장만 바꿔 낸다
+        monkeypatch.setattr(quiz_service, "_CRITIQUE_ENABLED", False)
+        service = QuizGeneratorService(FakeLlmClient(raw=valid_five_questions_json()))
+        request = make_request(
+            recent_questions=[{"prompt": "산책은 어디서 하셨어요?", "correct_answer": "공원 "}]
+        )
+
+        response = await service.generate_quiz(request)
+
+        mc_answers = [q.correct_answer for q in response.questions if q.type == "multiple_choice"]
+        assert "공원" not in mc_answers
+        assert len(response.questions) == 5
+
+    async def test_최근_따라말한_낱말은_빈칸에서_버리고_새_낱말을_고른다(self, monkeypatch):
+        monkeypatch.setattr(quiz_service, "_CRITIQUE_ENABLED", False)
+        service = QuizGeneratorService(FakeLlmClient(raw=valid_five_questions_json()))
+        # 따라 말하기는 문장이 고정 안내라 prompt 없이 낱말만 온다
+        request = make_request(
+            recent_questions=[
+                {"prompt": None, "correct_answer": "사과"},
+                {"prompt": None, "correct_answer": "공원"},
+            ]
+        )
+
+        response = await service.generate_quiz(request)
+
+        blanks = [q.correct_answer for q in response.questions if q.type == "fill_blank"]
+        assert len(blanks) == 2
+        assert "사과" not in blanks and "공원" not in blanks
+
+    async def test_새_낱말이_바닥나면_최근_낱말이라도_채운다(self, monkeypatch):
+        monkeypatch.setattr(quiz_service, "_CRITIQUE_ENABLED", False)
+        service = QuizGeneratorService(FakeLlmClient(raw="{}"))  # 전부 백필
+        request = make_request(
+            patient_notes=[{"category": "activity", "answer_text": "공원에서 산책했어요"}],
+            recent_questions=[{"prompt": None, "correct_answer": "공원"}],
+        )
+
+        response = await service.generate_quiz(request)
+
+        answers = [q.correct_answer for q in response.questions]
+        assert len(answers) == 5
+        assert answers[0] == "산책했어요"  # 메모 순서로는 공원이 먼저지만 새 낱말이 앞선다
+        assert "공원" in answers  # 모자라면 반복을 허용한다
+
+    async def test_최근_문제는_user_턴에만_싣고_system에는_싣지_않는다(self):
+        fake = FakeLlmClient(raw=valid_five_questions_json())
+        service = QuizGeneratorService(fake)
+        request = make_request(
+            recent_questions=[{"prompt": "무엇을 드셨나요?", "correct_answer": "호박죽"}]
+        )
+
+        await service.generate_quiz(request)
+
+        system, user = fake.captured_messages[0][0], fake.captured_messages[0][1]
+        assert "호박죽" not in system["content"]
+        assert "무엇을 드셨나요? → 호박죽" in user["content"]
+
+    async def test_최근_문제가_없으면_없음으로_적는다(self):
+        fake = FakeLlmClient(raw=valid_five_questions_json())
+        await QuizGeneratorService(fake).generate_quiz(make_request())
+
+        user = fake.captured_messages[0][1]["content"]
+        assert "[최근에 낸 문제" in user
+        assert user.split("[최근에 낸 문제")[1].splitlines()[1] == "없음"
+
+    @pytest.mark.parametrize(
+        ("focus", "phrase"),
+        [("activity", "활동"), ("place", "장소"), ("object", "음식·물건"), ("time", "순서")],
+    )
+    async def test_출제_축이_system_지시에_실린다(self, focus, phrase):
+        fake = FakeLlmClient(raw=valid_five_questions_json())
+        await QuizGeneratorService(fake).generate_quiz(make_request(focus=focus))
+
+        assert phrase in fake.captured_messages[0][0]["content"]
+
+    async def test_출제_축이_없으면_축_안내를_싣지_않는다(self):
+        fake = FakeLlmClient(raw=valid_five_questions_json())
+        await QuizGeneratorService(fake).generate_quiz(make_request())
+
+        assert "이번에는 가능하면" not in fake.captured_messages[0][0]["content"]
+
+    def test_알_수_없는_출제_축은_요청에서_거부한다(self):
+        with pytest.raises(ValueError):
+            make_request(focus="who")

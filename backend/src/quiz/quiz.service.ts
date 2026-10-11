@@ -16,6 +16,11 @@ import {
 } from '../common/week-boundary';
 import { DEFAULT_LOCALE } from '../common/locale';
 import { DEFAULT_QUIZ_DISTRIBUTION } from './constants/quiz-distribution';
+import {
+  MAX_RECENT_QUESTIONS,
+  quizFocusFor,
+  RECENT_QUESTION_WINDOW_DAYS,
+} from './constants/quiz-focus';
 import { QAB_LEGACY_SCORER_VERSION } from './constants/qab-scorer';
 import { QuizSetSummaryDto } from './dto/quiz-set-summary.dto';
 import {
@@ -587,6 +592,11 @@ export class QuizService {
               )
             : undefined,
         distribution: DEFAULT_QUIZ_DISTRIBUTION,
+        ...(await this.loadVarietyBestEffort(
+          entry.patientId,
+          quizSet.id,
+          tokenMap,
+        )),
         // photoTags는 R7=(c)에 따라 미전달 (Phase 2에서 R7=(b)로 전환)
       };
 
@@ -697,6 +707,67 @@ export class QuizService {
     }
 
     return masked;
+  }
+
+  /**
+   * 반복을 피하기 위한 맥락(최근 문제 + 출제 축)을 best-effort로 모은다.
+   *
+   * 환자의 하루가 단조로우면 메모가 매일 비슷하고, 메모만 보고 출제하면 같은
+   * 문제·같은 정답이 되풀이된다. 최근 문제를 넘겨 피하게 하고, 세트마다 축을 돌린다.
+   * 조회가 실패해도 퀴즈는 만든다 — 다양성은 품질 장치이지 관문이 아니다.
+   *
+   * 최근 문제는 이미 저장된 LLM 산출물이라 실명이 복원돼 있다. 외부 LLM 경계를
+   * 넘기 전에 메모와 같은 tokenMap으로 다시 토큰화한다.
+   */
+  private async loadVarietyBestEffort(
+    patientId: string,
+    currentSetId: string,
+    tokenMap: Record<string, string>,
+  ): Promise<Pick<IQuizGenerationPayload, 'recentQuestions' | 'focus'>> {
+    try {
+      const since = new Date(
+        Date.now() - RECENT_QUESTION_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+      );
+      const [rows, setCount] = await Promise.all([
+        this.quizQuestionRepository
+          .createQueryBuilder('q')
+          .innerJoin('q.quizSet', 'set')
+          .select('q.type', 'type')
+          .addSelect('q.prompt', 'prompt')
+          .addSelect('q.correct_answer', 'correctAnswer')
+          .where('set.patient_id = :patientId', { patientId })
+          .andWhere('set.id != :currentSetId', { currentSetId })
+          .andWhere("set.generation_status = 'ready'")
+          .andWhere('set.created_at >= :since', { since })
+          .orderBy('set.created_at', 'DESC')
+          .addOrderBy('q.order_index', 'ASC')
+          .limit(MAX_RECENT_QUESTIONS)
+          .getRawMany<{
+            type: string;
+            prompt: string;
+            correctAnswer: string;
+          }>(),
+        // 현재 set은 이미 pending으로 저장돼 있어 센 수에 들어 있다.
+        this.quizSetRepository.count({ where: { patientId } }),
+      ]);
+      const tokenize = (text: string) =>
+        this.personaContext.tokenizeWithMap(text, tokenMap);
+      return {
+        recentQuestions: rows.map((row) => ({
+          // 따라 말하기는 고정 안내 문구라 문장이 아니라 낱말만 의미가 있다.
+          prompt: row.type === 'speech' ? null : tokenize(row.prompt),
+          correctAnswer: tokenize(row.correctAnswer),
+        })),
+        focus: quizFocusFor(setCount - 1),
+      };
+    } catch (error) {
+      this.logger.warn(
+        `최근 문제 조회 실패 — 다양성 없이 생성: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return {};
+    }
   }
 
   /**

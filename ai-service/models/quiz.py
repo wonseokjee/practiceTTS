@@ -13,6 +13,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 QuizType = Literal["multiple_choice", "yes_no", "fill_blank"]
 # 환자 메모 카테고리
 NoteCategory = Literal["activity", "moment", "context"]
+# 출제 축 — 같은 메모에서도 세트마다 다른 방향을 묻는다 (NestJS quiz-focus.ts와 1:1)
+QuizFocus = Literal["activity", "place", "object", "time"]
 
 
 class PatientNoteIn(BaseModel):
@@ -62,6 +64,18 @@ class QuizDistribution(BaseModel):
         return self.multiple_choice + self.yes_no + self.fill_blank
 
 
+class RecentQuestionIn(BaseModel):
+    """이 환자에게 최근 낸 문제 — 같은 문제·같은 정답을 피하는 데만 쓴다.
+
+    prompt가 None이면 고정 안내 문항(따라 말하기)이라 정답 낱말만 의미가 있다.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    prompt: str | None = Field(default=None, max_length=100)
+    correct_answer: str = Field(min_length=1, max_length=50)
+
+
 class QuizGenerateRequest(BaseModel):
     """POST /quiz/generate 요청 모델.
 
@@ -76,6 +90,8 @@ class QuizGenerateRequest(BaseModel):
     photo_tags: PhotoTagsIn | None = None
     target_words: list[str] = Field(default_factory=list)
     distribution: QuizDistribution = Field(default_factory=QuizDistribution)
+    recent_questions: list[RecentQuestionIn] = Field(default_factory=list, max_length=40)
+    focus: QuizFocus | None = None
 
 
 class QuizQuestionOut(BaseModel):

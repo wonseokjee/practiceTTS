@@ -33,10 +33,13 @@ from models.quiz import (
     QuizGenerateResponse,
     QuizLLMResponse,
     QuizQuestionOut,
+    RecentQuestionIn,
 )
 from prompts.quiz_prompt import (
     QUIZ_CRITIQUE_DATA_TEMPLATE,
     QUIZ_CRITIQUE_PROMPT,
+    QUIZ_FOCUS_GUIDES,
+    QUIZ_FOCUS_LINE,
     QUIZ_SYSTEM_PROMPT,
     QUIZ_USER_DATA_TEMPLATE,
 )
@@ -64,6 +67,8 @@ _MAX_NOTES_BLOB_LEN = 2000
 _YES_NO_ANSWERS = {"yes", "no"}
 # 폴백 후보 단어 추출용 한글 토큰 정규식 (2~5자)
 _KOREAN_TOKEN_RE = re.compile(r"[가-힣]{2,5}")
+# 반복 비교에서 지우는 것 — 공백·밑줄(빈칸)·문장부호. 대괄호 토큰은 남긴다.
+_REPEAT_NOISE_RE = re.compile(r"[\s_.,!?~·…'\"“”‘’()\-]")
 # 토큰 끝에서 제거할 조사 접미사 (긴 것부터 검사)
 _PARTICLE_SUFFIXES = ("에서", "으로", "에게", "을", "를", "이", "가", "은", "는", "에", "와", "과", "도")
 
@@ -113,6 +118,9 @@ class QuizGeneratorService:
         # 5. [가드 3·4·5] 안전 가드 통과 문제만 추출 (요청 분포도 함께 적용)
         questions = self._sanitize(parsed, notes_blob, dist)
 
+        # 5.2 반복 제거: 프롬프트 지시만으로는 보장이 안 되니 코드로 한 번 더 거른다.
+        questions = self._drop_repeats(questions, request.recent_questions)
+
         # 5.5 자기검증 패스: 규칙이 못 잡는 "그럴듯하지만 부적절한" 문항을 폐기.
         #     실패/타임아웃 시 원문 유지(fail-open) — 품질 향상 장치이지 관문이 아니다.
         questions = await self._critique(questions, notes_blob)
@@ -120,7 +128,12 @@ class QuizGeneratorService:
         # 6. [가드 2] 부족분을 규칙 기반 빈칸 폴백으로 보충
         fallback_used = len(questions) < need
         if fallback_used:
-            questions += self._backfill(questions, notes_blob, need - len(questions))
+            questions += self._backfill(
+                questions,
+                notes_blob,
+                need - len(questions),
+                avoid_answers=self._recent_answers(request.recent_questions),
+            )
         questions = questions[:need]  # 초과분 절단
 
         elapsed_ms = int((time.monotonic() - started_at) * 1000)
@@ -186,7 +199,24 @@ class QuizGeneratorService:
             ", ".join(request.target_words) if request.target_words else "없음"
         )
 
+        focus_guide = (
+            QUIZ_FOCUS_LINE.format(GUIDE=QUIZ_FOCUS_GUIDES[request.focus])
+            if request.focus
+            else ""
+        )
+        recent_str = (
+            "\n".join(
+                f"- {q.prompt} → {q.correct_answer}"
+                if q.prompt
+                else f"- (따라 말하기) {q.correct_answer}"
+                for q in request.recent_questions
+            )
+            if request.recent_questions
+            else "없음"
+        )
+
         system_prompt = QUIZ_SYSTEM_PROMPT.format(
+            FOCUS_GUIDE=focus_guide,
             N_MULTIPLE_CHOICE=dist.multiple_choice,
             N_YES_NO=dist.yes_no,
             N_FILL_BLANK=dist.fill_blank,
@@ -195,6 +225,7 @@ class QuizGeneratorService:
             PATIENT_NOTES=patient_notes_str,
             PHOTO_TAGS=photo_tags_str,
             TARGET_WORDS=target_words_str,
+            RECENT_QUESTIONS=recent_str,
         )
         return system_prompt, user_data
 
@@ -510,18 +541,72 @@ class QuizGeneratorService:
         normalized_blob = notes_blob.replace(" ", "")
         return normalized_answer in normalized_blob
 
+    @staticmethod
+    def _normalize(text: str) -> str:
+        """반복 비교용 — 공백·문장부호·빈칸 밑줄을 지운다(대괄호 토큰은 남긴다)."""
+        return _REPEAT_NOISE_RE.sub("", text)
+
+    @classmethod
+    def _recent_answers(cls, recent: list[RecentQuestionIn]) -> set[str]:
+        return {cls._normalize(q.correct_answer) for q in recent}
+
+    @classmethod
+    def _drop_repeats(
+        cls, questions: list[QuizQuestionOut], recent: list[RecentQuestionIn]
+    ) -> list[QuizQuestionOut]:
+        """최근에 낸 문제와 같은 문항을 버린다(부족분은 백필이 채운다).
+
+        - 문장 문항: **정답**이 최근 문장 문항의 정답과 같으면 버린다. 실측(2026-10-11,
+          gemini-2.5-flash-lite, 같은 메모 3회)에서 "정답을 다시 쓰지 말라"는 지시를
+          매번 어기고 말만 바꿔 냈다("무엇을 보셨나요?"→"TV로 뭘 봤나요?", 둘 다
+          노래 프로그램). 문장 비교로는 못 잡는다. 질문이 같아도 정답이 다르면 남는다.
+        - 빈칸: 백엔드가 고정 안내의 따라 말하기로 바꾸므로 문장은 의미가 없고
+          낱말만 남는다. 최근 따라 말한 낱말과 같으면 버린다.
+
+        창(최근 며칠)은 백엔드가 정한다. 메모가 매일 같으면 새 사실이 이틀이면
+        바닥나므로 창을 짧게 둬서, 며칠 지난 사실은 다시 물을 수 있게 한다.
+        """
+        if not recent:
+            return questions
+        recent_answers = {
+            cls._normalize(q.correct_answer) for q in recent if q.prompt
+        }
+        recent_words = {
+            cls._normalize(q.correct_answer) for q in recent if not q.prompt
+        }
+        kept: list[QuizQuestionOut] = []
+        for q in questions:
+            answer = cls._normalize(q.correct_answer)
+            if q.type == "fill_blank":
+                repeated = answer in recent_words
+            else:
+                repeated = answer in recent_answers
+            if repeated:
+                logger.info("최근 문제와 같은 문항 제거 (type=%s)", q.type)
+                continue
+            kept.append(q)
+        return kept
+
     def _backfill(
         self,
         questions: list[QuizQuestionOut],
         notes_blob: str,
         needed: int,
+        avoid_answers: set[str] | None = None,
     ) -> list[QuizQuestionOut]:
-        """가드 2: LLM 없이 메모에서 명사 후보를 뽑아 빈칸 문제를 needed개 보충한다."""
+        """가드 2: LLM 없이 메모에서 명사 후보를 뽑아 빈칸 문제를 needed개 보충한다.
+
+        avoid_answers(최근에 낸 정답)는 뒤로 미룬다 — 빼지는 않는다. 메모가 매일
+        같으면 새 낱말이 바닥나는데, 그때 문항 수를 못 채우는 것보다 반복이 낫다.
+        """
         if needed <= 0:
             return []
 
         used_answers = {q.correct_answer for q in questions}
         candidates = self._extract_candidate_words(notes_blob, used_answers)
+        if avoid_answers:
+            # 안정 정렬: 같은 그룹 안에서는 메모 순서를 유지한다.
+            candidates.sort(key=lambda w: self._normalize(w) in avoid_answers)
 
         backfilled: list[QuizQuestionOut] = []
         for word in candidates:
