@@ -729,7 +729,7 @@ class Test반복피하기:
 
         answers = [q.correct_answer for q in response.questions]
         assert len(answers) == 5
-        assert answers[0] == "산책했어요"  # 메모 순서로는 공원이 먼저지만 새 낱말이 앞선다
+        assert answers[0] == "산책"  # 메모 순서로는 공원이 먼저지만 새 낱말이 앞선다
         assert "공원" in answers  # 모자라면 반복을 허용한다
 
     async def test_최근_문제는_user_턴에만_싣고_system에는_싣지_않는다(self):
@@ -772,3 +772,41 @@ class Test반복피하기:
     def test_알_수_없는_출제_축은_요청에서_거부한다(self):
         with pytest.raises(ValueError):
             make_request(focus="who")
+
+# ======================================================================
+# 백필 낱말 품질 — 백필 빈칸은 따라 말하기가 되므로 정답 낱말이 곧 문항이다
+# ======================================================================
+class Test백필낱말:
+    """활용형("산책했어요"·"드시고")이 따라 말할 낱말로 나가지 않는다."""
+
+    @staticmethod
+    def _words(text: str, used: set[str] | None = None) -> list[str]:
+        service = QuizGeneratorService(FakeLlmClient())
+        return service._extract_candidate_words(text, used or set())
+
+    def test_하다_동사는_명사만_뗀다(self):
+        words = self._words("아침에 산책했어요. 오후에 운동하셨어요. 청소하고 목욕합니다.")
+        assert "산책" in words and "운동" in words and "청소" in words and "목욕" in words
+        assert not any(w.startswith("산책했") or w.startswith("운동하") for w in words)
+
+    def test_서술어_활용은_낱말로_쓰지_않는다(self):
+        words = self._words("점심에 호박죽을 드시고 낮잠을 주무셨어요. 날씨가 맑았어요. 밥을 먹고 쉬었다")
+        assert words == ["점심", "호박죽", "낮잠", "날씨"]
+
+    def test_다_고로_끝나는_명사는_남긴다(self):
+        words = self._words("바다에 갔다가 냉장고를 정리했어요. 마을 회관에 가서 놀았어요")
+        assert words == ["바다", "냉장고", "정리", "마을", "회관"]
+
+    def test_아어로_끝나는_어간의_하다는_동사라_버린다(self):
+        words = self._words("노래를 좋아하는 할머니가 좋아하셨어요")
+        assert "좋아" not in words and "좋아하" not in words
+        assert words == ["노래", "할머니"]
+
+    def test_다섯_글자가_넘는_어절도_잘리지_않는다(self):
+        # 예전 정규식 {2,5}는 "노래프로그램을"을 "노래프로그"로 잘랐다
+        words = self._words("노래프로그램을 보셨습니다")
+        assert words == ["노래프로그램"]
+
+    def test_이미_쓴_정답은_조사가_붙어_있어도_다시_고르지_않는다(self):
+        words = self._words("공원에서 산책했어요", used={"공원에서"})
+        assert words == ["산책"]
