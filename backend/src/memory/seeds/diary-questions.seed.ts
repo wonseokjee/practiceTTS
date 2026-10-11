@@ -2,9 +2,9 @@ import { DataSource } from 'typeorm';
 import { DiaryQuestion } from '../entities/diary-question.entity';
 
 /**
- * 보호자/환자 일기 질문 시드 (14개)
+ * 보호자/환자 일기 질문 시드 (26개)
  * - 보호자 5개 (scope='caregiver', category=null)
- * - 환자 activity 3개, moment 3개, context 3개
+ * - 환자 activity 7개, moment 7개, context 7개 (M4 3개씩 + M33 4개씩)
  * - 멱등 키: (scope, text)
  *
  * 임상 자문 검수는 P1-N3=(b) — Phase 1 완료 후 운영 진입 전 별도 수행.
@@ -89,6 +89,67 @@ export const DIARY_QUESTIONS_SEED: ReadonlyArray<DiaryQuestionSeedItem> = [
     scope: 'patient',
     category: 'context',
     text: '오늘 환자분이 드신 음식 중 기억에 남는 것은?',
+  },
+  // M33 추가 12개 — 단조로운 하루에도 그날 달라진 것·구체적 낱말을 끌어낸다(범주당 3→7)
+  {
+    scope: 'patient',
+    category: 'activity',
+    text: '오늘 아침에 환자분이 가장 먼저 한 일은 무엇인가요?',
+  },
+  {
+    scope: 'patient',
+    category: 'activity',
+    text: '오늘 환자분이 손으로 한 일이 있나요? (예: 빨래 개기, 화분에 물 주기)',
+  },
+  {
+    scope: 'patient',
+    category: 'activity',
+    text: '오늘 환자분이 TV나 라디오로 보거나 들은 것은 무엇인가요?',
+  },
+  {
+    scope: 'patient',
+    category: 'activity',
+    text: '오늘 어제와 다르게 해 본 일이 있다면 무엇인가요?',
+  },
+  {
+    scope: 'patient',
+    category: 'moment',
+    text: '오늘 어제와 달랐던 점이 있다면 하나만 적어주세요.',
+  },
+  {
+    scope: 'patient',
+    category: 'moment',
+    text: '오늘 환자분이 먼저 꺼낸 이야기나 낱말이 있나요?',
+  },
+  {
+    scope: 'patient',
+    category: 'moment',
+    text: '오늘 환자분이 보거나 듣고 반응을 보인 것은 무엇인가요?',
+  },
+  {
+    scope: 'patient',
+    category: 'moment',
+    text: '오늘 환자분이 스스로 해낸 일이 있나요?',
+  },
+  {
+    scope: 'patient',
+    category: 'context',
+    text: '오늘 점심이나 저녁에 드신 것은 무엇인가요?',
+  },
+  {
+    scope: 'patient',
+    category: 'context',
+    text: '오늘 환자분이 시간을 가장 많이 보낸 곳은 어디인가요? (예: 거실, 베란다)',
+  },
+  {
+    scope: 'patient',
+    category: 'context',
+    text: '오늘 날씨는 어땠고, 환자분은 무엇을 입으셨나요?',
+  },
+  {
+    scope: 'patient',
+    category: 'context',
+    text: '오늘 환자분과 통화하거나 소식을 나눈 사람은 누구였나요?',
   },
 ];
 
