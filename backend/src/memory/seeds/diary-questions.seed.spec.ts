@@ -52,7 +52,7 @@ describe('seedDiaryQuestionsIfMissing — 멱등성', () => {
     } as DataSource;
   }
 
-  it('빈 테이블에서 1차 실행 시 14개 모두 INSERT, 2차 실행 시 모두 SKIP', async () => {
+  it('빈 테이블에서 1차 실행 시 전부 INSERT, 2차 실행 시 모두 SKIP', async () => {
     // Given
     const ds = createFakeDataSource();
 
@@ -71,7 +71,7 @@ describe('seedDiaryQuestionsIfMissing — 멱등성', () => {
     expect(second.skipped).toBe(DIARY_QUESTIONS_SEED.length);
   });
 
-  it('1개 시드 텍스트가 미리 존재하면 나머지 13개만 INSERT', async () => {
+  it('1개 시드 텍스트가 미리 존재하면 나머지만 INSERT', async () => {
     // Given — 시드 1개 미리 적용
     const preExisting: DiaryQuestion = {
       id: 'pre',
@@ -109,9 +109,9 @@ describe('seedDiaryQuestionsIfMissing — 멱등성', () => {
 
     // Then
     expect(caregiverCount).toBe(5);
-    expect(patientActivity).toBe(3);
-    expect(patientMoment).toBe(3);
-    expect(patientContext).toBe(3);
-    expect(DIARY_QUESTIONS_SEED).toHaveLength(14);
+    expect(patientActivity).toBe(7);
+    expect(patientMoment).toBe(7);
+    expect(patientContext).toBe(7);
+    expect(DIARY_QUESTIONS_SEED).toHaveLength(26);
   });
 });
