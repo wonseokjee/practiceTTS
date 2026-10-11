@@ -134,6 +134,37 @@ describe('QuizGenerationClient', () => {
       expect(body.target_words).toEqual(['바다', '여름']);
     });
 
+    it('최근 문제와 출제 축은 snake_case로 싣고, 최근 문제가 비면 키를 빼야 한다', async () => {
+      await client.generate({
+        patientNotes: [{ category: 'activity', answerText: '산책' }],
+        recentQuestions: [
+          { prompt: '어디서 산책했나요?', correctAnswer: '공원' },
+          { prompt: null, correctAnswer: '호박죽' },
+        ],
+        focus: 'place',
+      });
+      await client.generate({
+        patientNotes: [{ category: 'activity', answerText: '산책' }],
+        recentQuestions: [],
+      });
+
+      const withRecent = httpServiceMock.post.mock.calls[0][1] as Record<
+        string,
+        unknown
+      >;
+      expect(withRecent.recent_questions).toEqual([
+        { prompt: '어디서 산책했나요?', correct_answer: '공원' },
+        { prompt: null, correct_answer: '호박죽' },
+      ]);
+      expect(withRecent.focus).toBe('place');
+      const empty = httpServiceMock.post.mock.calls[1][1] as Record<
+        string,
+        unknown
+      >;
+      expect(empty).not.toHaveProperty('recent_questions');
+      expect(empty).not.toHaveProperty('focus');
+    });
+
     it('옵션 필드(photoTags 등)가 없으면 해당 키는 body에 포함되지 않아야 한다', async () => {
       const payload: IQuizGenerationPayload = {
         patientNotes: [{ category: 'activity', answerText: '산책' }],

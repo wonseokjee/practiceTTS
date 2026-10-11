@@ -1,5 +1,6 @@
 import { PatientNoteCategory } from '../constants/patient-note-category';
 import { GeneratableQuizType } from '../constants/quiz-question-type';
+import type { QuizFocus } from '../constants/quiz-focus';
 
 /**
  * Phase 3 QuizGenerationClient가 FastAPI(`/quiz/generate`)에 전달할 페이로드의 **화이트리스트**.
@@ -47,4 +48,17 @@ export interface IQuizGenerationPayload {
   distribution?: {
     [K in GeneratableQuizType]: number;
   };
+
+  /**
+   * 이 환자에게 최근 낸 문제 — 같은 문제·같은 정답을 피하라고 넘긴다.
+   * 이전 LLM 산출물(마스킹된 메모에서 나온 것)이고, 실명은 다시 토큰화해서 보낸다.
+   * prompt가 null이면 고정 안내 문항(따라 말하기)이라 정답 낱말만 의미가 있다.
+   */
+  recentQuestions?: ReadonlyArray<{
+    prompt: string | null;
+    correctAnswer: string;
+  }>;
+
+  /** 이번 세트의 출제 축 (quizFocusFor). */
+  focus?: QuizFocus;
 }

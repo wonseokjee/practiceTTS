@@ -77,6 +77,15 @@ export class QuizGenerationClient implements IQuizGenerationClient {
         ? { target_words: [...payload.targetWords] }
         : {}),
       ...(payload.distribution ? { distribution: payload.distribution } : {}),
+      ...(payload.recentQuestions && payload.recentQuestions.length > 0
+        ? {
+            recent_questions: payload.recentQuestions.map((q) => ({
+              prompt: q.prompt,
+              correct_answer: q.correctAnswer,
+            })),
+          }
+        : {}),
+      ...(payload.focus ? { focus: payload.focus } : {}),
     };
 
     try {
