@@ -105,9 +105,9 @@ def write_scripts_zip() -> Path:
     """정렬 노트북이 쓰는 스크립트 묶음 + 커밋 기록(VERSION.txt)."""
     root = HERE.parent
     rev = subprocess.run(["git", "-C", str(root), "log", "-1", "--format=%h %s"],
-                         capture_output=True, text=True).stdout.strip()
+                         capture_output=True, text=True, encoding="utf-8").stdout.strip()
     dirty = subprocess.run(["git", "-C", str(root), "status", "--porcelain", "--"] + SCRIPTS,
-                           capture_output=True, text=True).stdout.strip()
+                           capture_output=True, text=True, encoding="utf-8").stdout.strip()
     out = OUT / "ts01rest_scripts.zip"
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zf:
         for rel in SCRIPTS:
@@ -116,11 +116,36 @@ def write_scripts_zip() -> Path:
     return out
 
 
+CUT_SCRIPTS = ["asr_eval/cut_words_whisper.py", "asr_eval/cut_word_segments.py"]
+
+
+def write_cut_scripts_zip() -> Path:
+    """단어 잘라내기 노트북(`cut_words_ts01rest_colab.ipynb`)용 스크립트 + 앱 단어 목록 + 커밋 기록."""
+    root = HERE.parent
+    rev = subprocess.run(["git", "-C", str(root), "log", "-1", "--format=%h %s"],
+                         capture_output=True, text=True, encoding="utf-8").stdout.strip()
+    dirty = subprocess.run(["git", "-C", str(root), "status", "--porcelain", "--"] + CUT_SCRIPTS,
+                           capture_output=True, text=True, encoding="utf-8").stdout.strip()
+    words = sorted(F.load_pool(F.DEFAULT_POOL))
+    out = OUT / "ts01rest_cut_scripts.zip"
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zf:
+        for rel in CUT_SCRIPTS:
+            zf.write(root / rel, Path(rel).name)
+        zf.writestr("app_words.json", json.dumps(words, ensure_ascii=False))
+        zf.writestr("VERSION.txt", f"{rev}{' (작업 트리 변경 있음)' if dirty else ''}\n")
+    return out
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="미사용 TS01 문장 → Colab 정렬 업로드")
     ap.add_argument("--estimate", action="store_true")
     ap.add_argument("--scripts-only", action="store_true", help="스크립트 zip만 다시 만든다")
+    ap.add_argument("--cut-scripts", action="store_true", help="단어 잘라내기 노트북용 스크립트 zip만 만든다")
     args = ap.parse_args()
+    if args.cut_scripts:
+        OUT.mkdir(parents=True, exist_ok=True)
+        print("잘라내기 스크립트:", write_cut_scripts_zip())
+        return 0
     if args.scripts_only:
         OUT.mkdir(parents=True, exist_ok=True)
         print("스크립트:", write_scripts_zip())
