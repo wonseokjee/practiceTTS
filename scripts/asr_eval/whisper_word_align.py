@@ -68,7 +68,11 @@ class WhisperAligner:
         n_frames = int(len(audio) / SR / FRAME)
         w = torch.stack([out.cross_attentions[l][0, h] for l, h in self.heads])   # [H, T_tok, 1500]
         w = w[:, :, :n_frames].float()
-        w = (w - w.mean(-1, keepdim=True)) / (w.std(-1, keepdim=True) + 1e-8)
+        # 정정(2026-10-13): 잘라낸 프레임 안에서 확률을 다시 정규화하고, 표준화는 **토큰 축(dim=-2)** 으로
+        # 한다(openai-whisper timing.py). 초판은 시간 축(dim=-1)으로 표준화했다 — 대장
+        # 「문장에서 단어 잘라내기」의 일치도 37%는 그 초판으로 잰 값이다. cut_words_whisper.attention_matrix 참고.
+        w = w / (w.sum(-1, keepdim=True) + 1e-12)
+        w = (w - w.mean(-2, keepdim=True)) / (w.std(-2, keepdim=True) + 1e-8)
         w = torch.from_numpy(median_filter(w.numpy(), (1, 1, 7)))
         mat = w.mean(0)[len(self.prefix) - 1: -1]     # 텍스트 토큰을 "예측하는" 위치 = 이전 토큰 위치
         ti, fi = dtw(-mat.double().numpy())
