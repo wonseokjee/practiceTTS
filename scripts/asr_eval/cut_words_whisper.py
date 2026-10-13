@@ -28,6 +28,7 @@ from cut_word_segments import find_targets  # noqa: F401  (노트북이 여기�
 SR, FRAME = 16000, 0.02
 MAX_SEG_SEC = 30.0          # whisper 인코더 창. 넘는 세그먼트는 건너뛴다(잘려서 시각이 틀린다)
 PAD_PRE, PAD_POST = 0.10, 0.15
+PAD_POST_PARTICLE = 0.05    # 조사가 바로 붙는 단어의 뒤 여유(조사 첫 소리를 덜 담는다)
 MIN_CLIP_SEC = 0.15
 TRIM_REL = 0.15             # 말소리 문턱 = 세그먼트 RMS 95분위 × 이 값
 
@@ -187,6 +188,15 @@ class TokenAligner:
         return spans, times
 
 
+def eojeol_ends(text: str) -> set[int]:
+    """어절이 끝나는 음절 위치(find_targets와 같은 셈). 단어 끝이 여기 없으면 조사가 붙어 있다."""
+    ends, pos = set(), 0
+    for tok in re.sub(r"[^\w\s]", " ", text).split():
+        pos += len(tok)
+        ends.add(pos)
+    return ends
+
+
 def plan_rows(rows: list[dict], words: list[str]) -> tuple[list[dict], dict]:
     """정렬할 세그먼트(문장·앱 단어 있음·30초 이하)와 건너뛴 이유별 개수."""
     keep_rows, skipped = [], {"wordlist": 0, "no_app_word": 0, "too_long": 0}
@@ -209,6 +219,7 @@ def cut_one(aligner: TokenAligner, audio: np.ndarray, row: dict, words: list[str
     spans, times = aligner.align(audio, text)
     rms = frame_rms(audio)
     thr = speech_threshold(rms)
+    ends = eojeol_ends(text)
     out = []
     for j, (w, a, b) in enumerate(find_targets(text, words)):
         kk = word_tokens(spans, a, b)
@@ -220,12 +231,18 @@ def cut_one(aligner: TokenAligner, audio: np.ndarray, row: dict, words: list[str
         k0, k1, clean = kk
         prev_start = times[k0 - 1][0] if k0 > 0 else 0.0
         next_end = times[k1 + 1][1] if k1 + 1 < len(times) else dur
-        ws, we = energy_adjust(rms, thr, times[k0][0], times[k1][1], (times[k1][1] + next_end) / 2)
-        t0, t1 = clip_bounds(ws, we, prev_start, next_end, dur)
+        # 조사가 붙으면(사탕과) 단어와 조사 사이에 쉼이 없다 — 끝을 "말소리가 이어지는 동안" 늘리면
+        # 조사를 삼킨다(로컬 스모크: 나비→"나비가", 텔레비전→"텔레비인을"). 그때는 끝을 늘리지 않고
+        # 뒤 여유도 줄인다. 합성 시험은 단어 사이에 침묵이 있어 이 경우를 못 본다.
+        particle = b not in ends
+        end_limit = times[k1][1] if particle else (times[k1][1] + next_end) / 2
+        ws, we = energy_adjust(rms, thr, times[k0][0], times[k1][1], end_limit)
+        t0, t1 = clip_bounds(ws, we, prev_start, next_end, dur,
+                             pad_post=PAD_POST_PARTICLE if particle else PAD_POST)
         if t1 - t0 < MIN_CLIP_SEC:
             out.append({**base, "skip": "too_short", "t0": t0, "t1": t1})
             continue
-        out.append({**base, "t0": t0, "t1": t1, "clean": clean})
+        out.append({**base, "t0": t0, "t1": t1, "clean": clean, "particle": particle})
     return out
 
 

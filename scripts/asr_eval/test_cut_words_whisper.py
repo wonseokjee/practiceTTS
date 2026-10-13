@@ -147,16 +147,23 @@ class _FakeAligner:
         return spans, [(k * 0.5, (k + 1) * 0.5) for k in range(n)]
 
 
-def test_cut_one_marks_each_occurrence():
-    text = "사탕과 풍선, 사탕."
-    audio = np.full(int(len(W.norm(text)) * 0.5 * W.SR), 0.3, np.float32)
-    audio[int(1.0 * W.SR): int(1.5 * W.SR)] = 0.0        # "과"는 조용하다 → 끝을 늘리지 않는다
+def test_cut_one_marks_each_occurrence_and_particles():
+    text = "사탕과 풍선, 사탕."           # 음절마다 0.5초: 사탕 0~1.0 · 과 ~1.5 · 풍선 ~2.5 · 사탕 ~3.5
+    audio = np.full(int(len(W.norm(text)) * 0.5 * W.SR), 0.3, np.float32)   # 전부 말소리
     row = {"reference_text": text, "segment_wav_relpath": "p/p_001.wav", "parent_file_id": "p.wav"}
     out = W.cut_one(_FakeAligner(), audio, row, ["사탕", "풍선"])
     assert [(o["word"], o["occ"]) for o in out] == [("사탕", 0), ("풍선", 1), ("사탕", 2)]
-    first = out[0]
-    assert (first["t0"], first["t1"], first["clean"]) == (0.0, 1.15, True)   # 끝 1.0 + 여유 0.15
-    # 소리가 이어지면 끝을 다음 토큰 중간(1.25)까지 늘리고, 여유는 남은 0.25의 절반
-    audio[:] = 0.3
-    assert abs(W.cut_one(_FakeAligner(), audio, row, ["사탕"])[0]["t1"] - 1.375) <= W.FRAME
     assert all(o["segment"] == "p/p_001.wav" for o in out)
+    first, second, third = out
+    # "사탕과": 조사가 붙었다 → 말소리가 이어져도 끝을 늘리지 않고, 뒤 여유는 0.05
+    assert first["particle"] is True and first["clean"] is True
+    assert (first["t0"], first["t1"]) == (0.0, 1.05)
+    # "풍선,": 어절 끝 → 끝을 다음 토큰 중간(2.75)까지 늘리고, 여유는 남은 0.25의 절반
+    assert second["particle"] is False
+    assert abs(second["t1"] - 2.875) <= W.FRAME
+    # 문장 끝 "사탕." → 오디오 끝을 넘지 않는다
+    assert third["particle"] is False and third["t1"] <= 3.5
+
+
+def test_eojeol_ends():
+    assert W.eojeol_ends("사탕과 풍선, 사탕.") == {3, 5, 7}
