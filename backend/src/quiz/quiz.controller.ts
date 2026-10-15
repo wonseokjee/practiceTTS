@@ -123,6 +123,25 @@ export class QuizController {
   }
 
   /**
+   * GET /quiz/fresh-set
+   * '오늘 연습'에 붙일 기억 세트 id (없으면 null). 규칙은 서비스 주석 참고.
+   * `quiz/sets/` 아래에 두면 `quiz/sets/:id`(ParseUUIDPipe)가 먼저 잡는다.
+   */
+  @Get('quiz/fresh-set')
+  async getFreshSet(
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{ quizSetId: string | null }> {
+    const effectivePatientId = resolveEffectivePatientId(req.user);
+    try {
+      return {
+        quizSetId: await this.quizService.getFreshSetId(effectivePatientId),
+      };
+    } catch (error) {
+      throw this.mapError(error);
+    }
+  }
+
+  /**
    * GET /quiz/sets/:id
    * 풀이용 5문제 조회 (정답 은닉).
    */
