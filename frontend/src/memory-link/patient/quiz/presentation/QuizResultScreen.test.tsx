@@ -3,7 +3,7 @@
 // 검증 포인트:
 //  - 점수/라벨/최고점 표시
 //  - isNewBest일 때 축하 배지 노출
-//  - "다시 풀기"/"목록으로" 버튼 콜백
+//  - '처음으로' 버튼 하나(다시 풀기 없음)
 
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
@@ -17,19 +17,17 @@ interface Overrides {
 }
 
 function renderResult(overrides?: Overrides) {
-  const onRetry = vi.fn();
-  const onBackToList = vi.fn();
+  const onExit = vi.fn();
   render(
     <QuizResultScreen
       sessionScore={overrides?.sessionScore ?? 80}
       bestScore={overrides?.bestScore ?? null}
       isNewBest={overrides?.isNewBest ?? false}
       showScore={overrides?.showScore ?? true}
-      onRetry={onRetry}
-      onBackToList={onBackToList}
+      onExit={onExit}
     />,
   );
-  return { onRetry, onBackToList };
+  return { onExit };
 }
 
 describe('QuizResultScreen', () => {
@@ -60,18 +58,15 @@ describe('QuizResultScreen', () => {
     expect(screen.queryByText('최고점 90점')).not.toBeInTheDocument();
     expect(screen.getByText('오늘도 끝까지 잘 하셨어요!')).toBeInTheDocument();
     // 버튼은 그대로 동작
-    expect(screen.getByRole('button', { name: '다시 풀기' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '처음 화면으로' })).toBeInTheDocument();
   });
 
-  it('"다시 풀기" 클릭 시 onRetry가 호출된다', () => {
-    const { onRetry } = renderResult();
-    fireEvent.click(screen.getByRole('button', { name: '다시 풀기' }));
-    expect(onRetry).toHaveBeenCalledTimes(1);
-  });
-
-  it('"목록으로" 클릭 시 onBackToList가 호출된다', () => {
-    const { onBackToList } = renderResult();
-    fireEvent.click(screen.getByRole('button', { name: '퀴즈 목록으로' }));
-    expect(onBackToList).toHaveBeenCalledTimes(1);
+  it('버튼은 "처음으로" 하나뿐이고 누르면 onExit가 호출된다', () => {
+    const { onExit } = renderResult();
+    // 다시 풀기는 새 기본 검사를 열어 오늘 기록을 두 번 쌓았다 — 뺐다.
+    expect(screen.getAllByRole('button')).toHaveLength(1);
+    expect(screen.getByText('처음으로')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '처음 화면으로' }));
+    expect(onExit).toHaveBeenCalledTimes(1);
   });
 });

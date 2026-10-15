@@ -103,6 +103,7 @@ function makeQabItems(): QabImageItem[] {
 function makeApi(overrides?: Partial<IQuizApi>): IQuizApi {
   return {
     listSets: vi.fn(),
+    getFreshSetId: vi.fn().mockResolvedValue(null),
     getSet: vi.fn().mockResolvedValue(makeDetail()),
     submitAttempts: vi.fn().mockResolvedValue({
       results: [{ questionId: 'd1', isCorrect: true, correctAnswer: '공원' }],
@@ -216,6 +217,70 @@ describe('useMixedQuizSession', () => {
     expect(result.current[0].total).toBe(4);
     const kinds = ['daily', 'qab'];
     expect(kinds).toContain(result.current[0].currentItem?.kind);
+  });
+
+  describe('오늘 연습 — 세트 없이 시작', () => {
+    const renderToday = (api: IQuizApi) =>
+      renderHook(() =>
+        useMixedQuizSession(undefined, {
+          quizApi: api,
+          pickWordItems: () => makeQabItems(),
+          generateSessionToken: () => 'tok-1',
+          dailyCount: 2,
+          wordCount: 2,
+          ...ISOLATED,
+        }),
+      );
+
+    it('붙일 세트가 없으면 세트를 안 읽고 기본 검사만 낸다', async () => {
+      const api = makeApi({ getFreshSetId: vi.fn().mockResolvedValue(null) });
+      const { result } = renderToday(api);
+      await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+      expect(api.getSet).not.toHaveBeenCalled();
+      expect(result.current[0].total).toBe(2);
+      expect(result.current[0].detail).toBeNull();
+      expect(result.current[0].currentItem?.kind).toBe('qab');
+    });
+
+    it('조회가 실패해도 막지 않고 기본 검사만 낸다', async () => {
+      const api = makeApi({
+        getFreshSetId: vi.fn().mockRejectedValue(new Error('500')),
+      });
+      const { result } = renderToday(api);
+      await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+      expect(api.getSet).not.toHaveBeenCalled();
+      expect(result.current[0].total).toBe(2);
+    });
+
+    it('붙일 세트가 있으면 기억 문항이 맨 앞이고, 답은 그 세트로 낸다', async () => {
+      const api = makeApi({ getFreshSetId: vi.fn().mockResolvedValue('fresh-9') });
+      const { result } = renderToday(api);
+      await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+      expect(api.getSet).toHaveBeenCalledWith('fresh-9');
+      expect(result.current[0].total).toBe(4);
+      // 한마디 카드 → 기억 문항 → 기본 검사로 이어지도록 기억 2문항이 먼저 온다.
+      for (let i = 0; i < 2; i += 1) {
+        expect(result.current[0].currentItem?.kind).toBe('daily');
+        await act(async () => {
+          await result.current[1].submitDaily('공원');
+        });
+        await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+        act(() => result.current[1].next());
+      }
+      expect(result.current[0].currentItem?.kind).toBe('qab');
+      expect(api.submitAttempts).toHaveBeenCalledWith(
+        'fresh-9',
+        expect.objectContaining({ sessionToken: 'tok-1' }),
+      );
+    });
+
+    it('quizSetId를 주면 fresh-set을 묻지 않는다(옛 목록 화면)', async () => {
+      const api = makeApi();
+      const { result } = renderMixed(api);
+      await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+      expect(api.getFreshSetId).not.toHaveBeenCalled();
+      expect(api.getSet).toHaveBeenCalledWith(QUIZ_SET_ID);
+    });
   });
 
   it('모든 항목을 풀면 결과 단계로 가고 합산 점수를 계산한다', async () => {

@@ -25,6 +25,7 @@ function makeDetail(): QuizSetDetail {
 function makeApi(overrides?: Partial<IQuizApi>): IQuizApi {
   return {
     listSets: vi.fn(),
+    getFreshSetId: vi.fn().mockResolvedValue(null),
     getSet: vi.fn().mockResolvedValue(makeDetail()),
     submitAttempts: vi.fn(),
     getBestScore: vi.fn(),
