@@ -95,11 +95,12 @@
     "message": "The sound didn't play. Please press the Listen button below."
   },
   "screen": {
-    "loading": "Getting your quiz ready…",
+    "loading": "Getting today's practice ready…",
     "error": "Something went wrong.",
     "restart": "Start over",
     "retry": "Try again",
-    "toList": "Back to the list",
+    "toList": "Back to start",
+    "memoryLead": "A story from your family",
     "scoring": "Checking…",
     "correct": "That's right!",
     "incorrect": "Not quite",
@@ -123,8 +124,7 @@
     "newBest": "A new personal best",
     "done": "You finished today's set",
     "doneSub": "You answered every question.",
-    "retry": "Play again",
-    "toListAria": "Back to the quiz list"
+    "toListAria": "Back to the start screen"
   },
   "score": {
     "best": "Best {{score}}"

@@ -53,6 +53,8 @@ export interface SubmitAttemptsRequest {
 export interface IQuizApi {
   /** GET /quiz/sets */
   listSets(params?: ListQuizSetsParams): Promise<QuizSetSummary[]>;
+  /** GET /quiz/fresh-set — 오늘 연습에 붙일 기억 세트 id, 없으면 null */
+  getFreshSetId(): Promise<string | null>;
   /** GET /quiz/sets/:id */
   getSet(quizSetId: string): Promise<QuizSetDetail>;
   /** POST /quiz/sets/:id/attempts */
@@ -295,6 +297,15 @@ export const quizApi: IQuizApi = {
       throw new Error(INVALID_RESPONSE_MESSAGE);
     }
     return items;
+  },
+
+  async getFreshSetId(): Promise<string | null> {
+    const res = await memoryLinkApi.get<unknown>('/quiz/fresh-set');
+    const id = asRecord(res.data)?.quizSetId;
+    if (id !== null && typeof id !== 'string') {
+      throw new Error(INVALID_RESPONSE_MESSAGE);
+    }
+    return id;
   },
 
   async getSet(quizSetId: string): Promise<QuizSetDetail> {

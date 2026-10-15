@@ -28,7 +28,8 @@ import { DdkItem } from './components/DdkItem.js';
 import { YesNoButtons } from './components/YesNoButtons.js';
 
 interface QuizScreenProps {
-  quizSetId: string;
+  /** 풀 기억 세트(옛 목록 화면). 없으면 세션이 오늘 붙일 세트를 스스로 고른다. */
+  quizSetId?: string;
   /** 결과 화면 또는 취소 시 목록으로 복귀 */
   onExit: () => void;
   /** 테스트용 의존성 주입 (선택) */
@@ -133,15 +134,14 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
         bestScore={null}
         isNewBest={false}
         showScore={false}
-        onRetry={() => void actions.retry()}
-        onBackToList={onExit}
+        onExit={onExit}
       />
     );
   }
 
   // ── 보호자 한마디 카드 (Phase 6) — 풀이 전 1회 노출 ──────────────
   const wishMessage = detail?.memoryEntry.caregiverWishMessage ?? null;
-  if (wishMessage !== null && !wishDismissed) {
+  if (detail !== null && wishMessage !== null && !wishDismissed) {
     return (
       // 이 화면에는 이 카드 하나뿐이라(early return) 위에서부터 쌓으면 모바일에서
       // 아래가 통째로 빈다. 세로 가운데에 둔다 — 퀴즈로 넘어가기 전 한 번 읽는
@@ -151,7 +151,9 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
       // 가운데 정렬이 위를 잘라먹지 않는다.
       <div className="font-pretendard mx-auto flex min-h-dvh w-full max-w-2xl flex-col justify-center px-4 py-6">
         <CaregiverWishCard
-          quizSetId={quizSetId}
+          // prop이 아니라 세션이 실제로 붙인 세트다 — 오늘 연습은 prop 없이
+          // 시작하므로 prop을 넘기면 빈칸 연습 조회가 빈 id로 나간다.
+          quizSetId={detail.quizSetId}
           wishMessage={wishMessage}
           onProceed={() => setWishDismissed(true)}
         />
@@ -189,6 +191,12 @@ export function QuizScreen({ quizSetId, onExit, deps }: QuizScreenProps) {
       <div className="mb-6">
         <ItemProgressBar current={currentIndex + 1} total={total} />
       </div>
+
+      {/* 기억 문항은 세션 맨 앞에 묶여 온다 — 첫 문항에서 출처를 한 줄로 알린다.
+          검사 사이에 '어제 일'이 맥락 없이 나오면 어르신이 당황한다. */}
+      {currentItem.kind === 'daily' && currentIndex === 0 && (
+        <p className="mb-3 text-lg text-muted-sage">{t('screen.memoryLead')}</p>
+      )}
 
       {/* 사진 힌트는 데일리(기억 회상) 항목에서만 노출 */}
       {currentItem.kind === 'daily' && photoUrl !== null && (

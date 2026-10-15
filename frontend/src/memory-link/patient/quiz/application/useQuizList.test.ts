@@ -24,6 +24,7 @@ const SUMMARY: QuizSetSummary = {
 function makeMockApi(listSets: IQuizApi['listSets']): IQuizApi {
   return {
     listSets,
+    getFreshSetId: vi.fn(),
     getSet: vi.fn(),
     submitAttempts: vi.fn(),
     getBestScore: vi.fn(),

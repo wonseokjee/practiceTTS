@@ -962,6 +962,41 @@ export class QuizService {
   }
 
   /**
+   * '오늘 연습'에 붙일 기억 세트 — 없으면 null.
+   *
+   * 세션 본체는 기본 검사이고 기억 퀴즈는 보호자가 쓴 날에만 붙는다. 보호자가
+   * 안 쓰거나 짧게 쓰는 날이 많아, 세트를 세션을 여는 열쇠가 아니라 덧붙이는
+   * 재료로 쓴다.
+   *
+   *   - 생성이 끝난(ready) 세트만. 생성 중이면 이번 세션은 기본 검사만 하고,
+   *     다음 세션에 창 안이면 붙는다.
+   *   - **환자 타임존 기준 어제 0시 이후** 만든 것. 저녁에 쓰고 다음 날 아침에
+   *     푸는 흐름을 덮는다. 48시간 창이면 같은 '어제' 일기가 시각에 따라
+   *     붙었다 말았다 해 설명이 안 된다.
+   *   - **이 환자가 한 문항도 안 푼** 것. 한 번 풀면 다시 안 붙는다 — 단조로운
+   *     날 같은 기억 문항이 되풀이되는 걸 막는다. 기억 문항에 닿기 전에 나가면
+   *     안 푼 것으로 남아 다음 세션에 붙는다.
+   *   - 여럿이면 최신 하나.
+   */
+  async getFreshSetId(effectivePatientId: string): Promise<string | null> {
+    const { timezone } = await this.timeAxisOf(effectivePatientId);
+    const row = await this.quizSetRepository
+      .createQueryBuilder('set')
+      .select('set.id', 'id')
+      .where('set.patient_id = :pid', { pid: effectivePatientId })
+      .andWhere("set.generation_status = 'ready'")
+      .andWhere(`set.created_at >= ${dayWindowStart(timezone, 1)}`)
+      .andWhere(
+        `NOT EXISTS (SELECT 1 FROM quiz_attempts a
+           WHERE a.quiz_set_id = set.id AND a.patient_id = :pid)`,
+      )
+      .orderBy('set.created_at', 'DESC')
+      .limit(1)
+      .getRawOne<{ id: string }>();
+    return row?.id ?? null;
+  }
+
+  /**
    * 최근 N일 동안 **환자가 실제로 푼** 기억들 — 환자용 돌아보기 화면.
    *
    * **점수를 담지 않는다.** 환자 화면은 정답률을 보여주지 않는 것이 이 앱의 원칙이고

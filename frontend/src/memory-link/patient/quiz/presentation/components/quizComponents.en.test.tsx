@@ -92,12 +92,13 @@ describe('퀴즈 문항 컴포넌트 — 영어로 그린다', () => {
         bestScore={null}
         isNewBest={false}
         showScore={false}
-        onRetry={() => {}}
-        onBackToList={() => {}}
+        onExit={() => {}}
       />,
     );
     expect(screen.getByText("You finished today's set")).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Play again' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Back to the start screen' }),
+    ).toHaveTextContent('Back to start');
     expect(container.textContent).not.toMatch(HANGUL);
   });
 

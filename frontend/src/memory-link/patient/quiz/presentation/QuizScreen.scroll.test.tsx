@@ -51,6 +51,7 @@ function renderQuiz() {
       deps={{
         quizApi: {
           listSets: vi.fn(),
+          getFreshSetId: vi.fn().mockResolvedValue(null),
           getSet: vi.fn().mockResolvedValue({
             quizSetId: 'qs-1',
             memoryEntry: { photoUrl: null, caregiverWishMessage: null },

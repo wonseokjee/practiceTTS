@@ -9,7 +9,6 @@ import { TrainingScreen } from './TrainingScreen.js';
 import { QuizListScreen } from '../quiz/presentation/QuizListScreen.js';
 import { QuizScreen } from '../quiz/presentation/QuizScreen.js';
 import { PracticeScreen } from '../practice/presentation/PracticeScreen.js';
-import { startDestination } from '../domain/startDestination.js';
 import { SoloDailyHome } from './SoloDailyHome.js';
 import { WeekReviewScreen } from './WeekReviewScreen.js';
 import { SoundCheckScreen } from './SoundCheckScreen.js';
@@ -19,7 +18,6 @@ import {
 } from '../domain/soundCheck.js';
 import { buildWeekStreak } from '../domain/streak.js';
 import { quizApi } from '../quiz/infrastructure/QuizApi.js';
-import type { QuizSetSummary } from '../quiz/domain/Quiz.js';
 import { extractErrorMessage } from '../../shared/extractErrorMessage.js';
 import { WARM_SCREEN_BG } from '../../shared/theme.js';
 import { AuthedImage } from '../../shared/AuthedImage.js';
@@ -102,8 +100,6 @@ export function PatientDashboard() {
     'QUIZ_PLAY' | 'PRACTICE' | null
   >(null);
   const [selectedQuizSetId, setSelectedQuizSetId] = useState<string | null>(null);
-  /** 홈에서 미리 받아 둔 풀 수 있는 퀴즈. null이면 아직 모름(조회 전·실패). */
-  const [readySets, setReadySets] = useState<QuizSetSummary[] | null>(null);
   const [entries, setEntries] = useState<AvailableEntry[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -118,10 +114,6 @@ export function PatientDashboard() {
   }, []);
 
   // 솔로 홈에 들어오면 연습 완료 날짜를 불러와 스트릭을 그린다(비차단).
-  //
-  // 준비된 퀴즈 목록도 함께 받아 둔다. '오늘 연습 시작하기'를 누른 뒤에 조회하면
-  // 큰 버튼을 누르고 나서 아무 일도 안 일어나는 구간이 생긴다 — 이 사용자층에서
-  // 그 침묵은 "안 눌렸나?"로 읽혀 다시 누르게 만든다.
   useEffect(() => {
     if (phase !== 'QUIZ_HOME') return;
     let alive = true;
@@ -132,15 +124,6 @@ export function PatientDashboard() {
       })
       .catch(() => {
         if (alive) setActivityDays([]);
-      });
-    void quizApi
-      .listSets({ status: 'ready', limit: 20 })
-      .then((sets) => {
-        if (alive) setReadySets(sets);
-      })
-      .catch(() => {
-        // 조회 실패는 비차단 — 목록 화면이 다시 시도한다.
-        if (alive) setReadySets(null);
       });
     return () => {
       alive = false;
@@ -173,23 +156,18 @@ export function PatientDashboard() {
   );
 
   /**
-   * '오늘 연습 시작하기' — 풀 수 있는 퀴즈가 하나면 **바로 시작한다.**
+   * '오늘 연습 시작하기' — **항상 바로 시작한다.**
    *
-   * 예전에는 무조건 목록 화면으로 보냈다. 버튼은 "시작하기"라고 적혀 있는데 고르는
-   * 화면이 나오니 라벨이 어긋났고, 실제로 그 목록엔 카드가 하나뿐인 경우가 많다 —
-   * 한 번 더 누르게 만드는 것 말고 하는 일이 없었다.
-   *
-   * 여럿이면 목록이 필요하다. 아직 못 받았으면(조회 전·실패) 목록으로 보내
-   * 거기서 다시 시도하게 한다 — 홈에서 멈춰 세우지 않는다.
+   * 예전에는 보호자 일기로 만든 퀴즈 세트가 있어야 시작됐다(0개면 빈 목록).
+   * 보호자가 안 쓰는 날이 많아, 이제 세션 본체는 기본 검사이고 기억 문항은
+   * 세션이 시작할 때 오늘 붙일 세트가 있으면 붙는다(useMixedQuizSession).
+   * 홈에서 미리 고르지 않는 이유: 홈을 켜 둔 사이 쓴 일기나 이미 푼 세트가
+   * 반영되지 않는다.
    */
   const handleStart = useCallback(() => {
-    const to = startDestination(readySets);
-    if (to.kind === 'quiz') {
-      handleSelectQuiz(to.quizSetId);
-      return;
-    }
-    setPhase('QUIZ_LIST');
-  }, [readySets, handleSelectQuiz]);
+    setSelectedQuizSetId(null);
+    goWithSoundCheck('QUIZ_PLAY');
+  }, [goWithSoundCheck]);
 
   /**
    * 퀴즈 종료/완료 → **홈으로** 복귀.
@@ -306,10 +284,14 @@ export function PatientDashboard() {
   }
 
   // 퀴즈 풀이 화면(퀴즈 모드)
-  if (phase === 'QUIZ_PLAY' && selectedQuizSetId !== null) {
+  // selectedQuizSetId가 있으면 옛 목록 화면에서 고른 세트, 없으면 오늘 연습.
+  if (phase === 'QUIZ_PLAY') {
     return (
       <div className="min-h-screen" style={{ background: WARM_SCREEN_BG }}>
-        <QuizScreen quizSetId={selectedQuizSetId} onExit={handleQuizExit} />
+        <QuizScreen
+          quizSetId={selectedQuizSetId ?? undefined}
+          onExit={handleQuizExit}
+        />
       </div>
     );
   }

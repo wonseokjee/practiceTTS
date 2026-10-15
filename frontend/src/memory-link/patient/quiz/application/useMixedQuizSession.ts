@@ -1,6 +1,10 @@
-// 혼합 퀴즈 세션 훅 (데일리 + QAB 질문형 인터리브)
+// 오늘 연습 세션 훅 (기본 검사 + 보호자가 쓴 날의 기억 문항)
 //
-// 한 세트 = 백엔드 데일리 문항(기본 5) + QAB 질문형 문항(기본 5)을 섞어 10문제로 진행한다.
+// 본체는 기본 검사(QAB) 9문항 — 오늘 로테이션의 하위검사 3종 × 3. 보호자가
+// 어제·오늘 쓴 일기로 만든, 아직 안 푼 기억 세트가 있으면 그 앞 2문항을 **맨 앞에**
+// 붙인다(보호자 한마디 카드 → 기억 문항 → 기본 검사로 한 장면이 이어지게).
+// 세트는 quizSetId로 직접 줄 수도 있고(옛 목록 화면), 없으면 GET /quiz/fresh-set으로
+// 고른다. 조회가 실패하면 기억 문항 없이 기본 검사만 한다.
 // 항목별 채점 위임:
 //   - daily : 같은 sessionToken으로 백엔드 /attempts 제출 → 즉시 채점
 //   - qab_word : 선택지 isCorrect로 로컬 채점
@@ -316,13 +320,37 @@ const INITIAL_STATE: UseMixedQuizState = Object.freeze({
   attempt: 0,
 });
 
+/**
+ * 이번 세션에 붙일 기억 세트와 그 상세. 주어졌으면 그 세트, 없으면 오늘 붙일
+ * 세트를 묻는다. 고르는 조회가 실패하면 null — 기억 문항 없이 기본 검사만 한다
+ * (세션을 막지 않는다). 고른 세트의 상세 조회 실패는 그대로 던진다(기존 동작).
+ */
+async function loadMemorySet(
+  quizSetId: string | undefined,
+  api: IQuizApi,
+): Promise<{ setId: string | null; detail: QuizSetDetail | null }> {
+  let setId: string | null = quizSetId ?? null;
+  if (quizSetId === undefined) {
+    try {
+      setId = await api.getFreshSetId();
+    } catch {
+      setId = null;
+    }
+  }
+  return {
+    setId,
+    detail: setId === null ? null : await api.getSet(setId),
+  };
+}
+
 function defaultGenerateToken(): string {
   return crypto.randomUUID();
 }
 
 
 export function useMixedQuizSession(
-  quizSetId: string,
+  /** 풀 기억 세트. 없으면 세션 시작 때 fresh-set을 조회한다. */
+  quizSetId: string | undefined,
   deps?: UseMixedQuizDeps,
 ): UseMixedQuizReturn {
   const { t } = useTranslation('quiz');
@@ -358,6 +386,8 @@ export function useMixedQuizSession(
   const [state, setState] = useState<UseMixedQuizState>({ ...INITIAL_STATE });
 
   const sessionTokenRef = useRef<string>('');
+  /** 이번 세션에 붙은 기억 세트 — 데일리 답안 제출 경로. 없으면 null. */
+  const resolvedSetIdRef = useRef<string | null>(null);
   const itemsRef = useRef<PlayableItem[]>([]);
   const phaseRef = useRef<MixedPhase>('loading');
   const indexRef = useRef<number>(0);
@@ -397,8 +427,12 @@ export function useMixedQuizSession(
   /** 세트 상세 로드 + 데일리/QAB 인터리브 구성 */
   const fetchAndApply = useCallback(async (): Promise<void> => {
     try {
-      const detail = await apiRef.current.getSet(quizSetId);
-      await ensureSpeechBank(localeRef.current);
+      // 판단은 세션 시작 한 곳에서 한다 — 홈에서 미리 받아 두면 홈을 켜 둔
+      // 사이 쓴 일기나 이미 푼 세트가 반영되지 않는다.
+      const [{ setId, detail }] = await Promise.all([
+        loadMemorySet(quizSetId, apiRef.current),
+        ensureSpeechBank(localeRef.current),
+      ]);
 
       // 적응형: 스킬별 현재 레벨을 읽어 문항 제시 난이도를 정한다. 조회 실패는
       // 비차단 — 기본 난이도(레벨 미지정)로 진행한다(레벨은 환자에게 비노출).
@@ -412,7 +446,7 @@ export function useMixedQuizSession(
         manifestVersionRef.current = undefined;
       }
 
-      const dailySorted = [...detail.questions].sort(
+      const dailySorted = [...(detail?.questions ?? [])].sort(
         (a, b) => a.orderIndex - b.orderIndex,
       );
       const dailyItems: PlayableItem[] = dailySorted
@@ -540,8 +574,9 @@ export function useMixedQuizSession(
         .current(ddkCount, levels?.ddk, { locale: localeRef.current })
         .map((it) => ({ kind: 'ddk', id: it.itemId, item: it }));
 
+      // 기억 문항은 맨 앞에 묶는다 — 검사 사이에 뚝 떨어진 '어제' 질문은 어르신을
+      // 당황하게 한다. 나머지는 섞는다.
       const shuffled = shuffle([
-        ...dailyItems,
         ...qabItems,
         ...namingItems,
         ...spellItems,
@@ -552,8 +587,12 @@ export function useMixedQuizSession(
       // success-ending: 성취감으로 마무리하도록 성공 확률 높은 항목을 맨 뒤로.
       // 그림선택(qab)은 자동채점·비처벌이라 성공 확률이 가장 높고, 발화(naming/
       // repeat/reading/ddk)는 산출 과제라 낮게 둔다.
-      const merged = moveEasiestLast(shuffled, (it) => SUCCESS_RANK[it.kind]);
+      const merged = [
+        ...dailyItems,
+        ...moveEasiestLast(shuffled, (it) => SUCCESS_RANK[it.kind]),
+      ];
       itemsRef.current = merged;
+      resolvedSetIdRef.current = setId;
       sessionTokenRef.current = tokenGenRef.current();
       recentCorrectRef.current = [];
       qabResultsRef.current = [];
@@ -776,13 +815,14 @@ export function useMixedQuizSession(
     async (userAnswer: string, assisted = false): Promise<void> => {
       if (phaseRef.current !== 'answering') return;
       const item = itemsRef.current[indexRef.current];
-      if (!item || item.kind !== 'daily') return;
+      const setId = resolvedSetIdRef.current;
+      if (!item || item.kind !== 'daily' || setId === null) return;
 
       phaseRef.current = 'submitting';
       setState((prev) => ({ ...prev, phase: 'submitting', isSelectable: false }));
 
       try {
-        const res = await apiRef.current.submitAttempts(quizSetId, {
+        const res = await apiRef.current.submitAttempts(setId, {
           sessionToken: sessionTokenRef.current,
           answers: [{ questionId: item.question.id, userAnswer }],
         });
@@ -809,7 +849,7 @@ export function useMixedQuizSession(
         }));
       }
     },
-    [quizSetId, applyResult],
+    [applyResult],
   );
 
   const submitQabChoice = useCallback(

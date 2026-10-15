@@ -1,6 +1,10 @@
 // 퀴즈 결과 화면
 //
-// 점수 / 최고점 비교 / 신기록(isNewBest) 축하 / 다시 풀기·목록으로 버튼.
+// 점수 / 최고점 비교 / 신기록(isNewBest) 축하 / '처음으로' 버튼 하나.
+//
+// '다시 풀기'는 뺐다. 이름은 같은 문제를 다시 푼다는 뜻인데 실제로는 기억 문항
+// 없는 새 기본 검사가 나오고, 오늘 검사 기록이 결과 화면에서 바로 두 번 쌓였다.
+// 끝났으면 끝났다는 행동 하나만 둔다 — 더 하고 싶으면 홈에 '가볍게 연습하기'가 있다.
 // 무점수 모드(showScore=false): 숫자·별점·최고점을 숨기고 완료 격려만 표시한다
 //   (QAB 발화 검사 등 진단성 세트는 점수화가 적절치 않아 "연습/완료" 위주로 보여준다).
 
@@ -20,8 +24,8 @@ interface QuizResultScreenProps {
   isNewBest: boolean;
   /** 점수(숫자·별점·최고점) 표시 여부. false면 완료 격려만 노출 (기본 true) */
   showScore?: boolean;
-  onRetry: () => void;
-  onBackToList: () => void;
+  /** 처음 화면(홈)으로 */
+  onExit: () => void;
 }
 
 /** 별점 행 (시각 보조 — 텍스트 점수와 병행) */
@@ -48,8 +52,7 @@ export function QuizResultScreen({
   bestScore,
   isNewBest,
   showScore = true,
-  onRetry,
-  onBackToList,
+  onExit,
 }: QuizResultScreenProps) {
   const { t } = useTranslation('quiz');
   return (
@@ -97,16 +100,8 @@ export function QuizResultScreen({
       <div className="mt-8 flex flex-col gap-3">
         <button
           type="button"
-          onClick={onRetry}
+          onClick={onExit}
           className="min-h-[56px] rounded-full bg-primary px-6 py-3 text-lg font-medium text-white transition-colors duration-[180ms] ease-out hover:bg-primary-dark"
-          aria-label={t('result.retry')}
-        >
-          {t('result.retry')}
-        </button>
-        <button
-          type="button"
-          onClick={onBackToList}
-          className="min-h-[48px] rounded-full bg-white px-6 py-3 text-base font-medium text-muted-sage transition-colors duration-[180ms] ease-out hover:bg-canvas-hover"
           aria-label={t('result.toListAria')}
         >
           {t('screen.toList')}

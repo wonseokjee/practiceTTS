@@ -92,11 +92,12 @@
     "message": "소리가 나오지 않았어요. 아래 듣기 버튼을 눌러 주세요."
   },
   "screen": {
-    "loading": "퀴즈를 준비하고 있어요...",
+    "loading": "오늘 연습을 준비하고 있어요...",
     "error": "문제가 생겼어요.",
     "restart": "다시 시작",
     "retry": "다시 시도",
-    "toList": "목록으로",
+    "toList": "처음으로",
+    "memoryLead": "가족이 들려준 이야기예요",
     "scoring": "채점 중...",
     "correct": "정답이에요!",
     "incorrect": "아쉬워요",
@@ -120,8 +121,7 @@
     "newBest": "새 최고 기록이에요!",
     "done": "오늘도 끝까지 잘 하셨어요!",
     "doneSub": "모든 문제를 다 마쳤어요.",
-    "retry": "다시 풀기",
-    "toListAria": "퀴즈 목록으로"
+    "toListAria": "처음 화면으로"
   },
   "score": {
     "best": "최고점 {{score}}"
