@@ -1,8 +1,16 @@
-import { Body, Controller, Delete, Get, Put, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Put,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { OnboardingGuard } from '../auth/onboarding.guard';
 import { EffectivePatientId } from '../auth/decorators/effective-patient-id.decorator';
-import { SpeechDataService } from './speech-data.service';
+import { SpeechDataService, parseConsentVersion } from './speech-data.service';
 
 /**
  * 음성 데이터 보존 동의·삭제 API (보호자가 환자를 대신해 조작).
@@ -22,13 +30,20 @@ export class SpeechDataController {
     return { consent, consentAt, count };
   }
 
-  /** PUT /speech-data/consent — 동의 켜기/끄기. */
+  /**
+   * PUT /speech-data/consent — 동의 켜기/끄기. `version`은 앱이 보여 준 문구 버전이다.
+   * 스위치를 켠 계정(보호자 대리 동의면 보호자)도 함께 남긴다.
+   */
   @Put('consent')
   async setConsent(
     @EffectivePatientId() patientId: string,
-    @Body() body: { consent: boolean },
+    @Req() req: { user: { id: string } },
+    @Body() body: { consent: boolean; version?: unknown },
   ) {
-    await this.speechData.setConsent(patientId, body.consent === true);
+    await this.speechData.setConsent(patientId, body.consent === true, {
+      version: parseConsentVersion(body.version),
+      actorId: req.user.id,
+    });
     return { consent: body.consent === true };
   }
 

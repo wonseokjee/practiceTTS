@@ -5,8 +5,12 @@
  * 채점이 끝나면 즉시 버려진다. 보호자가 여기서 **동의**하면 그때부터의 발화가
  * (정답 텍스트를 라벨로) 저장돼, 향후 어르신 맞춤 음성인식 모델 개선에 쓰인다.
  *
- * 동의는 언제든 끌 수 있고(이후 저장 중단), "삭제"로 이미 모인 음성을 전부
- * 지울 수 있다. — GET/PUT /speech-data/consent, DELETE /speech-data
+ * 동의는 보호자가 어르신을 대신해 한다(검토 문서 3a). 켤 때 화면 문구의 버전
+ * (`speechConsent.textVersion`)을 함께 보내, 누가 어느 문구에 동의했는지 서버에 남는다.
+ * **문구를 바꾸면 그 로케일의 textVersion 날짜도 바꾼다.**
+ *
+ * 동의는 언제든 끌 수 있고(이후 저장 중단, 기존 녹음은 남음), "삭제"로 이미 모인
+ * 음성을 전부 지울 수 있다. — GET/PUT /speech-data/consent, DELETE /speech-data
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -61,7 +65,10 @@ export function SpeechConsentScreen({
       setBusy(true);
       setError(null);
       try {
-        await memoryLinkApi.put('/speech-data/consent', { consent: next });
+        await memoryLinkApi.put('/speech-data/consent', {
+          consent: next,
+          version: t('speechConsent.textVersion'),
+        });
         await load();
       } catch {
         setError(t('speechConsent.errorToggle'));
@@ -104,6 +111,9 @@ export function SpeechConsentScreen({
         <h2 className="text-2xl font-bold text-primary">{t('speechConsent.title')}</h2>
         <p className="mt-2 text-sm leading-relaxed text-muted-sage">
           {t('speechConsent.description')}
+        </p>
+        <p className="mt-2 text-sm leading-relaxed text-muted-sage">
+          {t('speechConsent.withdrawNote')}
         </p>
       </header>
 

@@ -11,6 +11,16 @@ import {
   SpeechTask,
 } from './entities/speech-recording.entity';
 
+/** 동의 문구 버전 형식: `<로케일>-<YYYY-MM-DD>` (예 ko-KR-2026-10-24). */
+const CONSENT_VERSION_RE = /^[A-Za-z]{2,3}(-[A-Za-z]{2,4})?-\d{4}-\d{2}-\d{2}$/;
+
+/** 클라이언트가 보낸 문구 버전을 검사한다. 형식이 틀리면 null(동의 자체는 막지 않는다). */
+export function parseConsentVersion(value: unknown): string | null {
+  return typeof value === 'string' && CONSENT_VERSION_RE.test(value)
+    ? value
+    : null;
+}
+
 /**
  * 음성 데이터 보존 서비스 (동의 기반).
  *
@@ -51,13 +61,22 @@ export class SpeechDataService {
     };
   }
 
-  /** 동의를 켜거나 끈다. 끄더라도 기존 보존 데이터는 삭제하지 않는다(삭제는 별도). */
-  async setConsent(patientId: string, consent: boolean): Promise<void> {
+  /**
+   * 동의를 켜거나 끈다. 끄더라도 기존 보존 데이터는 삭제하지 않는다(삭제는 별도, 검토 문서 3a-6).
+   * 켤 때는 화면에 보인 문구 버전과 스위치를 켠 계정(보호자 대리 동의)을 함께 남긴다.
+   */
+  async setConsent(
+    patientId: string,
+    consent: boolean,
+    meta: { version?: string | null; actorId?: string | null } = {},
+  ): Promise<void> {
     await this.users.update(
       { id: patientId },
       {
         speechDataConsent: consent,
         speechDataConsentAt: consent ? new Date() : null,
+        speechDataConsentVersion: consent ? (meta.version ?? null) : null,
+        speechDataConsentBy: consent ? (meta.actorId ?? null) : null,
       },
     );
   }

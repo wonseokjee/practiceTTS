@@ -149,6 +149,19 @@ export class User {
   })
   speechDataConsentAt: Date | null;
 
+  // 동의한 문구 버전(로케일 포함, 예 ko-KR-2026-10-24). NULL = 미동의 또는 버전 기록 이전의 동의.
+  @Column({
+    name: 'speech_data_consent_version',
+    type: 'varchar',
+    length: 32,
+    nullable: true,
+  })
+  speechDataConsentVersion: string | null;
+
+  // 동의 스위치를 켠 계정(보호자 대리 동의면 보호자). 철회 시 NULL.
+  @Column({ name: 'speech_data_consent_by', type: 'uuid', nullable: true })
+  speechDataConsentBy: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }

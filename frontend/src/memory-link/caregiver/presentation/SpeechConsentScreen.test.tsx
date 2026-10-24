@@ -55,7 +55,10 @@ describe('SpeechConsentScreen', () => {
     fireEvent.click(screen.getByRole('switch', { name: '음성 데이터 저장 동의' }));
 
     await waitFor(() =>
-      expect(put).toHaveBeenCalledWith('/speech-data/consent', { consent: true }),
+      expect(put).toHaveBeenCalledWith('/speech-data/consent', {
+        consent: true,
+        version: 'ko-KR-2026-10-24',
+      }),
     );
     expect(await screen.findByText('저장 중')).toBeInTheDocument();
   });
@@ -73,6 +76,17 @@ describe('SpeechConsentScreen', () => {
 
     await waitFor(() => expect(del).toHaveBeenCalledWith('/speech-data'));
     expect(await screen.findByText('0건 보관 중')).toBeInTheDocument();
+  });
+
+  it('보호자 대리 동의 문구와 철회 안내를 보여 준다', async () => {
+    get.mockResolvedValue({ data: { consent: false, consentAt: null, count: 0 } });
+    render(<SpeechConsentScreen onBack={() => {}} />);
+
+    expect(
+      await screen.findByText(/보호자께서 어르신을 대신해 동의하시는 항목입니다/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/이미 저장된 음성은 남으며/)).toBeInTheDocument();
+    expect(screen.getByText('어르신을 대신해 음성 데이터 저장에 동의')).toBeInTheDocument();
   });
 
   it('뒤로가기 버튼은 backLabel이 없으면 기본값 "설정"을 쓴다', async () => {
