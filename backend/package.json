@@ -22,6 +22,7 @@
     "test:int": "jest --config ./test/jest-int.json",
     "report:retention": "ts-node scripts/report-retention.ts",
     "report:quiz-repeat": "ts-node scripts/report-quiz-repeat.ts",
+    "export:speech-data": "ts-node scripts/export-speech-data.ts",
     "typeorm": "typeorm-ts-node-commonjs -d src/database/data-source.ts",
     "migration:show": "npm run typeorm -- migration:show",
     "migration:run": "npm run typeorm -- migration:run",

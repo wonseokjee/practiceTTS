@@ -23,7 +23,9 @@ clean만 화자 분리(patient_id=화자) train/dev/test로 나눈다. 한 화�
 DB에서 뽑는 예(psql):
   \\copy (SELECT patient_id, task, target_text, recognized_text, audio_path,
           score, duration_ms FROM speech_recordings) TO 'rec.jsonl' ...
-또는 서버 관리 명령으로 JSONL을 만들어 이 스크립트에 넘긴다.
+또는 서버 관리 명령으로 묶음을 만든다(가명 화자·오디오 포함, Colab에 그대로 올린다):
+  cd backend && npm run export:speech-data -- --out=<리포 밖 폴더>
+  python scripts/asr_eval/build_training_set.py --recordings <폴더>/recordings.jsonl     --qab-results <폴더>/qab.jsonl --audio-root <폴더> --out-dir _trainset
 보호자 정정(선택, --qab-results):
   \\copy (SELECT clip_id, is_correct, caregiver_corrected FROM qab_results
           WHERE clip_id IS NOT NULL AND caregiver_corrected) TO 'qab.jsonl' ...
@@ -138,8 +140,8 @@ def classify_label(
 
 
 def speaker_of(row: dict) -> str:
-    """화자 = patient_id(앱 발화는 환자 계정이 곧 화자)."""
-    return str(_get(row, "patient_id", "patientId") or "unknown")
+    """화자 = patient_id(앱 발화는 환자 계정이 곧 화자). export 묶음은 가명 speaker를 싣는다."""
+    return str(_get(row, "speaker", "patient_id", "patientId") or "unknown")
 
 
 def build_split(

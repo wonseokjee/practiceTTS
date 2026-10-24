@@ -267,6 +267,13 @@ def test_caregiver_verdict_overrides_auto_filter():
     )
 
 
+def test_training_speaker_prefers_pseudonymous_speaker():
+    # export 묶음(npm run export:speech-data)은 환자 UUID 대신 가명 speaker를 싣는다
+    assert B.speaker_of({"speaker": "spk_abc", "patient_id": "p1"}) == "spk_abc"
+    assert B.speaker_of({"patient_id": "p1"}) == "p1"
+    assert B.speaker_of({}) == "unknown"
+
+
 def test_load_caregiver_verdicts_keeps_only_corrected_rows():
     v = B.load_caregiver_verdicts(
         [
