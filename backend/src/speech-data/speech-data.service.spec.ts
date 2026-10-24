@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { SpeechDataService } from './speech-data.service';
+import { SpeechDataService, parseConsentVersion } from './speech-data.service';
 import { SpeechRecording } from './entities/speech-recording.entity';
 import { User } from '../auth/entities/user.entity';
 import { SpecMock, specMock } from '../common/testing/spec-mock';
@@ -213,6 +213,38 @@ describe('SpeechDataService', () => {
     const arg = users.update.mock.calls[0][1];
     expect(arg.speechDataConsent).toBe(true);
     expect(arg.speechDataConsentAt).toBeInstanceOf(Date);
+  });
+
+  it('setConsent(true)는 문구 버전과 동의한 계정(보호자 대리)을 남긴다', async () => {
+    await svc.setConsent(PID, true, {
+      version: 'ko-KR-2026-10-24',
+      actorId: 'caregiver-1',
+    });
+    const arg = users.update.mock.calls[0][1];
+    expect(arg.speechDataConsentVersion).toBe('ko-KR-2026-10-24');
+    expect(arg.speechDataConsentBy).toBe('caregiver-1');
+  });
+
+  it('setConsent(false)는 시각·버전·계정을 비운다', async () => {
+    await svc.setConsent(PID, false, {
+      version: 'ko-KR-2026-10-24',
+      actorId: 'caregiver-1',
+    });
+    const arg = users.update.mock.calls[0][1];
+    expect(arg.speechDataConsent).toBe(false);
+    expect(arg.speechDataConsentAt).toBeNull();
+    expect(arg.speechDataConsentVersion).toBeNull();
+    expect(arg.speechDataConsentBy).toBeNull();
+  });
+
+  it('parseConsentVersion은 <로케일>-<날짜> 형식만 받는다', () => {
+    expect(parseConsentVersion('ko-KR-2026-10-24')).toBe('ko-KR-2026-10-24');
+    expect(parseConsentVersion('en-US-2026-10-24')).toBe('en-US-2026-10-24');
+    expect(parseConsentVersion('ko-2026-10-24')).toBe('ko-2026-10-24');
+    expect(parseConsentVersion('ko-KR')).toBeNull();
+    expect(parseConsentVersion("ko-KR-2026-10-24'; drop")).toBeNull();
+    expect(parseConsentVersion(42)).toBeNull();
+    expect(parseConsentVersion(undefined)).toBeNull();
   });
 
   it('deleteAll은 파일과 행을 지운다', async () => {
