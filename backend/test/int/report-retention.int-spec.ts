@@ -123,7 +123,10 @@ describe('report:retention', () => {
   });
 
   afterAll(async () => {
-    await ds.query('TRUNCATE users, diary_questions CASCADE');
+    // diary_questions는 마이그레이션이 심은 행을 다른 스펙(M33)이 센다 — 통째로 비우면
+    // 실행 순서에 따라 그 스펙이 깨진다. 이 스펙이 넣은 'test' 범위 질문만 지운다.
+    await ds.query('TRUNCATE users CASCADE');
+    await ds.query(`DELETE FROM diary_questions WHERE scope = 'test'`);
     await ds.destroy();
   });
 

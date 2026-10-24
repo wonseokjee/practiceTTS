@@ -23,6 +23,10 @@ const SRC_DIR = join(process.cwd(), 'src');
 const ALLOWED = [
   join('shared', 'domain', 'locale.ts'),
   join('shared', 'domain', 'locale.test.ts'),
+  // 로케일을 **키로 쓰는 표**다(기본값이 아니다). 없는 로케일은 null을 돌려 조용히
+  // 한국어로 대신하지 않으므로, 이 검사가 막으려는 "빠뜨린 경로가 한국어로 남는" 일이 없다.
+  join('shared', 'infrastructure', 'ttsVoices.ts'),
+  join('memory-link', 'shared', 'crisisContacts.ts'),
 ];
 
 function walk(dir: string, out: string[] = []): string[] {

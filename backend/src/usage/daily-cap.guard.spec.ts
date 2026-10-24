@@ -12,10 +12,6 @@ import {
 } from './daily-cap.guard';
 import type { GenerationUsageService } from './generation-usage.service';
 
-// MemoryController가 끌고 오는 uuid는 ESM 빌드라 ts-jest(CJS)가 못 읽는다.
-// 여기선 데코레이터 메타데이터만 보므로 대역으로 충분하다.
-jest.mock('uuid', () => ({ v4: () => '00000000-0000-4000-8000-000000000000' }));
-
 const CAREGIVER = {
   id: 'caregiver-1',
   role: 'caregiver',

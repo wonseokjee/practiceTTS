@@ -101,7 +101,8 @@ export interface UsePracticeActions {
 export type UsePracticeReturn = [UsePracticeState, UsePracticeActions];
 
 export interface UsePracticeDeps {
-  practiceApi?: IPracticeApi;
+  /** 세션은 결과 저장만 쓴다(요약 조회는 다른 화면). */
+  practiceApi?: Pick<IPracticeApi, 'submitResults'>;
   pickWordItems?: typeof pickWordItems;
   pickSentItems?: typeof pickSentItems;
   pickSpellItems?: typeof pickSpellItems;
@@ -134,7 +135,7 @@ function defaultGenerateToken(): string {
 export function usePracticeSession(
   deps?: UsePracticeDeps,
 ): UsePracticeReturn {
-  const apiRef = useRef<IPracticeApi>(deps?.practiceApi ?? practiceApi);
+  const apiRef = useRef<Pick<IPracticeApi, 'submitResults'>>(deps?.practiceApi ?? practiceApi);
 
   // 세션 토큰과 문항 목록은 마운트 시 한 번 정해지고 이후 바뀌지 않는다.
   // ref에 렌더 중 대입하면 React가 렌더를 재실행할 때 값이 흔들릴 수 있어,

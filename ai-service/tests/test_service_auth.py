@@ -29,6 +29,15 @@ BACKEND_ONLY = [
 @pytest.fixture
 def client(monkeypatch):
     monkeypatch.setenv("AI_SERVICE_TOKEN", TOKEN)
+    # 인증 통과만 본다. 키가 없으면 핸들러 의존성이 먼저 503/예외를 내서 인증 결과를
+    # 가린다(.env 없는 CI). 외부 호출은 하지 않으므로 가짜 값으로 충분하다.
+    for name, value in (
+        ("GEMINI_API_KEY", "test-dummy"),
+        ("AZURE_SPEECH_KEY", "test-dummy"),
+        ("AZURE_SPEECH_REGION", "koreacentral"),
+    ):
+        if not os.getenv(name):
+            monkeypatch.setenv(name, value)
     with TestClient(main.app) as c:
         yield c
 

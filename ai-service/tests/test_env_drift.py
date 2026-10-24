@@ -14,8 +14,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 ENV_EXAMPLE = ROOT / ".env.example"
 
-# 테스트 전용 스위치라 배포 설정이 아니다.
-_TEST_ONLY = {"HOLDOUT"}
+# 테스트·측정 스크립트(tests/measure_*.py) 전용 스위치라 배포 설정이 아니다.
+_TEST_ONLY = {"HOLDOUT", "LANG_CODE"}
 
 _PATTERNS = [
     re.compile(r"os\.environ\.get\(\s*[\"']([A-Z_0-9]+)[\"']"),
