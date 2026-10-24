@@ -252,6 +252,43 @@ def test_tagged_pronunciation_row_uses_score_not_hypothesis():
     assert _clf({**row, "score": 85, "recognized_text": "바나나"}) == "clean"
 
 
+def test_caregiver_verdict_overrides_auto_filter():
+    # Azure가 못 알아들은 발화(점수 낮음)도 보호자가 맞다고 하면 학습 라벨이 된다 — 이것이 요점이다
+    low = {"task": "naming", "target_text": "사과", "score": 20}
+    assert _clf(low) == "weak"
+    assert B.classify_label(low, min_score=70, max_label_cer=0.2, caregiver_correct=True) == "clean"
+    # 보호자가 아니라고 하면 점수가 높아도 라벨이 틀렸다
+    high = {**low, "score": 95}
+    assert B.classify_label(high, min_score=70, max_label_cer=0.2, caregiver_correct=False) == "weak"
+    # 목표가 없으면 사람 판정이 있어도 학습 불가
+    assert (
+        B.classify_label({"task": "naming", "target_text": ""}, min_score=70, max_label_cer=0.2, caregiver_correct=True)
+        == "weak"
+    )
+
+
+def test_load_caregiver_verdicts_keeps_only_corrected_rows():
+    v = B.load_caregiver_verdicts(
+        [
+            {"clip_id": "AAA", "is_correct": True, "caregiver_corrected": True},
+            {"clipId": "bbb", "isCorrect": False, "caregiverCorrected": True},
+            {"clip_id": "ccc", "is_correct": True, "caregiver_corrected": None},  # 정정 안 함
+            {"clip_id": None, "is_correct": True, "caregiver_corrected": True},  # 녹음 없음
+        ]
+    )
+    assert v == {"aaa": True, "bbb": False}
+
+
+def test_dedupe_by_clip_prefers_scored_row():
+    rows = [
+        {"clip_id": "c1", "task": "naming", "score": None, "audio_path": "stt.wav"},
+        {"clip_id": "C1", "task": "naming", "score": 80, "audio_path": "pron.wav"},
+        {"task": "stt", "audio_path": "old.wav"},  # clip 없는 옛 행은 그대로
+    ]
+    out = B.dedupe_by_clip(rows)
+    assert sorted(r["audio_path"] for r in out) == ["old.wav", "pron.wav"]
+
+
 def test_stt_clean_when_hypothesis_matches_target():
     # 가설이 목표와 일치 → 라벨 신뢰
     assert _clf({"task": "stt", "target_text": "바다", "recognized_text": "바다"}) == "clean"

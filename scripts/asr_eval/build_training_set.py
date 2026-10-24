@@ -9,6 +9,13 @@
     (CER <= --max-label-cer) clean. 가설이 없으면 판단 불가 → weak.
   - 그 외는 weak(약라벨). 버리지 않고 별도 버킷으로 남겨 사람 전사/후처리에 쓴다.
 
+위 필터는 **Azure가 이미 알아들은 발화만** 통과시킨다 — 자체 ASR이 정작 필요한
+발화(Azure가 못 알아듣는 발화)는 weak로 빠진다(검토 문서 G1). 그래서 사람 판정이
+있으면 그것이 먼저다: 문항 결과(qab_results)의 보호자 정정을 녹음과 clip_id로 잇는다.
+  - 보호자가 정답으로 정정 → clean(target_text가 사람이 확인한 라벨, label_source=caregiver)
+  - 보호자가 오답으로 정정 → weak(환자가 목표를 말하지 않았다 — 라벨이 틀렸다)
+  - 정정이 없으면 위 자동 필터(label_source=auto)
+
 clean만 화자 분리(patient_id=화자) train/dev/test로 나눈다. 한 화자는 한 split만
 (누수 방지) — split_speakers와 같은 원칙.
 
@@ -17,6 +24,10 @@ DB에서 뽑는 예(psql):
   \\copy (SELECT patient_id, task, target_text, recognized_text, audio_path,
           score, duration_ms FROM speech_recordings) TO 'rec.jsonl' ...
 또는 서버 관리 명령으로 JSONL을 만들어 이 스크립트에 넘긴다.
+보호자 정정(선택, --qab-results):
+  \\copy (SELECT clip_id, is_correct, caregiver_corrected FROM qab_results
+          WHERE clip_id IS NOT NULL AND caregiver_corrected) TO 'qab.jsonl' ...
+  (recordings export에는 clip_id 열도 넣는다)
 
 산출물(--out-dir):
   train.jsonl / dev.jsonl / test.jsonl  — {audio, text, patient, task}
@@ -55,10 +66,47 @@ def _get(row: dict, *keys: str):
     return None
 
 
-def classify_label(row: dict, *, min_score: float, max_label_cer: float) -> str:
+def load_caregiver_verdicts(rows: list[dict]) -> dict[str, bool]:
+    """qab_results export → {clip_id: 보호자가 정답으로 판정했나}. 정정한 행만 담는다."""
+    out: dict[str, bool] = {}
+    for r in rows:
+        clip = _get(r, "clip_id", "clipId")
+        if not clip or _get(r, "caregiver_corrected", "caregiverCorrected") is not True:
+            continue
+        out[str(clip).lower()] = _get(r, "is_correct", "isCorrect") is True
+    return out
+
+
+def dedupe_by_clip(rows: list[dict]) -> list[dict]:
+    """같은 clip_id의 녹음은 하나만 남긴다(점수 있는 행 우선).
+
+    발음 평가 응답이 늦어 앱이 인식으로 폴백하면, 서버가 두 경로에서 같은 녹음을 한 번씩 남길 수 있다.
+    clip_id가 없는 행(옛 클라이언트)은 그대로 둔다.
+    """
+    keep: dict[str, dict] = {}
+    rest: list[dict] = []
+    for r in rows:
+        clip = _get(r, "clip_id", "clipId")
+        if not clip:
+            rest.append(r)
+            continue
+        key = str(clip).lower()
+        if key not in keep or (_get(keep[key], "score") is None and _get(r, "score") is not None):
+            keep[key] = r
+    return rest + list(keep.values())
+
+
+def classify_label(
+    row: dict,
+    *,
+    min_score: float,
+    max_label_cer: float,
+    caregiver_correct: bool | None = None,
+) -> str:
     """행의 라벨 신뢰도를 판정: 'clean' | 'weak'.
 
     - 목표 텍스트가 없으면 학습 불가 → weak.
+    - 보호자 판정(caregiver_correct)이 있으면 그것을 따른다(자동 필터보다 먼저).
     - 발음 채점 경로(task=pronunciation, 또는 점수가 있는 naming·repeat·reading):
       점수가 임계 이상이면 clean(목표에 근접해 발음). 앱이 과제를 실어 보내면서
       발음 채점 녹음도 과제 이름으로 저장되므로, 경로는 점수 유무로 가린다.
@@ -68,6 +116,8 @@ def classify_label(row: dict, *, min_score: float, max_label_cer: float) -> str:
     target = (_get(row, "target_text", "targetText") or "").strip()
     if not target:
         return "weak"
+    if caregiver_correct is not None:
+        return "clean" if caregiver_correct else "weak"
     task = _get(row, "task") or ""
     score = _get(row, "score")
     recognized = (_get(row, "recognized_text", "recognizedText") or "").strip()
@@ -113,6 +163,9 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="보존 발화 → 라벨 품질 필터 학습셋")
     ap.add_argument("--recordings", required=True, type=Path, help="speech_recordings JSONL export")
     ap.add_argument("--audio-root", type=Path, help="SPEECH_DATA_DIR(오디오 존재 확인용)")
+    ap.add_argument(
+        "--qab-results", type=Path, help="qab_results JSONL export(보호자 정정, clip_id로 잇는다)"
+    )
     ap.add_argument("--out-dir", required=True, type=Path)
     ap.add_argument("--min-score", type=float, default=70, help="발음 clean 임계(0~100)")
     ap.add_argument("--max-label-cer", type=float, default=0.2, help="가설↔목표 clean 임계 CER")
@@ -121,11 +174,11 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
 
-    rows = [
-        json.loads(l)
-        for l in args.recordings.read_text(encoding="utf-8").splitlines()
-        if l.strip()
-    ]
+    def _jsonl(p: Path) -> list[dict]:
+        return [json.loads(l) for l in p.read_text(encoding="utf-8").splitlines() if l.strip()]
+
+    rows = dedupe_by_clip(_jsonl(args.recordings))
+    verdicts = load_caregiver_verdicts(_jsonl(args.qab_results)) if args.qab_results else {}
 
     clean: list[dict] = []
     weak: list[dict] = []
@@ -135,8 +188,13 @@ def main() -> None:
         if args.audio_root and rel and not (args.audio_root / rel).exists():
             n_missing_audio += 1
             continue
+        clip = _get(r, "clip_id", "clipId")
+        verdict = verdicts.get(str(clip).lower()) if clip else None
         label = classify_label(
-            r, min_score=args.min_score, max_label_cer=args.max_label_cer
+            r,
+            min_score=args.min_score,
+            max_label_cer=args.max_label_cer,
+            caregiver_correct=verdict,
         )
         rec = {
             "audio": rel,
@@ -145,12 +203,14 @@ def main() -> None:
             "task": _get(r, "task"),
             "recognized": _get(r, "recognized_text", "recognizedText"),
             "score": _get(r, "score"),
+            "label_source": "caregiver" if verdict is not None else "auto",
         }
         (clean if label == "clean" else weak).append(rec)
 
     print(f"입력 {len(rows)}행" + (f" · 오디오없음 {n_missing_audio}(제외)" if n_missing_audio else ""))
     print(f"clean {len(clean)} · weak {len(weak)}")
     print("clean 과제별:", dict(Counter(r["task"] for r in clean)))
+    print("clean 라벨 출처:", dict(Counter(r["label_source"] for r in clean)))
     print("weak 과제별 :", dict(Counter(r["task"] for r in weak)))
 
     speakers = [r["patient"] for r in clean]
