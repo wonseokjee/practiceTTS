@@ -104,7 +104,7 @@ export function SpeechCaptureItem({
     setErrorMessage('');
     setStatus('listening');
     // 목표 텍스트를 발음 평가 기준(reference) 겸 phrase hint로 전달.
-    stt.start(text);
+    stt.start(text, { task: showModel ? 'repeat' : 'reading' });
   };
 
   // 서버 STT는 자동 종료되지 않으므로 사용자가 발화 종료를 알린다(→ 인식 실행).

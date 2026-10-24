@@ -100,7 +100,7 @@ describe('PictureNamingItem', () => {
     renderItem();
     fireEvent.click(screen.getByRole('button', { name: '이름 말하기' }));
     // 목표어를 발음 평가 기준으로 넘긴다
-    expect(sttInstances[0].start).toHaveBeenCalledWith('사과');
+    expect(sttInstances[0].start).toHaveBeenCalledWith('사과', { task: 'naming' });
   });
 
   it('인식 성공 후 제출하면 onSubmit이 (전사, azure)로 호출된다', () => {

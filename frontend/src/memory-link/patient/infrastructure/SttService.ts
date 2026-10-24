@@ -8,13 +8,20 @@ import { i18n } from '../../../shared/i18n/i18n.js';
  * - 한국어(ko-KR) 설정
  * - confidence < 0.6 이면 재시도 유도 (onError 콜백으로 처리)
  */
+/**
+ * 녹음이 어느 과제의 발화인지. 서버는 동의한 환자의 녹음을 이 값과 함께 보존한다 —
+ * 이름대기와 따라말하기는 같은 채점 경로를 타서 이 값이 없으면 학습셋에서 가를 수 없다.
+ */
+export type SpeechDataTask = 'naming' | 'repeat' | 'reading';
+
 export interface ISttService {
   /**
    * STT 인식 시작.
    * @param candidates 정답 후보(phrase hint). 서버 STT가 제약 인식에 활용한다.
    *                   Web Speech 구현은 무시한다(브라우저 API 제약).
+   * @param options.task 과제 종류(서버 녹음 보존용). Web Speech 구현은 무시한다.
    */
-  start(candidates?: string[]): void;
+  start(candidates?: string[], options?: { task?: SpeechDataTask }): void;
   /** STT 인식 중단 */
   stop(): void;
   /** 취소 — 결과를 만들지 않고 인식/녹음을 중단한다(이탈 시 서버 업로드 방지). */

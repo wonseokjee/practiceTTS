@@ -245,6 +245,13 @@ def test_pronunciation_weak_when_score_low_or_missing():
     assert _clf({"task": "pronunciation", "target_text": "사과"}) == "weak"
 
 
+def test_tagged_pronunciation_row_uses_score_not_hypothesis():
+    # 발음 채점 경로의 녹음이 과제 이름(naming 등)으로 저장돼도 점수로 판정한다
+    row = {"task": "naming", "target_text": "사과", "recognized_text": "사과", "score": 40}
+    assert _clf(row) == "weak"
+    assert _clf({**row, "score": 85, "recognized_text": "바나나"}) == "clean"
+
+
 def test_stt_clean_when_hypothesis_matches_target():
     # 가설이 목표와 일치 → 라벨 신뢰
     assert _clf({"task": "stt", "target_text": "바다", "recognized_text": "바다"}) == "clean"

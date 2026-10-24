@@ -17,6 +17,20 @@ export type SpeechTask =
   | 'repeat'
   | 'reading';
 
+/** 클라이언트가 실어 보낼 수 있는 과제. 나머지(pronunciation·stt)는 호출 경로 기본값이다. */
+const CLIENT_SPEECH_TASKS = ['naming', 'repeat', 'reading'] as const;
+export type ClientSpeechTask = (typeof CLIENT_SPEECH_TASKS)[number];
+
+/**
+ * 폼 필드 `task`를 읽는다. 없거나 모르는 값이면 null — 호출부가 경로 기본값으로 저장한다.
+ * 이름대기와 따라말하기는 같은 발음 채점 경로를 타서, 이 값이 없으면 학습셋에서 가를 수 없다.
+ */
+export function parseClientSpeechTask(value: unknown): ClientSpeechTask | null {
+  return (CLIENT_SPEECH_TASKS as readonly unknown[]).includes(value)
+    ? (value as ClientSpeechTask)
+    : null;
+}
+
 /**
  * 동의 기반으로 보존된 환자 발화 1건.
  *

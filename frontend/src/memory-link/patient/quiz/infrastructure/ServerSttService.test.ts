@@ -70,6 +70,27 @@ describe('ServerSttService', () => {
     const body = fetchMock.mock.calls[0]?.[1]?.body as FormData;
     expect(body.getAll('candidates')).toEqual(['바다', '파도']);
     expect(body.get('lang')).toBe('ko-KR');
+    expect(body.has('task')).toBe(false); // 과제를 안 주면 싣지 않는다
+  });
+
+  it('과제를 주면 녹음 보존용 task 필드로 싣는다', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ transcript: '바다', confidence: 0.9 }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const svc = new ServerSttService('ko-KR');
+    const onResult = vi.fn();
+    svc.onResult = onResult;
+
+    svc.start(['바다'], { task: 'repeat' });
+    await flush();
+    svc.stop();
+    await vi.waitFor(() => expect(onResult).toHaveBeenCalled());
+
+    const body = fetchMock.mock.calls[0]?.[1]?.body as FormData;
+    expect(body.get('task')).toBe('repeat');
   });
 
   it('빈 transcript면 onError(다시 말하기 유도)', async () => {

@@ -80,7 +80,7 @@ export function SpeechInput({
     setErrorMessage('');
     setStatus('listening');
     // 따라읽기 정답 단어를 phrase hint로 전달(서버 STT 제약 인식).
-    stt.start(word.length > 0 ? [word] : undefined);
+    stt.start(word.length > 0 ? [word] : undefined, { task: 'repeat' });
   };
 
   // 서버 STT는 자동 종료되지 않으므로 사용자가 발화 종료를 알린다(→ 인식 실행).

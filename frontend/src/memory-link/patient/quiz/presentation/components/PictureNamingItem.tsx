@@ -154,11 +154,11 @@ export function PictureNamingItem({
     setErrorMessage('');
     setStatus('listening');
     // 정답 이름을 발음 평가 기준(reference) 겸 STT 폴백 phrase hint로 전달.
-    // 이웃 비교를 쓰면 이웃 단어도 넘긴다 — 아니면 예전과 똑같은 호출이다(인자 하나).
+    // 이웃 비교를 쓰면 이웃 단어도 넘긴다 — 아니면 경쟁자 없는 예전 채점 요청이다.
     if (neighbors) {
-      stt.start(item.targetWord, { neighbors });
+      stt.start(item.targetWord, { neighbors, task: 'naming' });
     } else {
-      stt.start(item.targetWord);
+      stt.start(item.targetWord, { task: 'naming' });
     }
   };
 
