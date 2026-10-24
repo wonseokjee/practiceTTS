@@ -55,7 +55,7 @@ Vultr/Cloudflare 계정 → 도메인·DNS → `scripts/deploy/` 01→03→02→
 |---|---|---|
 | **observe-unassisted-pair-before-cutover** | 공개 전환 전, 스테이징에서 보호자–환자 한 쌍을 도움 없이 쓰게 관찰 | `P1` |
 | **measure-memory-limits** | pm2 `max_memory_restart`(backend 512M / ai 768M) 실측 조정 | `P2` |
-| **ci-pipeline** | PR마다 backend jest·ai-service pytest·배포 스크립트 테스트를 자동 실행 | `P2` |
+| **ci-pipeline** | **완료(2026-10-24).** `.github/workflows/ci.yml` — PR·main 푸시마다 backend jest+tsc, backend `test:int`(Postgres 16 서비스 컨테이너, 빈 DB 마이그레이션), frontend vitest+tsc, ai-service pytest, asr_eval pytest, 배포 스크립트 테스트. 첫 실행이 main에 있던 깨진 테스트 6곳을 드러내 같이 고쳤다. 린트는 아직 안 돌린다 | — |
 | **db-pool-config** | 커넥션 풀 크기·`query_timeout`을 장애 관찰 뒤 정한다 | `P3` |
 
 ### observe-unassisted-pair-before-cutover
