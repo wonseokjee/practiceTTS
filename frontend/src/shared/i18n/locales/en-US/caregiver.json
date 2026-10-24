@@ -158,7 +158,7 @@
   "speechConsent": {
     "title": "Voice data sharing",
     "textVersion": "en-US-2026-10-24",
-    "description": "As their caregiver, you give this consent on your loved one's behalf. With consent, we save their pronunciation and dictation recordings (audio, target word, recognized text, and score) to help build speech recognition that fits their voice better. Without consent, recordings are deleted right after scoring and never kept.",
+    "description": "As their caregiver, you give this consent on your loved one's behalf. With consent, we save their pronunciation and dictation recordings (audio, target word, recognized text, and score) to help build speech recognition that fits their voice better. Without consent, recordings are used only for scoring and are not saved on our servers.",
     "withdrawNote": "Turning consent off stops saving from then on. Recordings already saved stay until you remove them with \"Delete all\" below.",
     "loading": "Loading…",
     "errorLoad": "We couldn't load this. Please try again shortly.",
