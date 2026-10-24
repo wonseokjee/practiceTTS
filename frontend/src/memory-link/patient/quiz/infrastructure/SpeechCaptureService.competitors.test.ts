@@ -85,7 +85,13 @@ describe('ServerPronunciationService — 이웃 비교 요청', () => {
       (svc: ServerPronunciationService) => svc.start('고래', { neighbors: [] }),
     ]) {
       const { calls, result } = await record([ok(PRON_OK)], startFn);
-      expect([...calls[0].keys()].sort()).toEqual(['audio', 'lang', 'reference_text']);
+      // clip_id는 녹음 보존용이라 경쟁자 모드와 무관하게 늘 실린다(아래 「녹음 클립」).
+      expect([...calls[0].keys()].sort()).toEqual([
+        'audio',
+        'clip_id',
+        'lang',
+        'reference_text',
+      ]);
       expect('competitors' in result).toBe(false); // undefined = 요청하지 않았다
     }
   });
@@ -154,6 +160,30 @@ describe('ServerPronunciationService — 과제 태그(녹음 보존용)', () =>
 
     const second = fetchMock.mock.calls[1][1].body as FormData;
     expect(second.has('task')).toBe(false);
+  });
+});
+
+describe('ServerPronunciationService — 녹음 클립', () => {
+  it('녹음마다 클립 식별자를 폼에 싣고 결과에 돌려준다', async () => {
+    const { calls, result } = await record([ok(PRON_OK)], (svc) => svc.start('고래'));
+    const clipId = calls[0].get('clip_id');
+    expect(clipId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(result.clipId).toBe(clipId);
+  });
+
+  it('인식 폴백도 같은 클립 식별자를 쓴다 — 한 녹음은 한 클립이다', async () => {
+    const { calls, result } = await record(
+      [{ ok: false, json: async () => ({}) }, ok({ transcript: '고래', confidence: 0.9 })],
+      (svc) => svc.start('고래'),
+    );
+    expect(calls[1].get('clip_id')).toBe(calls[0].get('clip_id'));
+    expect(result.clipId).toBe(calls[0].get('clip_id'));
+  });
+
+  it('녹음마다 새 클립이다', async () => {
+    const a = await record([ok(PRON_OK)], (svc) => svc.start('고래'));
+    const b = await record([ok(PRON_OK)], (svc) => svc.start('고래'));
+    expect(a.result.clipId).not.toBe(b.result.clipId);
   });
 });
 

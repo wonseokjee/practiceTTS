@@ -30,6 +30,11 @@ export interface SpeechCaptureResult {
   confidence: number;
   azure: AzurePronunciationScores | null;
   /**
+   * 이 녹음의 클립 식별자. 서버에 올린 녹음에만 있다(브라우저 인식은 없다). 서버는 동의한 환자의
+   * 녹음을 이 값과 함께 보존하고, 같은 값이 문항 결과에 실려 보호자 정정 같은 판정을 녹음에 잇는다.
+   */
+  clipId?: string;
+  /**
    * 이웃 비교 채점의 경쟁자 결과.
    *
    *  - `undefined`: 경쟁자 모드를 요청하지 않았다(이전 채점 그대로)
@@ -52,6 +57,13 @@ export interface SpeechCaptureStartOptions {
   neighbors?: readonly string[];
   /** 과제 종류. 서버가 동의한 환자의 녹음을 이 값과 함께 보존한다. 브라우저 인식은 무시한다. */
   task?: SpeechDataTask;
+}
+
+/** 녹음 클립 식별자. 보안 문맥이 아니라 randomUUID가 없으면 만들지 않는다(연결만 포기한다). */
+function newClipId(): string | undefined {
+  return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : undefined;
 }
 
 /** 발화 캡처 서비스 공통 인터페이스. */
@@ -135,6 +147,8 @@ export class ServerPronunciationService implements ISpeechCaptureService {
   private referenceText = '';
   private neighbors: readonly string[] = [];
   private task: SpeechDataTask | undefined;
+  /** 지금 올리는 녹음의 클립 식별자. 녹음마다 새로 만든다(발음 평가·인식 폴백이 같은 값을 쓴다). */
+  private clipId: string | undefined;
   private isRecording = false;
   private startPromise: Promise<void> | null = null;
   private startFailed = false;
@@ -196,12 +210,14 @@ export class ServerPronunciationService implements ISpeechCaptureService {
 
     const token = localStorage.getItem(ML_TOKEN_KEY);
     const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
+    this.clipId = newClipId();
+    const clip = this.clipId ? { clipId: this.clipId } : {};
 
     // 1차: 발음 평가(음소 점수 포함)
     const assessed = await this.tryAssess(wav, authHeaders);
     if (this.cancelled) return;
     if (assessed) {
-      this.onResult?.(assessed);
+      this.onResult?.({ ...assessed, ...clip });
       return;
     }
     // 2차: 같은 녹음을 STT로(전사만, azure=null) — 최소 문자열 채점은 유지
@@ -212,6 +228,7 @@ export class ServerPronunciationService implements ISpeechCaptureService {
       this.onResult?.({
         ...recognized,
         azure: null,
+        ...clip,
         ...(this.neighbors.length > 0 ? { competitors: null } : {}),
       });
       return;
@@ -233,6 +250,7 @@ export class ServerPronunciationService implements ISpeechCaptureService {
       form.append('lang', this.lang);
       form.append('reference_text', this.referenceText);
       if (this.task) form.append('task', this.task);
+      if (this.clipId) form.append('clip_id', this.clipId);
       // 이웃 비교 채점: 이웃과 함께 후보 없는 인식 결과도 경쟁자로 채점해 달라고 요청한다.
       // 이웃이 없으면 아무것도 안 싣는다 — 서버가 받는 폼이 예전과 같다.
       if (this.neighbors.length > 0) {
@@ -286,6 +304,7 @@ export class ServerPronunciationService implements ISpeechCaptureService {
         form.append('candidates', this.referenceText);
       }
       if (this.task) form.append('task', this.task);
+      if (this.clipId) form.append('clip_id', this.clipId);
       const res = await fetch(`${API_BASE_URL}/ai/stt`, {
         method: 'POST',
         body: form,

@@ -31,6 +31,16 @@ export function parseClientSpeechTask(value: unknown): ClientSpeechTask | null {
     : null;
 }
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** 폼 필드 `clip_id`를 읽는다. UUID가 아니면 null — 녹음은 그대로 남기고 연결만 포기한다. */
+export function parseClipId(value: unknown): string | null {
+  return typeof value === 'string' && UUID_RE.test(value)
+    ? value.toLowerCase()
+    : null;
+}
+
 /**
  * 동의 기반으로 보존된 환자 발화 1건.
  *
@@ -40,6 +50,7 @@ export function parseClientSpeechTask(value: unknown): ClientSpeechTask | null {
  */
 @Entity('speech_recordings')
 @Index('IDX_speech_recordings_patient', ['patientId'])
+@Index('IDX_speech_recordings_clip', ['clipId'])
 export class SpeechRecording {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -71,6 +82,11 @@ export class SpeechRecording {
   // 파일 스토리지 상대 경로(예: <patientId>/<uuid>.wav).
   @Column({ name: 'audio_path', type: 'varchar', length: 500 })
   audioPath: string;
+
+  // 앱이 녹음마다 만든 클립 식별자(M35). 같은 값이 qab_results.clip_id에 실려, 학습셋을 만들 때
+  // 보호자 정정 같은 문항 판정을 이 녹음에 붙인다. 옛 클라이언트·후보 없는 STT는 NULL.
+  @Column({ name: 'clip_id', type: 'uuid', nullable: true })
+  clipId: string | null;
 
   @Column({ name: 'duration_ms', type: 'int', nullable: true })
   durationMs: number | null;

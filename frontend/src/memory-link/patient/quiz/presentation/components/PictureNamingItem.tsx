@@ -65,6 +65,8 @@ interface PictureNamingItemProps {
     cueLevel: number,
     /** 이웃 비교 채점 정보. 이웃 비교를 안 쓰는 경로(플래그 꺼짐)에서는 아예 넘기지 않는다. */
     scoring?: NamingScoring,
+    /** 이 답의 녹음 클립 식별자. 서버 녹음이 있을 때만 넘긴다(문항 결과에 실려 녹음과 잇는다). */
+    clipId?: string,
   ) => void;
   /** 보호자 통과 처리(도움받음). 없으면 목표 이름 제출로 폴백. */
   onSkip?: () => void;
@@ -95,6 +97,7 @@ export function PictureNamingItem({
   const [status, setStatus] = useState<NamingStatus>('idle');
   const [transcript, setTranscript] = useState<string>('');
   const [azure, setAzure] = useState<AzurePronunciationScores | null>(null);
+  const [clipId, setClipId] = useState<string | undefined>(undefined);
   const [errorMessage, setErrorMessage] = useState<string>('');
   /**
    * 이웃 비교의 경쟁자 결과. `undefined` = 요청 안 함, `null` = 요청했는데 못 얻음(SpeechCaptureResult 참고).
@@ -133,6 +136,7 @@ export function PictureNamingItem({
     stt.onResult = (result) => {
       setTranscript(result.transcript);
       setAzure(result.azure);
+      setClipId(result.clipId);
       setCompetitors(result.competitors);
       setStatus('recognized');
     };
@@ -169,6 +173,13 @@ export function PictureNamingItem({
     stt.stop();
   };
 
+  // 클립 식별자는 서버 녹음이 있을 때만 다섯째 인자로 붙인다. 없으면 예전과 똑같은 호출이다.
+  const submitAttempt = (text: string, scoring?: NamingScoring): void => {
+    if (clipId) onSubmit(text, azure, cueLevel, scoring, clipId);
+    else if (scoring) onSubmit(text, azure, cueLevel, scoring);
+    else onSubmit(text, azure, cueLevel);
+  };
+
   const handleSubmitTranscript = (): void => {
     if (transcript.trim().length === 0) return;
     const text = transcript.trim();
@@ -176,11 +187,10 @@ export function PictureNamingItem({
     if (!neighbors) {
       // 이전 채점. 플래그가 켜져 있는데 이 낱말에 이웃 목록이 없으면(영어·목록 누락) 버전을 v1로 명시해
       // 드러나게 한다 — 안 그러면 "켰는데 왜 안 바뀌지"가 NULL 속에 묻힌다. 플래그가 꺼져 있으면 인자를 안 넘긴다.
-      if (neighborScoringOn) {
-        onSubmit(text, azure, cueLevel, { scorerVersion: SCORER_VERSION_V1 });
-      } else {
-        onSubmit(text, azure, cueLevel);
-      }
+      submitAttempt(
+        text,
+        neighborScoringOn ? { scorerVersion: SCORER_VERSION_V1 } : undefined,
+      );
       return;
     }
 
@@ -196,11 +206,12 @@ export function PictureNamingItem({
       setAmbiguousRetries((n) => n + 1);
       setTranscript('');
       setAzure(null);
+      setClipId(undefined);
       setCompetitors(undefined);
       setStatus('idle');
       return;
     }
-    onSubmit(text, azure, cueLevel, outcome.scoring);
+    submitAttempt(text, outcome.scoring);
   };
 
   // 사다리를 한 칸 오른다. 줄 수 없는 칸(범주 없는 자극의 의미 단서)은

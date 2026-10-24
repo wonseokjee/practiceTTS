@@ -74,6 +74,7 @@ export class SpeechDataService {
     recognizedText?: string | null;
     score?: number | null;
     durationMs?: number | null;
+    clipId?: string | null;
   }): Promise<void> {
     try {
       const { consent } = await this.getConsent(params.patientId);
@@ -93,6 +94,7 @@ export class SpeechDataService {
           targetText: target,
           recognizedText: params.recognizedText ?? null,
           audioPath: rel,
+          clipId: params.clipId ?? null,
           durationMs: params.durationMs ?? null,
           score: params.score ?? null,
         });

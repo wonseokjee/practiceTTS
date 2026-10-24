@@ -148,6 +148,21 @@ export class QabResult {
   ambiguousRetries: number | null;
 
   /**
+   * 이 답의 녹음 클립 식별자(M35). 동의한 환자의 `speech_recordings.clip_id`와 같은 값이라, 학습셋을
+   * 만들 때 이 행의 판정(특히 보호자 정정)을 녹음에 붙인다. 외래키가 없다 — 녹음은 동의한 환자만
+   * 남고 언제든 지워진다. 발화 검사 밖·서버 녹음이 없던 답·옛 행은 NULL.
+   */
+  @Column({ name: 'clip_id', type: 'uuid', nullable: true })
+  clipId: string | null;
+
+  /**
+   * 보호자가 자동 판정을 정정했으면 TRUE(M35). NULL은 정정하지 않았거나 옛 행이다 — 정정이 있는 행만
+   * 뜻이 있어 FALSE로 채우지 않는다. 발화 검사만. 관측값이라 채점에 쓰지 않는다.
+   */
+  @Column({ name: 'caregiver_corrected', type: 'boolean', nullable: true })
+  caregiverCorrected: boolean | null;
+
+  /**
    * 틀렸을 때 고른 오답의 갈래 — 단어이해(word)에만 값이 있다.
    *
    *  - semantic      같은 의미 범주 오답('사과'에 대한 '바나나')

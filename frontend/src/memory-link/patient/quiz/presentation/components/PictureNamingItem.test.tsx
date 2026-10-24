@@ -19,6 +19,7 @@ import type { AzurePronunciationScores } from '../../domain/pronunciationScore.j
 interface CaptureResult {
   transcript: string;
   azure: AzurePronunciationScores | null;
+  clipId?: string;
 }
 interface MockCaptureInstance {
   onResult: ((r: CaptureResult) => void) | null;
@@ -130,6 +131,16 @@ describe('PictureNamingItem', () => {
     fireEvent.click(screen.getByRole('button', { name: '제출' }));
     // STT 전사가 '사가'로 어긋나도 azure가 함께 전달돼 상위가 음소로 채점할 수 있다
     expect(onSubmit).toHaveBeenCalledWith('사가', azure, 0);
+  });
+
+  it('서버 녹음의 클립 식별자를 다섯째 인자로 넘긴다(녹음과 문항 결과를 잇는다)', () => {
+    const { onSubmit } = renderItem();
+    fireEvent.click(screen.getByRole('button', { name: '이름 말하기' }));
+    act(() => {
+      sttInstances[0].onResult?.({ transcript: '사과', azure: null, clipId: 'clip-1' });
+    });
+    fireEvent.click(screen.getByRole('button', { name: '제출' }));
+    expect(onSubmit).toHaveBeenCalledWith('사과', null, 0, undefined, 'clip-1');
   });
 
   it('넘어가기를 누르면 정답 이름으로 통과 처리한다 — 사다리 꼭대기(4)', () => {

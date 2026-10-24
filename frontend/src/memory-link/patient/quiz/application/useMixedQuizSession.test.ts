@@ -649,6 +649,39 @@ describe('useMixedQuizSession', () => {
     );
   });
 
+  it.each([
+    ['정정하면 녹음 클립과 보호자 정정이 함께 실린다', true],
+    ['정정하지 않으면 클립만 실리고 정정 표시는 없다', false],
+  ])('녹음 연결: %s', async (_name, corrected) => {
+    const submitQabResults = vi.fn().mockResolvedValue({ saved: 1 });
+    const { result } = renderHook(() =>
+      useMixedQuizSession(QUIZ_SET_ID, {
+        quizApi: makeApi({ submitQabResults }),
+        pickWordItems: () => [],
+        generateSessionToken: () => 'tok-1',
+        dailyCount: 0,
+        wordCount: 0,
+        ...ISOLATED,
+        pickNamingItems: () => makeNamingItems(),
+        namingCount: 1,
+      }),
+    );
+    await waitFor(() => expect(result.current[0].phase).toBe('answering'));
+
+    const clipId = '3f1c2b9a-1d2e-4f50-8a6b-0c1d2e3f4a5b';
+    act(() => result.current[1].submitNaming('바나나', MISS, 0, undefined, clipId));
+    await waitFor(() => expect(result.current[0].phase).toBe('feedback'));
+    if (corrected) act(() => result.current[1].overrideSpeechVerdict(true));
+    act(() => result.current[1].next());
+    await waitFor(() => expect(submitQabResults).toHaveBeenCalled());
+
+    const sent = submitQabResults.mock.calls[0][1][0] as Record<string, unknown>;
+    expect(sent.clipId).toBe(clipId);
+    // 정정하지 않은 행은 키가 없다(서버는 NULL로 남긴다) — false로 채우지 않는다.
+    expect('caregiverCorrected' in sent).toBe(corrected);
+    if (corrected) expect(sent.caregiverCorrected).toBe(true);
+  });
+
   it('점진 제출: 문항을 넘길 때마다 부분 저장해 중도 이탈을 포착한다', async () => {
     const submitQabResults = vi.fn().mockResolvedValue({ saved: 1 });
     const twoNaming: QabNamingItem[] = [
@@ -1327,6 +1360,8 @@ describe('useMixedQuizSession', () => {
           cueLevel: 0,
           // 판정을 고쳐도 푼 시각은 처음 답한 그대로다(제자리 수정).
           answeredAt: expect.any(String),
+          // 최종 판정이 사람의 것이다 — 녹음 학습셋이 사람 라벨로 쓴다.
+          caregiverCorrected: true,
         },
       ],
       1,
@@ -1374,6 +1409,7 @@ describe('useMixedQuizSession', () => {
           isCorrect: false,
           cueLevel: 0,
           answeredAt: expect.any(String),
+          caregiverCorrected: true,
         },
       ],
       1,
