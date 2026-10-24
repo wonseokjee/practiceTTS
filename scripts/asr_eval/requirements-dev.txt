@@ -16,3 +16,8 @@
 
 pytest>=7.0
 numpy>=1.24
+
+# 단어 잘라내기(cut_word_segments·cut_words_whisper)가 모듈 첫머리에서 임포트한다.
+# 테스트도 그 모듈을 임포트하므로 필요하다(CI에서 처음 드러남, 2026-10-24).
+soundfile>=0.12
+scipy>=1.10
