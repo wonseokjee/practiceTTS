@@ -32,11 +32,13 @@ interface SpeechCaptureItemProps {
    * `unheard`는 **모범을 못 들은 채로 말했다**는 뜻이다. 따라말하기는 들은 것을
    * 붙드는 과제라 못 들었으면 잰 값이 없다. 읽기는 자극이 글이므로 늘 false다
    * (`showModel`이 false다).
+   *
+   * `clipId`는 이 답의 녹음 클립 식별자다. 서버 녹음이 있을 때만 싣는다(문항 결과에 실려 녹음과 잇는다).
    */
   onSubmit: (
     transcript: string,
     azure: AzurePronunciationScores | null,
-    ctx: { unheard: boolean },
+    ctx: { unheard: boolean; clipId?: string },
   ) => void;
   /** 보호자 통과 처리(도움받음). 없으면 목표 텍스트 제출로 폴백. */
   onSkip?: () => void;
@@ -65,6 +67,7 @@ export function SpeechCaptureItem({
   const [status, setStatus] = useState<CaptureStatus>('idle');
   const [transcript, setTranscript] = useState<string>('');
   const [azure, setAzure] = useState<AzurePronunciationScores | null>(null);
+  const [clipId, setClipId] = useState<string | undefined>(undefined);
   const [errorMessage, setErrorMessage] = useState<string>('');
 
   const stt = useMemo(() => createSpeechCaptureService(), []);
@@ -79,6 +82,7 @@ export function SpeechCaptureItem({
     stt.onResult = (result) => {
       setTranscript(result.transcript);
       setAzure(result.azure);
+      setClipId(result.clipId);
       setStatus('recognized');
     };
     stt.onError = (message) => {
@@ -118,7 +122,10 @@ export function SpeechCaptureItem({
 
   const handleSubmitTranscript = (): void => {
     if (transcript.trim().length === 0) return;
-    onSubmit(transcript.trim(), azure, { unheard: unheardRef() });
+    onSubmit(transcript.trim(), azure, {
+      unheard: unheardRef(),
+      ...(clipId ? { clipId } : {}),
+    });
   };
 
   // "넘어가기": 보호자가 했다고 보고 통과 처리(도움받음).

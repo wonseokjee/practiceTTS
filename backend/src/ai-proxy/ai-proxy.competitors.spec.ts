@@ -182,6 +182,23 @@ describe('AiProxyController /ai/pronunciation 경쟁자 모드', () => {
     expect(forwarded().has('task')).toBe(false);
   });
 
+  it('클립 식별자를 녹음과 함께 남기고 ai-service로는 넘기지 않는다', async () => {
+    await base().field('clip_id', '3F1C2B9A-1D2E-4F50-8A6B-0C1D2E3F4A5B');
+    expect(saveRecording).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clipId: '3f1c2b9a-1d2e-4f50-8a6b-0c1d2e3f4a5b',
+      }),
+    );
+    expect(forwarded().has('clip_id')).toBe(false);
+  });
+
+  it('UUID가 아닌 클립 식별자는 버리고 녹음은 남긴다', async () => {
+    await base().field('clip_id', '../../etc/passwd');
+    expect(saveRecording).toHaveBeenCalledWith(
+      expect.objectContaining({ clipId: null }),
+    );
+  });
+
   it('녹음 보존은 경쟁자 모드에서도 목표·전사·점수로 그대로 남긴다', async () => {
     await base()
       .field('competitors', JSON.stringify(['구름']))

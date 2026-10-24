@@ -147,12 +147,14 @@ export interface UseMixedQuizActions {
     cueLevel?: number,
     /** 이웃 비교 채점 정보(계획 PR 5). 생략하면 이전 채점 그대로다. */
     scoring?: NamingScoring,
+    /** 이 답의 녹음 클립 식별자. 서버 녹음이 있을 때만 온다. */
+    clipId?: string,
   ) => void;
   /** QAB 따라말하기/소리내어읽기 음성 제출. azure 점수 있으면 음소 채점, 없으면 WER 폴백. */
   submitSpeech: (
     transcript: string,
     azure?: AzurePronunciationScores | null,
-    ctx?: { unheard?: boolean },
+    ctx?: { unheard?: boolean; clipId?: string },
   ) => void;
   /** QAB 글자 조합 제출 (타일로 만든 문자열, 로컬 비교 채점) */
   submitSpell: (assembled: string) => void;
@@ -964,6 +966,8 @@ export function useMixedQuizSession(
        * 채점기 버전만 찍는다. 안 넘기면 예전과 똑같다(버전 NULL = azure-pa-v1).
        */
       scoring?: NamingScoring,
+      /** 녹음 클립 식별자 — 결과에 실어 보호자 정정 같은 판정을 녹음에 잇는다. */
+      clipId?: string,
     ): void => {
       if (phaseRef.current !== 'answering') return;
       const item = itemsRef.current[indexRef.current];
@@ -994,6 +998,7 @@ export function useMixedQuizSession(
           ...(scoring?.unscoredReason && !assessment.scored
             ? { unscoredReason: scoring.unscoredReason }
             : {}),
+          ...(clipId ? { clipId } : {}),
         },
       });
     },
@@ -1004,7 +1009,7 @@ export function useMixedQuizSession(
     (
       transcript: string,
       azure: AzurePronunciationScores | null = null,
-      ctx?: { unheard?: boolean },
+      ctx?: { unheard?: boolean; clipId?: string },
     ): void => {
       if (phaseRef.current !== 'answering') return;
       const item = itemsRef.current[indexRef.current];
@@ -1014,6 +1019,7 @@ export function useMixedQuizSession(
       // 과제라, 못 들은 채 낸 발화는 잘 말했든 아니든 그 능력을 안 잰다.
       // 읽기는 자극이 글이라 여기 안 걸린다(컴포넌트가 늘 false를 보낸다).
       const unheard = ctx?.unheard === true;
+      const clip = ctx?.clipId ? { clipId: ctx.clipId } : {};
 
       if (item.kind === 'repeat') {
         const mode = item.item.category === 'sentence' ? 'sentence' : 'word';
@@ -1024,7 +1030,7 @@ export function useMixedQuizSession(
           subtest: 'repeat',
           itemRef: item.item.itemId,
           correctLabel: item.item.text,
-          extra: observed(item.item),
+          extra: { ...observed(item.item), ...clip },
         });
         return;
       }
@@ -1033,7 +1039,7 @@ export function useMixedQuizSession(
           subtest: 'reading',
           itemRef: item.item.itemId,
           correctLabel: item.item.text,
-          extra: observed(item.item),
+          extra: { ...observed(item.item), ...clip },
         });
       }
     },
@@ -1302,6 +1308,8 @@ export function useMixedQuizSession(
     // 자리표시였고, 여기서 처음으로 "오답"이라는 판정이 생긴다.
     if (last.isCorrect === isCorrect && !last.unscored) return; // 변화 없음
     last.isCorrect = isCorrect;
+    // 최종 판정이 사람의 것이라는 표시. 녹음 학습셋이 이 행을 사람 라벨로 쓴다(clipId로 잇는다).
+    last.caregiverCorrected = true;
     // 사람이 직접 듣고 낸 판정이라 "다른 것을 재는" 문제가 없다. 정확도 집계에
     // 들어간다. 점수(score)는 여전히 없다 — 사람은 정오답을 말했지 0~100점을
     // 말한 게 아니다.

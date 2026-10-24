@@ -50,6 +50,13 @@ export interface QabResultInput {
    * 1차 모호율("한 번 더"를 얼마나 자주 듣나)의 분자·분모가 이 값이다.
    */
   ambiguousRetries?: number;
+  /**
+   * 이 답의 녹음 클립 식별자(발화 검사, 서버 녹음이 있을 때만). 동의한 환자의 녹음이 같은 값으로
+   * 보존돼, 학습셋을 만들 때 이 문항의 판정을 녹음에 잇는다.
+   */
+  clipId?: string;
+  /** 보호자가 이 문항의 자동 판정을 정정했으면 true. 안 했으면 **생략**한다. 관측값이다. */
+  caregiverCorrected?: boolean;
 
   /**
    * 이름대기에서 **몇 단계까지 단서를 받고 답했나**(E18).

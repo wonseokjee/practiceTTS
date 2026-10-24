@@ -25,7 +25,10 @@ import { RateLimit, RateLimitGuard } from '../common/rate-limit.guard';
 import { GlobalCap, GlobalCapGuard } from '../usage/global-cap.guard';
 import { EffectivePatientId } from '../auth/decorators/effective-patient-id.decorator';
 import { SpeechDataService } from '../speech-data/speech-data.service';
-import { parseClientSpeechTask } from '../speech-data/entities/speech-recording.entity';
+import {
+  parseClientSpeechTask,
+  parseClipId,
+} from '../speech-data/entities/speech-recording.entity';
 import { isSupportedLocale } from '../common/locale';
 import { parseCompetitors, parseSttCompetitor } from './competitors';
 
@@ -140,7 +143,12 @@ export class AiProxyController {
     @EffectivePatientId() patientId: string,
     @UploadedFile() audio: Express.Multer.File | undefined,
     @Body()
-    body: { lang?: string; candidates?: string | string[]; task?: unknown },
+    body: {
+      lang?: string;
+      candidates?: string | string[];
+      task?: unknown;
+      clip_id?: unknown;
+    },
     @Res() res: Response,
   ): Promise<void> {
     if (!audio) {
@@ -204,6 +212,7 @@ export class AiProxyController {
           targetText: firstCandidate,
           audio: audio.buffer,
           recognizedText: recognized,
+          clipId: parseClipId(body.clip_id),
         });
       }
     } catch (error) {
@@ -251,6 +260,7 @@ export class AiProxyController {
       competitors?: unknown;
       stt_competitor?: unknown;
       task?: unknown;
+      clip_id?: unknown;
     },
     @Res() res: Response,
   ): Promise<void> {
@@ -321,6 +331,7 @@ export class AiProxyController {
         audio: audio.buffer,
         recognizedText: this.readString(upstream.data, 'recognized_text'),
         score: this.readScore(upstream.data, 'pronunciation_score'),
+        clipId: parseClipId(body.clip_id),
       });
     } catch (error) {
       this.logger.warn(`발음 평가 프록시 실패: ${this.describe(error)}`);

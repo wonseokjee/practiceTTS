@@ -20,6 +20,7 @@ type InsertedRecording = Pick<
   | 'audioPath'
   | 'durationMs'
   | 'score'
+  | 'clipId'
 >;
 
 /**
@@ -117,6 +118,26 @@ describe('SpeechDataService', () => {
     const row = recordings.insert.mock.calls[0][0];
     expect(row.targetText).toBe('사과');
     expect(row.recognizedText).toBe('아과');
+  });
+
+  it('클립 식별자를 저장한다 — 없으면 NULL(문항 판정과 잇는 열쇠)', async () => {
+    users.findOne.mockResolvedValue({ speechDataConsent: true });
+    const clipId = '3f1c2b9a-1d2e-4f50-8a6b-0c1d2e3f4a5b';
+    await svc.saveRecording({
+      patientId: PID,
+      task: 'naming',
+      targetText: '바다',
+      audio: Buffer.from('RIFFwav'),
+      clipId,
+    });
+    await svc.saveRecording({
+      patientId: PID,
+      task: 'naming',
+      targetText: '바다',
+      audio: Buffer.from('RIFFwav'),
+    });
+    expect(recordings.insert.mock.calls[0][0].clipId).toBe(clipId);
+    expect(recordings.insert.mock.calls[1][0].clipId).toBeNull();
   });
 
   it('insert 실패 시 방금 쓴 오디오 파일을 되돌린다(고아 파일 방지)', async () => {

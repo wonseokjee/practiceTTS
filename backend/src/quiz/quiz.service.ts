@@ -71,6 +71,13 @@ const SESSION_TTL_MS = 30 * 60 * 1000;
  */
 const ANSWERED_AT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
+/** 녹음이 있는 발화 검사. 녹음 연결(clip_id)·보호자 정정은 이 검사들만 뜻이 있다(M35). */
+const SPEECH_SUBTESTS: ReadonlySet<string> = new Set([
+  'naming',
+  'repeat',
+  'reading',
+]);
+
 /**
  * pending QuizSet이 이 시간보다 오래 멈춰 있으면 "고아"로 간주하고 복구한다.
  * LLM 타임아웃(25s)보다 충분히 길게 잡아 정상 진행 중인 생성을 건드리지 않는다.
@@ -1404,6 +1411,12 @@ export class QuizService {
         // 이름대기만 보낸다. 다른 검사에서 오면 뜻이 없으므로 떨군다 — cueLevel과 같은 이유다.
         ambiguousRetries:
           r.subtest === 'naming' ? (r.ambiguousRetries ?? null) : null,
+        // 녹음과의 연결·보호자 정정은 발화 검사만 뜻이 있다. 다른 검사에서 오면 떨군다.
+        clipId: SPEECH_SUBTESTS.has(r.subtest) ? (r.clipId ?? null) : null,
+        caregiverCorrected:
+          SPEECH_SUBTESTS.has(r.subtest) && r.caregiverCorrected === true
+            ? true
+            : null,
         // 단서를 한 칸이라도 받았으면 assisted도 참이다(E18). 기존 통계가
         // `NOT r.assisted`로 거르고 있어 그 뜻을 유지해야 마이그레이션이 무해하다.
         // 클라이언트가 assisted만 보내던 시절의 요청도 그대로 동작한다.

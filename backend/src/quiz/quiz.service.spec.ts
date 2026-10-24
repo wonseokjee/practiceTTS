@@ -2072,6 +2072,41 @@ describe('QuizService', () => {
         expect(await save({})).toMatchObject({ ambiguousRetries: null });
       });
 
+      it('녹음 클립 식별자와 보호자 정정을 남긴다(M35)', async () => {
+        const clipId = '3f1c2b9a-1d2e-4f50-8a6b-0c1d2e3f4a5b';
+        expect(await save({ clipId, caregiverCorrected: true })).toMatchObject({
+          clipId,
+          caregiverCorrected: true,
+        });
+        // 정정하지 않은 행은 FALSE가 아니라 NULL이다 — 정정이 있는 행만 뜻이 있다.
+        expect(await save({ caregiverCorrected: false })).toMatchObject({
+          clipId: null,
+          caregiverCorrected: null,
+        });
+      });
+
+      it('발화 검사 밖에서 온 녹음 연결·정정은 떨군다', async () => {
+        skillLevelRepo.find.mockResolvedValue([]);
+        qabResultRepo.save.mockResolvedValue([]);
+        await service.saveQabResults(PATIENT_ID, {
+          sessionToken: SESSION_TOKEN,
+          results: [
+            {
+              subtest: 'word',
+              itemRef: 'word_q1',
+              isCorrect: true,
+              clipId: '3f1c2b9a-1d2e-4f50-8a6b-0c1d2e3f4a5b',
+              caregiverCorrected: true,
+            },
+          ],
+        } as SubmitQabResultsDto);
+        const calls = qabResultRepo.create.mock.calls;
+        expect(calls[calls.length - 1][0]).toMatchObject({
+          clipId: null,
+          caregiverCorrected: null,
+        });
+      });
+
       it('이름대기 밖의 검사에서 온 재시도 횟수는 떨군다', async () => {
         skillLevelRepo.find.mockResolvedValue([]);
         qabResultRepo.save.mockResolvedValue([]);

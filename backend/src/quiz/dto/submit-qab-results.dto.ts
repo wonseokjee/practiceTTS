@@ -110,6 +110,19 @@ export class QabResultItemDto {
   @Max(3)
   ambiguousRetries?: number;
 
+  /**
+   * 이 문항 답의 녹음 클립 식별자(M35). 발화 검사(이름대기·따라말하기·읽기)에서 서버 녹음이 있을 때만
+   * 온다. 동의한 환자의 `speech_recordings.clip_id`와 같은 값이다. 다른 검사에서 오면 서버가 떨군다.
+   */
+  @IsOptional()
+  @IsUUID()
+  clipId?: string;
+
+  /** 보호자가 이 문항의 자동 판정을 정정했으면 true(M35). 발화 검사만. 관측값이다. */
+  @IsOptional()
+  @IsBoolean()
+  caregiverCorrected?: boolean;
+
   // 이름대기에서 몇 단계까지 단서를 받았나(E18). 없으면 단서 개념이 없는 검사다.
   //   0 무단서 · 1 의미 · (2 문장 완성 — 미구현) · 3 음소 · 4 통과
   // 2를 허용 범위에 남겨 둔 이유는 M25 주석 참고.
