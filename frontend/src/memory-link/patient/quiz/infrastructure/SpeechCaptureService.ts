@@ -14,7 +14,10 @@ import type {
   CompetitorInfo,
   CompetitorScore,
 } from '../domain/neighborScoring.js';
-import { WebSpeechSttService } from '../../infrastructure/SttService.js';
+import {
+  WebSpeechSttService,
+  type SpeechDataTask,
+} from '../../infrastructure/SttService.js';
 import { WavRecorder } from './WavRecorder.js';
 import { QUIZ_RECORDING_LIMIT_MS } from './recordingLimits.js';
 import { API_BASE_URL, ML_TOKEN_KEY } from '../../../shared/MemoryLinkApi.js';
@@ -47,6 +50,8 @@ export interface SpeechCaptureStartOptions {
    * 없거나 비면 예전과 같은 요청이다.
    */
   neighbors?: readonly string[];
+  /** 과제 종류. 서버가 동의한 환자의 녹음을 이 값과 함께 보존한다. 브라우저 인식은 무시한다. */
+  task?: SpeechDataTask;
 }
 
 /** 발화 캡처 서비스 공통 인터페이스. */
@@ -129,6 +134,7 @@ export class ServerPronunciationService implements ISpeechCaptureService {
   private readonly lang: string;
   private referenceText = '';
   private neighbors: readonly string[] = [];
+  private task: SpeechDataTask | undefined;
   private isRecording = false;
   private startPromise: Promise<void> | null = null;
   private startFailed = false;
@@ -144,6 +150,7 @@ export class ServerPronunciationService implements ISpeechCaptureService {
     if (this.isRecording) return;
     this.referenceText = referenceText ?? '';
     this.neighbors = options?.neighbors ?? [];
+    this.task = options?.task;
     this.isRecording = true;
     this.startFailed = false;
     this.cancelled = false;
@@ -225,6 +232,7 @@ export class ServerPronunciationService implements ISpeechCaptureService {
       form.append('audio', wav, 'speech.wav');
       form.append('lang', this.lang);
       form.append('reference_text', this.referenceText);
+      if (this.task) form.append('task', this.task);
       // 이웃 비교 채점: 이웃과 함께 후보 없는 인식 결과도 경쟁자로 채점해 달라고 요청한다.
       // 이웃이 없으면 아무것도 안 싣는다 — 서버가 받는 폼이 예전과 같다.
       if (this.neighbors.length > 0) {
@@ -277,6 +285,7 @@ export class ServerPronunciationService implements ISpeechCaptureService {
       if (this.referenceText.length > 0) {
         form.append('candidates', this.referenceText);
       }
+      if (this.task) form.append('task', this.task);
       const res = await fetch(`${API_BASE_URL}/ai/stt`, {
         method: 'POST',
         body: form,

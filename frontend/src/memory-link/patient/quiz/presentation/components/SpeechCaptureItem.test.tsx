@@ -17,6 +17,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { SpeechCaptureItem } from './SpeechCaptureItem.js';
+import { WebSpeechCaptureAdapter } from '../../infrastructure/SpeechCaptureService.js';
 import { TTS_FAILURE_MESSAGE_KEY } from './TtsFailureNotice.js';
 import { i18n } from '../../../../../shared/i18n/i18n.js';
 
@@ -96,6 +97,18 @@ describe('SpeechCaptureItem', () => {
     renderItem({ showModel: true, text: '바다' });
     fireEvent.click(screen.getByRole('button', { name: '모범 발음 들어보기' }));
     expect(ttsSpeak).toHaveBeenCalledWith('바다');
+  });
+
+  // 과제 태그는 캡처 서비스까지만 간다(이 환경의 브라우저 인식 어댑터는 버린다) — 그래서 어댑터를 엿본다.
+  it.each([
+    [true, 'repeat'],
+    [false, 'reading'],
+  ])('showModel=%s면 %s 과제로 녹음을 시작한다(녹음 보존 태그)', (showModel, task) => {
+    const start = vi.spyOn(WebSpeechCaptureAdapter.prototype, 'start');
+    renderItem({ showModel, text: '바다' });
+    fireEvent.click(screen.getByRole('button', { name: '말하기' }));
+    expect(start).toHaveBeenCalledWith('바다', { task });
+    start.mockRestore();
   });
 
   it('showModel=false면 들어보기 버튼이 없다(스스로 읽기)', () => {

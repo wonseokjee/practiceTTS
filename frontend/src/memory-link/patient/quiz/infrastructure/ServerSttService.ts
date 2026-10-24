@@ -7,7 +7,7 @@
 // sttFactory가 조립 시점에 담당한다(런타임 오디오 소실 방지).
 
 import type { SttResult } from '../../domain/TrainingSession.js';
-import type { ISttService } from '../../infrastructure/SttService.js';
+import type { ISttService, SpeechDataTask } from '../../infrastructure/SttService.js';
 import { WavRecorder } from './WavRecorder.js';
 import { QUIZ_RECORDING_LIMIT_MS } from './recordingLimits.js';
 import { API_BASE_URL, ML_TOKEN_KEY } from '../../../shared/MemoryLinkApi.js';
@@ -38,6 +38,7 @@ export class ServerSttService implements ISttService {
   });
   private readonly lang: string;
   private candidates: string[] = [];
+  private task: SpeechDataTask | undefined;
   private isRecording = false;
   // recorder.start()는 마이크 권한으로 비동기다. 시작 완료 전 stop()이 눌리는
   // 경합에 대비해 시작 프로미스를 보관하고, recognize()에서 이를 기다린다.
@@ -51,9 +52,10 @@ export class ServerSttService implements ISttService {
     this.lang = lang;
   }
 
-  start(candidates?: string[]): void {
+  start(candidates?: string[], options?: { task?: SpeechDataTask }): void {
     if (this.isRecording) return;
     this.candidates = candidates ?? [];
+    this.task = options?.task;
     this.isRecording = true;
     this.startFailed = false;
     this.cancelled = false;
@@ -107,6 +109,7 @@ export class ServerSttService implements ISttService {
       for (const candidate of this.candidates) {
         form.append('candidates', candidate);
       }
+      if (this.task) form.append('task', this.task);
 
       const token = localStorage.getItem(ML_TOKEN_KEY);
       const res = await fetch(`${API_BASE_URL}/ai/stt`, {

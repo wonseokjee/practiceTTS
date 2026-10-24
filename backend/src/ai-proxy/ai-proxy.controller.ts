@@ -25,6 +25,7 @@ import { RateLimit, RateLimitGuard } from '../common/rate-limit.guard';
 import { GlobalCap, GlobalCapGuard } from '../usage/global-cap.guard';
 import { EffectivePatientId } from '../auth/decorators/effective-patient-id.decorator';
 import { SpeechDataService } from '../speech-data/speech-data.service';
+import { parseClientSpeechTask } from '../speech-data/entities/speech-recording.entity';
 import { isSupportedLocale } from '../common/locale';
 import { parseCompetitors, parseSttCompetitor } from './competitors';
 
@@ -138,7 +139,8 @@ export class AiProxyController {
     @Req() req: AuthenticatedRequest,
     @EffectivePatientId() patientId: string,
     @UploadedFile() audio: Express.Multer.File | undefined,
-    @Body() body: { lang?: string; candidates?: string | string[] },
+    @Body()
+    body: { lang?: string; candidates?: string | string[]; task?: unknown },
     @Res() res: Response,
   ): Promise<void> {
     if (!audio) {
@@ -198,7 +200,7 @@ export class AiProxyController {
         const recognized = this.readString(upstream.data, 'transcript');
         void this.speechData.saveRecording({
           patientId,
-          task: 'stt',
+          task: parseClientSpeechTask(body.task) ?? 'stt',
           targetText: firstCandidate,
           audio: audio.buffer,
           recognizedText: recognized,
@@ -248,6 +250,7 @@ export class AiProxyController {
       reference_text?: string;
       competitors?: unknown;
       stt_competitor?: unknown;
+      task?: unknown;
     },
     @Res() res: Response,
   ): Promise<void> {
@@ -313,7 +316,7 @@ export class AiProxyController {
       // 학습에서 배제할 수 있다. 동의 여부는 서비스 내부에서 확인한다.
       void this.speechData.saveRecording({
         patientId,
-        task: 'pronunciation',
+        task: parseClientSpeechTask(body.task) ?? 'pronunciation',
         targetText: reference,
         audio: audio.buffer,
         recognizedText: this.readString(upstream.data, 'recognized_text'),

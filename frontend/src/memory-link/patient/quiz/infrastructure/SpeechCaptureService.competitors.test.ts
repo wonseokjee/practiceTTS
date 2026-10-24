@@ -115,6 +115,48 @@ describe('ServerPronunciationService — 이웃 비교 요청', () => {
   });
 });
 
+describe('ServerPronunciationService — 과제 태그(녹음 보존용)', () => {
+  it('과제를 발음 평가 폼에 싣는다 — 이웃과 함께여도', async () => {
+    const { calls } = await record(
+      [ok({ ...PRON_OK, ...COMPETITOR_FIELDS })],
+      (svc) => svc.start('고래', { neighbors: ['구름'], task: 'naming' }),
+    );
+    expect(calls[0].get('task')).toBe('naming');
+  });
+
+  it('발음 평가가 실패해 인식으로 폴백해도 과제를 싣는다', async () => {
+    const { calls, urls } = await record(
+      [{ ok: false, json: async () => ({}) }, ok({ transcript: '고래', confidence: 0.9 })],
+      (svc) => svc.start('고래', { task: 'reading' }),
+    );
+    expect(urls[1]).toMatch(/\/ai\/stt$/);
+    expect(calls[1].get('task')).toBe('reading');
+  });
+
+  it('과제는 시작할 때마다 새로 정한다 — 이전 문항의 과제가 남지 않는다', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(ok(PRON_OK));
+    vi.stubGlobal('fetch', fetchMock);
+    const svc = new ServerPronunciationService('ko-KR');
+    const onResult = vi.fn();
+    svc.onResult = onResult;
+
+    svc.start('고래', { task: 'naming' });
+    await Promise.resolve();
+    await Promise.resolve();
+    svc.stop();
+    await vi.waitFor(() => expect(onResult).toHaveBeenCalledTimes(1));
+
+    svc.start('사탕');
+    await Promise.resolve();
+    await Promise.resolve();
+    svc.stop();
+    await vi.waitFor(() => expect(onResult).toHaveBeenCalledTimes(2));
+
+    const second = fetchMock.mock.calls[1][1].body as FormData;
+    expect(second.has('task')).toBe(false);
+  });
+});
+
 describe('ServerPronunciationService — 경쟁자 응답', () => {
   it('경쟁자 필드를 정리해 결과에 담는다(snake_case → camelCase)', async () => {
     const { result } = await record(

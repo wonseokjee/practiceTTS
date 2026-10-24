@@ -110,6 +110,7 @@ describe('SpeechInput (따라읽기)', () => {
     renderInput();
     fireEvent.click(screen.getByRole('button', { name: '따라 말하기' }));
     expect(sttInstances[0].start).toHaveBeenCalledTimes(1);
+    expect(sttInstances[0].start).toHaveBeenCalledWith(expect.anything(), { task: 'repeat' });
   });
 
   it('말하기 중 "다 말했어요"를 누르면 STT 인식을 종료한다(서버 STT 자동종료 대체)', () => {

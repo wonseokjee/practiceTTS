@@ -164,6 +164,24 @@ describe('AiProxyController /ai/pronunciation 경쟁자 모드', () => {
     },
   );
 
+  it.each([
+    ['naming', 'naming'],
+    ['repeat', 'repeat'],
+    ['reading', 'reading'],
+    ['모르는 값', 'pronunciation'],
+    ['stt', 'pronunciation'], // 경로 기본값은 클라이언트가 고를 수 없다
+  ])('과제 필드 %s → 녹음을 %s로 보존한다', async (value, saved) => {
+    await base().field('task', value);
+    expect(saveRecording).toHaveBeenCalledWith(
+      expect.objectContaining({ task: saved }),
+    );
+  });
+
+  it('과제 필드는 ai-service로 넘기지 않는다', async () => {
+    await base().field('task', 'naming');
+    expect(forwarded().has('task')).toBe(false);
+  });
+
   it('녹음 보존은 경쟁자 모드에서도 목표·전사·점수로 그대로 남긴다', async () => {
     await base()
       .field('competitors', JSON.stringify(['구름']))

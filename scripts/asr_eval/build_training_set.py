@@ -59,7 +59,9 @@ def classify_label(row: dict, *, min_score: float, max_label_cer: float) -> str:
     """행의 라벨 신뢰도를 판정: 'clean' | 'weak'.
 
     - 목표 텍스트가 없으면 학습 불가 → weak.
-    - pronunciation: 점수가 임계 이상이면 clean(목표에 근접해 발음).
+    - 발음 채점 경로(task=pronunciation, 또는 점수가 있는 naming·repeat·reading):
+      점수가 임계 이상이면 clean(목표에 근접해 발음). 앱이 과제를 실어 보내면서
+      발음 채점 녹음도 과제 이름으로 저장되므로, 경로는 점수 유무로 가린다.
     - 자유 인식 과제: 가설이 target에 CER 임계 이하로 가까우면 clean.
     - 판단 근거(점수/가설)가 없으면 weak.
     """
@@ -70,7 +72,7 @@ def classify_label(row: dict, *, min_score: float, max_label_cer: float) -> str:
     score = _get(row, "score")
     recognized = (_get(row, "recognized_text", "recognizedText") or "").strip()
 
-    if task == "pronunciation":
+    if task == "pronunciation" or (task in _HYP_TASKS and score is not None):
         if isinstance(score, (int, float)) and score >= min_score:
             return "clean"
         # 점수가 있는데 낮으면 오염 가능 → weak. 점수 자체가 없어도 판단불가 → weak.

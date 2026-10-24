@@ -140,7 +140,7 @@ describe('PictureNamingItem — 이웃 비교 채점', () => {
       vi.stubEnv('VITE_ENABLE_NEIGHBOR_SCORING', '');
       const { onSubmit } = renderItem();
       speakAndSubmit(CLEAR);
-      expect(sttInstances[0].start).toHaveBeenCalledWith('사탕');
+      expect(sttInstances[0].start).toHaveBeenCalledWith('사탕', { task: 'naming' });
       expect(onSubmit).toHaveBeenCalledWith('사탕', azure(90), 0);
     });
 
@@ -162,7 +162,7 @@ describe('PictureNamingItem — 이웃 비교 채점', () => {
       renderItem();
       expect(screen.queryByText(RETRY_TEXT)).not.toBeInTheDocument();
       fireEvent.click(screen.getByRole('button', { name: '이름 말하기' }));
-      expect(sttInstances[0].start).toHaveBeenCalledWith('사탕', { neighbors: NEIGHBORS });
+      expect(sttInstances[0].start).toHaveBeenCalledWith('사탕', { neighbors: NEIGHBORS, task: 'naming' });
     });
 
     it('가려지면 바로 제출한다 — 판정·버전·재시도 횟수(0)와 함께', () => {
@@ -280,7 +280,7 @@ describe('PictureNamingItem — 이웃 비교 채점', () => {
     it('이웃 없이 예전처럼 요청하고, 버전 v1만 명시해 제출한다', () => {
       const { onSubmit } = renderItem(UNLISTED);
       speakAndSubmit({ transcript: '미확인낱말', azure: azure(90) });
-      expect(sttInstances[0].start).toHaveBeenCalledWith('미확인낱말');
+      expect(sttInstances[0].start).toHaveBeenCalledWith('미확인낱말', { task: 'naming' });
       // 이웃 비교를 안 거쳤으니 재시도 횟수는 없다(0이 아니다)
       expect(onSubmit).toHaveBeenCalledWith('미확인낱말', azure(90), 0, {
         scorerVersion: 'azure-pa-v1',
